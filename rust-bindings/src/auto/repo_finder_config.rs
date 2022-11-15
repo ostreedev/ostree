@@ -22,17 +22,19 @@ impl RepoFinderConfig {
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
     #[doc(alias = "ostree_repo_finder_config_new")]
     pub fn new() -> RepoFinderConfig {
-        unsafe { from_glib_full(ffi::ostree_repo_finder_config_new()) }
+        unsafe {
+            from_glib_full(ffi::ostree_repo_finder_config_new())
+        }
     }
 }
 
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
 impl Default for RepoFinderConfig {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+                     fn default() -> Self {
+                         Self::new()
+                     }
+                 }
 
 impl fmt::Display for RepoFinderConfig {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

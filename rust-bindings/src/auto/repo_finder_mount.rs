@@ -32,9 +32,7 @@ impl RepoFinderMount {
     #[doc(alias = "ostree_repo_finder_mount_new")]
     pub fn new(monitor: Option<&impl IsA<gio::VolumeMonitor>>) -> RepoFinderMount {
         unsafe {
-            from_glib_full(ffi::ostree_repo_finder_mount_new(
-                monitor.map(|p| p.as_ref()).to_glib_none().0,
-            ))
+            from_glib_full(ffi::ostree_repo_finder_mount_new(monitor.map(|p| p.as_ref()).to_glib_none().0))
         }
     }
 

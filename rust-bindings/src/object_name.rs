@@ -1,6 +1,5 @@
 use crate::ObjectType;
 use crate::{object_name_deserialize, object_name_serialize, object_to_string};
-use glib::translate::*;
 use glib::GString;
 use std::fmt::Display;
 use std::fmt::Error;
@@ -9,7 +8,7 @@ use std::hash::Hash;
 use std::hash::Hasher;
 
 fn hash_object_name(v: &glib::Variant) -> u32 {
-    unsafe { ffi::ostree_hash_object_name(v.to_glib_none().0 as glib::ffi::gconstpointer) }
+    unsafe { ffi::ostree_hash_object_name(v.as_ptr() as glib::ffi::gconstpointer) }
 }
 
 /// A reference to an object in an OSTree repo. It contains both a checksum and an

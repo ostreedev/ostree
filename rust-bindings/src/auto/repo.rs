@@ -67,255 +67,123 @@ glib::wrapper! {
 impl Repo {
     #[doc(alias = "ostree_repo_new")]
     pub fn new(path: &impl IsA<gio::File>) -> Repo {
-        unsafe { from_glib_full(ffi::ostree_repo_new(path.as_ref().to_glib_none().0)) }
+        unsafe {
+            from_glib_full(ffi::ostree_repo_new(path.as_ref().to_glib_none().0))
+        }
     }
 
     #[doc(alias = "ostree_repo_new_default")]
     pub fn new_default() -> Repo {
-        unsafe { from_glib_full(ffi::ostree_repo_new_default()) }
+        unsafe {
+            from_glib_full(ffi::ostree_repo_new_default())
+        }
     }
 
     #[doc(alias = "ostree_repo_new_for_sysroot_path")]
     #[doc(alias = "new_for_sysroot_path")]
-    pub fn for_sysroot_path(
-        repo_path: &impl IsA<gio::File>,
-        sysroot_path: &impl IsA<gio::File>,
-    ) -> Repo {
+    pub fn for_sysroot_path(repo_path: &impl IsA<gio::File>, sysroot_path: &impl IsA<gio::File>) -> Repo {
         unsafe {
-            from_glib_full(ffi::ostree_repo_new_for_sysroot_path(
-                repo_path.as_ref().to_glib_none().0,
-                sysroot_path.as_ref().to_glib_none().0,
-            ))
+            from_glib_full(ffi::ostree_repo_new_for_sysroot_path(repo_path.as_ref().to_glib_none().0, sysroot_path.as_ref().to_glib_none().0))
         }
     }
 
     #[doc(alias = "ostree_repo_abort_transaction")]
-    pub fn abort_transaction(
-        &self,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn abort_transaction(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_abort_transaction(
-                self.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_abort_transaction(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_add_gpg_signature_summary")]
-    pub fn add_gpg_signature_summary(
-        &self,
-        key_id: &[&str],
-        homedir: Option<&str>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn add_gpg_signature_summary(&self, key_id: &[&str], homedir: Option<&str>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_add_gpg_signature_summary(
-                self.to_glib_none().0,
-                key_id.to_glib_none().0,
-                homedir.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_add_gpg_signature_summary(self.to_glib_none().0, key_id.to_glib_none().0, homedir.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_append_gpg_signature")]
-    pub fn append_gpg_signature(
-        &self,
-        commit_checksum: &str,
-        signature_bytes: &glib::Bytes,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn append_gpg_signature(&self, commit_checksum: &str, signature_bytes: &glib::Bytes, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_append_gpg_signature(
-                self.to_glib_none().0,
-                commit_checksum.to_glib_none().0,
-                signature_bytes.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_append_gpg_signature(self.to_glib_none().0, commit_checksum.to_glib_none().0, signature_bytes.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2016_8", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_8")))]
     #[doc(alias = "ostree_repo_checkout_at")]
-    pub fn checkout_at(
-        &self,
-        options: Option<&RepoCheckoutAtOptions>,
-        destination_dfd: i32,
-        destination_path: impl AsRef<std::path::Path>,
-        commit: &str,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn checkout_at(&self, options: Option<&RepoCheckoutAtOptions>, destination_dfd: i32, destination_path: impl AsRef<std::path::Path>, commit: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_checkout_at(
-                self.to_glib_none().0,
-                mut_override(options.to_glib_none().0),
-                destination_dfd,
-                destination_path.as_ref().to_glib_none().0,
-                commit.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_checkout_at(self.to_glib_none().0, mut_override(options.to_glib_none().0), destination_dfd, destination_path.as_ref().to_glib_none().0, commit.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_checkout_gc")]
-    pub fn checkout_gc(
-        &self,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn checkout_gc(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_checkout_gc(
-                self.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_checkout_gc(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_checkout_tree")]
-    pub fn checkout_tree(
-        &self,
-        mode: RepoCheckoutMode,
-        overwrite_mode: RepoCheckoutOverwriteMode,
-        destination: &impl IsA<gio::File>,
-        source: &RepoFile,
-        source_info: &gio::FileInfo,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn checkout_tree(&self, mode: RepoCheckoutMode, overwrite_mode: RepoCheckoutOverwriteMode, destination: &impl IsA<gio::File>, source: &RepoFile, source_info: &gio::FileInfo, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_checkout_tree(
-                self.to_glib_none().0,
-                mode.into_glib(),
-                overwrite_mode.into_glib(),
-                destination.as_ref().to_glib_none().0,
-                source.to_glib_none().0,
-                source_info.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_checkout_tree(self.to_glib_none().0, mode.into_glib(), overwrite_mode.into_glib(), destination.as_ref().to_glib_none().0, source.to_glib_none().0, source_info.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_commit_transaction")]
-    pub fn commit_transaction(
-        &self,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<RepoTransactionStats, glib::Error> {
+    pub fn commit_transaction(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<RepoTransactionStats, glib::Error> {
         unsafe {
             let mut out_stats = RepoTransactionStats::uninitialized();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_commit_transaction(
-                self.to_glib_none().0,
-                out_stats.to_glib_none_mut().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_commit_transaction(self.to_glib_none().0, out_stats.to_glib_none_mut().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(out_stats)
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(out_stats) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_copy_config")]
     pub fn copy_config(&self) -> Option<glib::KeyFile> {
-        unsafe { from_glib_full(ffi::ostree_repo_copy_config(self.to_glib_none().0)) }
+        unsafe {
+            from_glib_full(ffi::ostree_repo_copy_config(self.to_glib_none().0))
+        }
     }
 
     #[doc(alias = "ostree_repo_create")]
-    pub fn create(
-        &self,
-        mode: RepoMode,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn create(&self, mode: RepoMode, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_create(
-                self.to_glib_none().0,
-                mode.into_glib(),
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_create(self.to_glib_none().0, mode.into_glib(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_delete_object")]
-    pub fn delete_object(
-        &self,
-        objtype: ObjectType,
-        sha256: &str,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn delete_object(&self, objtype: ObjectType, sha256: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_delete_object(
-                self.to_glib_none().0,
-                objtype.into_glib(),
-                sha256.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_delete_object(self.to_glib_none().0, objtype.into_glib(), sha256.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -324,42 +192,24 @@ impl Repo {
     #[doc(alias = "ostree_repo_equal")]
     pub fn equal(&self, b: &Repo) -> bool {
         unsafe {
-            from_glib(ffi::ostree_repo_equal(
-                self.to_glib_none().0,
-                b.to_glib_none().0,
-            ))
+            from_glib(ffi::ostree_repo_equal(self.to_glib_none().0, b.to_glib_none().0))
         }
     }
 
     //#[doc(alias = "ostree_repo_export_tree_to_archive")]
-    //pub fn export_tree_to_archive(&self, opts: /*Ignored*/&mut RepoExportArchiveOptions, root: &RepoFile, archive: /*Unimplemented*/Option<Fundamental: Pointer>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
+    //pub fn export_tree_to_archive(&self, opts: /*Ignored*/&mut RepoExportArchiveOptions, root: &RepoFile, archive: /*Unimplemented*/Option<Basic: Pointer>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
     //    unsafe { TODO: call ffi:ostree_repo_export_tree_to_archive() }
     //}
 
     #[cfg(any(feature = "v2017_15", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_15")))]
     #[doc(alias = "ostree_repo_fsck_object")]
-    pub fn fsck_object(
-        &self,
-        objtype: ObjectType,
-        sha256: &str,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn fsck_object(&self, objtype: ObjectType, sha256: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_fsck_object(
-                self.to_glib_none().0,
-                objtype.into_glib(),
-                sha256.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_fsck_object(self.to_glib_none().0, objtype.into_glib(), sha256.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -368,7 +218,9 @@ impl Repo {
     #[doc(alias = "ostree_repo_get_bootloader")]
     #[doc(alias = "get_bootloader")]
     pub fn bootloader(&self) -> Option<glib::GString> {
-        unsafe { from_glib_none(ffi::ostree_repo_get_bootloader(self.to_glib_none().0)) }
+        unsafe {
+            from_glib_none(ffi::ostree_repo_get_bootloader(self.to_glib_none().0))
+        }
     }
 
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
@@ -376,13 +228,17 @@ impl Repo {
     #[doc(alias = "ostree_repo_get_collection_id")]
     #[doc(alias = "get_collection_id")]
     pub fn collection_id(&self) -> Option<glib::GString> {
-        unsafe { from_glib_none(ffi::ostree_repo_get_collection_id(self.to_glib_none().0)) }
+        unsafe {
+            from_glib_none(ffi::ostree_repo_get_collection_id(self.to_glib_none().0))
+        }
     }
 
     #[doc(alias = "ostree_repo_get_config")]
     #[doc(alias = "get_config")]
     pub fn config(&self) -> Option<glib::KeyFile> {
-        unsafe { from_glib_none(ffi::ostree_repo_get_config(self.to_glib_none().0)) }
+        unsafe {
+            from_glib_none(ffi::ostree_repo_get_config(self.to_glib_none().0))
+        }
     }
 
     #[cfg(any(feature = "v2018_9", feature = "dox"))]
@@ -391,9 +247,7 @@ impl Repo {
     #[doc(alias = "get_default_repo_finders")]
     pub fn default_repo_finders(&self) -> Vec<glib::GString> {
         unsafe {
-            FromGlibPtrContainer::from_glib_none(ffi::ostree_repo_get_default_repo_finders(
-                self.to_glib_none().0,
-            ))
+            FromGlibPtrContainer::from_glib_none(ffi::ostree_repo_get_default_repo_finders(self.to_glib_none().0))
         }
     }
 
@@ -402,13 +256,17 @@ impl Repo {
     #[doc(alias = "ostree_repo_get_dfd")]
     #[doc(alias = "get_dfd")]
     pub fn dfd(&self) -> i32 {
-        unsafe { ffi::ostree_repo_get_dfd(self.to_glib_none().0) }
+        unsafe {
+            ffi::ostree_repo_get_dfd(self.to_glib_none().0)
+        }
     }
 
     #[doc(alias = "ostree_repo_get_disable_fsync")]
     #[doc(alias = "get_disable_fsync")]
     pub fn is_disable_fsync(&self) -> bool {
-        unsafe { from_glib(ffi::ostree_repo_get_disable_fsync(self.to_glib_none().0)) }
+        unsafe {
+            from_glib(ffi::ostree_repo_get_disable_fsync(self.to_glib_none().0))
+        }
     }
 
     #[cfg(any(feature = "v2018_9", feature = "dox"))]
@@ -419,68 +277,48 @@ impl Repo {
         unsafe {
             let mut out_reserved_bytes = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_get_min_free_space_bytes(
-                self.to_glib_none().0,
-                out_reserved_bytes.as_mut_ptr(),
-                &mut error,
-            );
-            let out_reserved_bytes = out_reserved_bytes.assume_init();
+            let is_ok = ffi::ostree_repo_get_min_free_space_bytes(self.to_glib_none().0, out_reserved_bytes.as_mut_ptr(), &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(out_reserved_bytes)
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(out_reserved_bytes.assume_init()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_get_mode")]
     #[doc(alias = "get_mode")]
     pub fn mode(&self) -> RepoMode {
-        unsafe { from_glib(ffi::ostree_repo_get_mode(self.to_glib_none().0)) }
+        unsafe {
+            from_glib(ffi::ostree_repo_get_mode(self.to_glib_none().0))
+        }
     }
 
     #[doc(alias = "ostree_repo_get_parent")]
     #[doc(alias = "get_parent")]
-    #[must_use]
+#[must_use]
     pub fn parent(&self) -> Option<Repo> {
-        unsafe { from_glib_none(ffi::ostree_repo_get_parent(self.to_glib_none().0)) }
+        unsafe {
+            from_glib_none(ffi::ostree_repo_get_parent(self.to_glib_none().0))
+        }
     }
 
     #[doc(alias = "ostree_repo_get_path")]
     #[doc(alias = "get_path")]
     pub fn path(&self) -> Option<gio::File> {
-        unsafe { from_glib_none(ffi::ostree_repo_get_path(self.to_glib_none().0)) }
+        unsafe {
+            from_glib_none(ffi::ostree_repo_get_path(self.to_glib_none().0))
+        }
     }
 
     #[cfg(any(feature = "v2016_5", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_5")))]
     #[doc(alias = "ostree_repo_get_remote_boolean_option")]
     #[doc(alias = "get_remote_boolean_option")]
-    pub fn remote_boolean_option(
-        &self,
-        remote_name: &str,
-        option_name: &str,
-        default_value: bool,
-    ) -> Result<bool, glib::Error> {
+    pub fn remote_boolean_option(&self, remote_name: &str, option_name: &str, default_value: bool) -> Result<bool, glib::Error> {
         unsafe {
             let mut out_value = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_get_remote_boolean_option(
-                self.to_glib_none().0,
-                remote_name.to_glib_none().0,
-                option_name.to_glib_none().0,
-                default_value.into_glib(),
-                out_value.as_mut_ptr(),
-                &mut error,
-            );
-            let out_value = out_value.assume_init();
+            let is_ok = ffi::ostree_repo_get_remote_boolean_option(self.to_glib_none().0, remote_name.to_glib_none().0, option_name.to_glib_none().0, default_value.into_glib(), out_value.as_mut_ptr(), &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(from_glib(out_value))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(from_glib(out_value.assume_init())) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -488,27 +326,13 @@ impl Repo {
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_5")))]
     #[doc(alias = "ostree_repo_get_remote_list_option")]
     #[doc(alias = "get_remote_list_option")]
-    pub fn remote_list_option(
-        &self,
-        remote_name: &str,
-        option_name: &str,
-    ) -> Result<Vec<glib::GString>, glib::Error> {
+    pub fn remote_list_option(&self, remote_name: &str, option_name: &str) -> Result<Vec<glib::GString>, glib::Error> {
         unsafe {
             let mut out_value = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_get_remote_list_option(
-                self.to_glib_none().0,
-                remote_name.to_glib_none().0,
-                option_name.to_glib_none().0,
-                &mut out_value,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_get_remote_list_option(self.to_glib_none().0, remote_name.to_glib_none().0, option_name.to_glib_none().0, &mut out_value, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(FromGlibPtrContainer::from_glib_full(out_value))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(FromGlibPtrContainer::from_glib_full(out_value)) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -516,122 +340,48 @@ impl Repo {
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_5")))]
     #[doc(alias = "ostree_repo_get_remote_option")]
     #[doc(alias = "get_remote_option")]
-    pub fn remote_option(
-        &self,
-        remote_name: &str,
-        option_name: &str,
-        default_value: Option<&str>,
-    ) -> Result<glib::GString, glib::Error> {
+    pub fn remote_option(&self, remote_name: &str, option_name: &str, default_value: Option<&str>) -> Result<glib::GString, glib::Error> {
         unsafe {
             let mut out_value = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_get_remote_option(
-                self.to_glib_none().0,
-                remote_name.to_glib_none().0,
-                option_name.to_glib_none().0,
-                default_value.to_glib_none().0,
-                &mut out_value,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_get_remote_option(self.to_glib_none().0, remote_name.to_glib_none().0, option_name.to_glib_none().0, default_value.to_glib_none().0, &mut out_value, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(from_glib_full(out_value))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(from_glib_full(out_value)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2020_8", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_8")))]
     #[doc(alias = "ostree_repo_gpg_sign_data")]
-    pub fn gpg_sign_data(
-        &self,
-        data: &glib::Bytes,
-        old_signatures: &glib::Bytes,
-        key_id: &[&str],
-        homedir: Option<&str>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<glib::Bytes, glib::Error> {
+    pub fn gpg_sign_data(&self, data: &glib::Bytes, old_signatures: &glib::Bytes, key_id: &[&str], homedir: Option<&str>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<glib::Bytes, glib::Error> {
         unsafe {
             let mut out_signatures = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_gpg_sign_data(
-                self.to_glib_none().0,
-                data.to_glib_none().0,
-                old_signatures.to_glib_none().0,
-                key_id.to_glib_none().0,
-                homedir.to_glib_none().0,
-                &mut out_signatures,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_gpg_sign_data(self.to_glib_none().0, data.to_glib_none().0, old_signatures.to_glib_none().0, key_id.to_glib_none().0, homedir.to_glib_none().0, &mut out_signatures, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(from_glib_full(out_signatures))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(from_glib_full(out_signatures)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2016_6", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_6")))]
     #[doc(alias = "ostree_repo_gpg_verify_data")]
-    pub fn gpg_verify_data(
-        &self,
-        remote_name: Option<&str>,
-        data: &glib::Bytes,
-        signatures: &glib::Bytes,
-        keyringdir: Option<&impl IsA<gio::File>>,
-        extra_keyring: Option<&impl IsA<gio::File>>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<GpgVerifyResult, glib::Error> {
+    pub fn gpg_verify_data(&self, remote_name: Option<&str>, data: &glib::Bytes, signatures: &glib::Bytes, keyringdir: Option<&impl IsA<gio::File>>, extra_keyring: Option<&impl IsA<gio::File>>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<GpgVerifyResult, glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let ret = ffi::ostree_repo_gpg_verify_data(
-                self.to_glib_none().0,
-                remote_name.to_glib_none().0,
-                data.to_glib_none().0,
-                signatures.to_glib_none().0,
-                keyringdir.map(|p| p.as_ref()).to_glib_none().0,
-                extra_keyring.map(|p| p.as_ref()).to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
-            if error.is_null() {
-                Ok(from_glib_full(ret))
-            } else {
-                Err(from_glib_full(error))
-            }
+            let ret = ffi::ostree_repo_gpg_verify_data(self.to_glib_none().0, remote_name.to_glib_none().0, data.to_glib_none().0, signatures.to_glib_none().0, keyringdir.map(|p| p.as_ref()).to_glib_none().0, extra_keyring.map(|p| p.as_ref()).to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_has_object")]
-    pub fn has_object(
-        &self,
-        objtype: ObjectType,
-        checksum: &str,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<bool, glib::Error> {
+    pub fn has_object(&self, objtype: ObjectType, checksum: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<bool, glib::Error> {
         unsafe {
             let mut out_have_object = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_has_object(
-                self.to_glib_none().0,
-                objtype.into_glib(),
-                checksum.to_glib_none().0,
-                out_have_object.as_mut_ptr(),
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
-            let out_have_object = out_have_object.assume_init();
+            let is_ok = ffi::ostree_repo_has_object(self.to_glib_none().0, objtype.into_glib(), checksum.to_glib_none().0, out_have_object.as_mut_ptr(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(from_glib(out_have_object))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(from_glib(out_have_object.assume_init())) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -639,75 +389,43 @@ impl Repo {
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_12")))]
     #[doc(alias = "ostree_repo_hash")]
     pub fn hash(&self) -> u32 {
-        unsafe { ffi::ostree_repo_hash(self.to_glib_none().0) }
+        unsafe {
+            ffi::ostree_repo_hash(self.to_glib_none().0)
+        }
     }
 
     //#[doc(alias = "ostree_repo_import_archive_to_mtree")]
-    //pub fn import_archive_to_mtree(&self, opts: /*Ignored*/&mut RepoImportArchiveOptions, archive: /*Unimplemented*/Option<Fundamental: Pointer>, mtree: &MutableTree, modifier: Option<&RepoCommitModifier>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
+    //pub fn import_archive_to_mtree(&self, opts: /*Ignored*/&mut RepoImportArchiveOptions, archive: /*Unimplemented*/Option<Basic: Pointer>, mtree: &MutableTree, modifier: Option<&RepoCommitModifier>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
     //    unsafe { TODO: call ffi:ostree_repo_import_archive_to_mtree() }
     //}
 
     #[doc(alias = "ostree_repo_import_object_from")]
-    pub fn import_object_from(
-        &self,
-        source: &Repo,
-        objtype: ObjectType,
-        checksum: &str,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn import_object_from(&self, source: &Repo, objtype: ObjectType, checksum: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_import_object_from(
-                self.to_glib_none().0,
-                source.to_glib_none().0,
-                objtype.into_glib(),
-                checksum.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_import_object_from(self.to_glib_none().0, source.to_glib_none().0, objtype.into_glib(), checksum.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2016_5", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_5")))]
     #[doc(alias = "ostree_repo_import_object_from_with_trust")]
-    pub fn import_object_from_with_trust(
-        &self,
-        source: &Repo,
-        objtype: ObjectType,
-        checksum: &str,
-        trusted: bool,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn import_object_from_with_trust(&self, source: &Repo, objtype: ObjectType, checksum: &str, trusted: bool, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_import_object_from_with_trust(
-                self.to_glib_none().0,
-                source.to_glib_none().0,
-                objtype.into_glib(),
-                checksum.to_glib_none().0,
-                trusted.into_glib(),
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_import_object_from_with_trust(self.to_glib_none().0, source.to_glib_none().0, objtype.into_glib(), checksum.to_glib_none().0, trusted.into_glib(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_is_system")]
     pub fn is_system(&self) -> bool {
-        unsafe { from_glib(ffi::ostree_repo_is_system(self.to_glib_none().0)) }
+        unsafe {
+            from_glib(ffi::ostree_repo_is_system(self.to_glib_none().0))
+        }
     }
 
     #[doc(alias = "ostree_repo_is_writable")]
@@ -716,11 +434,7 @@ impl Repo {
             let mut error = ptr::null_mut();
             let is_ok = ffi::ostree_repo_is_writable(self.to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -751,156 +465,72 @@ impl Repo {
     #[cfg(any(feature = "v2020_8", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_8")))]
     #[doc(alias = "ostree_repo_list_static_delta_indexes")]
-    pub fn list_static_delta_indexes(
-        &self,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<Vec<glib::GString>, glib::Error> {
+    pub fn list_static_delta_indexes(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<Vec<glib::GString>, glib::Error> {
         unsafe {
             let mut out_indexes = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_list_static_delta_indexes(
-                self.to_glib_none().0,
-                &mut out_indexes,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_list_static_delta_indexes(self.to_glib_none().0, &mut out_indexes, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(FromGlibPtrContainer::from_glib_container(out_indexes))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(FromGlibPtrContainer::from_glib_container(out_indexes)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_list_static_delta_names")]
-    pub fn list_static_delta_names(
-        &self,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<Vec<glib::GString>, glib::Error> {
+    pub fn list_static_delta_names(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<Vec<glib::GString>, glib::Error> {
         unsafe {
             let mut out_deltas = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_list_static_delta_names(
-                self.to_glib_none().0,
-                &mut out_deltas,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_list_static_delta_names(self.to_glib_none().0, &mut out_deltas, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(FromGlibPtrContainer::from_glib_container(out_deltas))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(FromGlibPtrContainer::from_glib_container(out_deltas)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2015_7", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2015_7")))]
     #[doc(alias = "ostree_repo_load_commit")]
-    pub fn load_commit(
-        &self,
-        checksum: &str,
-    ) -> Result<(glib::Variant, RepoCommitState), glib::Error> {
+    pub fn load_commit(&self, checksum: &str) -> Result<(glib::Variant, RepoCommitState), glib::Error> {
         unsafe {
             let mut out_commit = ptr::null_mut();
             let mut out_state = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_load_commit(
-                self.to_glib_none().0,
-                checksum.to_glib_none().0,
-                &mut out_commit,
-                out_state.as_mut_ptr(),
-                &mut error,
-            );
-            let out_state = out_state.assume_init();
+            let is_ok = ffi::ostree_repo_load_commit(self.to_glib_none().0, checksum.to_glib_none().0, &mut out_commit, out_state.as_mut_ptr(), &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok((from_glib_full(out_commit), from_glib(out_state)))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok((from_glib_full(out_commit), from_glib(out_state.assume_init()))) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_load_object_stream")]
-    pub fn load_object_stream(
-        &self,
-        objtype: ObjectType,
-        checksum: &str,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(gio::InputStream, u64), glib::Error> {
+    pub fn load_object_stream(&self, objtype: ObjectType, checksum: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(gio::InputStream, u64), glib::Error> {
         unsafe {
             let mut out_input = ptr::null_mut();
             let mut out_size = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_load_object_stream(
-                self.to_glib_none().0,
-                objtype.into_glib(),
-                checksum.to_glib_none().0,
-                &mut out_input,
-                out_size.as_mut_ptr(),
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
-            let out_size = out_size.assume_init();
+            let is_ok = ffi::ostree_repo_load_object_stream(self.to_glib_none().0, objtype.into_glib(), checksum.to_glib_none().0, &mut out_input, out_size.as_mut_ptr(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok((from_glib_full(out_input), out_size))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok((from_glib_full(out_input), out_size.assume_init())) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_load_variant")]
-    pub fn load_variant(
-        &self,
-        objtype: ObjectType,
-        sha256: &str,
-    ) -> Result<glib::Variant, glib::Error> {
+    pub fn load_variant(&self, objtype: ObjectType, sha256: &str) -> Result<glib::Variant, glib::Error> {
         unsafe {
             let mut out_variant = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_load_variant(
-                self.to_glib_none().0,
-                objtype.into_glib(),
-                sha256.to_glib_none().0,
-                &mut out_variant,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_load_variant(self.to_glib_none().0, objtype.into_glib(), sha256.to_glib_none().0, &mut out_variant, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(from_glib_full(out_variant))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(from_glib_full(out_variant)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_load_variant_if_exists")]
-    pub fn load_variant_if_exists(
-        &self,
-        objtype: ObjectType,
-        sha256: &str,
-    ) -> Result<Option<glib::Variant>, glib::Error> {
+    pub fn load_variant_if_exists(&self, objtype: ObjectType, sha256: &str) -> Result<Option<glib::Variant>, glib::Error> {
         unsafe {
             let mut out_variant = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_load_variant_if_exists(
-                self.to_glib_none().0,
-                objtype.into_glib(),
-                sha256.to_glib_none().0,
-                &mut out_variant,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_load_variant_if_exists(self.to_glib_none().0, objtype.into_glib(), sha256.to_glib_none().0, &mut out_variant, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(from_glib_full(out_variant))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(from_glib_full(out_variant)) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -924,128 +554,55 @@ impl Repo {
     pub fn mark_commit_partial(&self, checksum: &str, is_partial: bool) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_mark_commit_partial(
-                self.to_glib_none().0,
-                checksum.to_glib_none().0,
-                is_partial.into_glib(),
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_mark_commit_partial(self.to_glib_none().0, checksum.to_glib_none().0, is_partial.into_glib(), &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2019_4", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_4")))]
     #[doc(alias = "ostree_repo_mark_commit_partial_reason")]
-    pub fn mark_commit_partial_reason(
-        &self,
-        checksum: &str,
-        is_partial: bool,
-        in_state: RepoCommitState,
-    ) -> Result<(), glib::Error> {
+    pub fn mark_commit_partial_reason(&self, checksum: &str, is_partial: bool, in_state: RepoCommitState) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_mark_commit_partial_reason(
-                self.to_glib_none().0,
-                checksum.to_glib_none().0,
-                is_partial.into_glib(),
-                in_state.into_glib(),
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_mark_commit_partial_reason(self.to_glib_none().0, checksum.to_glib_none().0, is_partial.into_glib(), in_state.into_glib(), &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_open")]
-    pub fn open(
-        &self,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn open(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_open(
-                self.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_open(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_prepare_transaction")]
-    pub fn prepare_transaction(
-        &self,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<bool, glib::Error> {
+    pub fn prepare_transaction(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<bool, glib::Error> {
         unsafe {
             let mut out_transaction_resume = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_prepare_transaction(
-                self.to_glib_none().0,
-                out_transaction_resume.as_mut_ptr(),
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
-            let out_transaction_resume = out_transaction_resume.assume_init();
+            let is_ok = ffi::ostree_repo_prepare_transaction(self.to_glib_none().0, out_transaction_resume.as_mut_ptr(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(from_glib(out_transaction_resume))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(from_glib(out_transaction_resume.assume_init())) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_prune")]
-    pub fn prune(
-        &self,
-        flags: RepoPruneFlags,
-        depth: i32,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(i32, i32, u64), glib::Error> {
+    pub fn prune(&self, flags: RepoPruneFlags, depth: i32, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(i32, i32, u64), glib::Error> {
         unsafe {
             let mut out_objects_total = mem::MaybeUninit::uninit();
             let mut out_objects_pruned = mem::MaybeUninit::uninit();
             let mut out_pruned_object_size_total = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_prune(
-                self.to_glib_none().0,
-                flags.into_glib(),
-                depth,
-                out_objects_total.as_mut_ptr(),
-                out_objects_pruned.as_mut_ptr(),
-                out_pruned_object_size_total.as_mut_ptr(),
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
-            let out_objects_total = out_objects_total.assume_init();
-            let out_objects_pruned = out_objects_pruned.assume_init();
-            let out_pruned_object_size_total = out_pruned_object_size_total.assume_init();
+            let is_ok = ffi::ostree_repo_prune(self.to_glib_none().0, flags.into_glib(), depth, out_objects_total.as_mut_ptr(), out_objects_pruned.as_mut_ptr(), out_pruned_object_size_total.as_mut_ptr(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok((
-                    out_objects_total,
-                    out_objects_pruned,
-                    out_pruned_object_size_total,
-                ))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok((out_objects_total.assume_init(), out_objects_pruned.assume_init(), out_pruned_object_size_total.assume_init())) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -1057,406 +614,167 @@ impl Repo {
     //}
 
     #[doc(alias = "ostree_repo_prune_static_deltas")]
-    pub fn prune_static_deltas(
-        &self,
-        commit: Option<&str>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn prune_static_deltas(&self, commit: Option<&str>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_prune_static_deltas(
-                self.to_glib_none().0,
-                commit.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_prune_static_deltas(self.to_glib_none().0, commit.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_pull")]
-    pub fn pull(
-        &self,
-        remote_name: &str,
-        refs_to_fetch: &[&str],
-        flags: RepoPullFlags,
-        progress: Option<&AsyncProgress>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn pull(&self, remote_name: &str, refs_to_fetch: &[&str], flags: RepoPullFlags, progress: Option<&AsyncProgress>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_pull(
-                self.to_glib_none().0,
-                remote_name.to_glib_none().0,
-                refs_to_fetch.to_glib_none().0,
-                flags.into_glib(),
-                progress.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_pull(self.to_glib_none().0, remote_name.to_glib_none().0, refs_to_fetch.to_glib_none().0, flags.into_glib(), progress.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_pull_one_dir")]
-    pub fn pull_one_dir(
-        &self,
-        remote_name: &str,
-        dir_to_pull: &str,
-        refs_to_fetch: &[&str],
-        flags: RepoPullFlags,
-        progress: Option<&AsyncProgress>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn pull_one_dir(&self, remote_name: &str, dir_to_pull: &str, refs_to_fetch: &[&str], flags: RepoPullFlags, progress: Option<&AsyncProgress>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_pull_one_dir(
-                self.to_glib_none().0,
-                remote_name.to_glib_none().0,
-                dir_to_pull.to_glib_none().0,
-                refs_to_fetch.to_glib_none().0,
-                flags.into_glib(),
-                progress.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_pull_one_dir(self.to_glib_none().0, remote_name.to_glib_none().0, dir_to_pull.to_glib_none().0, refs_to_fetch.to_glib_none().0, flags.into_glib(), progress.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_pull_with_options")]
-    pub fn pull_with_options(
-        &self,
-        remote_name_or_baseurl: &str,
-        options: &glib::Variant,
-        progress: Option<&AsyncProgress>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn pull_with_options(&self, remote_name_or_baseurl: &str, options: &glib::Variant, progress: Option<&AsyncProgress>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_pull_with_options(
-                self.to_glib_none().0,
-                remote_name_or_baseurl.to_glib_none().0,
-                options.to_glib_none().0,
-                progress.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_pull_with_options(self.to_glib_none().0, remote_name_or_baseurl.to_glib_none().0, options.to_glib_none().0, progress.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_query_object_storage_size")]
-    pub fn query_object_storage_size(
-        &self,
-        objtype: ObjectType,
-        sha256: &str,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<u64, glib::Error> {
+    pub fn query_object_storage_size(&self, objtype: ObjectType, sha256: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<u64, glib::Error> {
         unsafe {
             let mut out_size = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_query_object_storage_size(
-                self.to_glib_none().0,
-                objtype.into_glib(),
-                sha256.to_glib_none().0,
-                out_size.as_mut_ptr(),
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
-            let out_size = out_size.assume_init();
+            let is_ok = ffi::ostree_repo_query_object_storage_size(self.to_glib_none().0, objtype.into_glib(), sha256.to_glib_none().0, out_size.as_mut_ptr(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(out_size)
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(out_size.assume_init()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_read_commit")]
-    pub fn read_commit(
-        &self,
-        ref_: &str,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(gio::File, glib::GString), glib::Error> {
+    pub fn read_commit(&self, ref_: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(gio::File, glib::GString), glib::Error> {
         unsafe {
             let mut out_root = ptr::null_mut();
             let mut out_commit = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_read_commit(
-                self.to_glib_none().0,
-                ref_.to_glib_none().0,
-                &mut out_root,
-                &mut out_commit,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_read_commit(self.to_glib_none().0, ref_.to_glib_none().0, &mut out_root, &mut out_commit, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok((from_glib_full(out_root), from_glib_full(out_commit)))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok((from_glib_full(out_root), from_glib_full(out_commit))) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_read_commit_detached_metadata")]
-    pub fn read_commit_detached_metadata(
-        &self,
-        checksum: &str,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<Option<glib::Variant>, glib::Error> {
+    pub fn read_commit_detached_metadata(&self, checksum: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<Option<glib::Variant>, glib::Error> {
         unsafe {
             let mut out_metadata = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_read_commit_detached_metadata(
-                self.to_glib_none().0,
-                checksum.to_glib_none().0,
-                &mut out_metadata,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_read_commit_detached_metadata(self.to_glib_none().0, checksum.to_glib_none().0, &mut out_metadata, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(from_glib_full(out_metadata))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(from_glib_full(out_metadata)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_regenerate_summary")]
-    pub fn regenerate_summary(
-        &self,
-        additional_metadata: Option<&glib::Variant>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn regenerate_summary(&self, additional_metadata: Option<&glib::Variant>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_regenerate_summary(
-                self.to_glib_none().0,
-                additional_metadata.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_regenerate_summary(self.to_glib_none().0, additional_metadata.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2017_2", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_2")))]
     #[doc(alias = "ostree_repo_reload_config")]
-    pub fn reload_config(
-        &self,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn reload_config(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_reload_config(
-                self.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_reload_config(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_remote_add")]
-    pub fn remote_add(
-        &self,
-        name: &str,
-        url: Option<&str>,
-        options: Option<&glib::Variant>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn remote_add(&self, name: &str, url: Option<&str>, options: Option<&glib::Variant>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_remote_add(
-                self.to_glib_none().0,
-                name.to_glib_none().0,
-                url.to_glib_none().0,
-                options.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_remote_add(self.to_glib_none().0, name.to_glib_none().0, url.to_glib_none().0, options.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_remote_change")]
-    pub fn remote_change(
-        &self,
-        sysroot: Option<&impl IsA<gio::File>>,
-        changeop: RepoRemoteChange,
-        name: &str,
-        url: Option<&str>,
-        options: Option<&glib::Variant>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn remote_change(&self, sysroot: Option<&impl IsA<gio::File>>, changeop: RepoRemoteChange, name: &str, url: Option<&str>, options: Option<&glib::Variant>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_remote_change(
-                self.to_glib_none().0,
-                sysroot.map(|p| p.as_ref()).to_glib_none().0,
-                changeop.into_glib(),
-                name.to_glib_none().0,
-                url.to_glib_none().0,
-                options.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_remote_change(self.to_glib_none().0, sysroot.map(|p| p.as_ref()).to_glib_none().0, changeop.into_glib(), name.to_glib_none().0, url.to_glib_none().0, options.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_remote_delete")]
-    pub fn remote_delete(
-        &self,
-        name: &str,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn remote_delete(&self, name: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_remote_delete(
-                self.to_glib_none().0,
-                name.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_remote_delete(self.to_glib_none().0, name.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_remote_fetch_summary")]
-    pub fn remote_fetch_summary(
-        &self,
-        name: &str,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(glib::Bytes, glib::Bytes), glib::Error> {
+    pub fn remote_fetch_summary(&self, name: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(glib::Bytes, glib::Bytes), glib::Error> {
         unsafe {
             let mut out_summary = ptr::null_mut();
             let mut out_signatures = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_remote_fetch_summary(
-                self.to_glib_none().0,
-                name.to_glib_none().0,
-                &mut out_summary,
-                &mut out_signatures,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_remote_fetch_summary(self.to_glib_none().0, name.to_glib_none().0, &mut out_summary, &mut out_signatures, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok((from_glib_full(out_summary), from_glib_full(out_signatures)))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok((from_glib_full(out_summary), from_glib_full(out_signatures))) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2016_6", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_6")))]
     #[doc(alias = "ostree_repo_remote_fetch_summary_with_options")]
-    pub fn remote_fetch_summary_with_options(
-        &self,
-        name: &str,
-        options: Option<&glib::Variant>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(glib::Bytes, glib::Bytes), glib::Error> {
+    pub fn remote_fetch_summary_with_options(&self, name: &str, options: Option<&glib::Variant>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(glib::Bytes, glib::Bytes), glib::Error> {
         unsafe {
             let mut out_summary = ptr::null_mut();
             let mut out_signatures = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_remote_fetch_summary_with_options(
-                self.to_glib_none().0,
-                name.to_glib_none().0,
-                options.to_glib_none().0,
-                &mut out_summary,
-                &mut out_signatures,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_remote_fetch_summary_with_options(self.to_glib_none().0, name.to_glib_none().0, options.to_glib_none().0, &mut out_summary, &mut out_signatures, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok((from_glib_full(out_summary), from_glib_full(out_signatures)))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok((from_glib_full(out_summary), from_glib_full(out_signatures))) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2021_4", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_4")))]
     #[doc(alias = "ostree_repo_remote_get_gpg_keys")]
-    pub fn remote_get_gpg_keys(
-        &self,
-        name: Option<&str>,
-        key_ids: &[&str],
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<Vec<glib::Variant>, glib::Error> {
+    pub fn remote_get_gpg_keys(&self, name: Option<&str>, key_ids: &[&str], cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<Vec<glib::Variant>, glib::Error> {
         unsafe {
             let mut out_keys = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_remote_get_gpg_keys(
-                self.to_glib_none().0,
-                name.to_glib_none().0,
-                key_ids.to_glib_none().0,
-                &mut out_keys,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_remote_get_gpg_keys(self.to_glib_none().0, name.to_glib_none().0, key_ids.to_glib_none().0, &mut out_keys, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(FromGlibPtrContainer::from_glib_container(out_keys))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(FromGlibPtrContainer::from_glib_container(out_keys)) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -1465,19 +783,9 @@ impl Repo {
         unsafe {
             let mut out_gpg_verify = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_remote_get_gpg_verify(
-                self.to_glib_none().0,
-                name.to_glib_none().0,
-                out_gpg_verify.as_mut_ptr(),
-                &mut error,
-            );
-            let out_gpg_verify = out_gpg_verify.assume_init();
+            let is_ok = ffi::ostree_repo_remote_get_gpg_verify(self.to_glib_none().0, name.to_glib_none().0, out_gpg_verify.as_mut_ptr(), &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(from_glib(out_gpg_verify))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(from_glib(out_gpg_verify.assume_init())) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -1486,19 +794,9 @@ impl Repo {
         unsafe {
             let mut out_gpg_verify_summary = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_remote_get_gpg_verify_summary(
-                self.to_glib_none().0,
-                name.to_glib_none().0,
-                out_gpg_verify_summary.as_mut_ptr(),
-                &mut error,
-            );
-            let out_gpg_verify_summary = out_gpg_verify_summary.assume_init();
+            let is_ok = ffi::ostree_repo_remote_get_gpg_verify_summary(self.to_glib_none().0, name.to_glib_none().0, out_gpg_verify_summary.as_mut_ptr(), &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(from_glib(out_gpg_verify_summary))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(from_glib(out_gpg_verify_summary.assume_init())) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -1507,48 +805,20 @@ impl Repo {
         unsafe {
             let mut out_url = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_remote_get_url(
-                self.to_glib_none().0,
-                name.to_glib_none().0,
-                &mut out_url,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_remote_get_url(self.to_glib_none().0, name.to_glib_none().0, &mut out_url, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(from_glib_full(out_url))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(from_glib_full(out_url)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_remote_gpg_import")]
-    pub fn remote_gpg_import(
-        &self,
-        name: &str,
-        source_stream: Option<&impl IsA<gio::InputStream>>,
-        key_ids: &[&str],
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<u32, glib::Error> {
+    pub fn remote_gpg_import(&self, name: &str, source_stream: Option<&impl IsA<gio::InputStream>>, key_ids: &[&str], cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<u32, glib::Error> {
         unsafe {
             let mut out_imported = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_remote_gpg_import(
-                self.to_glib_none().0,
-                name.to_glib_none().0,
-                source_stream.map(|p| p.as_ref()).to_glib_none().0,
-                key_ids.to_glib_none().0,
-                out_imported.as_mut_ptr(),
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
-            let out_imported = out_imported.assume_init();
+            let is_ok = ffi::ostree_repo_remote_gpg_import(self.to_glib_none().0, name.to_glib_none().0, source_stream.map(|p| p.as_ref()).to_glib_none().0, key_ids.to_glib_none().0, out_imported.as_mut_ptr(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(out_imported)
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(out_imported.assume_init()) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -1556,10 +826,7 @@ impl Repo {
     pub fn remote_list(&self) -> Vec<glib::GString> {
         unsafe {
             let mut out_n_remotes = mem::MaybeUninit::uninit();
-            let ret = FromGlibContainer::from_glib_full_num(
-                ffi::ostree_repo_remote_list(self.to_glib_none().0, out_n_remotes.as_mut_ptr()),
-                out_n_remotes.assume_init() as usize,
-            );
+            let ret = FromGlibContainer::from_glib_full_num(ffi::ostree_repo_remote_list(self.to_glib_none().0, out_n_remotes.as_mut_ptr()), out_n_remotes.assume_init() as _);
             ret
         }
     }
@@ -1579,186 +846,82 @@ impl Repo {
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
     #[doc(alias = "ostree_repo_resolve_collection_ref")]
-    pub fn resolve_collection_ref(
-        &self,
-        ref_: &CollectionRef,
-        allow_noent: bool,
-        flags: RepoResolveRevExtFlags,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<Option<glib::GString>, glib::Error> {
+    pub fn resolve_collection_ref(&self, ref_: &CollectionRef, allow_noent: bool, flags: RepoResolveRevExtFlags, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<Option<glib::GString>, glib::Error> {
         unsafe {
             let mut out_rev = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_resolve_collection_ref(
-                self.to_glib_none().0,
-                ref_.to_glib_none().0,
-                allow_noent.into_glib(),
-                flags.into_glib(),
-                &mut out_rev,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_resolve_collection_ref(self.to_glib_none().0, ref_.to_glib_none().0, allow_noent.into_glib(), flags.into_glib(), &mut out_rev, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(from_glib_full(out_rev))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(from_glib_full(out_rev)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
     #[doc(alias = "ostree_repo_resolve_keyring_for_collection")]
-    pub fn resolve_keyring_for_collection(
-        &self,
-        collection_id: &str,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<Remote, glib::Error> {
+    pub fn resolve_keyring_for_collection(&self, collection_id: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<Remote, glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let ret = ffi::ostree_repo_resolve_keyring_for_collection(
-                self.to_glib_none().0,
-                collection_id.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
-            if error.is_null() {
-                Ok(from_glib_full(ret))
-            } else {
-                Err(from_glib_full(error))
-            }
+            let ret = ffi::ostree_repo_resolve_keyring_for_collection(self.to_glib_none().0, collection_id.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_resolve_rev")]
-    pub fn resolve_rev(
-        &self,
-        refspec: &str,
-        allow_noent: bool,
-    ) -> Result<Option<glib::GString>, glib::Error> {
+    pub fn resolve_rev(&self, refspec: &str, allow_noent: bool) -> Result<Option<glib::GString>, glib::Error> {
         unsafe {
             let mut out_rev = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_resolve_rev(
-                self.to_glib_none().0,
-                refspec.to_glib_none().0,
-                allow_noent.into_glib(),
-                &mut out_rev,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_resolve_rev(self.to_glib_none().0, refspec.to_glib_none().0, allow_noent.into_glib(), &mut out_rev, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(from_glib_full(out_rev))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(from_glib_full(out_rev)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2016_7", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_7")))]
     #[doc(alias = "ostree_repo_resolve_rev_ext")]
-    pub fn resolve_rev_ext(
-        &self,
-        refspec: &str,
-        allow_noent: bool,
-        flags: RepoResolveRevExtFlags,
-    ) -> Result<Option<glib::GString>, glib::Error> {
+    pub fn resolve_rev_ext(&self, refspec: &str, allow_noent: bool, flags: RepoResolveRevExtFlags) -> Result<Option<glib::GString>, glib::Error> {
         unsafe {
             let mut out_rev = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_resolve_rev_ext(
-                self.to_glib_none().0,
-                refspec.to_glib_none().0,
-                allow_noent.into_glib(),
-                flags.into_glib(),
-                &mut out_rev,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_resolve_rev_ext(self.to_glib_none().0, refspec.to_glib_none().0, allow_noent.into_glib(), flags.into_glib(), &mut out_rev, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(from_glib_full(out_rev))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(from_glib_full(out_rev)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_scan_hardlinks")]
-    pub fn scan_hardlinks(
-        &self,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn scan_hardlinks(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_scan_hardlinks(
-                self.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_scan_hardlinks(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2017_10", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_10")))]
     #[doc(alias = "ostree_repo_set_alias_ref_immediate")]
-    pub fn set_alias_ref_immediate(
-        &self,
-        remote: Option<&str>,
-        ref_: &str,
-        target: Option<&str>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn set_alias_ref_immediate(&self, remote: Option<&str>, ref_: &str, target: Option<&str>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_set_alias_ref_immediate(
-                self.to_glib_none().0,
-                remote.to_glib_none().0,
-                ref_.to_glib_none().0,
-                target.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_set_alias_ref_immediate(self.to_glib_none().0, remote.to_glib_none().0, ref_.to_glib_none().0, target.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2016_5", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_5")))]
     #[doc(alias = "ostree_repo_set_cache_dir")]
-    pub fn set_cache_dir(
-        &self,
-        dfd: i32,
-        path: &str,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn set_cache_dir(&self, dfd: i32, path: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_set_cache_dir(
-                self.to_glib_none().0,
-                dfd,
-                path.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_set_cache_dir(self.to_glib_none().0, dfd, path.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -1768,44 +931,21 @@ impl Repo {
     pub fn set_collection_id(&self, collection_id: Option<&str>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_set_collection_id(
-                self.to_glib_none().0,
-                collection_id.to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_set_collection_id(self.to_glib_none().0, collection_id.to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
     #[doc(alias = "ostree_repo_set_collection_ref_immediate")]
-    pub fn set_collection_ref_immediate(
-        &self,
-        ref_: &CollectionRef,
-        checksum: Option<&str>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn set_collection_ref_immediate(&self, ref_: &CollectionRef, checksum: Option<&str>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_set_collection_ref_immediate(
-                self.to_glib_none().0,
-                ref_.to_glib_none().0,
-                checksum.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_set_collection_ref_immediate(self.to_glib_none().0, ref_.to_glib_none().0, checksum.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -1817,201 +957,77 @@ impl Repo {
     }
 
     #[doc(alias = "ostree_repo_set_ref_immediate")]
-    pub fn set_ref_immediate(
-        &self,
-        remote: Option<&str>,
-        ref_: &str,
-        checksum: Option<&str>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn set_ref_immediate(&self, remote: Option<&str>, ref_: &str, checksum: Option<&str>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_set_ref_immediate(
-                self.to_glib_none().0,
-                remote.to_glib_none().0,
-                ref_.to_glib_none().0,
-                checksum.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_set_ref_immediate(self.to_glib_none().0, remote.to_glib_none().0, ref_.to_glib_none().0, checksum.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_sign_commit")]
-    pub fn sign_commit(
-        &self,
-        commit_checksum: &str,
-        key_id: &str,
-        homedir: Option<&str>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn sign_commit(&self, commit_checksum: &str, key_id: &str, homedir: Option<&str>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_sign_commit(
-                self.to_glib_none().0,
-                commit_checksum.to_glib_none().0,
-                key_id.to_glib_none().0,
-                homedir.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_sign_commit(self.to_glib_none().0, commit_checksum.to_glib_none().0, key_id.to_glib_none().0, homedir.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_sign_delta")]
-    pub fn sign_delta(
-        &self,
-        from_commit: &str,
-        to_commit: &str,
-        key_id: &str,
-        homedir: &str,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn sign_delta(&self, from_commit: &str, to_commit: &str, key_id: &str, homedir: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_sign_delta(
-                self.to_glib_none().0,
-                from_commit.to_glib_none().0,
-                to_commit.to_glib_none().0,
-                key_id.to_glib_none().0,
-                homedir.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_sign_delta(self.to_glib_none().0, from_commit.to_glib_none().0, to_commit.to_glib_none().0, key_id.to_glib_none().0, homedir.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2021_4", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_4")))]
     #[doc(alias = "ostree_repo_signature_verify_commit_data")]
-    pub fn signature_verify_commit_data(
-        &self,
-        remote_name: &str,
-        commit_data: &glib::Bytes,
-        commit_metadata: &glib::Bytes,
-        flags: RepoVerifyFlags,
-    ) -> Result<Option<glib::GString>, glib::Error> {
+    pub fn signature_verify_commit_data(&self, remote_name: &str, commit_data: &glib::Bytes, commit_metadata: &glib::Bytes, flags: RepoVerifyFlags) -> Result<Option<glib::GString>, glib::Error> {
         unsafe {
             let mut out_results = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_signature_verify_commit_data(
-                self.to_glib_none().0,
-                remote_name.to_glib_none().0,
-                commit_data.to_glib_none().0,
-                commit_metadata.to_glib_none().0,
-                flags.into_glib(),
-                &mut out_results,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_signature_verify_commit_data(self.to_glib_none().0, remote_name.to_glib_none().0, commit_data.to_glib_none().0, commit_metadata.to_glib_none().0, flags.into_glib(), &mut out_results, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(from_glib_full(out_results))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(from_glib_full(out_results)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_static_delta_execute_offline")]
-    pub fn static_delta_execute_offline(
-        &self,
-        dir_or_file: &impl IsA<gio::File>,
-        skip_validation: bool,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn static_delta_execute_offline(&self, dir_or_file: &impl IsA<gio::File>, skip_validation: bool, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_static_delta_execute_offline(
-                self.to_glib_none().0,
-                dir_or_file.as_ref().to_glib_none().0,
-                skip_validation.into_glib(),
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_static_delta_execute_offline(self.to_glib_none().0, dir_or_file.as_ref().to_glib_none().0, skip_validation.into_glib(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2020_7", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_7")))]
     #[doc(alias = "ostree_repo_static_delta_execute_offline_with_signature")]
-    pub fn static_delta_execute_offline_with_signature(
-        &self,
-        dir_or_file: &impl IsA<gio::File>,
-        sign: &impl IsA<Sign>,
-        skip_validation: bool,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn static_delta_execute_offline_with_signature(&self, dir_or_file: &impl IsA<gio::File>, sign: &impl IsA<Sign>, skip_validation: bool, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_static_delta_execute_offline_with_signature(
-                self.to_glib_none().0,
-                dir_or_file.as_ref().to_glib_none().0,
-                sign.as_ref().to_glib_none().0,
-                skip_validation.into_glib(),
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_static_delta_execute_offline_with_signature(self.to_glib_none().0, dir_or_file.as_ref().to_glib_none().0, sign.as_ref().to_glib_none().0, skip_validation.into_glib(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_static_delta_generate")]
-    pub fn static_delta_generate(
-        &self,
-        opt: StaticDeltaGenerateOpt,
-        from: Option<&str>,
-        to: &str,
-        metadata: Option<&glib::Variant>,
-        params: Option<&glib::Variant>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn static_delta_generate(&self, opt: StaticDeltaGenerateOpt, from: Option<&str>, to: &str, metadata: Option<&glib::Variant>, params: Option<&glib::Variant>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_static_delta_generate(
-                self.to_glib_none().0,
-                opt.into_glib(),
-                from.to_glib_none().0,
-                to.to_glib_none().0,
-                metadata.to_glib_none().0,
-                params.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_static_delta_generate(self.to_glib_none().0, opt.into_glib(), from.to_glib_none().0, to.to_glib_none().0, metadata.to_glib_none().0, params.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -2025,27 +1041,13 @@ impl Repo {
     #[cfg(any(feature = "v2020_7", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_7")))]
     #[doc(alias = "ostree_repo_static_delta_verify_signature")]
-    pub fn static_delta_verify_signature(
-        &self,
-        delta_id: &str,
-        sign: &impl IsA<Sign>,
-    ) -> Result<Option<glib::GString>, glib::Error> {
+    pub fn static_delta_verify_signature(&self, delta_id: &str, sign: &impl IsA<Sign>) -> Result<Option<glib::GString>, glib::Error> {
         unsafe {
             let mut out_success_message = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_static_delta_verify_signature(
-                self.to_glib_none().0,
-                delta_id.to_glib_none().0,
-                sign.as_ref().to_glib_none().0,
-                &mut out_success_message,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_static_delta_verify_signature(self.to_glib_none().0, delta_id.to_glib_none().0, sign.as_ref().to_glib_none().0, &mut out_success_message, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(from_glib_full(out_success_message))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(from_glib_full(out_success_message)) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -2054,34 +1056,21 @@ impl Repo {
     #[doc(alias = "ostree_repo_transaction_set_collection_ref")]
     pub fn transaction_set_collection_ref(&self, ref_: &CollectionRef, checksum: Option<&str>) {
         unsafe {
-            ffi::ostree_repo_transaction_set_collection_ref(
-                self.to_glib_none().0,
-                ref_.to_glib_none().0,
-                checksum.to_glib_none().0,
-            );
+            ffi::ostree_repo_transaction_set_collection_ref(self.to_glib_none().0, ref_.to_glib_none().0, checksum.to_glib_none().0);
         }
     }
 
     #[doc(alias = "ostree_repo_transaction_set_ref")]
     pub fn transaction_set_ref(&self, remote: Option<&str>, ref_: &str, checksum: Option<&str>) {
         unsafe {
-            ffi::ostree_repo_transaction_set_ref(
-                self.to_glib_none().0,
-                remote.to_glib_none().0,
-                ref_.to_glib_none().0,
-                checksum.to_glib_none().0,
-            );
+            ffi::ostree_repo_transaction_set_ref(self.to_glib_none().0, remote.to_glib_none().0, ref_.to_glib_none().0, checksum.to_glib_none().0);
         }
     }
 
     #[doc(alias = "ostree_repo_transaction_set_refspec")]
     pub fn transaction_set_refspec(&self, refspec: &str, checksum: Option<&str>) {
         unsafe {
-            ffi::ostree_repo_transaction_set_refspec(
-                self.to_glib_none().0,
-                refspec.to_glib_none().0,
-                checksum.to_glib_none().0,
-            );
+            ffi::ostree_repo_transaction_set_refspec(self.to_glib_none().0, refspec.to_glib_none().0, checksum.to_glib_none().0);
         }
     }
 
@@ -2117,258 +1106,93 @@ impl Repo {
     //}
 
     #[doc(alias = "ostree_repo_verify_commit")]
-    pub fn verify_commit(
-        &self,
-        commit_checksum: &str,
-        keyringdir: Option<&impl IsA<gio::File>>,
-        extra_keyring: Option<&impl IsA<gio::File>>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn verify_commit(&self, commit_checksum: &str, keyringdir: Option<&impl IsA<gio::File>>, extra_keyring: Option<&impl IsA<gio::File>>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_verify_commit(
-                self.to_glib_none().0,
-                commit_checksum.to_glib_none().0,
-                keyringdir.map(|p| p.as_ref()).to_glib_none().0,
-                extra_keyring.map(|p| p.as_ref()).to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_verify_commit(self.to_glib_none().0, commit_checksum.to_glib_none().0, keyringdir.map(|p| p.as_ref()).to_glib_none().0, extra_keyring.map(|p| p.as_ref()).to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_verify_commit_ext")]
-    pub fn verify_commit_ext(
-        &self,
-        commit_checksum: &str,
-        keyringdir: Option<&impl IsA<gio::File>>,
-        extra_keyring: Option<&impl IsA<gio::File>>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<GpgVerifyResult, glib::Error> {
+    pub fn verify_commit_ext(&self, commit_checksum: &str, keyringdir: Option<&impl IsA<gio::File>>, extra_keyring: Option<&impl IsA<gio::File>>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<GpgVerifyResult, glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let ret = ffi::ostree_repo_verify_commit_ext(
-                self.to_glib_none().0,
-                commit_checksum.to_glib_none().0,
-                keyringdir.map(|p| p.as_ref()).to_glib_none().0,
-                extra_keyring.map(|p| p.as_ref()).to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
-            if error.is_null() {
-                Ok(from_glib_full(ret))
-            } else {
-                Err(from_glib_full(error))
-            }
+            let ret = ffi::ostree_repo_verify_commit_ext(self.to_glib_none().0, commit_checksum.to_glib_none().0, keyringdir.map(|p| p.as_ref()).to_glib_none().0, extra_keyring.map(|p| p.as_ref()).to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2016_14", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_14")))]
     #[doc(alias = "ostree_repo_verify_commit_for_remote")]
-    pub fn verify_commit_for_remote(
-        &self,
-        commit_checksum: &str,
-        remote_name: &str,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<GpgVerifyResult, glib::Error> {
+    pub fn verify_commit_for_remote(&self, commit_checksum: &str, remote_name: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<GpgVerifyResult, glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let ret = ffi::ostree_repo_verify_commit_for_remote(
-                self.to_glib_none().0,
-                commit_checksum.to_glib_none().0,
-                remote_name.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
-            if error.is_null() {
-                Ok(from_glib_full(ret))
-            } else {
-                Err(from_glib_full(error))
-            }
+            let ret = ffi::ostree_repo_verify_commit_for_remote(self.to_glib_none().0, commit_checksum.to_glib_none().0, remote_name.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_verify_summary")]
-    pub fn verify_summary(
-        &self,
-        remote_name: &str,
-        summary: &glib::Bytes,
-        signatures: &glib::Bytes,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<GpgVerifyResult, glib::Error> {
+    pub fn verify_summary(&self, remote_name: &str, summary: &glib::Bytes, signatures: &glib::Bytes, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<GpgVerifyResult, glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let ret = ffi::ostree_repo_verify_summary(
-                self.to_glib_none().0,
-                remote_name.to_glib_none().0,
-                summary.to_glib_none().0,
-                signatures.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
-            if error.is_null() {
-                Ok(from_glib_full(ret))
-            } else {
-                Err(from_glib_full(error))
-            }
+            let ret = ffi::ostree_repo_verify_summary(self.to_glib_none().0, remote_name.to_glib_none().0, summary.to_glib_none().0, signatures.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_write_archive_to_mtree")]
-    pub fn write_archive_to_mtree(
-        &self,
-        archive: &impl IsA<gio::File>,
-        mtree: &MutableTree,
-        modifier: Option<&RepoCommitModifier>,
-        autocreate_parents: bool,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn write_archive_to_mtree(&self, archive: &impl IsA<gio::File>, mtree: &MutableTree, modifier: Option<&RepoCommitModifier>, autocreate_parents: bool, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_write_archive_to_mtree(
-                self.to_glib_none().0,
-                archive.as_ref().to_glib_none().0,
-                mtree.to_glib_none().0,
-                modifier.to_glib_none().0,
-                autocreate_parents.into_glib(),
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_write_archive_to_mtree(self.to_glib_none().0, archive.as_ref().to_glib_none().0, mtree.to_glib_none().0, modifier.to_glib_none().0, autocreate_parents.into_glib(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_write_archive_to_mtree_from_fd")]
-    pub fn write_archive_to_mtree_from_fd(
-        &self,
-        fd: i32,
-        mtree: &MutableTree,
-        modifier: Option<&RepoCommitModifier>,
-        autocreate_parents: bool,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn write_archive_to_mtree_from_fd(&self, fd: i32, mtree: &MutableTree, modifier: Option<&RepoCommitModifier>, autocreate_parents: bool, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_write_archive_to_mtree_from_fd(
-                self.to_glib_none().0,
-                fd,
-                mtree.to_glib_none().0,
-                modifier.to_glib_none().0,
-                autocreate_parents.into_glib(),
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_write_archive_to_mtree_from_fd(self.to_glib_none().0, fd, mtree.to_glib_none().0, modifier.to_glib_none().0, autocreate_parents.into_glib(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_write_commit")]
-    pub fn write_commit(
-        &self,
-        parent: Option<&str>,
-        subject: Option<&str>,
-        body: Option<&str>,
-        metadata: Option<&glib::Variant>,
-        root: &RepoFile,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<glib::GString, glib::Error> {
+    pub fn write_commit(&self, parent: Option<&str>, subject: Option<&str>, body: Option<&str>, metadata: Option<&glib::Variant>, root: &RepoFile, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<glib::GString, glib::Error> {
         unsafe {
             let mut out_commit = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_write_commit(
-                self.to_glib_none().0,
-                parent.to_glib_none().0,
-                subject.to_glib_none().0,
-                body.to_glib_none().0,
-                metadata.to_glib_none().0,
-                root.to_glib_none().0,
-                &mut out_commit,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_write_commit(self.to_glib_none().0, parent.to_glib_none().0, subject.to_glib_none().0, body.to_glib_none().0, metadata.to_glib_none().0, root.to_glib_none().0, &mut out_commit, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(from_glib_full(out_commit))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(from_glib_full(out_commit)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_write_commit_detached_metadata")]
-    pub fn write_commit_detached_metadata(
-        &self,
-        checksum: &str,
-        metadata: Option<&glib::Variant>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn write_commit_detached_metadata(&self, checksum: &str, metadata: Option<&glib::Variant>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_write_commit_detached_metadata(
-                self.to_glib_none().0,
-                checksum.to_glib_none().0,
-                metadata.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_write_commit_detached_metadata(self.to_glib_none().0, checksum.to_glib_none().0, metadata.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_write_commit_with_time")]
-    pub fn write_commit_with_time(
-        &self,
-        parent: Option<&str>,
-        subject: Option<&str>,
-        body: Option<&str>,
-        metadata: Option<&glib::Variant>,
-        root: &RepoFile,
-        time: u64,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<glib::GString, glib::Error> {
+    pub fn write_commit_with_time(&self, parent: Option<&str>, subject: Option<&str>, body: Option<&str>, metadata: Option<&glib::Variant>, root: &RepoFile, time: u64, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<glib::GString, glib::Error> {
         unsafe {
             let mut out_commit = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_write_commit_with_time(
-                self.to_glib_none().0,
-                parent.to_glib_none().0,
-                subject.to_glib_none().0,
-                body.to_glib_none().0,
-                metadata.to_glib_none().0,
-                root.to_glib_none().0,
-                time,
-                &mut out_commit,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_write_commit_with_time(self.to_glib_none().0, parent.to_glib_none().0, subject.to_glib_none().0, body.to_glib_none().0, metadata.to_glib_none().0, root.to_glib_none().0, time, &mut out_commit, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(from_glib_full(out_commit))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(from_glib_full(out_commit)) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -2376,281 +1200,104 @@ impl Repo {
     pub fn write_config(&self, new_config: &glib::KeyFile) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_write_config(
-                self.to_glib_none().0,
-                new_config.to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_write_config(self.to_glib_none().0, new_config.to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_write_content_trusted")]
-    pub fn write_content_trusted(
-        &self,
-        checksum: &str,
-        object_input: &impl IsA<gio::InputStream>,
-        length: u64,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn write_content_trusted(&self, checksum: &str, object_input: &impl IsA<gio::InputStream>, length: u64, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_write_content_trusted(
-                self.to_glib_none().0,
-                checksum.to_glib_none().0,
-                object_input.as_ref().to_glib_none().0,
-                length,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_write_content_trusted(self.to_glib_none().0, checksum.to_glib_none().0, object_input.as_ref().to_glib_none().0, length, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_write_dfd_to_mtree")]
-    pub fn write_dfd_to_mtree(
-        &self,
-        dfd: i32,
-        path: &str,
-        mtree: &MutableTree,
-        modifier: Option<&RepoCommitModifier>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn write_dfd_to_mtree(&self, dfd: i32, path: &str, mtree: &MutableTree, modifier: Option<&RepoCommitModifier>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_write_dfd_to_mtree(
-                self.to_glib_none().0,
-                dfd,
-                path.to_glib_none().0,
-                mtree.to_glib_none().0,
-                modifier.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_write_dfd_to_mtree(self.to_glib_none().0, dfd, path.to_glib_none().0, mtree.to_glib_none().0, modifier.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_write_directory_to_mtree")]
-    pub fn write_directory_to_mtree(
-        &self,
-        dir: &impl IsA<gio::File>,
-        mtree: &MutableTree,
-        modifier: Option<&RepoCommitModifier>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn write_directory_to_mtree(&self, dir: &impl IsA<gio::File>, mtree: &MutableTree, modifier: Option<&RepoCommitModifier>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_write_directory_to_mtree(
-                self.to_glib_none().0,
-                dir.as_ref().to_glib_none().0,
-                mtree.to_glib_none().0,
-                modifier.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_write_directory_to_mtree(self.to_glib_none().0, dir.as_ref().to_glib_none().0, mtree.to_glib_none().0, modifier.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_write_metadata_stream_trusted")]
-    pub fn write_metadata_stream_trusted(
-        &self,
-        objtype: ObjectType,
-        checksum: &str,
-        object_input: &impl IsA<gio::InputStream>,
-        length: u64,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn write_metadata_stream_trusted(&self, objtype: ObjectType, checksum: &str, object_input: &impl IsA<gio::InputStream>, length: u64, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_write_metadata_stream_trusted(
-                self.to_glib_none().0,
-                objtype.into_glib(),
-                checksum.to_glib_none().0,
-                object_input.as_ref().to_glib_none().0,
-                length,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_write_metadata_stream_trusted(self.to_glib_none().0, objtype.into_glib(), checksum.to_glib_none().0, object_input.as_ref().to_glib_none().0, length, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_write_metadata_trusted")]
-    pub fn write_metadata_trusted(
-        &self,
-        objtype: ObjectType,
-        checksum: &str,
-        variant: &glib::Variant,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<(), glib::Error> {
+    pub fn write_metadata_trusted(&self, objtype: ObjectType, checksum: &str, variant: &glib::Variant, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_write_metadata_trusted(
-                self.to_glib_none().0,
-                objtype.into_glib(),
-                checksum.to_glib_none().0,
-                variant.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_write_metadata_trusted(self.to_glib_none().0, objtype.into_glib(), checksum.to_glib_none().0, variant.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[doc(alias = "ostree_repo_write_mtree")]
-    pub fn write_mtree(
-        &self,
-        mtree: &MutableTree,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<gio::File, glib::Error> {
+    pub fn write_mtree(&self, mtree: &MutableTree, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<gio::File, glib::Error> {
         unsafe {
             let mut out_file = ptr::null_mut();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_write_mtree(
-                self.to_glib_none().0,
-                mtree.to_glib_none().0,
-                &mut out_file,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_repo_write_mtree(self.to_glib_none().0, mtree.to_glib_none().0, &mut out_file, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(from_glib_full(out_file))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(from_glib_full(out_file)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2021_2", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_2")))]
     #[doc(alias = "ostree_repo_write_regfile")]
-    pub fn write_regfile(
-        &self,
-        expected_checksum: Option<&str>,
-        uid: u32,
-        gid: u32,
-        mode: u32,
-        content_len: u64,
-        xattrs: Option<&glib::Variant>,
-    ) -> Result<ContentWriter, glib::Error> {
+    pub fn write_regfile(&self, expected_checksum: Option<&str>, uid: u32, gid: u32, mode: u32, content_len: u64, xattrs: Option<&glib::Variant>) -> Result<ContentWriter, glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let ret = ffi::ostree_repo_write_regfile(
-                self.to_glib_none().0,
-                expected_checksum.to_glib_none().0,
-                uid,
-                gid,
-                mode,
-                content_len,
-                xattrs.to_glib_none().0,
-                &mut error,
-            );
-            if error.is_null() {
-                Ok(from_glib_full(ret))
-            } else {
-                Err(from_glib_full(error))
-            }
+            let ret = ffi::ostree_repo_write_regfile(self.to_glib_none().0, expected_checksum.to_glib_none().0, uid, gid, mode, content_len, xattrs.to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2021_2", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_2")))]
     #[doc(alias = "ostree_repo_write_regfile_inline")]
-    pub fn write_regfile_inline(
-        &self,
-        expected_checksum: Option<&str>,
-        uid: u32,
-        gid: u32,
-        mode: u32,
-        xattrs: Option<&glib::Variant>,
-        buf: &[u8],
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<glib::GString, glib::Error> {
-        let len = buf.len() as usize;
+    pub fn write_regfile_inline(&self, expected_checksum: Option<&str>, uid: u32, gid: u32, mode: u32, xattrs: Option<&glib::Variant>, buf: &[u8], cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<glib::GString, glib::Error> {
+        let len = buf.len() as _;
         unsafe {
             let mut error = ptr::null_mut();
-            let ret = ffi::ostree_repo_write_regfile_inline(
-                self.to_glib_none().0,
-                expected_checksum.to_glib_none().0,
-                uid,
-                gid,
-                mode,
-                xattrs.to_glib_none().0,
-                buf.to_glib_none().0,
-                len,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
-            if error.is_null() {
-                Ok(from_glib_full(ret))
-            } else {
-                Err(from_glib_full(error))
-            }
+            let ret = ffi::ostree_repo_write_regfile_inline(self.to_glib_none().0, expected_checksum.to_glib_none().0, uid, gid, mode, xattrs.to_glib_none().0, buf.to_glib_none().0, len, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2021_2", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_2")))]
     #[doc(alias = "ostree_repo_write_symlink")]
-    pub fn write_symlink(
-        &self,
-        expected_checksum: Option<&str>,
-        uid: u32,
-        gid: u32,
-        xattrs: Option<&glib::Variant>,
-        symlink_target: &str,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<glib::GString, glib::Error> {
+    pub fn write_symlink(&self, expected_checksum: Option<&str>, uid: u32, gid: u32, xattrs: Option<&glib::Variant>, symlink_target: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<glib::GString, glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let ret = ffi::ostree_repo_write_symlink(
-                self.to_glib_none().0,
-                expected_checksum.to_glib_none().0,
-                uid,
-                gid,
-                xattrs.to_glib_none().0,
-                symlink_target.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
-            if error.is_null() {
-                Ok(from_glib_full(ret))
-            } else {
-                Err(from_glib_full(error))
-            }
+            let ret = ffi::ostree_repo_write_symlink(self.to_glib_none().0, expected_checksum.to_glib_none().0, uid, gid, xattrs.to_glib_none().0, symlink_target.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -2667,28 +1314,11 @@ impl Repo {
     #[cfg(any(feature = "v2017_10", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_10")))]
     #[doc(alias = "ostree_repo_create_at")]
-    pub fn create_at(
-        dfd: i32,
-        path: &str,
-        mode: RepoMode,
-        options: Option<&glib::Variant>,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<Repo, glib::Error> {
+    pub fn create_at(dfd: i32, path: &str, mode: RepoMode, options: Option<&glib::Variant>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<Repo, glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let ret = ffi::ostree_repo_create_at(
-                dfd,
-                path.to_glib_none().0,
-                mode.into_glib(),
-                options.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
-            if error.is_null() {
-                Ok(from_glib_full(ret))
-            } else {
-                Err(from_glib_full(error))
-            }
+            let ret = ffi::ostree_repo_create_at(dfd, path.to_glib_none().0, mode.into_glib(), options.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
         }
     }
 
@@ -2697,47 +1327,25 @@ impl Repo {
         unsafe {
             let mut out_mode = mem::MaybeUninit::uninit();
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_repo_mode_from_string(
-                mode.to_glib_none().0,
-                out_mode.as_mut_ptr(),
-                &mut error,
-            );
-            let out_mode = out_mode.assume_init();
+            let is_ok = ffi::ostree_repo_mode_from_string(mode.to_glib_none().0, out_mode.as_mut_ptr(), &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(from_glib(out_mode))
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(from_glib(out_mode.assume_init())) } else { Err(from_glib_full(error)) }
         }
     }
 
     #[cfg(any(feature = "v2017_10", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_10")))]
     #[doc(alias = "ostree_repo_open_at")]
-    pub fn open_at(
-        dfd: i32,
-        path: &str,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<Repo, glib::Error> {
+    pub fn open_at(dfd: i32, path: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<Repo, glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let ret = ffi::ostree_repo_open_at(
-                dfd,
-                path.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
-            if error.is_null() {
-                Ok(from_glib_full(ret))
-            } else {
-                Err(from_glib_full(error))
-            }
+            let ret = ffi::ostree_repo_open_at(dfd, path.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
         }
     }
 
     //#[doc(alias = "ostree_repo_pull_default_console_progress_changed")]
-    //pub fn pull_default_console_progress_changed(progress: &AsyncProgress, user_data: /*Unimplemented*/Option<Fundamental: Pointer>) {
+    //pub fn pull_default_console_progress_changed(progress: &AsyncProgress, user_data: /*Unimplemented*/Option<Basic: Pointer>) {
     //    unsafe { TODO: call ffi:ostree_repo_pull_default_console_progress_changed() }
     //}
 
@@ -2761,35 +1369,15 @@ impl Repo {
     //}
 
     #[doc(alias = "gpg-verify-result")]
-    pub fn connect_gpg_verify_result<F: Fn(&Self, &str, &GpgVerifyResult) + Send + 'static>(
-        &self,
-        f: F,
-    ) -> SignalHandlerId {
-        unsafe extern "C" fn gpg_verify_result_trampoline<
-            F: Fn(&Repo, &str, &GpgVerifyResult) + Send + 'static,
-        >(
-            this: *mut ffi::OstreeRepo,
-            checksum: *mut libc::c_char,
-            result: *mut ffi::OstreeGpgVerifyResult,
-            f: glib::ffi::gpointer,
-        ) {
+    pub fn connect_gpg_verify_result<F: Fn(&Self, &str, &GpgVerifyResult) + Send + 'static>(&self, f: F) -> SignalHandlerId {
+        unsafe extern "C" fn gpg_verify_result_trampoline<F: Fn(&Repo, &str, &GpgVerifyResult) + Send + 'static>(this: *mut ffi::OstreeRepo, checksum: *mut libc::c_char, result: *mut ffi::OstreeGpgVerifyResult, f: glib::ffi::gpointer) {
             let f: &F = &*(f as *const F);
-            f(
-                &from_glib_borrow(this),
-                &glib::GString::from_glib_borrow(checksum),
-                &from_glib_borrow(result),
-            )
+            f(&from_glib_borrow(this), &glib::GString::from_glib_borrow(checksum), &from_glib_borrow(result))
         }
         unsafe {
             let f: Box_<F> = Box_::new(f);
-            connect_raw(
-                self.as_ptr() as *mut _,
-                b"gpg-verify-result\0".as_ptr() as *const _,
-                Some(transmute::<_, unsafe extern "C" fn()>(
-                    gpg_verify_result_trampoline::<F> as *const (),
-                )),
-                Box_::into_raw(f),
-            )
+            connect_raw(self.as_ptr() as *mut _, b"gpg-verify-result\0".as_ptr() as *const _,
+                Some(transmute::<_, unsafe extern "C" fn()>(gpg_verify_result_trampoline::<F> as *const ())), Box_::into_raw(f))
         }
     }
 }

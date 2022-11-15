@@ -6,15 +6,15 @@ libc = "0.2"
 
 [dependencies.gio]
 package = "gio-sys"
-version = "0.15"
+version = "0.16"
 
 [dependencies.glib]
 package = "glib-sys"
-version = "0.15"
+version = "0.16"
 
 [dependencies.gobject]
 package = "gobject-sys"
-version = "0.15"
+version = "0.16"
 
 [dev-dependencies]
 shell-words = "1.0.0"
@@ -56,7 +56,7 @@ v2019_6 = ["v2019_4"]
 v2020_1 = ["v2019_6"]
 v2020_2 = ["v2020_1"]
 v2020_4 = ["v2020_2"]
-dox = []
+dox = ["glib/dox", "gobject/dox", "gio/dox"]
 v2020_7 = ["v2020_4"]
 v2020_8 = ["v2020_7"]
 v2021_1 = ["v2020_8"]

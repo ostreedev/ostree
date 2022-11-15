@@ -24,7 +24,8 @@ glib::wrapper! {
 }
 
 impl RepoFinder {
-    pub const NONE: Option<&'static RepoFinder> = None;
+        pub const NONE: Option<&'static RepoFinder> = None;
+    
 }
 
 pub trait RepoFinderExt: 'static {}

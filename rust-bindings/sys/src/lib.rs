@@ -302,7 +302,7 @@ pub struct OstreeAsyncProgressClass {
 
 impl ::std::fmt::Debug for OstreeAsyncProgressClass {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeAsyncProgressClass @ {:p}", self))
+        f.debug_struct(&format!("OstreeAsyncProgressClass @ {self:p}"))
             .field("parent_class", &self.parent_class)
             .field("changed", &self.changed)
             .finish()
@@ -366,7 +366,7 @@ pub struct OstreeCollectionRef {
 
 impl ::std::fmt::Debug for OstreeCollectionRef {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeCollectionRef @ {:p}", self))
+        f.debug_struct(&format!("OstreeCollectionRef @ {self:p}"))
             .field("collection_id", &self.collection_id)
             .field("ref_name", &self.ref_name)
             .finish()
@@ -384,7 +384,7 @@ pub struct OstreeCommitSizesEntry {
 
 impl ::std::fmt::Debug for OstreeCommitSizesEntry {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeCommitSizesEntry @ {:p}", self))
+        f.debug_struct(&format!("OstreeCommitSizesEntry @ {self:p}"))
             .field("checksum", &self.checksum)
             .field("objtype", &self.objtype)
             .field("unpacked", &self.unpacked)
@@ -401,7 +401,7 @@ pub struct OstreeContentWriterClass {
 
 impl ::std::fmt::Debug for OstreeContentWriterClass {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeContentWriterClass @ {:p}", self))
+        f.debug_struct(&format!("OstreeContentWriterClass @ {self:p}"))
             .field("parent_class", &self.parent_class)
             .finish()
     }
@@ -420,7 +420,7 @@ pub struct OstreeDiffDirsOptions {
 
 impl ::std::fmt::Debug for OstreeDiffDirsOptions {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeDiffDirsOptions @ {:p}", self))
+        f.debug_struct(&format!("OstreeDiffDirsOptions @ {self:p}"))
             .field("owner_uid", &self.owner_uid)
             .field("owner_gid", &self.owner_gid)
             .field("devino_to_csum_cache", &self.devino_to_csum_cache)
@@ -445,7 +445,7 @@ pub struct OstreeDiffItem {
 
 impl ::std::fmt::Debug for OstreeDiffItem {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeDiffItem @ {:p}", self))
+        f.debug_struct(&format!("OstreeDiffItem @ {self:p}"))
             .field("refcount", &self.refcount)
             .field("src", &self.src)
             .field("target", &self.target)
@@ -513,7 +513,7 @@ pub struct OstreeMutableTreeClass {
 
 impl ::std::fmt::Debug for OstreeMutableTreeClass {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeMutableTreeClass @ {:p}", self))
+        f.debug_struct(&format!("OstreeMutableTreeClass @ {self:p}"))
             .field("parent_class", &self.parent_class)
             .finish()
     }
@@ -528,7 +528,7 @@ pub struct OstreeMutableTreeIter {
 
 impl ::std::fmt::Debug for OstreeMutableTreeIter {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeMutableTreeIter @ {:p}", self))
+        f.debug_struct(&format!("OstreeMutableTreeIter @ {self:p}"))
             .field("in_files", &self.in_files)
             .field("iter", &self.iter)
             .finish()
@@ -543,8 +543,7 @@ pub struct OstreeRemote {
 
 impl ::std::fmt::Debug for OstreeRemote {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRemote @ {:p}", self))
-            .finish()
+        f.debug_struct(&format!("OstreeRemote @ {self:p}")).finish()
     }
 }
 
@@ -574,7 +573,7 @@ pub struct OstreeRepoCheckoutAtOptions {
 
 impl ::std::fmt::Debug for OstreeRepoCheckoutAtOptions {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoCheckoutAtOptions @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoCheckoutAtOptions @ {self:p}"))
             .field("mode", &self.mode)
             .field("overwrite_mode", &self.overwrite_mode)
             .field("enable_uncompressed_cache", &self.enable_uncompressed_cache)
@@ -612,7 +611,7 @@ pub struct OstreeRepoCheckoutOptions {
 
 impl ::std::fmt::Debug for OstreeRepoCheckoutOptions {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoCheckoutOptions @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoCheckoutOptions @ {self:p}"))
             .field("mode", &self.mode)
             .field("overwrite_mode", &self.overwrite_mode)
             .field("enable_uncompressed_cache", &self.enable_uncompressed_cache)
@@ -628,7 +627,7 @@ pub struct OstreeRepoCommitModifier {
 
 impl ::std::fmt::Debug for OstreeRepoCommitModifier {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoCommitModifier @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoCommitModifier @ {self:p}"))
             .finish()
     }
 }
@@ -643,7 +642,7 @@ pub struct OstreeRepoCommitTraverseIter {
 
 impl ::std::fmt::Debug for OstreeRepoCommitTraverseIter {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoCommitTraverseIter @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoCommitTraverseIter @ {self:p}"))
             .field("initialized", &self.initialized)
             .field("dummy", &self.dummy)
             .finish()
@@ -658,7 +657,7 @@ pub struct OstreeRepoDevInoCache {
 
 impl ::std::fmt::Debug for OstreeRepoDevInoCache {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoDevInoCache @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoDevInoCache @ {self:p}"))
             .finish()
     }
 }
@@ -672,7 +671,7 @@ pub struct OstreeRepoExportArchiveOptions {
 
 impl ::std::fmt::Debug for OstreeRepoExportArchiveOptions {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoExportArchiveOptions @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoExportArchiveOptions @ {self:p}"))
             .field("disable_xattrs", &self.disable_xattrs)
             .finish()
     }
@@ -686,7 +685,7 @@ pub struct OstreeRepoFileClass {
 
 impl ::std::fmt::Debug for OstreeRepoFileClass {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoFileClass @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoFileClass @ {self:p}"))
             .field("parent_class", &self.parent_class)
             .finish()
     }
@@ -708,7 +707,7 @@ pub struct OstreeRepoFinderAvahiClass {
 
 impl ::std::fmt::Debug for OstreeRepoFinderAvahiClass {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoFinderAvahiClass @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoFinderAvahiClass @ {self:p}"))
             .field("parent_class", &self.parent_class)
             .finish()
     }
@@ -722,7 +721,7 @@ pub struct OstreeRepoFinderConfigClass {
 
 impl ::std::fmt::Debug for OstreeRepoFinderConfigClass {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoFinderConfigClass @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoFinderConfigClass @ {self:p}"))
             .field("parent_class", &self.parent_class)
             .finish()
     }
@@ -753,7 +752,7 @@ pub struct OstreeRepoFinderInterface {
 
 impl ::std::fmt::Debug for OstreeRepoFinderInterface {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoFinderInterface @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoFinderInterface @ {self:p}"))
             .field("g_iface", &self.g_iface)
             .field("resolve_async", &self.resolve_async)
             .field("resolve_finish", &self.resolve_finish)
@@ -769,7 +768,7 @@ pub struct OstreeRepoFinderMountClass {
 
 impl ::std::fmt::Debug for OstreeRepoFinderMountClass {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoFinderMountClass @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoFinderMountClass @ {self:p}"))
             .field("parent_class", &self.parent_class)
             .finish()
     }
@@ -783,7 +782,7 @@ pub struct OstreeRepoFinderOverrideClass {
 
 impl ::std::fmt::Debug for OstreeRepoFinderOverrideClass {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoFinderOverrideClass @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoFinderOverrideClass @ {self:p}"))
             .field("parent_class", &self.parent_class)
             .finish()
     }
@@ -803,7 +802,7 @@ pub struct OstreeRepoFinderResult {
 
 impl ::std::fmt::Debug for OstreeRepoFinderResult {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoFinderResult @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoFinderResult @ {self:p}"))
             .field("remote", &self.remote)
             .field("finder", &self.finder)
             .field("priority", &self.priority)
@@ -823,7 +822,7 @@ pub struct OstreeRepoImportArchiveOptions {
 
 impl ::std::fmt::Debug for OstreeRepoImportArchiveOptions {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoImportArchiveOptions @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoImportArchiveOptions @ {self:p}"))
             .field(
                 "ignore_unsupported_content",
                 &self.ignore_unsupported_content,
@@ -844,7 +843,7 @@ pub struct OstreeRepoPruneOptions {
 
 impl ::std::fmt::Debug for OstreeRepoPruneOptions {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoPruneOptions @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoPruneOptions @ {self:p}"))
             .field("flags", &self.flags)
             .field("reachable", &self.reachable)
             .field("unused_bools", &self.unused_bools)
@@ -871,7 +870,7 @@ pub struct OstreeRepoTransactionStats {
 
 impl ::std::fmt::Debug for OstreeRepoTransactionStats {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoTransactionStats @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoTransactionStats @ {self:p}"))
             .field("metadata_objects_total", &self.metadata_objects_total)
             .field("metadata_objects_written", &self.metadata_objects_written)
             .field("content_objects_total", &self.content_objects_total)
@@ -945,7 +944,7 @@ pub struct OstreeSignInterface {
 
 impl ::std::fmt::Debug for OstreeSignInterface {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeSignInterface @ {:p}", self))
+        f.debug_struct(&format!("OstreeSignInterface @ {self:p}"))
             .field("g_iface", &self.g_iface)
             .field("get_name", &self.get_name)
             .field("data", &self.data)
@@ -973,7 +972,7 @@ pub struct OstreeSysrootDeployTreeOpts {
 
 impl ::std::fmt::Debug for OstreeSysrootDeployTreeOpts {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeSysrootDeployTreeOpts @ {:p}", self))
+        f.debug_struct(&format!("OstreeSysrootDeployTreeOpts @ {self:p}"))
             .field("unused_bools", &self.unused_bools)
             .field("unused_ints", &self.unused_ints)
             .field("override_kernel_argv", &self.override_kernel_argv)
@@ -994,7 +993,7 @@ pub struct OstreeSysrootWriteDeploymentsOpts {
 
 impl ::std::fmt::Debug for OstreeSysrootWriteDeploymentsOpts {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeSysrootWriteDeploymentsOpts @ {:p}", self))
+        f.debug_struct(&format!("OstreeSysrootWriteDeploymentsOpts @ {self:p}"))
             .field("do_postclean", &self.do_postclean)
             .field("unused_bools", &self.unused_bools)
             .field("unused_ints", &self.unused_ints)
@@ -1012,7 +1011,7 @@ pub struct OstreeAsyncProgress {
 
 impl ::std::fmt::Debug for OstreeAsyncProgress {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeAsyncProgress @ {:p}", self))
+        f.debug_struct(&format!("OstreeAsyncProgress @ {self:p}"))
             .finish()
     }
 }
@@ -1025,7 +1024,7 @@ pub struct OstreeBootconfigParser {
 
 impl ::std::fmt::Debug for OstreeBootconfigParser {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeBootconfigParser @ {:p}", self))
+        f.debug_struct(&format!("OstreeBootconfigParser @ {self:p}"))
             .finish()
     }
 }
@@ -1038,7 +1037,7 @@ pub struct OstreeContentWriter {
 
 impl ::std::fmt::Debug for OstreeContentWriter {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeContentWriter @ {:p}", self))
+        f.debug_struct(&format!("OstreeContentWriter @ {self:p}"))
             .finish()
     }
 }
@@ -1051,7 +1050,7 @@ pub struct OstreeDeployment {
 
 impl ::std::fmt::Debug for OstreeDeployment {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeDeployment @ {:p}", self))
+        f.debug_struct(&format!("OstreeDeployment @ {self:p}"))
             .finish()
     }
 }
@@ -1064,7 +1063,7 @@ pub struct OstreeGpgVerifyResult {
 
 impl ::std::fmt::Debug for OstreeGpgVerifyResult {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeGpgVerifyResult @ {:p}", self))
+        f.debug_struct(&format!("OstreeGpgVerifyResult @ {self:p}"))
             .finish()
     }
 }
@@ -1077,7 +1076,7 @@ pub struct OstreeMutableTree {
 
 impl ::std::fmt::Debug for OstreeMutableTree {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeMutableTree @ {:p}", self))
+        f.debug_struct(&format!("OstreeMutableTree @ {self:p}"))
             .finish()
     }
 }
@@ -1090,7 +1089,7 @@ pub struct OstreeRepo {
 
 impl ::std::fmt::Debug for OstreeRepo {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepo @ {:p}", self)).finish()
+        f.debug_struct(&format!("OstreeRepo @ {self:p}")).finish()
     }
 }
 
@@ -1102,7 +1101,7 @@ pub struct OstreeRepoFile {
 
 impl ::std::fmt::Debug for OstreeRepoFile {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoFile @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoFile @ {self:p}"))
             .finish()
     }
 }
@@ -1115,7 +1114,7 @@ pub struct OstreeRepoFinderAvahi {
 
 impl ::std::fmt::Debug for OstreeRepoFinderAvahi {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoFinderAvahi @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoFinderAvahi @ {self:p}"))
             .finish()
     }
 }
@@ -1128,7 +1127,7 @@ pub struct OstreeRepoFinderConfig {
 
 impl ::std::fmt::Debug for OstreeRepoFinderConfig {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoFinderConfig @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoFinderConfig @ {self:p}"))
             .finish()
     }
 }
@@ -1141,7 +1140,7 @@ pub struct OstreeRepoFinderMount {
 
 impl ::std::fmt::Debug for OstreeRepoFinderMount {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoFinderMount @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoFinderMount @ {self:p}"))
             .finish()
     }
 }
@@ -1154,7 +1153,7 @@ pub struct OstreeRepoFinderOverride {
 
 impl ::std::fmt::Debug for OstreeRepoFinderOverride {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeRepoFinderOverride @ {:p}", self))
+        f.debug_struct(&format!("OstreeRepoFinderOverride @ {self:p}"))
             .finish()
     }
 }
@@ -1167,7 +1166,7 @@ pub struct OstreeSePolicy {
 
 impl ::std::fmt::Debug for OstreeSePolicy {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeSePolicy @ {:p}", self))
+        f.debug_struct(&format!("OstreeSePolicy @ {self:p}"))
             .finish()
     }
 }
@@ -1180,7 +1179,7 @@ pub struct OstreeSysroot {
 
 impl ::std::fmt::Debug for OstreeSysroot {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeSysroot @ {:p}", self))
+        f.debug_struct(&format!("OstreeSysroot @ {self:p}"))
             .finish()
     }
 }
@@ -1193,7 +1192,7 @@ pub struct OstreeSysrootUpgrader {
 
 impl ::std::fmt::Debug for OstreeSysrootUpgrader {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        f.debug_struct(&format!("OstreeSysrootUpgrader @ {:p}", self))
+        f.debug_struct(&format!("OstreeSysrootUpgrader @ {self:p}"))
             .finish()
     }
 }
@@ -1207,7 +1206,7 @@ pub struct OstreeRepoFinder {
 
 impl ::std::fmt::Debug for OstreeRepoFinder {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(f, "OstreeRepoFinder @ {:p}", self)
+        write!(f, "OstreeRepoFinder @ {self:p}")
     }
 }
 
@@ -1219,7 +1218,7 @@ pub struct OstreeSign {
 
 impl ::std::fmt::Debug for OstreeSign {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        write!(f, "OstreeSign @ {:p}", self)
+        write!(f, "OstreeSign @ {self:p}")
     }
 }
 

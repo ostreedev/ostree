@@ -22,7 +22,9 @@ impl RepoFinderAvahi {
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
     #[doc(alias = "ostree_repo_finder_avahi_new")]
     pub fn new(context: Option<&glib::MainContext>) -> RepoFinderAvahi {
-        unsafe { from_glib_full(ffi::ostree_repo_finder_avahi_new(context.to_glib_none().0)) }
+        unsafe {
+            from_glib_full(ffi::ostree_repo_finder_avahi_new(context.to_glib_none().0))
+        }
     }
 
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
