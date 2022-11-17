@@ -134,4 +134,8 @@ _OSTREE_PUBLIC
 void ostree_kernel_args_append_if_missing (OstreeKernelArgs *kargs, 
                                            const char *arg);
 
+_OSTREE_PUBLIC
+gboolean ostree_kernel_args_contains (OstreeKernelArgs *kargs,
+                                      const char *arg);
+
 G_END_DECLS

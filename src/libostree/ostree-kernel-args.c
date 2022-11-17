@@ -820,12 +820,31 @@ void
 ostree_kernel_args_append_if_missing (OstreeKernelArgs  *kargs,
                                       const char *arg)
 {
-  g_autofree char *key = g_strdup (arg);
-  split_keyeq (key);
- 
   // Don't insert a duplicate key.
-  if (g_hash_table_contains (kargs->table, key))
+  if (ostree_kernel_args_contains (kargs, arg))
     return;
  
   ostree_kernel_args_append (kargs, arg);
+}
+
+/**
+ * ostree_kernel_args_contains:
+ * @kargs: a OstreeKernelArgs instance
+ * @arg: key or key/value pair to check
+ *
+ * Search for @arg which is in the form of key=value pair at the hash table kargs->table
+ * and returns true if finds it.
+ *
+ *Returns: %TRUE if @arg is contained in @kargs, %FALSE otherwise.
+ *
+ * Since: 2022.7
+ **/
+gboolean
+ostree_kernel_args_contains (OstreeKernelArgs  *kargs,
+                             const char *arg)
+{
+  g_autofree char *key = g_strdup (arg);
+  split_keyeq (key);
+
+  return g_hash_table_contains (kargs->table, key);
 }
