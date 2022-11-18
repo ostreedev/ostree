@@ -738,6 +738,7 @@ ostree_kernel_args_get_last_value
 ostree_kernel_args_from_string
 ostree_kernel_args_to_strv
 ostree_kernel_args_to_string
+ostree_kernel_args_contains
 </SECTION>
 
 <SECTION>
