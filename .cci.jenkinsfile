@@ -34,6 +34,7 @@ stage("Build") {
         shwrap("""
           make install DESTDIR=\$(pwd)/installed/rootfs
           make -C tests/kolainst install DESTDIR=\$(pwd)/installed/tests
+          bash -c '. /usr/lib/os-release && echo \$VERSION_ID' >\$(pwd)/installed/buildroot-id
         """)
       }
       stash includes: "installed/", name: 'build'
@@ -47,8 +48,12 @@ cosaPod(runAsUser: 0, memory: "9Gi", cpu: "4") {
     checkout scm
     unstash 'build'
     shwrap("""
-      # Move the bits into the cosa pod
-      rsync -rlv installed/rootfs/ /
+      # Move the bits into the cosa pod (but only if major versions match)
+      buildroot_id=\$(cat installed/buildroot-id)
+      osver=\$(. /usr/lib/os-release && echo \$VERSION_ID)
+      if test \$osver = \$buildroot_id; then
+        rsync -rlv installed/rootfs/ /
+      fi
       rsync -rlv installed/tests/ /
       coreos-assembler init --force https://github.com/coreos/fedora-coreos-config
       mkdir -p overrides/rootfs
