@@ -848,3 +848,25 @@ ostree_kernel_args_contains (OstreeKernelArgs  *kargs,
 
   return g_hash_table_contains (kargs->table, key);
 }
+
+/**
+ * ostree_kernel_args_delete_if_present:
+ * @kargs: a OstreeKernelArgs instance
+ * @arg: key or key/value pair to be deleted
+ * @error: an GError instance
+ *
+ * Deletes @arg which is in the form of key=value pair from the hash table kargs->table.
+ *
+ * Returns: %TRUE on success, %FALSE on failure
+ *
+ * Since: 2022.7
+ **/
+gboolean
+ostree_kernel_args_delete_if_present (OstreeKernelArgs  *kargs,
+                                      const char        *arg,
+                                      GError           **error)
+{
+  if (ostree_kernel_args_contains (kargs, arg))
+    return ostree_kernel_args_delete (kargs, arg, error);
+  return TRUE;
+}

@@ -138,4 +138,8 @@ _OSTREE_PUBLIC
 gboolean ostree_kernel_args_contains (OstreeKernelArgs *kargs,
                                       const char *arg);
 
+_OSTREE_PUBLIC
+gboolean ostree_kernel_args_delete_if_present (OstreeKernelArgs *kargs,
+                                               const char       *arg,
+                                               GError          **error);
 G_END_DECLS

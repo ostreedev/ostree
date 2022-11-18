@@ -1319,6 +1319,13 @@ extern "C" {
         kargs: *mut OstreeKernelArgs,
         arg: *const c_char,
     ) -> gboolean;
+    #[cfg(any(feature = "v2022_7", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2022_7")))]
+    pub fn ostree_kernel_args_delete_if_present(
+        kargs: *mut OstreeKernelArgs,
+        arg: *const c_char,
+        error: *mut *mut glib::GError,
+    ) -> gboolean;
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_3")))]
     pub fn ostree_kernel_args_append_proc_cmdline(
