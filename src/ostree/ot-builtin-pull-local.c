@@ -211,7 +211,7 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeCommandInvocation *invoc
     if (!console.is_tty)
       {
         g_assert (progress);
-        const char *status = ostree_async_progress_get_status (progress);
+        g_autofree char *status = ostree_async_progress_get_status (progress);
         if (status)
           g_print ("%s\n", status);
       }
