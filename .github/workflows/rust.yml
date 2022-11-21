@@ -14,8 +14,6 @@ env:
   CARGO_PROJECT_FEATURES: "v2021_5,cap-std-apis"
   # TODO: Automatically query this from the C side
   LATEST_LIBOSTREE: "v2022_6"
-  # Minimum supported Rust version (MSRV)
-  ACTION_MSRV_TOOLCHAIN: 1.58.1
   # Pinned toolchain for linting
   ACTION_LINTS_TOOLCHAIN: 1.64.0
 
@@ -38,6 +36,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+      - name: Detect crate MSRV
+        shell: bash
+        run: |
+          msrv=$(cargo metadata --format-version 1 --no-deps | \
+              jq -r '.packages | .[0].rust_version')
+          echo "Crate MSRV: $msrv"
+          echo "ACTION_MSRV_TOOLCHAIN=$msrv" >> $GITHUB_ENV
       - name: Remove system Rust toolchain
         run: dnf remove -y rust cargo
       - name: Install toolchain
