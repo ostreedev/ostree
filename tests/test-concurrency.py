@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 import os
 import sys
+import random
 import shutil
 import subprocess
 from multiprocessing import cpu_count
@@ -43,21 +44,11 @@ with open('repo/config', 'a') as f:
     # it's simpler, and we don't need xattr coverage for this
     f.write('disable-xattrs=true\n')
 
-    # Make any locking errors fail quickly instead of blocking the test
-    # for 30 seconds.
-    f.write('lock-timeout-secs=5\n')
-
 def commit(v):
     tdir='tree{}'.format(v)
-    cmd = ['ostree', '--repo=repo', 'commit', '--fsync=0', '-b', tdir, '--tree=dir='+tdir]
-    proc = subprocess.Popen(cmd)
-    print('PID {}'.format(proc.pid), *cmd, file=sys.stderr)
-    return proc
+    return ['ostree', '--repo=repo', 'commit', '--fsync=0', '-b', tdir, '--tree=dir='+tdir]
 def prune():
-    cmd = ['ostree', '--repo=repo', 'prune', '--refs-only']
-    proc = subprocess.Popen(cmd)
-    print('PID {}:'.format(proc.pid), *cmd, file=sys.stderr)
-    return proc
+    return ['ostree', '--repo=repo', 'prune', '--refs-only']
 
 def wait_check(proc):
     pid = proc.pid
@@ -76,8 +67,7 @@ def run(n_committers, n_pruners):
     # many trees
     n_committers += n_committers % 2
 
-    committers = set()
-    pruners = set()
+    cmds = []
 
     print('n_committers', n_committers, 'n_pruners', n_pruners, file=sys.stderr)
     n_trees = n_committers // 2
@@ -85,26 +75,31 @@ def run(n_committers, n_pruners):
         mktree('tree{}'.format(v))
 
     for v in range(n_committers):
-        committers.add(commit(v // 2))
+        cmds.append(commit(v // 2))
     for v in range(n_pruners):
-        pruners.add(prune())
+        cmds.append(prune())
 
+    random.shuffle(cmds)
+    procs = []
+    for cmd in cmds:
+        proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
+        print('PID {}'.format(proc.pid), *cmd, file=sys.stderr)
+        procs.append(proc)
     failed = False
-    for committer in committers:
-        if not wait_check(committer):
+    for proc in procs:
+        if not wait_check(proc):
             failed = True
-    for pruner in pruners:
-        if not wait_check(pruner):
-            failed = True
+
     if failed:
         fatal('A child process exited abnormally')
 
     for v in range(n_trees):
         shutil.rmtree('tree{}'.format(v))
 
+nproc = max(cpu_count() // 2, 8)
 # No concurrent pruning
-run(cpu_count() // 2 + 2, 0)
+run(nproc, 0)
 print("ok no concurrent prunes")
 
-run(cpu_count() // 2 + 4, 3)
+run(nproc, random.randrange(2, nproc // 2, 2))
 print("ok concurrent prunes")
