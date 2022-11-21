@@ -2,7 +2,7 @@
 
 mypath = $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 topsrcdir = $(shell git rev-parse --show-toplevel)
-GITREV = $(shell git describe --always --tags)
+GITREV = $(shell git describe --always --tags --match 'v2???.*')
 GITREV_FOR_PKG = $(shell echo "$(GITREV)" | sed -e 's,-,\.,g' -e 's,^v,,')
 
 PACKAGE ?= $(shell basename $(topsrcdir))

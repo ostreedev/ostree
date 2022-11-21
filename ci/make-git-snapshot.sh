@@ -3,7 +3,7 @@ set -xeuo pipefail
 
 TOP=$(git rev-parse --show-toplevel)
 GITREV=$(git rev-parse HEAD)
-gitdescribe=$(git describe --always --tags $GITREV)
+gitdescribe=$(git describe --always --tags --match 'v2???.*' $GITREV)
 version=$(echo "$gitdescribe" | sed -e 's,-,\.,g' -e 's,^v,,')
 name=libostree
 PKG_VER="${name}-${version}"
