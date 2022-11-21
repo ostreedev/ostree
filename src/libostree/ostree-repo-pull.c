@@ -4712,6 +4712,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             !load_remote_repo_config (pull_data, &remote_config, cancellable, error))
           goto out;
 
+        g_clear_pointer (&remote_mode_str, g_free);
         if (!ot_keyfile_get_value_with_default (remote_config, "core", "mode", "bare",
                                                 &remote_mode_str, error))
           goto out;
