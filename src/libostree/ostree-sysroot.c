@@ -260,6 +260,63 @@ ostree_sysroot_set_mount_namespace_in_use (OstreeSysroot  *self)
 }
 
 /**
+ * ostree_sysroot_initialize_with_mount_namespace:
+ *
+ * Prepare the current process for modifying a booted sysroot, if applicable.
+ * This function subsumes the functionality of `ostree_sysroot_initialize`
+ * and may be invoked wherever that function is.
+ *
+ * If the sysroot does not appear to be booted, or where the current process is not uid 0,
+ * this function returns successfully.
+ *
+ * Otherwise, if the process is in the same mount namespace as pid 1, create
+ * a new namespace.
+ *
+ * If you invoke this function, it must be before ostree_sysroot_load(); it may
+ * be invoked before or after ostree_sysroot_initialize().
+ *
+ * Since: 2022.7
+ */
+gboolean
+ostree_sysroot_initialize_with_mount_namespace (OstreeSysroot *self, GCancellable *cancellable, GError **error)
+{
+  GLNX_AUTO_PREFIX_ERROR ("Initializing with mountns", error);
+  /* Must be before we're loaded, as otherwise we'd have to close/reopen all our
+     fds, e.g. the repo */
+  g_assert (self->loadstate < OSTREE_SYSROOT_LOAD_STATE_LOADED);
+
+  if (!ostree_sysroot_initialize (self, error))
+    return FALSE;
+
+  /* Do nothing if we're not privileged */
+  if (getuid () != 0)
+    return TRUE;
+
+  /* We also assume operating on non-booted roots won't have a readonly sysroot */
+  if (!self->root_is_ostree_booted)
+    return TRUE;
+
+  g_autofree char *mntns_pid1 =
+    glnx_readlinkat_malloc (AT_FDCWD, "/proc/1/ns/mnt", cancellable, error);
+  if (!mntns_pid1)
+    return glnx_prefix_error (error, "Reading /proc/1/ns/mnt");
+  g_autofree char *mntns_self =
+    glnx_readlinkat_malloc (AT_FDCWD, "/proc/self/ns/mnt", cancellable, error);
+  if (!mntns_self)
+    return glnx_prefix_error (error, "Reading /proc/self/ns/mnt");
+
+  // If the mount namespaces are the same, we need to unshare().
+  if (strcmp (mntns_pid1, mntns_self) == 0)
+    { 
+      if (unshare (CLONE_NEWNS) < 0)
+        return glnx_throw_errno_prefix (error, "Failed to invoke unshare(CLONE_NEWNS)");
+    }
+
+  ostree_sysroot_set_mount_namespace_in_use (self);
+  return TRUE;
+}
+
+/**
  * ostree_sysroot_get_path:
  * @self: Sysroot
  *

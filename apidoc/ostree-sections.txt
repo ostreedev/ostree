@@ -548,6 +548,7 @@ OstreeSysroot
 ostree_sysroot_new
 ostree_sysroot_new_default
 ostree_sysroot_initialize
+ostree_sysroot_initialize_with_mount_namespace
 ostree_sysroot_get_path
 ostree_sysroot_load
 ostree_sysroot_load_if_changed
