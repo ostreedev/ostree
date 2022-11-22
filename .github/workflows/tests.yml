@@ -26,6 +26,22 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Test style
         run: ./ci/ci-commitmessage-submodules.sh
+  build-integration:
+    runs-on: ubuntu-latest
+    container: quay.io/coreos-assembler/fcos-buildroot:testing-devel
+    steps:
+      - uses: actions/checkout@v3
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@ce325b60658c1b38465c06cc965b79baf32c1e72
+        with:
+          key: "integration"
+      - name: Build
+        run: cd tests/inst && cargo build --verbose --release
+      - name: Upload binary
+        uses: actions/upload-artifact@v2
+        with:
+          name: ostree-test
+          path: tests/inst/target/release/ostree-test
   minimal:
     name: "Build - FCOS minimal"
     runs-on: ubuntu-latest
@@ -44,6 +60,53 @@ jobs:
           --without-openssl --without-avahi --without-libmount --disable-rofiles-fuse \
           --without-libsodium &&
           make
+  build-c:
+    name: "Build (Fedora)"
+    runs-on: ubuntu-latest
+    container: registry.ci.openshift.org/coreos/fcos-buildroot:testing-devel
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      # https://github.com/actions/checkout/issues/760
+      - name: Mark git checkout as safe
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Build
+        run: |
+          env NOCONFIGURE=1 ./autogen.sh &&
+          ./configure --with-curl --with-selinux --with-dracut=yesbutnoconf &&
+          make -j 4 && make install DESTDIR=$(pwd)/install && tar -c -C install --zstd -f inst.tar.zst .
+      - name: Upload binary
+        uses: actions/upload-artifact@v2
+        with:
+          name: inst.tar.zst
+          path: inst.tar.zst
+  privtest:
+    name: "Privileged testing"
+    needs: [build-c, build-integration]
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/fedora/fedora-coreos:testing-devel
+      options: "--privileged --pid=host -v /run/systemd:/run/systemd -v /:/run/host"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Download install tree
+        uses: actions/download-artifact@v2
+        with:
+          name: inst.tar.zst
+      - name: Install
+        run: tar -C / -xvf inst.tar.zst && rm -f inst.tar.zst
+      - name: Download test binary
+        uses: actions/download-artifact@v2
+        with:
+          name: ostree-test
+      - name: Install
+        run: install ostree-test /usr/bin
+      - name: Setup
+        # https://github.com/ostreedev/ostree-rs-ext/issues/417
+        run: mkdir -p /var/tmp
+      - name: Integration tests (unit)
+        run: ostree-test
   tests:
     # Distro configuration matrix
     #
