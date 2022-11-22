@@ -24,6 +24,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
+skip_without_sudo
 SUDO="sudo --non-interactive"
 
 # Skip the test if a well-known USB stick is not available.
