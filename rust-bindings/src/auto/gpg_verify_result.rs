@@ -21,12 +21,16 @@ glib::wrapper! {
 impl GpgVerifyResult {
     #[doc(alias = "ostree_gpg_verify_result_count_all")]
     pub fn count_all(&self) -> u32 {
-        unsafe { ffi::ostree_gpg_verify_result_count_all(self.to_glib_none().0) }
+        unsafe {
+            ffi::ostree_gpg_verify_result_count_all(self.to_glib_none().0)
+        }
     }
 
     #[doc(alias = "ostree_gpg_verify_result_count_valid")]
     pub fn count_valid(&self) -> u32 {
-        unsafe { ffi::ostree_gpg_verify_result_count_valid(self.to_glib_none().0) }
+        unsafe {
+            ffi::ostree_gpg_verify_result_count_valid(self.to_glib_none().0)
+        }
     }
 
     //#[doc(alias = "ostree_gpg_verify_result_get")]
@@ -38,10 +42,7 @@ impl GpgVerifyResult {
     #[doc(alias = "get_all")]
     pub fn all(&self, signature_index: u32) -> Option<glib::Variant> {
         unsafe {
-            from_glib_none(ffi::ostree_gpg_verify_result_get_all(
-                self.to_glib_none().0,
-                signature_index,
-            ))
+            from_glib_none(ffi::ostree_gpg_verify_result_get_all(self.to_glib_none().0, signature_index))
         }
     }
 
@@ -49,17 +50,8 @@ impl GpgVerifyResult {
     pub fn lookup(&self, key_id: &str) -> Option<u32> {
         unsafe {
             let mut out_signature_index = mem::MaybeUninit::uninit();
-            let ret = from_glib(ffi::ostree_gpg_verify_result_lookup(
-                self.to_glib_none().0,
-                key_id.to_glib_none().0,
-                out_signature_index.as_mut_ptr(),
-            ));
-            let out_signature_index = out_signature_index.assume_init();
-            if ret {
-                Some(out_signature_index)
-            } else {
-                None
-            }
+            let ret = from_glib(ffi::ostree_gpg_verify_result_lookup(self.to_glib_none().0, key_id.to_glib_none().0, out_signature_index.as_mut_ptr()));
+            if ret { Some(out_signature_index.assume_init()) } else { None }
         }
     }
 
@@ -69,16 +61,9 @@ impl GpgVerifyResult {
     pub fn require_valid_signature(&self) -> Result<(), glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_gpg_verify_result_require_valid_signature(
-                self.to_glib_none().0,
-                &mut error,
-            );
+            let is_ok = ffi::ostree_gpg_verify_result_require_valid_signature(self.to_glib_none().0, &mut error);
             assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() {
-                Ok(())
-            } else {
-                Err(from_glib_full(error))
-            }
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 }

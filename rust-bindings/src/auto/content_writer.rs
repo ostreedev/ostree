@@ -18,22 +18,11 @@ glib::wrapper! {
 
 impl ContentWriter {
     #[doc(alias = "ostree_content_writer_finish")]
-    pub fn finish(
-        &self,
-        cancellable: Option<&impl IsA<gio::Cancellable>>,
-    ) -> Result<glib::GString, glib::Error> {
+    pub fn finish(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<glib::GString, glib::Error> {
         unsafe {
             let mut error = ptr::null_mut();
-            let ret = ffi::ostree_content_writer_finish(
-                self.to_glib_none().0,
-                cancellable.map(|p| p.as_ref()).to_glib_none().0,
-                &mut error,
-            );
-            if error.is_null() {
-                Ok(from_glib_full(ret))
-            } else {
-                Err(from_glib_full(error))
-            }
+            let ret = ffi::ostree_content_writer_finish(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            if error.is_null() { Ok(from_glib_full(ret)) } else { Err(from_glib_full(error)) }
         }
     }
 }

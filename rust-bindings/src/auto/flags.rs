@@ -16,11 +16,11 @@ bitflags! {
     #[doc(alias = "OstreeChecksumFlags")]
     pub struct ChecksumFlags: u32 {
         #[doc(alias = "OSTREE_CHECKSUM_FLAGS_NONE")]
-        const NONE = ffi::OSTREE_CHECKSUM_FLAGS_NONE as u32;
+        const NONE = ffi::OSTREE_CHECKSUM_FLAGS_NONE as _;
         #[doc(alias = "OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS")]
-        const IGNORE_XATTRS = ffi::OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS as u32;
+        const IGNORE_XATTRS = ffi::OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS as _;
         #[doc(alias = "OSTREE_CHECKSUM_FLAGS_CANONICAL_PERMISSIONS")]
-        const CANONICAL_PERMISSIONS = ffi::OSTREE_CHECKSUM_FLAGS_CANONICAL_PERMISSIONS as u32;
+        const CANONICAL_PERMISSIONS = ffi::OSTREE_CHECKSUM_FLAGS_CANONICAL_PERMISSIONS as _;
     }
 }
 
@@ -56,9 +56,9 @@ bitflags! {
     #[doc(alias = "OstreeDiffFlags")]
     pub struct DiffFlags: u32 {
         #[doc(alias = "OSTREE_DIFF_FLAGS_NONE")]
-        const NONE = ffi::OSTREE_DIFF_FLAGS_NONE as u32;
+        const NONE = ffi::OSTREE_DIFF_FLAGS_NONE as _;
         #[doc(alias = "OSTREE_DIFF_FLAGS_IGNORE_XATTRS")]
-        const IGNORE_XATTRS = ffi::OSTREE_DIFF_FLAGS_IGNORE_XATTRS as u32;
+        const IGNORE_XATTRS = ffi::OSTREE_DIFF_FLAGS_IGNORE_XATTRS as _;
     }
 }
 
@@ -88,7 +88,7 @@ bitflags! {
     #[doc(alias = "OstreeGpgSignatureFormatFlags")]
     pub struct GpgSignatureFormatFlags: u32 {
         #[doc(alias = "OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT")]
-        const GPG_SIGNATURE_FORMAT_DEFAULT = ffi::OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT as u32;
+        const GPG_SIGNATURE_FORMAT_DEFAULT = ffi::OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT as _;
     }
 }
 
@@ -118,19 +118,19 @@ bitflags! {
     #[doc(alias = "OstreeRepoCommitModifierFlags")]
     pub struct RepoCommitModifierFlags: u32 {
         #[doc(alias = "OSTREE_REPO_COMMIT_MODIFIER_FLAGS_NONE")]
-        const NONE = ffi::OSTREE_REPO_COMMIT_MODIFIER_FLAGS_NONE as u32;
+        const NONE = ffi::OSTREE_REPO_COMMIT_MODIFIER_FLAGS_NONE as _;
         #[doc(alias = "OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS")]
-        const SKIP_XATTRS = ffi::OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS as u32;
+        const SKIP_XATTRS = ffi::OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS as _;
         #[doc(alias = "OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES")]
-        const GENERATE_SIZES = ffi::OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES as u32;
+        const GENERATE_SIZES = ffi::OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES as _;
         #[doc(alias = "OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS")]
-        const CANONICAL_PERMISSIONS = ffi::OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS as u32;
+        const CANONICAL_PERMISSIONS = ffi::OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS as _;
         #[doc(alias = "OSTREE_REPO_COMMIT_MODIFIER_FLAGS_ERROR_ON_UNLABELED")]
-        const ERROR_ON_UNLABELED = ffi::OSTREE_REPO_COMMIT_MODIFIER_FLAGS_ERROR_ON_UNLABELED as u32;
+        const ERROR_ON_UNLABELED = ffi::OSTREE_REPO_COMMIT_MODIFIER_FLAGS_ERROR_ON_UNLABELED as _;
         #[doc(alias = "OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME")]
-        const CONSUME = ffi::OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME as u32;
+        const CONSUME = ffi::OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME as _;
         #[doc(alias = "OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL")]
-        const DEVINO_CANONICAL = ffi::OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL as u32;
+        const DEVINO_CANONICAL = ffi::OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL as _;
     }
 }
 
@@ -162,11 +162,11 @@ bitflags! {
     #[doc(alias = "OstreeRepoCommitState")]
     pub struct RepoCommitState: u32 {
         #[doc(alias = "OSTREE_REPO_COMMIT_STATE_NORMAL")]
-        const NORMAL = ffi::OSTREE_REPO_COMMIT_STATE_NORMAL as u32;
+        const NORMAL = ffi::OSTREE_REPO_COMMIT_STATE_NORMAL as _;
         #[doc(alias = "OSTREE_REPO_COMMIT_STATE_PARTIAL")]
-        const PARTIAL = ffi::OSTREE_REPO_COMMIT_STATE_PARTIAL as u32;
+        const PARTIAL = ffi::OSTREE_REPO_COMMIT_STATE_PARTIAL as _;
         #[doc(alias = "OSTREE_REPO_COMMIT_STATE_FSCK_PARTIAL")]
-        const FSCK_PARTIAL = ffi::OSTREE_REPO_COMMIT_STATE_FSCK_PARTIAL as u32;
+        const FSCK_PARTIAL = ffi::OSTREE_REPO_COMMIT_STATE_FSCK_PARTIAL as _;
     }
 }
 
@@ -202,9 +202,9 @@ bitflags! {
     #[doc(alias = "OstreeRepoCommitTraverseFlags")]
     pub struct RepoCommitTraverseFlags: u32 {
         #[doc(alias = "OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE")]
-        const NONE = ffi::OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE as u32;
+        const NONE = ffi::OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE as _;
         #[doc(alias = "OSTREE_REPO_COMMIT_TRAVERSE_FLAG_COMMIT_ONLY")]
-        const COMMIT_ONLY = ffi::OSTREE_REPO_COMMIT_TRAVERSE_FLAG_COMMIT_ONLY as u32;
+        const COMMIT_ONLY = ffi::OSTREE_REPO_COMMIT_TRAVERSE_FLAG_COMMIT_ONLY as _;
     }
 }
 
@@ -234,13 +234,13 @@ bitflags! {
     #[doc(alias = "OstreeRepoListObjectsFlags")]
     pub struct RepoListObjectsFlags: u32 {
         #[doc(alias = "OSTREE_REPO_LIST_OBJECTS_LOOSE")]
-        const LOOSE = ffi::OSTREE_REPO_LIST_OBJECTS_LOOSE as u32;
+        const LOOSE = ffi::OSTREE_REPO_LIST_OBJECTS_LOOSE as _;
         #[doc(alias = "OSTREE_REPO_LIST_OBJECTS_PACKED")]
-        const PACKED = ffi::OSTREE_REPO_LIST_OBJECTS_PACKED as u32;
+        const PACKED = ffi::OSTREE_REPO_LIST_OBJECTS_PACKED as _;
         #[doc(alias = "OSTREE_REPO_LIST_OBJECTS_ALL")]
-        const ALL = ffi::OSTREE_REPO_LIST_OBJECTS_ALL as u32;
+        const ALL = ffi::OSTREE_REPO_LIST_OBJECTS_ALL as _;
         #[doc(alias = "OSTREE_REPO_LIST_OBJECTS_NO_PARENTS")]
-        const NO_PARENTS = ffi::OSTREE_REPO_LIST_OBJECTS_NO_PARENTS as u32;
+        const NO_PARENTS = ffi::OSTREE_REPO_LIST_OBJECTS_NO_PARENTS as _;
     }
 }
 
@@ -270,13 +270,13 @@ bitflags! {
     #[doc(alias = "OstreeRepoListRefsExtFlags")]
     pub struct RepoListRefsExtFlags: u32 {
         #[doc(alias = "OSTREE_REPO_LIST_REFS_EXT_NONE")]
-        const NONE = ffi::OSTREE_REPO_LIST_REFS_EXT_NONE as u32;
+        const NONE = ffi::OSTREE_REPO_LIST_REFS_EXT_NONE as _;
         #[doc(alias = "OSTREE_REPO_LIST_REFS_EXT_ALIASES")]
-        const ALIASES = ffi::OSTREE_REPO_LIST_REFS_EXT_ALIASES as u32;
+        const ALIASES = ffi::OSTREE_REPO_LIST_REFS_EXT_ALIASES as _;
         #[doc(alias = "OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES")]
-        const EXCLUDE_REMOTES = ffi::OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES as u32;
+        const EXCLUDE_REMOTES = ffi::OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES as _;
         #[doc(alias = "OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_MIRRORS")]
-        const EXCLUDE_MIRRORS = ffi::OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_MIRRORS as u32;
+        const EXCLUDE_MIRRORS = ffi::OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_MIRRORS as _;
     }
 }
 
@@ -306,13 +306,13 @@ bitflags! {
     #[doc(alias = "OstreeRepoPruneFlags")]
     pub struct RepoPruneFlags: u32 {
         #[doc(alias = "OSTREE_REPO_PRUNE_FLAGS_NONE")]
-        const NONE = ffi::OSTREE_REPO_PRUNE_FLAGS_NONE as u32;
+        const NONE = ffi::OSTREE_REPO_PRUNE_FLAGS_NONE as _;
         #[doc(alias = "OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE")]
-        const NO_PRUNE = ffi::OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE as u32;
+        const NO_PRUNE = ffi::OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE as _;
         #[doc(alias = "OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY")]
-        const REFS_ONLY = ffi::OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY as u32;
+        const REFS_ONLY = ffi::OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY as _;
         #[doc(alias = "OSTREE_REPO_PRUNE_FLAGS_COMMIT_ONLY")]
-        const COMMIT_ONLY = ffi::OSTREE_REPO_PRUNE_FLAGS_COMMIT_ONLY as u32;
+        const COMMIT_ONLY = ffi::OSTREE_REPO_PRUNE_FLAGS_COMMIT_ONLY as _;
     }
 }
 
@@ -342,17 +342,17 @@ bitflags! {
     #[doc(alias = "OstreeRepoPullFlags")]
     pub struct RepoPullFlags: u32 {
         #[doc(alias = "OSTREE_REPO_PULL_FLAGS_NONE")]
-        const NONE = ffi::OSTREE_REPO_PULL_FLAGS_NONE as u32;
+        const NONE = ffi::OSTREE_REPO_PULL_FLAGS_NONE as _;
         #[doc(alias = "OSTREE_REPO_PULL_FLAGS_MIRROR")]
-        const MIRROR = ffi::OSTREE_REPO_PULL_FLAGS_MIRROR as u32;
+        const MIRROR = ffi::OSTREE_REPO_PULL_FLAGS_MIRROR as _;
         #[doc(alias = "OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY")]
-        const COMMIT_ONLY = ffi::OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY as u32;
+        const COMMIT_ONLY = ffi::OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY as _;
         #[doc(alias = "OSTREE_REPO_PULL_FLAGS_UNTRUSTED")]
-        const UNTRUSTED = ffi::OSTREE_REPO_PULL_FLAGS_UNTRUSTED as u32;
+        const UNTRUSTED = ffi::OSTREE_REPO_PULL_FLAGS_UNTRUSTED as _;
         #[doc(alias = "OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES")]
-        const BAREUSERONLY_FILES = ffi::OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES as u32;
+        const BAREUSERONLY_FILES = ffi::OSTREE_REPO_PULL_FLAGS_BAREUSERONLY_FILES as _;
         #[doc(alias = "OSTREE_REPO_PULL_FLAGS_TRUSTED_HTTP")]
-        const TRUSTED_HTTP = ffi::OSTREE_REPO_PULL_FLAGS_TRUSTED_HTTP as u32;
+        const TRUSTED_HTTP = ffi::OSTREE_REPO_PULL_FLAGS_TRUSTED_HTTP as _;
     }
 }
 
@@ -382,9 +382,9 @@ bitflags! {
     #[doc(alias = "OstreeRepoResolveRevExtFlags")]
     pub struct RepoResolveRevExtFlags: u32 {
         #[doc(alias = "OSTREE_REPO_RESOLVE_REV_EXT_NONE")]
-        const NONE = ffi::OSTREE_REPO_RESOLVE_REV_EXT_NONE as u32;
+        const NONE = ffi::OSTREE_REPO_RESOLVE_REV_EXT_NONE as _;
         #[doc(alias = "OSTREE_REPO_RESOLVE_REV_EXT_LOCAL_ONLY")]
-        const LOCAL_ONLY = ffi::OSTREE_REPO_RESOLVE_REV_EXT_LOCAL_ONLY as u32;
+        const LOCAL_ONLY = ffi::OSTREE_REPO_RESOLVE_REV_EXT_LOCAL_ONLY as _;
     }
 }
 
@@ -416,11 +416,11 @@ bitflags! {
     #[doc(alias = "OstreeRepoVerifyFlags")]
     pub struct RepoVerifyFlags: u32 {
         #[doc(alias = "OSTREE_REPO_VERIFY_FLAGS_NONE")]
-        const NONE = ffi::OSTREE_REPO_VERIFY_FLAGS_NONE as u32;
+        const NONE = ffi::OSTREE_REPO_VERIFY_FLAGS_NONE as _;
         #[doc(alias = "OSTREE_REPO_VERIFY_FLAGS_NO_GPG")]
-        const NO_GPG = ffi::OSTREE_REPO_VERIFY_FLAGS_NO_GPG as u32;
+        const NO_GPG = ffi::OSTREE_REPO_VERIFY_FLAGS_NO_GPG as _;
         #[doc(alias = "OSTREE_REPO_VERIFY_FLAGS_NO_SIGNAPI")]
-        const NO_SIGNAPI = ffi::OSTREE_REPO_VERIFY_FLAGS_NO_SIGNAPI as u32;
+        const NO_SIGNAPI = ffi::OSTREE_REPO_VERIFY_FLAGS_NO_SIGNAPI as _;
     }
 }
 
@@ -456,11 +456,11 @@ bitflags! {
     #[doc(alias = "OstreeSePolicyRestoreconFlags")]
     pub struct SePolicyRestoreconFlags: u32 {
         #[doc(alias = "OSTREE_SEPOLICY_RESTORECON_FLAGS_NONE")]
-        const NONE = ffi::OSTREE_SEPOLICY_RESTORECON_FLAGS_NONE as u32;
+        const NONE = ffi::OSTREE_SEPOLICY_RESTORECON_FLAGS_NONE as _;
         #[doc(alias = "OSTREE_SEPOLICY_RESTORECON_FLAGS_ALLOW_NOLABEL")]
-        const ALLOW_NOLABEL = ffi::OSTREE_SEPOLICY_RESTORECON_FLAGS_ALLOW_NOLABEL as u32;
+        const ALLOW_NOLABEL = ffi::OSTREE_SEPOLICY_RESTORECON_FLAGS_ALLOW_NOLABEL as _;
         #[doc(alias = "OSTREE_SEPOLICY_RESTORECON_FLAGS_KEEP_EXISTING")]
-        const KEEP_EXISTING = ffi::OSTREE_SEPOLICY_RESTORECON_FLAGS_KEEP_EXISTING as u32;
+        const KEEP_EXISTING = ffi::OSTREE_SEPOLICY_RESTORECON_FLAGS_KEEP_EXISTING as _;
     }
 }
 
@@ -490,17 +490,17 @@ bitflags! {
     #[doc(alias = "OstreeSysrootSimpleWriteDeploymentFlags")]
     pub struct SysrootSimpleWriteDeploymentFlags: u32 {
         #[doc(alias = "OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NONE")]
-        const NONE = ffi::OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NONE as u32;
+        const NONE = ffi::OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NONE as _;
         #[doc(alias = "OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN")]
-        const RETAIN = ffi::OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN as u32;
+        const RETAIN = ffi::OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN as _;
         #[doc(alias = "OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT")]
-        const NOT_DEFAULT = ffi::OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT as u32;
+        const NOT_DEFAULT = ffi::OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT as _;
         #[doc(alias = "OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN")]
-        const NO_CLEAN = ffi::OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN as u32;
+        const NO_CLEAN = ffi::OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NO_CLEAN as _;
         #[doc(alias = "OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_PENDING")]
-        const RETAIN_PENDING = ffi::OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_PENDING as u32;
+        const RETAIN_PENDING = ffi::OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_PENDING as _;
         #[doc(alias = "OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_ROLLBACK")]
-        const RETAIN_ROLLBACK = ffi::OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_ROLLBACK as u32;
+        const RETAIN_ROLLBACK = ffi::OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN_ROLLBACK as _;
     }
 }
 
@@ -530,9 +530,9 @@ bitflags! {
     #[doc(alias = "OstreeSysrootUpgraderFlags")]
     pub struct SysrootUpgraderFlags: u32 {
         #[doc(alias = "OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED")]
-        const IGNORE_UNCONFIGURED = ffi::OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED as u32;
+        const IGNORE_UNCONFIGURED = ffi::OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED as _;
         #[doc(alias = "OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE")]
-        const STAGE = ffi::OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE as u32;
+        const STAGE = ffi::OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE as _;
     }
 }
 
@@ -594,11 +594,11 @@ bitflags! {
     #[doc(alias = "OstreeSysrootUpgraderPullFlags")]
     pub struct SysrootUpgraderPullFlags: u32 {
         #[doc(alias = "OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_NONE")]
-        const NONE = ffi::OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_NONE as u32;
+        const NONE = ffi::OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_NONE as _;
         #[doc(alias = "OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER")]
-        const ALLOW_OLDER = ffi::OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER as u32;
+        const ALLOW_OLDER = ffi::OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER as _;
         #[doc(alias = "OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_SYNTHETIC")]
-        const SYNTHETIC = ffi::OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_SYNTHETIC as u32;
+        const SYNTHETIC = ffi::OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_SYNTHETIC as _;
     }
 }
 
@@ -623,3 +623,4 @@ impl FromGlib<ffi::OstreeSysrootUpgraderPullFlags> for SysrootUpgraderPullFlags 
         Self::from_bits_truncate(value)
     }
 }
+

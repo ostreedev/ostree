@@ -23,8 +23,10 @@ impl RepoFinderResult {
     //}
 
     #[doc(alias = "ostree_repo_finder_result_compare")]
-    fn compare(&self, b: &RepoFinderResult) -> i32 {
-        unsafe { ffi::ostree_repo_finder_result_compare(self.to_glib_none().0, b.to_glib_none().0) }
+     fn compare(&self, b: &RepoFinderResult) -> i32 {
+        unsafe {
+            ffi::ostree_repo_finder_result_compare(self.to_glib_none().0, b.to_glib_none().0)
+        }
     }
 }
 

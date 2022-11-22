@@ -22,7 +22,9 @@ impl RepoFinderOverride {
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
     #[doc(alias = "ostree_repo_finder_override_new")]
     pub fn new() -> RepoFinderOverride {
-        unsafe { from_glib_full(ffi::ostree_repo_finder_override_new()) }
+        unsafe {
+            from_glib_full(ffi::ostree_repo_finder_override_new())
+        }
     }
 
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
@@ -38,10 +40,10 @@ impl RepoFinderOverride {
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
 impl Default for RepoFinderOverride {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+                     fn default() -> Self {
+                         Self::new()
+                     }
+                 }
 
 impl fmt::Display for RepoFinderOverride {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

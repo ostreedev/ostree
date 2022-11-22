@@ -19,12 +19,16 @@ impl Remote {
     #[doc(alias = "ostree_remote_get_name")]
     #[doc(alias = "get_name")]
     pub fn name(&self) -> Option<glib::GString> {
-        unsafe { from_glib_none(ffi::ostree_remote_get_name(self.to_glib_none().0)) }
+        unsafe {
+            from_glib_none(ffi::ostree_remote_get_name(self.to_glib_none().0))
+        }
     }
 
     #[doc(alias = "ostree_remote_get_url")]
     #[doc(alias = "get_url")]
     pub fn url(&self) -> Option<glib::GString> {
-        unsafe { from_glib_full(ffi::ostree_remote_get_url(self.to_glib_none().0)) }
+        unsafe {
+            from_glib_full(ffi::ostree_remote_get_url(self.to_glib_none().0))
+        }
     }
 }

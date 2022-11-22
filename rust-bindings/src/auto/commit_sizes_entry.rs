@@ -18,19 +18,9 @@ glib::wrapper! {
 
 impl CommitSizesEntry {
     #[doc(alias = "ostree_commit_sizes_entry_new")]
-    pub fn new(
-        checksum: &str,
-        objtype: ObjectType,
-        unpacked: u64,
-        archived: u64,
-    ) -> Option<CommitSizesEntry> {
+    pub fn new(checksum: &str, objtype: ObjectType, unpacked: u64, archived: u64) -> Option<CommitSizesEntry> {
         unsafe {
-            from_glib_full(ffi::ostree_commit_sizes_entry_new(
-                checksum.to_glib_none().0,
-                objtype.into_glib(),
-                unpacked,
-                archived,
-            ))
+            from_glib_full(ffi::ostree_commit_sizes_entry_new(checksum.to_glib_none().0, objtype.into_glib(), unpacked, archived))
         }
     }
 }

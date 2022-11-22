@@ -50,6 +50,7 @@ pub use crate::functions::*;
 mod mutable_tree;
 pub use crate::mutable_tree::*;
 #[cfg(any(feature = "v2019_3", feature = "dox"))]
+#[allow(missing_docs)]
 mod kernel_args;
 #[cfg(any(feature = "v2019_3", feature = "dox"))]
 pub use crate::kernel_args::*;
@@ -63,6 +64,7 @@ pub use crate::repo::*;
 mod repo_checkout_at_options;
 #[cfg(any(feature = "v2016_8", feature = "dox"))]
 pub use crate::repo_checkout_at_options::*;
+#[allow(missing_docs)]
 mod repo_transaction_stats;
 pub use repo_transaction_stats::RepoTransactionStats;
 mod se_policy;

@@ -20,32 +20,21 @@ impl CollectionRef {
     #[doc(alias = "ostree_collection_ref_new")]
     pub fn new(collection_id: Option<&str>, ref_name: &str) -> Option<CollectionRef> {
         unsafe {
-            from_glib_full(ffi::ostree_collection_ref_new(
-                collection_id.to_glib_none().0,
-                ref_name.to_glib_none().0,
-            ))
+            from_glib_full(ffi::ostree_collection_ref_new(collection_id.to_glib_none().0, ref_name.to_glib_none().0))
         }
     }
 
     #[doc(alias = "ostree_collection_ref_equal")]
-    fn equal(&self, ref2: &CollectionRef) -> bool {
+     fn equal(&self, ref2: &CollectionRef) -> bool {
         unsafe {
-            from_glib(ffi::ostree_collection_ref_equal(
-                ToGlibPtr::<*const ffi::OstreeCollectionRef>::to_glib_none(self).0
-                    as glib::ffi::gconstpointer,
-                ToGlibPtr::<*const ffi::OstreeCollectionRef>::to_glib_none(ref2).0
-                    as glib::ffi::gconstpointer,
-            ))
+            from_glib(ffi::ostree_collection_ref_equal(ToGlibPtr::<*const ffi::OstreeCollectionRef>::to_glib_none(self).0 as glib::ffi::gconstpointer, ToGlibPtr::<*const ffi::OstreeCollectionRef>::to_glib_none(ref2).0 as glib::ffi::gconstpointer))
         }
     }
 
     #[doc(alias = "ostree_collection_ref_hash")]
-    fn hash(&self) -> u32 {
+     fn hash(&self) -> u32 {
         unsafe {
-            ffi::ostree_collection_ref_hash(
-                ToGlibPtr::<*const ffi::OstreeCollectionRef>::to_glib_none(self).0
-                    as glib::ffi::gconstpointer,
-            )
+            ffi::ostree_collection_ref_hash(ToGlibPtr::<*const ffi::OstreeCollectionRef>::to_glib_none(self).0 as glib::ffi::gconstpointer)
         }
     }
 }
@@ -61,10 +50,7 @@ impl Eq for CollectionRef {}
 
 impl hash::Hash for CollectionRef {
     #[inline]
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: hash::Hasher,
-    {
+    fn hash<H>(&self, state: &mut H) where H: hash::Hasher {
         hash::Hash::hash(&self.hash(), state)
     }
 }
