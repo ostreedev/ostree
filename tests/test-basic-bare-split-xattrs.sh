@@ -9,7 +9,9 @@ set -euo pipefail
 mode="bare-split-xattrs"
 OSTREE="${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo"
 
+skip_without_sudo
 SUDO="sudo --non-interactive"
+
 PRIVILEGED="false"
 if [ $(id -u) -eq 0 ]; then
   PRIVILEGED="true"

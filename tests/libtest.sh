@@ -614,6 +614,12 @@ skip_without_user_xattrs () {
     fi
 }
 
+skip_without_sudo () {
+    if test -z "${OSTREE_TEST_SUDO:-}"; then
+        skip "this test needs sudo, skipping without OSTREE_TEST_SUDO being set"
+    fi
+}
+
 # Usage: if ! skip_one_without_whiteouts_devices; then ... more tests ...; fi
 skip_one_without_whiteouts_devices() {
     if ! can_create_whiteout_devices; then
