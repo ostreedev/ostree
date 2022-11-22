@@ -52,6 +52,6 @@ pub(crate) fn itest_tmpfiles() -> Result<()> {
         return Ok(());
     }
     let metadata = Path::new("/run/ostree").metadata()?;
-    assert_eq!(metadata.permissions().mode() & !nix::libc::S_IFMT, 0o755);
+    assert_eq!(metadata.permissions().mode() & !libc::S_IFMT, 0o755);
     Ok(())
 }

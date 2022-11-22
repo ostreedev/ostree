@@ -29,12 +29,12 @@ futures = "0.3.4"
 http = "0.2.0"
 tokio = { version = "1.4.0", features = ["full"] }
 futures-util = "0.3.1"
+libc = "0.2.100"
 base64 = "0.12.0"
 procspawn = "0.8"
 rand = "0.8"
 strum = "0.18.0"
 strum_macros = "0.18.0"
-nix = "0.23.0"
 # See discussion in https://github.com/coreos/rpm-ostree/pull/2569#issuecomment-780569188
 rpmostree-client = { git = "https://github.com/coreos/rpm-ostree", tag = "v2021.3" }
 
