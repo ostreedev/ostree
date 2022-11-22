@@ -75,7 +75,6 @@ pub(crate) fn mutate_one_executable_to(
 
 /// Find ELF files in the srcdir, write new copies to dest (only percentage)
 pub(crate) fn mutate_executables_to(src: &Dir, dest: &Dir, percentage: u32) -> Result<u32> {
-    use nix::sys::stat::Mode as NixMode;
     assert!(percentage > 0 && percentage <= 100);
     let mut mutated = 0;
     for entry in src.entries()? {
@@ -84,13 +83,13 @@ pub(crate) fn mutate_executables_to(src: &Dir, dest: &Dir, percentage: u32) -> R
             continue;
         }
         let meta = entry.metadata()?;
-        let mode = NixMode::from_bits_truncate(meta.mode());
+        let mode = meta.mode();
         // Must be executable
-        if !mode.intersects(NixMode::S_IXUSR | NixMode::S_IXGRP | NixMode::S_IXOTH) {
+        if mode & (libc::S_IXUSR | libc::S_IXGRP | libc::S_IXOTH) == 0 {
             continue;
         }
         // Not suid
-        if mode.intersects(NixMode::S_ISUID | NixMode::S_ISGID) {
+        if mode & (libc::S_ISUID | libc::S_ISGID) == 0 {
             continue;
         }
         // Greater than 1k in size
