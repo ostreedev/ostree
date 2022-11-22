@@ -51,6 +51,9 @@ _OSTREE_PUBLIC
 void ostree_sysroot_set_mount_namespace_in_use (OstreeSysroot  *self);
 
 _OSTREE_PUBLIC
+gboolean ostree_sysroot_initialize_with_mount_namespace (OstreeSysroot *self, GCancellable *cancellable, GError **error);
+
+_OSTREE_PUBLIC
 GFile *ostree_sysroot_get_path (OstreeSysroot *self);
 
 _OSTREE_PUBLIC
