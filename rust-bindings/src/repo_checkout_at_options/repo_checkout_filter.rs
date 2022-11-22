@@ -107,18 +107,26 @@ pub(super) unsafe extern "C" fn filter_trampoline_unwindsafe(
 ///
 /// If the panic value is either `&str` or `String`, we print it. Otherwise, we don't.
 fn print_panic(panic: Box<dyn Any>) {
-    eprintln!("A Rust callback invoked by C code panicked.");
-    eprintln!("Unwinding across FFI boundaries is Undefined Behavior so abort() will be called.");
+    use std::io::Write;
+    let stderr = std::io::stderr();
+    let mut stderr = stderr.lock();
+    // Directly write to stderr instead of eprintln!() as that function panics
+    // if writing fails, which would involve a double panic which we don't want.
+    let _ = stderr.write_all(
+        r#"A Rust callback invoked by C code panicked.
+Unwinding across FFI boundaries is Undefined Behavior so abort() will be called."#
+            .as_bytes(),
+    );
     let msg = {
         if let Some(s) = panic.as_ref().downcast_ref::<&str>() {
             s
         } else if let Some(s) = panic.as_ref().downcast_ref::<String>() {
             s
         } else {
-            "UNABLE TO SHOW VALUE OF PANIC"
+            "(non-string panic value)"
         }
     };
-    eprintln!("Panic value: {}", msg);
+    let _ = stderr.write_all(msg.as_bytes());
 }
 
 #[cfg(test)]
