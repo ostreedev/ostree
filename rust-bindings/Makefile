@@ -1,5 +1,5 @@
 GIR_REPO := https://github.com/gtk-rs/gir.git
-GIR_VERSION := e94fdc6499e45d89bada123f4d2e63ceb6af997d
+GIR_VERSION := 0eeebbdf9d4d5a0b0148c7fa055bf961e16e54a0
 OSTREE_REPO := ../ostree
 OSTREE_VERSION := patch-v2022.2
 RUSTDOC_STRIPPER_VERSION := 0.1.17

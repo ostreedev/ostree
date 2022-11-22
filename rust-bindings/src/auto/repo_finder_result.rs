@@ -2,8 +2,8 @@
 // from gir-files
 // DO NOT EDIT
 
-use std::cmp;
 use glib::translate::*;
+use std::cmp;
 
 glib::wrapper! {
     #[derive(Debug, Hash)]

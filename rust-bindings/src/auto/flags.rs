@@ -590,6 +590,13 @@ impl ToValue for SysrootUpgraderFlags {
     }
 }
 
+impl From<SysrootUpgraderFlags> for glib::Value {
+    #[inline]
+    fn from(v: SysrootUpgraderFlags) -> Self {
+        ToValue::to_value(&v)
+    }
+}
+
 bitflags! {
     #[doc(alias = "OstreeSysrootUpgraderPullFlags")]
     pub struct SysrootUpgraderPullFlags: u32 {

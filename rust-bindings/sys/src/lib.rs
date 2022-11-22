@@ -1312,19 +1312,6 @@ extern "C" {
     #[cfg(any(feature = "v2022_5", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2022_5")))]
     pub fn ostree_kernel_args_append_if_missing(kargs: *mut OstreeKernelArgs, arg: *const c_char);
-    #[cfg(any(feature = "v2022_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2022_7")))]
-    pub fn ostree_kernel_args_contains(
-        kargs: *mut OstreeKernelArgs,
-        arg: *const c_char,
-    ) -> gboolean;
-    #[cfg(any(feature = "v2022_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2022_7")))]
-    pub fn ostree_kernel_args_delete_if_present(
-        kargs: *mut OstreeKernelArgs,
-        arg: *const c_char,
-        error: *mut *mut glib::GError,
-    ) -> gboolean;
     #[cfg(any(feature = "v2019_3", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_3")))]
     pub fn ostree_kernel_args_append_proc_cmdline(
@@ -1332,7 +1319,20 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
+    #[cfg(any(feature = "v2022_7", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2022_7")))]
+    pub fn ostree_kernel_args_contains(
+        kargs: *mut OstreeKernelArgs,
+        arg: *const c_char,
+    ) -> gboolean;
     pub fn ostree_kernel_args_delete(
+        kargs: *mut OstreeKernelArgs,
+        arg: *const c_char,
+        error: *mut *mut glib::GError,
+    ) -> gboolean;
+    #[cfg(any(feature = "v2022_7", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2022_7")))]
+    pub fn ostree_kernel_args_delete_if_present(
         kargs: *mut OstreeKernelArgs,
         arg: *const c_char,
         error: *mut *mut glib::GError,
@@ -3216,6 +3216,13 @@ extern "C" {
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_1")))]
     pub fn ostree_sysroot_initialize(
         self_: *mut OstreeSysroot,
+        error: *mut *mut glib::GError,
+    ) -> gboolean;
+    #[cfg(any(feature = "v2022_7", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2022_7")))]
+    pub fn ostree_sysroot_initialize_with_mount_namespace(
+        self_: *mut OstreeSysroot,
+        cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
     #[cfg(any(feature = "v2020_1", feature = "dox"))]

@@ -273,6 +273,18 @@ impl Sysroot {
         }
     }
 
+    #[cfg(any(feature = "v2022_7", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2022_7")))]
+    #[doc(alias = "ostree_sysroot_initialize_with_mount_namespace")]
+    pub fn initialize_with_mount_namespace(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let is_ok = ffi::ostree_sysroot_initialize_with_mount_namespace(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
     #[cfg(any(feature = "v2020_1", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_1")))]
     #[doc(alias = "ostree_sysroot_is_booted")]
