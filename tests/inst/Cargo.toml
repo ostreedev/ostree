@@ -11,7 +11,7 @@ name = "ostree-test"
 path = "src/insttestmain.rs"
 
 [dependencies]
-cap-std-ext = "0.25"
+cap-std-ext = "1.0"
 clap = "2.32.0"
 structopt = "0.3"
 serde = "1.0.111"
