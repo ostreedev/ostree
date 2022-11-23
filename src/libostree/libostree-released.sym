@@ -689,6 +689,13 @@ global:
   ostree_sysroot_deployment_set_kargs_in_place;
 } LIBOSTREE_2022.4;
 
+LIBOSTREE_2022.7 {
+global:
+  ostree_kernel_args_contains;
+  ostree_kernel_args_delete_if_present;
+  ostree_sysroot_initialize_with_mount_namespace;
+} LIBOSTREE_2022.5;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
