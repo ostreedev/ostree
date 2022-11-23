@@ -20,13 +20,6 @@
    - uncomment the include in Makefile-libostree.am
 */
 
-LIBOSTREE_2022.7 {
-global:
-  ostree_kernel_args_contains;
-  ostree_kernel_args_delete_if_present;
-  ostree_sysroot_initialize_with_mount_namespace;
-} LIBOSTREE_2022.5;
-
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the year.  This is just a copy/paste
  * source.  Replace $LASTSTABLE with the last stable version, and $NEWVERSION
