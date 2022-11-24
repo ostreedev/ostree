@@ -9,7 +9,7 @@ name = "ostree"
 readme = "rust-bindings/README.md"
 repository = "https://github.com/ostreedev/ostree"
 rust-version = "1.63.0"
-version = "0.16.0"
+version = "0.17.0"
 
 exclude = [
     "/*.am", "/apidoc", "/autogen.sh", "/bash", "/bsdiff",
@@ -41,7 +41,7 @@ members = [".", "rust-bindings/sys"]
 bitflags = "1.2.1"
 cap-std = { version = "1.0", optional = true}
 io-lifetimes = { version = "1.0", optional = true}
-ffi = { package = "ostree-sys", path = "rust-bindings/sys", version = "0.11.0" }
+ffi = { package = "ostree-sys", path = "rust-bindings/sys", version = "0.12.0" }
 gio = "0.16"
 glib = "0.16"
 hex = "0.4.2"
