@@ -549,7 +549,7 @@ _ostree_gpg_verifier_add_global_keyring_dir (OstreeGpgVerifier  *self,
                                              GCancellable       *cancellable,
                                              GError            **error)
 {
-  g_return_val_if_fail (OSTREE_IS_GPG_VERIFIER (self), FALSE);
+  g_assert (OSTREE_IS_GPG_VERIFIER (self));
 
   const char *global_keyring_path = g_getenv ("OSTREE_GPG_HOME");
   if (global_keyring_path == NULL)

@@ -340,9 +340,9 @@ ostree_sysroot_upgrader_get_origin (OstreeSysrootUpgrader *self)
 GKeyFile *
 ostree_sysroot_upgrader_dup_origin (OstreeSysrootUpgrader *self)
 {
-  GKeyFile *copy = NULL;
+  g_assert (OSTREE_IS_SYSROOT_UPGRADER (self));
 
-  g_return_val_if_fail (OSTREE_IS_SYSROOT_UPGRADER (self), NULL);
+  GKeyFile *copy = NULL;
 
   if (self->origin != NULL)
     {
