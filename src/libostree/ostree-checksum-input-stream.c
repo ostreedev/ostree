@@ -124,16 +124,15 @@ OstreeChecksumInputStream *
 ostree_checksum_input_stream_new (GInputStream    *base,
                                   GChecksum       *checksum)
 {
-  OstreeChecksumInputStream *stream;
+  g_assert (G_IS_INPUT_STREAM (base));
 
-  g_return_val_if_fail (G_IS_INPUT_STREAM (base), NULL);
+  OstreeChecksumInputStream *stream = g_object_new (
+      OSTREE_TYPE_CHECKSUM_INPUT_STREAM,
+      "base-stream", base,
+      "checksum", checksum,
+      NULL);
 
-  stream = g_object_new (OSTREE_TYPE_CHECKSUM_INPUT_STREAM,
-			 "base-stream", base,
-                         "checksum", checksum,
-			 NULL);
-
-  return (OstreeChecksumInputStream*) (stream);
+  return stream;
 }
 
 static gssize

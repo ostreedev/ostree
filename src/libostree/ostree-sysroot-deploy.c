@@ -2755,7 +2755,7 @@ sysroot_initialize_deployment (OstreeSysroot     *self,
                                GCancellable      *cancellable,
                                GError           **error)
 {
-  g_return_val_if_fail (osname != NULL || self->booted_deployment != NULL, FALSE);
+  g_assert (osname != NULL || self->booted_deployment != NULL);
 
   if (osname == NULL)
     osname = ostree_deployment_get_osname (self->booted_deployment);
@@ -3198,8 +3198,8 @@ ostree_sysroot_stage_overlay_initrd (OstreeSysroot  *self,
                                      GCancellable   *cancellable,
                                      GError        **error)
 {
-  g_return_val_if_fail (fd != -1, FALSE);
-  g_return_val_if_fail (out_checksum != NULL, FALSE);
+  g_assert (fd != -1);
+  g_assert (out_checksum != NULL);
 
   if (!glnx_shutil_mkdir_p_at (AT_FDCWD, _OSTREE_SYSROOT_RUNSTATE_STAGED_INITRDS_DIR,
                                0755, cancellable, error))

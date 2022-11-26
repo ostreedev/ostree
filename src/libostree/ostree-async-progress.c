@@ -128,10 +128,12 @@ GVariant *
 ostree_async_progress_get_variant (OstreeAsyncProgress *self,
                                    const char          *key)
 {
+  g_assert (OSTREE_IS_ASYNC_PROGRESS (self));
+
   GVariant *rval;
 
-  g_return_val_if_fail (OSTREE_IS_ASYNC_PROGRESS (self), NULL);
-  g_return_val_if_fail (key != NULL, NULL);
+  if (key == NULL)
+    return NULL; /* Early return */
 
   g_mutex_lock (&self->lock);
   rval = g_hash_table_lookup (self->values, GUINT_TO_POINTER (g_quark_from_string (key)));
@@ -437,8 +439,8 @@ void
 ostree_async_progress_copy_state (OstreeAsyncProgress *self,
                                   OstreeAsyncProgress *dest)
 {
-  g_return_if_fail (OSTREE_IS_ASYNC_PROGRESS (self));
-  g_return_if_fail (OSTREE_IS_ASYNC_PROGRESS (dest));
+  g_assert (OSTREE_IS_ASYNC_PROGRESS (self));
+  g_assert (OSTREE_IS_ASYNC_PROGRESS (dest));
 
   g_mutex_lock (&self->lock);
 

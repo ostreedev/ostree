@@ -40,8 +40,10 @@ parse_uint (const char *buf,
   const char *end_ptr = NULL;
   gint saved_errno = 0;
 
-  g_return_val_if_fail (n_digits == 2 || n_digits == 4, FALSE);
-  g_return_val_if_fail (out != NULL, FALSE);
+  g_assert (out != NULL);
+
+  if(!(n_digits == 2 || n_digits == 4))
+    return FALSE;
 
   errno = 0;
   number = g_ascii_strtoull (buf, (gchar **)&end_ptr, 10);

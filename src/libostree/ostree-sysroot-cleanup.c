@@ -578,8 +578,8 @@ _ostree_sysroot_cleanup_internal (OstreeSysroot              *self,
                                   GCancellable               *cancellable,
                                   GError                    **error)
 {
-  g_return_val_if_fail (OSTREE_IS_SYSROOT (self), FALSE);
-  g_return_val_if_fail (self->loadstate == OSTREE_SYSROOT_LOAD_STATE_LOADED, FALSE);
+  g_assert (OSTREE_IS_SYSROOT (self));
+  g_assert (self->loadstate == OSTREE_SYSROOT_LOAD_STATE_LOADED);
 
   if (!_ostree_sysroot_ensure_writable (self, error))
     return FALSE;

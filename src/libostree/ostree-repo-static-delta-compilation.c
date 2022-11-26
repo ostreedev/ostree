@@ -1384,7 +1384,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   builder.max_chunk_size_bytes = ((guint64)max_chunk_size) * 1000 * 1000;
 
   (void) g_variant_lookup (params, "endianness", "u", &endianness);
-  g_return_val_if_fail (endianness == G_BIG_ENDIAN || endianness == G_LITTLE_ENDIAN, FALSE);
+  if (!(endianness == G_BIG_ENDIAN || endianness == G_LITTLE_ENDIAN))
+    return glnx_throw (error, "Invalid endianness parameter");
 
   builder.swap_endian = endianness != G_BYTE_ORDER;
   builder.parts = builder_parts;
