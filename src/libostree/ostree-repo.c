@@ -2528,6 +2528,7 @@ out:
 #endif /* OSTREE_DISABLE_GPGME */
 }
 
+#ifndef OSTREE_DISABLE_GPGME
 static gboolean
 _ostree_repo_gpg_prepare_verifier (OstreeRepo         *self,
                                    const gchar        *remote_name,
@@ -2537,6 +2538,7 @@ _ostree_repo_gpg_prepare_verifier (OstreeRepo         *self,
                                    OstreeGpgVerifier **out_verifier,
                                    GCancellable       *cancellable,
                                    GError            **error);
+#endif /* OSTREE_DISABLE_GPGME */
 
 /**
  * ostree_repo_remote_get_gpg_keys:

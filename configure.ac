@@ -211,18 +211,25 @@ m4_ifdef([GOBJECT_INTROSPECTION_CHECK], [
 ])
 AM_CONDITIONAL(BUILDOPT_INTROSPECTION, test "x$found_introspection" = xyes)
 
-LIBGPGME_DEPENDENCY="1.1.8"
+LIBGPGME_DEPENDENCY="1.8.0"
+LIBGPGME_PTHREAD_DEPENDENCY="1.1.8"
 AC_ARG_WITH(gpgme,
 	    AS_HELP_STRING([--with-gpgme], [Use gpgme @<:@default=yes@:>@]),
 	    [], [with_gpgme=yes])
 AS_IF([test x$with_gpgme != xno], [
-    PKG_CHECK_MODULES(OT_DEP_GPGME, gpgme-pthread >= $LIBGPGME_DEPENDENCY, have_gpgme=yes, [
+    have_gpgme=yes
+    PKG_CHECK_MODULES([OT_DEP_GPGME], gpgme >= $LIBGPGME_DEPENDENCY, [], have_gpgme=no)
+    PKG_CHECK_MODULES([OT_DEP_GPG_ERROR], [gpg-error], [], have_gpgme=no)
+    ]
+)
+AS_IF([test x$with_gpgme != xno && test x$have_gpgme != xyes], [
+    PKG_CHECK_MODULES(OT_DEP_GPGME, gpgme-pthread >= $LIBGPGME_PTHREAD_DEPENDENCY, have_gpgme=yes, [
         m4_ifdef([AM_PATH_GPGME_PTHREAD], [
-            AM_PATH_GPGME_PTHREAD($LIBGPGME_DEPENDENCY, have_gpgme=yes, have_gpgme=no)
+            AM_PATH_GPGME_PTHREAD($LIBGPGME_PTHREAD_DEPENDENCY, have_gpgme=yes, have_gpgme=no)
         ],[ have_gpgme=no ])
     ])
     AS_IF([ test x$have_gpgme = xno ], [
-       AC_MSG_ERROR([Need GPGME_PTHREAD version $LIBGPGME_DEPENDENCY or later])
+       AC_MSG_ERROR([Need GPGME_PTHREAD version $LIBGPGME_PTHREAD_DEPENDENCY or later])
     ])
     OSTREE_FEATURES="$OSTREE_FEATURES gpgme"
     PKG_CHECK_MODULES(OT_DEP_GPG_ERROR, [gpg-error], [], [
@@ -234,10 +241,16 @@ dnl to link to it directly.
     ])
     OT_DEP_GPGME_CFLAGS="${OT_DEP_GPGME_CFLAGS} ${OT_DEP_GPG_ERROR_CFLAGS}"
     OT_DEP_GPGME_LIBS="${OT_DEP_GPGME_LIBS} ${OT_DEP_GPG_ERROR_LIBS}"
-    ],
+    ]
+)
+AS_IF([test x$with_gpgme != xno && test x$have_gpgme != xyes],
+      [AC_MSG_ERROR([Need GPGME_PTHREAD and GPG_ERROR])]
+)
+AS_IF([test x$have_gpgme = xyes],
+    [ OSTREE_FEATURES="$OSTREE_FEATURES gpgme" ],
     [
     AC_DEFINE([OSTREE_DISABLE_GPGME], 1, [Define to disable internal GPGME support])
-    with_gpgme=no
+    have_gpgme=no
     ]
 )
 AM_CONDITIONAL(USE_GPGME, test "x$have_gpgme" = xyes)
