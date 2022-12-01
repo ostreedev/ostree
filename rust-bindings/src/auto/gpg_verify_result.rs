@@ -34,13 +34,13 @@ impl GpgVerifyResult {
     }
 
     //#[doc(alias = "ostree_gpg_verify_result_get")]
-    //pub fn get(&self, signature_index: u32, attrs: /*Unimplemented*/&CArray TypeId { ns_id: 1, id: 29 }) -> Option<glib::Variant> {
+    //pub fn get(&self, signature_index: u32, attrs: /*Unimplemented*/&CArray TypeId { ns_id: 1, id: 29 }) -> glib::Variant {
     //    unsafe { TODO: call ffi:ostree_gpg_verify_result_get() }
     //}
 
     #[doc(alias = "ostree_gpg_verify_result_get_all")]
     #[doc(alias = "get_all")]
-    pub fn all(&self, signature_index: u32) -> Option<glib::Variant> {
+    pub fn all(&self, signature_index: u32) -> glib::Variant {
         unsafe {
             from_glib_none(ffi::ostree_gpg_verify_result_get_all(self.to_glib_none().0, signature_index))
         }

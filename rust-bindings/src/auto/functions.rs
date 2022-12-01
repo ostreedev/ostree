@@ -46,14 +46,14 @@ pub fn check_version(required_year: u32, required_release: u32) -> bool {
 //}
 
 #[doc(alias = "ostree_checksum_from_bytes_v")]
-pub fn checksum_from_bytes_v(csum_v: &glib::Variant) -> Option<glib::GString> {
+pub fn checksum_from_bytes_v(csum_v: &glib::Variant) -> glib::GString {
     unsafe {
         from_glib_full(ffi::ostree_checksum_from_bytes_v(csum_v.to_glib_none().0))
     }
 }
 
 #[doc(alias = "ostree_checksum_to_bytes_v")]
-pub fn checksum_to_bytes_v(checksum: &str) -> Option<glib::Variant> {
+pub fn checksum_to_bytes_v(checksum: &str) -> glib::Variant {
     unsafe {
         from_glib_full(ffi::ostree_checksum_to_bytes_v(checksum.to_glib_none().0))
     }
@@ -82,7 +82,7 @@ pub fn commit_get_object_sizes(commit_variant: &glib::Variant) -> Result<Vec<Com
 }
 
 #[doc(alias = "ostree_commit_get_parent")]
-pub fn commit_get_parent(commit_variant: &glib::Variant) -> Option<glib::GString> {
+pub fn commit_get_parent(commit_variant: &glib::Variant) -> glib::GString {
     unsafe {
         from_glib_full(ffi::ostree_commit_get_parent(commit_variant.to_glib_none().0))
     }
@@ -144,7 +144,7 @@ pub fn content_stream_parse(compressed: bool, input: &impl IsA<gio::InputStream>
 }
 
 #[doc(alias = "ostree_create_directory_metadata")]
-pub fn create_directory_metadata(dir_info: &gio::FileInfo, xattrs: Option<&glib::Variant>) -> Option<glib::Variant> {
+pub fn create_directory_metadata(dir_info: &gio::FileInfo, xattrs: Option<&glib::Variant>) -> glib::Variant {
     unsafe {
         from_glib_full(ffi::ostree_create_directory_metadata(dir_info.to_glib_none().0, xattrs.to_glib_none().0))
     }
@@ -202,7 +202,7 @@ pub fn gpg_error_quark() -> glib::Quark {
 }
 
 #[doc(alias = "ostree_metadata_variant_type")]
-pub fn metadata_variant_type(objtype: ObjectType) -> Option<glib::VariantType> {
+pub fn metadata_variant_type(objtype: ObjectType) -> glib::VariantType {
     unsafe {
         from_glib_none(ffi::ostree_metadata_variant_type(objtype.into_glib()))
     }
@@ -229,14 +229,14 @@ pub fn object_name_deserialize(variant: &glib::Variant) -> (glib::GString, Objec
 }
 
 #[doc(alias = "ostree_object_name_serialize")]
-pub fn object_name_serialize(checksum: &str, objtype: ObjectType) -> Option<glib::Variant> {
+pub fn object_name_serialize(checksum: &str, objtype: ObjectType) -> glib::Variant {
     unsafe {
         from_glib_none(ffi::ostree_object_name_serialize(checksum.to_glib_none().0, objtype.into_glib()))
     }
 }
 
 #[doc(alias = "ostree_object_to_string")]
-pub fn object_to_string(checksum: &str, objtype: ObjectType) -> Option<glib::GString> {
+pub fn object_to_string(checksum: &str, objtype: ObjectType) -> glib::GString {
     unsafe {
         from_glib_full(ffi::ostree_object_to_string(checksum.to_glib_none().0, objtype.into_glib()))
     }
@@ -250,7 +250,7 @@ pub fn object_type_from_string(str: &str) -> ObjectType {
 }
 
 #[doc(alias = "ostree_object_type_to_string")]
-pub fn object_type_to_string(objtype: ObjectType) -> Option<glib::GString> {
+pub fn object_type_to_string(objtype: ObjectType) -> glib::GString {
     unsafe {
         from_glib_none(ffi::ostree_object_type_to_string(objtype.into_glib()))
     }

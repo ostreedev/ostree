@@ -26,7 +26,7 @@ impl BootconfigParser {
 
     #[doc(alias = "ostree_bootconfig_parser_clone")]
 #[must_use]
-    pub fn clone(&self) -> Option<BootconfigParser> {
+    pub fn clone(&self) -> BootconfigParser {
         unsafe {
             from_glib_full(ffi::ostree_bootconfig_parser_clone(self.to_glib_none().0))
         }

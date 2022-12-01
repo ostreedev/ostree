@@ -1255,7 +1255,13 @@ extern "C" {
     pub fn ostree_collection_ref_dup(ref_: *const OstreeCollectionRef) -> *mut OstreeCollectionRef;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    pub fn ostree_collection_ref_equal(ref1: gconstpointer, ref2: gconstpointer) -> gboolean;
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
     pub fn ostree_collection_ref_free(ref_: *mut OstreeCollectionRef);
+    #[cfg(any(feature = "v2018_6", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    pub fn ostree_collection_ref_hash(ref_: gconstpointer) -> c_uint;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
     pub fn ostree_collection_ref_dupv(
@@ -1263,13 +1269,7 @@ extern "C" {
     ) -> *mut *mut OstreeCollectionRef;
     #[cfg(any(feature = "v2018_6", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
-    pub fn ostree_collection_ref_equal(ref1: gconstpointer, ref2: gconstpointer) -> gboolean;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
     pub fn ostree_collection_ref_freev(refs: *mut *mut OstreeCollectionRef);
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
-    pub fn ostree_collection_ref_hash(ref_: gconstpointer) -> c_uint;
 
     //=========================================================================
     // OstreeCommitSizesEntry

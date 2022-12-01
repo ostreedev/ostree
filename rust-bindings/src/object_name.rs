@@ -34,8 +34,7 @@ impl ObjectName {
     /// Create a new `ObjectName` with the given checksum and `ObjectType`.
     pub fn new<S: Into<GString>>(checksum: S, object_type: ObjectType) -> ObjectName {
         let checksum = checksum.into();
-        let variant = object_name_serialize(checksum.as_str(), object_type)
-            .expect("type checks should make this safe");
+        let variant = object_name_serialize(checksum.as_str(), object_type);
         ObjectName {
             variant,
             checksum,
@@ -56,7 +55,6 @@ impl ObjectName {
     /// Format this `ObjectName` as a string.
     fn to_string(&self) -> GString {
         object_to_string(self.checksum(), self.object_type())
-            .expect("type checks should make this safe")
     }
 }
 

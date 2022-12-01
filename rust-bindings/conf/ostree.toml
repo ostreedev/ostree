@@ -11,6 +11,7 @@ target_path = ".."
 doc_target_path = "../target/vendor.md"
 deprecate_by_min_version = true
 single_version_file = true
+trust_return_value_nullability = true
 generate_display_trait = true
 
 girs_directories = [ "../gir-files" ]

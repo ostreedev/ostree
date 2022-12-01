@@ -93,7 +93,7 @@ impl MutableTree {
 
     #[doc(alias = "ostree_mutable_tree_get_contents_checksum")]
     #[doc(alias = "get_contents_checksum")]
-    pub fn contents_checksum(&self) -> Option<glib::GString> {
+    pub fn contents_checksum(&self) -> glib::GString {
         unsafe {
             from_glib_none(ffi::ostree_mutable_tree_get_contents_checksum(self.to_glib_none().0))
         }
@@ -107,7 +107,7 @@ impl MutableTree {
 
     #[doc(alias = "ostree_mutable_tree_get_metadata_checksum")]
     #[doc(alias = "get_metadata_checksum")]
-    pub fn metadata_checksum(&self) -> Option<glib::GString> {
+    pub fn metadata_checksum(&self) -> glib::GString {
         unsafe {
             from_glib_none(ffi::ostree_mutable_tree_get_metadata_checksum(self.to_glib_none().0))
         }

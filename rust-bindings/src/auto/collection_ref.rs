@@ -18,7 +18,7 @@ glib::wrapper! {
 
 impl CollectionRef {
     #[doc(alias = "ostree_collection_ref_new")]
-    pub fn new(collection_id: Option<&str>, ref_name: &str) -> Option<CollectionRef> {
+    pub fn new(collection_id: Option<&str>, ref_name: &str) -> CollectionRef {
         unsafe {
             from_glib_full(ffi::ostree_collection_ref_new(collection_id.to_glib_none().0, ref_name.to_glib_none().0))
         }
