@@ -150,6 +150,7 @@ static void enqueue_one_static_delta_superblock_request_s (OtPullData          *
                                                            FetchDeltaSuperData *fetch_data);
 static void enqueue_one_static_delta_part_request_s (OtPullData           *pull_data,
                                                      FetchStaticDeltaData *fetch_data);
+static void ensure_idle_queued (OtPullData *pull_data);
 
 static gboolean scan_one_metadata_object (OtPullData                 *pull_data,
                                           const char                 *checksum,
@@ -385,6 +386,9 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
           g_free (checksum);
         }
 
+      /* Finally, if we still have capacity, scan more metadata objects */
+      if (!g_queue_is_empty (&pull_data->scan_object_queue))
+        ensure_idle_queued (pull_data);
     }
 }
 
@@ -459,6 +463,10 @@ ensure_idle_queued (OtPullData *pull_data)
   GSource *idle_src;
 
   if (pull_data->idle_src)
+    return;
+
+  /* If the operation queue is full, there's no point in blocking further. */
+  if (fetcher_queue_is_full (pull_data))
     return;
 
   idle_src = g_idle_source_new ();
