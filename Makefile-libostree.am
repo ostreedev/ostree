@@ -111,6 +111,8 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-deployment.c \
 	src/libostree/ostree-bootloader.h \
 	src/libostree/ostree-bootloader.c \
+	src/libostree/ostree-bootloader-aboot.h \
+	src/libostree/ostree-bootloader-aboot.c \
 	src/libostree/ostree-bootloader-grub2.h \
 	src/libostree/ostree-bootloader-grub2.c \
 	src/libostree/ostree-bootloader-zipl.h \

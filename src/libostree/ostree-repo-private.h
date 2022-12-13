@@ -124,6 +124,7 @@ typedef enum {
   CFG_SYSROOT_BOOTLOADER_OPT_SYSLINUX,
   CFG_SYSROOT_BOOTLOADER_OPT_UBOOT,
   CFG_SYSROOT_BOOTLOADER_OPT_ZIPL,
+  CFG_SYSROOT_BOOTLOADER_OPT_ABOOT,
   /* Non-exhaustive */
 } OstreeCfgSysrootBootloaderOpt;
 
@@ -135,6 +136,7 @@ static const char* const CFG_SYSROOT_BOOTLOADER_OPTS_STR[] = {
   "syslinux",
   "uboot",
   "zipl",
+  "aboot",
   NULL,
 };
 
