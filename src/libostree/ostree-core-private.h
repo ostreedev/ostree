@@ -34,6 +34,11 @@ G_BEGIN_DECLS
 #define DEFAULT_DIRECTORY_MODE 0775
 #define DEFAULT_REGFILE_MODE 0660
 
+/* This exists in glibc's sys/stat.h, but not on musl */
+#ifndef ALLPERMS
+#define ALLPERMS (S_ISUID|S_ISGID|S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO)
+#endif
+
 /* This file contains private implementation data format definitions
  * read by multiple implementation .c files.
  */
