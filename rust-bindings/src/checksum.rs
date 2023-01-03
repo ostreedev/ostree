@@ -1,23 +1,28 @@
+use base64::{
+    alphabet::Alphabet,
+    engine::fast_portable::{FastPortable, FastPortableConfig},
+    engine::DecodePaddingMode,
+};
 use glib::ffi::{g_free, g_malloc0, gpointer};
 use glib::translate::{FromGlibPtrFull, FromGlibPtrNone};
-use once_cell::sync::OnceCell;
+use once_cell::sync::Lazy;
 use std::ptr::copy_nonoverlapping;
 
 const BYTES_LEN: usize = ffi::OSTREE_SHA256_DIGEST_LEN as usize;
 
-static BASE64_CONFIG: OnceCell<radix64::CustomConfig> = OnceCell::new();
+static BASE64_ENGINE: Lazy<FastPortable> = Lazy::new(|| {
+    // modified base64 alphabet used by ostree (uses _ instead of /)
+    let alphabet =
+        Alphabet::from_str("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+_")
+            .expect("bad base64 alphabet");
 
-fn base64_config() -> &'static radix64::CustomConfig {
-    BASE64_CONFIG.get_or_init(|| {
-        radix64::configs::CustomConfigBuilder::with_alphabet(
-            // modified base64 alphabet used by ostree (uses _ instead of /)
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+_",
-        )
-        .no_padding()
-        .build()
-        .unwrap()
-    })
-}
+    FastPortable::from(
+        &alphabet,
+        FastPortableConfig::new()
+            .with_encode_padding(false)
+            .with_decode_padding_mode(DecodePaddingMode::Indifferent),
+    )
+});
 
 /// Error returned from parsing a checksum.
 #[derive(Debug, thiserror::Error)]
@@ -61,7 +66,7 @@ impl Checksum {
     /// Create a `Checksum` from a base64-encoded String.
     pub fn from_base64(b64_checksum: &str) -> Result<Checksum, ChecksumError> {
         let mut checksum = Checksum::zeroed();
-        match base64_config().decode_slice(b64_checksum, checksum.as_mut()) {
+        match base64::decode_engine_slice(b64_checksum, checksum.as_mut(), &*BASE64_ENGINE) {
             Ok(BYTES_LEN) => Ok(checksum),
             Ok(_) => Err(ChecksumError::InvalidBase64String),
             Err(_) => Err(ChecksumError::InvalidBase64String),
@@ -75,7 +80,7 @@ impl Checksum {
 
     /// Convert checksum to base64 string.
     pub fn to_base64(&self) -> String {
-        base64_config().encode(self.as_slice())
+        base64::encode_engine(self.as_slice(), &*BASE64_ENGINE)
     }
 
     /// Create a `Checksum` value, taking ownership of the given memory location.
