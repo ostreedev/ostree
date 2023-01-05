@@ -32,6 +32,7 @@
 #include "ostree-sepolicy-private.h"
 #include "ostree-sysroot-private.h"
 #include "ostree-deployment-private.h"
+#include "ostree-bootloader-aboot.h"
 #include "ostree-bootloader-uboot.h"
 #include "ostree-bootloader-syslinux.h"
 #include "ostree-bootloader-grub2.h"
@@ -1475,6 +1476,8 @@ _ostree_sysroot_new_bootloader_by_type (
       return (OstreeBootloader*) _ostree_bootloader_grub2_new (sysroot);
     case CFG_SYSROOT_BOOTLOADER_OPT_SYSLINUX:
       return (OstreeBootloader*) _ostree_bootloader_syslinux_new (sysroot);
+    case CFG_SYSROOT_BOOTLOADER_OPT_ABOOT:
+      return (OstreeBootloader*) _ostree_bootloader_aboot_new (sysroot);
     case CFG_SYSROOT_BOOTLOADER_OPT_UBOOT:
       return (OstreeBootloader*) _ostree_bootloader_uboot_new (sysroot);
     case CFG_SYSROOT_BOOTLOADER_OPT_ZIPL:

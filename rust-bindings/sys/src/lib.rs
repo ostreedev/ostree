@@ -334,6 +334,14 @@ pub struct _OstreeBootloaderSyslinux {
 pub type OstreeBootloaderSyslinux = *mut _OstreeBootloaderSyslinux;
 
 #[repr(C)]
+pub struct _OstreeBootloaderAboot {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
+
+pub type OstreeBootloaderAboot = *mut _OstreeBootloaderAboot;
+
+#[repr(C)]
 pub struct _OstreeBootloaderUboot {
     _data: [u8; 0],
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,

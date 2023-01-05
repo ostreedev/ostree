@@ -992,6 +992,8 @@ typedef struct {
   char *initramfs_namever;
   char *devicetree_srcpath;
   char *devicetree_namever;
+  char *aboot_srcpath;
+  char *aboot_namever;
   char *bootcsum;
 } OstreeKernelLayout;
 static void
@@ -1006,6 +1008,8 @@ _ostree_kernel_layout_free (OstreeKernelLayout *layout)
   g_free (layout->initramfs_namever);
   g_free (layout->devicetree_srcpath);
   g_free (layout->devicetree_namever);
+  g_free (layout->aboot_srcpath);
+  g_free (layout->aboot_namever);
   g_free (layout->bootcsum);
   g_free (layout);
 }
@@ -1130,6 +1134,21 @@ get_kernel_from_tree_usrlib_modules (OstreeSysroot       *sysroot,
     }
   g_clear_object (&in);
   glnx_close_fd (&fd);
+
+  /* look for a aboot.img file. */
+  if (!ot_openat_ignore_enoent (ret_layout->boot_dfd, "aboot.img", &fd, error))
+    return FALSE;
+
+  if (fd != -1)
+    {
+      ret_layout->aboot_srcpath = g_strdup ("aboot.img");
+      ret_layout->aboot_namever = g_strdup_printf ("aboot-%s.img", kver);
+    }
+  glnx_close_fd (&fd);
+
+  /* look for a aboot.cfg file. */
+  if (!ot_openat_ignore_enoent (ret_layout->boot_dfd, "aboot.cfg", &fd, error))
+    return FALSE;
 
   /* Testing aid for https://github.com/ostreedev/ostree/issues/2154 */
   const gboolean no_dtb = (sysroot->debug_flags & OSTREE_SYSROOT_DEBUG_TEST_NO_DTB) > 0;
@@ -1923,6 +1942,21 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
         }
     }
 
+  if (kernel_layout->aboot_srcpath)
+    {
+      g_assert (kernel_layout->aboot_namever);
+      if (!glnx_fstatat_allow_noent (bootcsum_dfd, kernel_layout->aboot_namever, &stbuf, 0, error))
+        return FALSE;
+
+      if (errno == ENOENT)
+        {
+          if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd, kernel_layout->aboot_srcpath,
+                                  bootcsum_dfd, kernel_layout->aboot_namever,
+                                  cancellable, error))
+            return FALSE;
+        }
+    }
+
   g_autoptr(GPtrArray) overlay_initrds = NULL;
   for (char **it = _ostree_deployment_get_overlay_initrds (deployment); it && *it; it++)
     {
@@ -2058,6 +2092,30 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
                                              ostree_deployment_get_bootserial (deployment));
       ostree_kernel_args_replace_take (kargs, g_steal_pointer (&prepare_root_arg));
     }
+
+  const char* aboot_fn = NULL;
+  if (kernel_layout->aboot_namever)
+    {
+      aboot_fn = kernel_layout->aboot_namever;
+    }
+  else if (kernel_layout->aboot_srcpath)
+    {
+      aboot_fn = kernel_layout->aboot_srcpath;
+    }
+
+  if (aboot_fn)
+    {
+      g_autofree char * aboot_relpath = g_strconcat ("/", bootcsumdir, "/", aboot_fn, NULL);
+      ostree_bootconfig_parser_set (bootconfig, "aboot", aboot_relpath);
+    }
+  else
+    {
+      g_autofree char * aboot_relpath = g_strconcat ("/", deployment_dirpath, "/usr/lib/ostree-boot/aboot.img", NULL);
+      ostree_bootconfig_parser_set (bootconfig, "aboot", aboot_relpath);
+    }
+
+  g_autofree char * abootcfg_relpath = g_strconcat ("/", deployment_dirpath, "/usr/lib/ostree-boot/aboot.cfg", NULL);
+  ostree_bootconfig_parser_set (bootconfig, "abootcfg", abootcfg_relpath);
 
   if (kernel_layout->devicetree_namever)
     {
