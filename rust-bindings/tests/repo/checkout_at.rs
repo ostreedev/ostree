@@ -74,7 +74,7 @@ fn should_checkout_at_with_options() {
 }
 
 #[test]
-#[cfg(feature = "v2018_2")]
+#[cfg(any(feature = "v2018_2", feature = "dox"))]
 fn should_checkout_at_with_filter() {
     use std::path::Path;
 

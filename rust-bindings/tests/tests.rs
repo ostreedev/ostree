@@ -1,6 +1,6 @@
 mod core;
 mod functions;
 mod repo;
-#[cfg(feature = "v2020_2")]
+#[cfg(any(feature = "v2020_2", feature = "dox"))]
 mod sign;
 mod util;

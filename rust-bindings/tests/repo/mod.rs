@@ -2,7 +2,7 @@ use crate::util::*;
 use ostree::prelude::*;
 use ostree::{ObjectName, ObjectType};
 
-#[cfg(feature = "v2016_8")]
+#[cfg(any(feature = "v2016_8", feature = "dox"))]
 mod checkout_at;
 mod generate_static;
 
@@ -178,7 +178,7 @@ fn should_write_content_to_repo() {
 }
 
 #[test]
-#[cfg(feature = "v2016_4")]
+#[cfg(any(feature = "v2016_4", feature = "dox"))]
 fn repo_file() {
     use std::os::unix::fs::MetadataExt;
     let test_repo = TestRepo::new();

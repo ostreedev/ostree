@@ -65,19 +65,19 @@ impl Default for RepoCheckoutAtOptions {
             enable_fsync: false,
             process_whiteouts: false,
             no_copy_fallback: false,
-            #[cfg(feature = "v2017_6")]
+            #[cfg(any(feature = "v2017_6", feature = "dox"))]
             force_copy: false,
-            #[cfg(feature = "v2017_7")]
+            #[cfg(any(feature = "v2017_7", feature = "dox"))]
             bareuseronly_dirs: false,
-            #[cfg(feature = "v2018_9")]
+            #[cfg(any(feature = "v2018_9", feature = "dox"))]
             force_copy_zerosized: false,
-            #[cfg(feature = "v2022_6")]
+            #[cfg(any(feature = "v2022_6", feature = "dox"))]
             process_passthrough_whiteouts: false,
             subpath: None,
             devino_to_csum_cache: None,
-            #[cfg(feature = "v2018_2")]
+            #[cfg(any(feature = "v2018_2", feature = "dox"))]
             filter: None,
-            #[cfg(feature = "v2017_6")]
+            #[cfg(any(feature = "v2017_6", feature = "dox"))]
             sepolicy: None,
             sepolicy_prefix: None,
         }
@@ -114,22 +114,22 @@ impl<'a> ToGlibPtr<'a, *const ffi::OstreeRepoCheckoutAtOptions> for RepoCheckout
         options.process_whiteouts = self.process_whiteouts.into_glib();
         options.no_copy_fallback = self.no_copy_fallback.into_glib();
 
-        #[cfg(feature = "v2017_6")]
+        #[cfg(any(feature = "v2017_6", feature = "dox"))]
         {
             options.force_copy = self.force_copy.into_glib();
         }
 
-        #[cfg(feature = "v2017_7")]
+        #[cfg(any(feature = "v2017_7", feature = "dox"))]
         {
             options.bareuseronly_dirs = self.bareuseronly_dirs.into_glib();
         }
 
-        #[cfg(feature = "v2018_9")]
+        #[cfg(any(feature = "v2018_9", feature = "dox"))]
         {
             options.force_copy_zerosized = self.force_copy_zerosized.into_glib();
         }
 
-        #[cfg(feature = "v2022_6")]
+        #[cfg(any(feature = "v2022_6", feature = "dox"))]
         {
             options.process_passthrough_whiteouts = self.process_passthrough_whiteouts.into_glib();
         }
@@ -143,16 +143,16 @@ impl<'a> ToGlibPtr<'a, *const ffi::OstreeRepoCheckoutAtOptions> for RepoCheckout
         let devino_to_csum_cache = self.devino_to_csum_cache.to_glib_none();
         options.devino_to_csum_cache = devino_to_csum_cache.0;
 
-        #[cfg(feature = "v2017_6")]
+        #[cfg(any(feature = "v2017_6", feature = "dox"))]
         let sepolicy = {
             let sepolicy = self.sepolicy.to_glib_none();
             options.sepolicy = sepolicy.0;
             sepolicy
         };
-        #[cfg(not(feature = "v2017_6"))]
+        #[cfg(not(any(feature = "v2017_6", feature = "dox")))]
         let sepolicy = None.to_glib_none();
 
-        #[cfg(feature = "v2018_2")]
+        #[cfg(any(feature = "v2018_2", feature = "dox"))]
         {
             if let Some(filter) = &self.filter {
                 options.filter_user_data = filter.to_glib_none().0;
@@ -195,24 +195,24 @@ mod tests {
             assert_eq!((*ptr).enable_fsync, GFALSE);
             assert_eq!((*ptr).process_whiteouts, GFALSE);
             assert_eq!((*ptr).no_copy_fallback, GFALSE);
-            #[cfg(feature = "v2017_6")]
+            #[cfg(any(feature = "v2017_6", feature = "dox"))]
             assert_eq!((*ptr).force_copy, GFALSE);
-            #[cfg(feature = "v2017_7")]
+            #[cfg(any(feature = "v2017_7", feature = "dox"))]
             assert_eq!((*ptr).bareuseronly_dirs, GFALSE);
-            #[cfg(feature = "v2018_9")]
+            #[cfg(any(feature = "v2018_9", feature = "dox"))]
             assert_eq!((*ptr).force_copy_zerosized, GFALSE);
-            #[cfg(feature = "v2022_6")]
+            #[cfg(any(feature = "v2022_6", feature = "dox"))]
             assert_eq!((*ptr).process_passthrough_whiteouts, GFALSE);
             assert_eq!((*ptr).unused_bools, [GFALSE; 3]);
             assert_eq!((*ptr).subpath, ptr::null());
             assert_eq!((*ptr).devino_to_csum_cache, ptr::null_mut());
             assert_eq!((*ptr).unused_ints, [0; 6]);
             assert_eq!((*ptr).unused_ptrs, [ptr::null_mut(); 3]);
-            #[cfg(feature = "v2018_2")]
+            #[cfg(any(feature = "v2018_2", feature = "dox"))]
             assert_eq!((*ptr).filter, None);
-            #[cfg(feature = "v2018_2")]
+            #[cfg(any(feature = "v2018_2", feature = "dox"))]
             assert_eq!((*ptr).filter_user_data, ptr::null_mut());
-            #[cfg(feature = "v2017_6")]
+            #[cfg(any(feature = "v2017_6", feature = "dox"))]
             assert_eq!((*ptr).sepolicy, ptr::null_mut());
             assert_eq!((*ptr).sepolicy_prefix, ptr::null());
         }
@@ -227,21 +227,21 @@ mod tests {
             enable_fsync: true,
             process_whiteouts: true,
             no_copy_fallback: true,
-            #[cfg(feature = "v2017_6")]
+            #[cfg(any(feature = "v2017_6", feature = "dox"))]
             force_copy: true,
-            #[cfg(feature = "v2017_7")]
+            #[cfg(any(feature = "v2017_7", feature = "dox"))]
             bareuseronly_dirs: true,
-            #[cfg(feature = "v2018_9")]
+            #[cfg(any(feature = "v2018_9", feature = "dox"))]
             force_copy_zerosized: true,
-            #[cfg(feature = "v2022_6")]
+            #[cfg(any(feature = "v2022_6", feature = "dox"))]
             process_passthrough_whiteouts: true,
             subpath: Some("sub/path".into()),
             devino_to_csum_cache: Some(RepoDevInoCache::new()),
-            #[cfg(feature = "v2018_2")]
+            #[cfg(any(feature = "v2018_2", feature = "dox"))]
             filter: RepoCheckoutFilter::new(|_repo, _path, _stat| {
                 crate::RepoCheckoutFilterResult::Skip
             }),
-            #[cfg(feature = "v2017_6")]
+            #[cfg(any(feature = "v2017_6", feature = "dox"))]
             sepolicy: Some(
                 SePolicy::new(&gio::File::for_path("a/b"), gio::Cancellable::NONE).unwrap(),
             ),
@@ -259,13 +259,13 @@ mod tests {
             assert_eq!((*ptr).enable_fsync, GTRUE);
             assert_eq!((*ptr).process_whiteouts, GTRUE);
             assert_eq!((*ptr).no_copy_fallback, GTRUE);
-            #[cfg(feature = "v2017_6")]
+            #[cfg(any(feature = "v2017_6", feature = "dox"))]
             assert_eq!((*ptr).force_copy, GTRUE);
-            #[cfg(feature = "v2017_7")]
+            #[cfg(any(feature = "v2017_7", feature = "dox"))]
             assert_eq!((*ptr).bareuseronly_dirs, GTRUE);
-            #[cfg(feature = "v2018_9")]
+            #[cfg(any(feature = "v2018_9", feature = "dox"))]
             assert_eq!((*ptr).force_copy_zerosized, GTRUE);
-            #[cfg(feature = "v2022_6")]
+            #[cfg(any(feature = "v2022_6", feature = "dox"))]
             assert_eq!((*ptr).process_passthrough_whiteouts, GTRUE);
             assert_eq!((*ptr).unused_bools, [GFALSE; 3]);
             assert_eq!(
@@ -278,14 +278,14 @@ mod tests {
             );
             assert_eq!((*ptr).unused_ints, [0; 6]);
             assert_eq!((*ptr).unused_ptrs, [ptr::null_mut(); 3]);
-            #[cfg(feature = "v2018_2")]
+            #[cfg(any(feature = "v2018_2", feature = "dox"))]
             assert!((*ptr).filter == Some(repo_checkout_filter::filter_trampoline_unwindsafe));
-            #[cfg(feature = "v2018_2")]
+            #[cfg(any(feature = "v2018_2", feature = "dox"))]
             assert_eq!(
                 (*ptr).filter_user_data,
                 options.filter.as_ref().unwrap().to_glib_none().0,
             );
-            #[cfg(feature = "v2017_6")]
+            #[cfg(any(feature = "v2017_6", feature = "dox"))]
             assert_eq!((*ptr).sepolicy, options.sepolicy.to_glib_none().0);
             assert_eq!(
                 CStr::from_ptr((*ptr).sepolicy_prefix),
