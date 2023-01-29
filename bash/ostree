@@ -900,7 +900,6 @@ _ostree_pull() {
     local boolean_options="
         $main_boolean_options
         --commit-metadata-only
-        --cache-dir
         --disable-fsync
         --disable-static-deltas
         --require-static-deltas
@@ -912,6 +911,7 @@ _ostree_pull() {
     "
 
     local options_with_args="
+        --cache-dir
         --depth
         --http-header
         --localcache-repo -L
@@ -925,7 +925,7 @@ _ostree_pull() {
     local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
 
     case "$prev" in
-        --localcache-repo|-L|--repo|--subpath)
+        --cache-dir|--localcache-repo|-L|--repo|--subpath)
             __ostree_compreply_dirs_only
             return 0
             ;;
@@ -1274,17 +1274,17 @@ _ostree_remote_list_gpg_keys() {
 _ostree_remote_refs() {
     local boolean_options="
         $main_boolean_options
-        --cache-dir
     "
 
     local options_with_args="
+        --cache-dir
         --repo
     "
 
     local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
 
     case "$prev" in
-        --repo)
+        --cache-dir|--repo)
             __ostree_compreply_dirs_only
             return 0
             ;;
@@ -1343,18 +1343,18 @@ _ostree_remote_show_url() {
 _ostree_remote_summary() {
     local boolean_options="
         $main_boolean_options
-        --cache-dir
         --raw
     "
 
     local options_with_args="
+        --cache-dir
         --repo
     "
 
     local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
 
     case "$prev" in
-        --repo)
+        --cache-dir|--repo)
             __ostree_compreply_dirs_only
             return 0
             ;;
