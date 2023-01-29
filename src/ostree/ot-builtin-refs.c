@@ -47,6 +47,16 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
+static int
+collection_ref_cmp (OstreeCollectionRef *a,
+                    OstreeCollectionRef *b)
+{
+  int ret = g_strcmp0 (a->collection_id, b->collection_id);
+  if (ret == 0)
+    ret = g_strcmp0 (a->ref_name, b->ref_name);
+  return ret;
+}
+
 static gboolean
 do_ref_with_collections (OstreeRepo    *repo,
                          const char    *refspec_prefix,
@@ -66,10 +76,12 @@ do_ref_with_collections (OstreeRepo    *repo,
 
   if (!opt_delete && !opt_create)
     {
-      g_hash_table_iter_init (&hashiter, refs);
-      while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
+      g_autoptr(GList) ordered_keys = g_hash_table_get_keys (refs);
+      ordered_keys = g_list_sort (ordered_keys, (GCompareFunc) collection_ref_cmp);
+
+      for (GList *iter = ordered_keys; iter != NULL; iter = iter->next)
         {
-          const OstreeCollectionRef *ref = hashkey;
+          OstreeCollectionRef *ref = iter->data;
           g_print ("(%s, %s)\n", ref->collection_id, ref->ref_name);
         }
     }
@@ -179,12 +191,22 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
 
   if (is_list)
     {
-      GLNX_HASH_TABLE_FOREACH_KV (refs, const char *, ref, const char *, value)
+      g_autoptr(GList) ordered_keys = g_hash_table_get_keys (refs);
+      ordered_keys = g_list_sort (ordered_keys, (GCompareFunc) g_strcmp0);
+
+      for (GList *iter = ordered_keys; iter != NULL; iter = iter->next)
         {
+          const char *ref = iter->data;
+
           if (opt_alias)
-            g_print ("%s -> %s\n", ref, value);
+            {
+              const char *alias = g_hash_table_lookup (refs, ref);
+              g_print ("%s -> %s\n", ref, alias);
+            }
           else
-            g_print ("%s\n", ref);
+            {
+              g_print ("%s\n", ref);
+            }
         }
     }
   else if (opt_create)

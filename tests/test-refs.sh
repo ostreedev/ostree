@@ -42,6 +42,10 @@ done
 ${CMD_PREFIX} ostree --repo=repo refs | wc -l > refscount
 assert_file_has_content refscount "^10$"
 
+${CMD_PREFIX} ostree --repo=repo refs > refs
+sort refs > refs-sorted
+assert_files_equal refs refs-sorted
+
 ${CMD_PREFIX} ostree --repo=repo refs foo > refs
 assert_not_file_has_content refs foo
 
