@@ -1006,6 +1006,13 @@ $OSTREE show -B --print-metadata-key=SOMENUM test2 > test2-meta
 assert_file_has_content test2-meta "uint64 42"
 $OSTREE show --print-detached-metadata-key=SIGNATURE test2 > test2-meta
 assert_file_has_content test2-meta "HANCOCK"
+
+$OSTREE show --list-metadata-keys test2 > test2-meta
+assert_file_has_content test2-meta "FOO"
+assert_file_has_content test2-meta "KITTENS"
+assert_file_has_content test2-meta "SOMENUM"
+$OSTREE show --list-detached-metadata-keys test2 > test2-meta
+assert_file_has_content test2-meta "SIGNATURE"
 echo "ok metadata commit with strings"
 
 $OSTREE commit ${COMMIT_ARGS} -b test2 --tree=ref=test2 \

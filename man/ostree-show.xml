@@ -82,10 +82,26 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
             </varlistentry>
 
             <varlistentry>
+                <term><option>--list-metadata-keys</option></term>
+
+                <listitem><para>
+                    List the available metadata keys.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--print-metadata-key</option>="KEY"</term>
 
                 <listitem><para>
                     Print string value of metadata key.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--list-detached-metadata-keys</option></term>
+
+                <listitem><para>
+                    List the available detached metadata keys.
                 </para></listitem>
             </varlistentry>
 

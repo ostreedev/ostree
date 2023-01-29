@@ -1486,6 +1486,8 @@ _ostree_rev_parse() {
 _ostree_show() {
     local boolean_options="
         $main_boolean_options
+        --list-detached-metadata-keys
+        --list-metadata-keys
         --print-related
         --print-sizes
         --raw
