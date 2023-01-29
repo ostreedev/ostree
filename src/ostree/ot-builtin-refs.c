@@ -27,6 +27,7 @@
 
 static gboolean opt_delete;
 static gboolean opt_list;
+static gboolean opt_revision;
 static gboolean opt_alias;
 static char *opt_create;
 static gboolean opt_collections;
@@ -40,6 +41,7 @@ static gboolean opt_force;
 static GOptionEntry options[] = {
   { "delete", 0, 0, G_OPTION_ARG_NONE, &opt_delete, "Delete refs which match PREFIX, rather than listing them", NULL },
   { "list", 0, 0, G_OPTION_ARG_NONE, &opt_list, "Do not remove the prefix from the refs", NULL },
+  { "revision", 'r', 0, G_OPTION_ARG_NONE, &opt_revision, "Show revisions in listing", NULL },
   { "alias", 'A', 0, G_OPTION_ARG_NONE, &opt_alias, "If used with --create, create an alias, otherwise just list aliases", NULL },
   { "create", 0, 0, G_OPTION_ARG_STRING, &opt_create, "Create a new ref for an existing commit", "NEWREF" },
   { "collections", 'c', 0, G_OPTION_ARG_NONE, &opt_collections, "Enable listing collection IDs for refs", NULL },
@@ -82,7 +84,16 @@ do_ref_with_collections (OstreeRepo    *repo,
       for (GList *iter = ordered_keys; iter != NULL; iter = iter->next)
         {
           OstreeCollectionRef *ref = iter->data;
-          g_print ("(%s, %s)\n", ref->collection_id, ref->ref_name);
+
+          if (opt_revision)
+            {
+              const char *rev = g_hash_table_lookup (refs, ref);
+              g_print ("(%s, %s)\t%s\n", ref->collection_id, ref->ref_name, rev);
+            }
+          else
+            {
+              g_print ("(%s, %s)\n", ref->collection_id, ref->ref_name);
+            }
         }
     }
   else if (opt_create)
@@ -202,6 +213,11 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
             {
               const char *alias = g_hash_table_lookup (refs, ref);
               g_print ("%s -> %s\n", ref, alias);
+            }
+          else if (opt_revision)
+            {
+              const char *rev = g_hash_table_lookup (refs, ref);
+              g_print ("%s\t%s\n", ref, rev);
             }
           else
             {

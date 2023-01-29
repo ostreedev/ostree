@@ -953,6 +953,7 @@ _ostree_pull() {
 _ostree_refs() {
     local boolean_options="
         $main_boolean_options
+        --revision -r
         --alias -A
         --collections -c
         --delete

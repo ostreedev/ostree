@@ -55,6 +55,14 @@ assert_file_has_content refs foo
 ${CMD_PREFIX} ostree --repo=repo refs foo | wc -l > refscount.foo
 assert_file_has_content refscount.foo "^5$"
 
+rm -f expected-refs-revs
+for ref in foo/test-{1..5}; do
+    rev=$(${CMD_PREFIX} ostree --repo=repo rev-parse $ref)
+    echo -e "${ref}\t${rev}" >> expected-refs-revs
+done
+${CMD_PREFIX} ostree --repo=repo refs --list --revision foo > refs-revs
+assert_files_equal refs-revs expected-refs-revs
+
 ${CMD_PREFIX} ostree --repo=repo refs --delete 2>/dev/null || true
 ${CMD_PREFIX} ostree --repo=repo refs | wc -l > refscount.delete1
 assert_file_has_content refscount.delete1 "^10$"
