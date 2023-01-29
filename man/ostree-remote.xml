@@ -199,6 +199,17 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
 
         <variablelist>
             <varlistentry>
+                <term><option>--revision</option>, <option>-r</option></term>
+
+                <listitem><para>
+                    Also print the revisions for each ref. The revisions will
+                    be separated by a tab character.
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
+
+        <variablelist>
+            <varlistentry>
                 <term><option>--cache-dir</option>=DIR</term>
 
                 <listitem><para>

@@ -1275,6 +1275,7 @@ _ostree_remote_list_gpg_keys() {
 _ostree_remote_refs() {
     local boolean_options="
         $main_boolean_options
+        --revision -r
     "
 
     local options_with_args="

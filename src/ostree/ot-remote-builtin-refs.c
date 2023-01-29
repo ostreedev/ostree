@@ -24,6 +24,7 @@
 #include "ot-main.h"
 #include "ot-remote-builtins.h"
 
+static gboolean opt_revision;
 static char* opt_cache_dir;
 
 /* ATTENTION:
@@ -32,6 +33,7 @@ static char* opt_cache_dir;
  */
 
 static GOptionEntry option_entries[] = {
+  { "revision", 'r', 0, G_OPTION_ARG_NONE, &opt_revision, "Show revisions in listing", NULL },
   { "cache-dir", 0, 0, G_OPTION_ARG_FILENAME, &opt_cache_dir, "Use custom cache dir", NULL },
   { NULL }
 };
@@ -73,7 +75,17 @@ ot_remote_builtin_refs (int argc, char **argv, OstreeCommandInvocation *invocati
 
       for (iter = ordered_keys; iter; iter = iter->next)
         {
-          g_print ("%s:%s\n", remote_name, (const char *) iter->data);
+          const char *ref = iter->data;
+
+          if (opt_revision)
+            {
+              const char *rev = g_hash_table_lookup (refs, ref);
+              g_print ("%s:%s\t%s\n", remote_name, ref, rev);
+            }
+          else
+            {
+              g_print ("%s:%s\n", remote_name, ref);
+            }
         }
     }
 
