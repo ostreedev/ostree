@@ -194,6 +194,16 @@ assert_file_has_content summary.txt "* yet-another"
 grep static-deltas summary.txt > static-deltas.txt
 assert_file_has_content static-deltas.txt \
     $(${OSTREE} --repo=repo rev-parse origin:main)
+${OSTREE} --repo=repo remote summary origin --list-metadata-keys > metadata
+assert_file_has_content metadata "^ostree.static-deltas$"
+assert_file_has_content metadata "^ostree.summary.indexed-deltas$"
+assert_file_has_content metadata "^ostree.summary.last-modified$"
+assert_file_has_content metadata "^ostree.summary.mode$"
+assert_file_has_content metadata "^ostree.summary.tombstone-commits$"
+${OSTREE} --repo=repo remote summary origin --print-metadata-key=ostree.summary.indexed-deltas > metadata
+assert_file_has_content metadata "^true$"
+${OSTREE} --repo=repo remote summary origin --print-metadata-key=ostree.summary.mode > metadata
+assert_file_has_content metadata "^'archive-z2'$"
 
 ## Tests for handling of cached summaries while racing with remote summary updates
 

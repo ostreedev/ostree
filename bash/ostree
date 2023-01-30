@@ -1345,11 +1345,13 @@ _ostree_remote_show_url() {
 _ostree_remote_summary() {
     local boolean_options="
         $main_boolean_options
+        --list-metadata-keys
         --raw
     "
 
     local options_with_args="
         --cache-dir
+        --print-metadata-key
         --repo
     "
 
