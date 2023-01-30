@@ -59,6 +59,10 @@ ${CMD_PREFIX} ostree --repo=repo summary --update --add-metadata=map='@a{sv} {}'
 # Check the additional metadata turns up in the output.
 ${CMD_PREFIX} ostree --repo=repo summary --view > summary
 assert_file_has_content summary "^map: {}$"
+${CMD_PREFIX} ostree --repo=repo summary --list-metadata-keys > metadata
+assert_file_has_content metadata "^map$"
+${CMD_PREFIX} ostree --repo=repo summary --print-metadata-key=map > metadata
+assert_file_has_content metadata "^@a{sv} {}$"
 
 echo "ok 1 update summary"
 

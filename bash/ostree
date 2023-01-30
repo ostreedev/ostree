@@ -1816,6 +1816,7 @@ _ostree_static_delta() {
 _ostree_summary() {
     local boolean_options="
         $main_boolean_options
+        --list-metadata-keys
         --raw
         --update -u
         --view -v
@@ -1825,6 +1826,7 @@ _ostree_summary() {
         --add-metadata -m
         --gpg-homedir
         --gpg-sign
+        --print-metadata-key
         --repo
     "
 
