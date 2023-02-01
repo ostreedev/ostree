@@ -363,4 +363,16 @@ ${CMD_PREFIX} ostree --repo=repo prune --commit-only --keep-younger-than="1 week
 assert_repo_has_n_commits repo 4
 assert_repo_has_n_non_commit_objects repo ${orig_obj_count}
 tap_ok --commit-only and --keep-younger-than
+
+reinitialize_commit_only_test_repo
+for i in {1..10}; do
+    ${CMD_PREFIX} ostree --repo=repo prune --commit-only --keep-younger-than="1 week ago" &
+    commit=$(${CMD_PREFIX} ostree --repo=repo commit --branch foobar tree)
+    wait $!
+    if ! ostree show --repo=repo ${commit}; then
+        assert_not_reached "commit ${commit} on branch foobar was pruned?"
+    fi
+done
+tap_ok commit and prune together
+
 tap_end
