@@ -460,7 +460,7 @@ ostree_sign_commit_verify (OstreeSign     *self,
  *
  * Since: 2020.2
  */
-const gchar * 
+const gchar *
 ostree_sign_get_name (OstreeSign *self)
 {
   g_assert (OSTREE_IS_SIGN (self));

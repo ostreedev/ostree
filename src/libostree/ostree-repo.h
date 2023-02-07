@@ -442,7 +442,7 @@ OstreeContentWriter *    ostree_repo_write_regfile (OstreeRepo       *self,
                                                     guint64           content_len,
                                                     GVariant         *xattrs,
                                                     GError          **error);
-             
+
 _OSTREE_PUBLIC
 char *      ostree_repo_write_symlink (OstreeRepo       *self,
                                        const char       *expected_checksum,
@@ -573,20 +573,20 @@ gboolean ostree_repo_remote_list_collection_refs (OstreeRepo    *self,
 _OSTREE_PUBLIC
 gboolean      ostree_repo_load_variant (OstreeRepo  *self,
                                         OstreeObjectType objtype,
-                                        const char    *sha256, 
+                                        const char    *sha256,
                                         GVariant     **out_variant,
                                         GError       **error);
 
 _OSTREE_PUBLIC
 gboolean      ostree_repo_load_variant_if_exists (OstreeRepo  *self,
                                                   OstreeObjectType objtype,
-                                                  const char    *sha256, 
+                                                  const char    *sha256,
                                                   GVariant     **out_variant,
                                                   GError       **error);
 
 _OSTREE_PUBLIC
 gboolean      ostree_repo_load_commit (OstreeRepo            *self,
-                                       const char            *checksum, 
+                                       const char            *checksum,
                                        GVariant             **out_commit,
                                        OstreeRepoCommitState *out_state,
                                        GError               **error);
@@ -612,7 +612,7 @@ gboolean ostree_repo_load_object_stream (OstreeRepo         *self,
 _OSTREE_PUBLIC
 gboolean      ostree_repo_query_object_storage_size (OstreeRepo           *self,
                                                      OstreeObjectType      objtype,
-                                                     const char           *sha256, 
+                                                     const char           *sha256,
                                                      guint64              *out_size,
                                                      GCancellable         *cancellable,
                                                      GError              **error);
@@ -647,7 +647,7 @@ gboolean      ostree_repo_fsck_object (OstreeRepo           *self,
                                        GCancellable         *cancellable,
                                        GError              **error);
 
-/** 
+/**
  * OstreeRepoCommitFilterResult:
  * @OSTREE_REPO_COMMIT_FILTER_ALLOW: Do commit this object
  * @OSTREE_REPO_COMMIT_FILTER_SKIP: Ignore this object
@@ -1561,7 +1561,7 @@ OstreeGpgVerifyResult * ostree_repo_verify_summary (OstreeRepo    *self,
  * @OSTREE_REPO_VERIFY_FLAGS_NONE: No flags
  * @OSTREE_REPO_VERIFY_FLAGS_NO_GPG: Skip GPG verification
  * @OSTREE_REPO_VERIFY_FLAGS_NO_SIGNAPI: Skip all other signature verification methods
- * 
+ *
  * Since: 2021.4
  */
 typedef enum {

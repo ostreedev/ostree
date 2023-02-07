@@ -46,7 +46,7 @@ G_BEGIN_DECLS
 /*
  * File objects are stored as a stream, with one #GVariant header,
  * followed by content.
- * 
+ *
  * The file header is of the following form:
  *
  * &lt;BE guint32 containing variant length&gt;
@@ -54,7 +54,7 @@ G_BEGIN_DECLS
  * u - gid
  * u - mode
  * u - rdev (must be 0)
- * s - symlink target 
+ * s - symlink target
  * a(ayay) - xattrs
  *
  * Then the rest of the stream is data.
@@ -71,7 +71,7 @@ G_BEGIN_DECLS
  * u - gid
  * u - mode
  * u - rdev (must be 0)
- * s - symlink target 
+ * s - symlink target
  * a(ayay) - xattrs
  * ---
  * zlib-compressed data

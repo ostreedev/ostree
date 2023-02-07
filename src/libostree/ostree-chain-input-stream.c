@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (C) 2011 Colin Walters <walters@verbum.org>
  * Copyright (C) 2022 Igalia S.L.
  *
@@ -87,7 +87,7 @@ ostree_chain_input_stream_set_property (GObject         *object,
 					     GParamSpec      *pspec)
 {
   OstreeChainInputStream *self;
-  
+
   self = OSTREE_CHAIN_INPUT_STREAM (object);
 
   switch (prop_id)
@@ -165,7 +165,7 @@ ostree_chain_input_stream_read (GInputStream  *stream,
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return -1;
-  
+
   if (self->priv->index >= self->priv->streams->len)
     return 0;
 

@@ -46,7 +46,7 @@ static gboolean
 _ostree_bootloader_uboot_query (OstreeBootloader *bootloader,
                                 gboolean         *out_is_active,
                                 GCancellable     *cancellable,
-                                GError          **error) 
+                                GError          **error)
 {
   OstreeBootloaderUboot *self = OSTREE_BOOTLOADER_UBOOT (bootloader);
   struct stat stbuf;

@@ -81,7 +81,7 @@ test_pull_multi_nochange (gconstpointer data)
     goto out;
   if (!ostree_repo_pull (td->repo, "origin", (char**)&refs, 0, NULL, NULL, error))
     goto out;
-  
+
  out:
   g_assert_no_error (local_error);
 }
@@ -91,7 +91,7 @@ test_pull_multi_error_then_ok (gconstpointer data)
 {
   GError *local_error = NULL;
   GError **error = &local_error;
-  
+
   TestData *td = (void*)data;
   char *ok_refs[] = { "main", NULL };
   char *bad_refs[] = { "nosuchbranch", NULL };
@@ -110,7 +110,7 @@ test_pull_multi_error_then_ok (gconstpointer data)
       if (!ostree_repo_pull (td->repo, "origin", (char**)&ok_refs, 0, NULL, NULL, error))
         goto out;
     }
-  
+
  out:
   g_assert_no_error (local_error);
 }

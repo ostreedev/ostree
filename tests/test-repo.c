@@ -245,13 +245,13 @@ test_write_regfile_api (Fixture *fixture,
   g_clear_pointer (&checksum, g_free);
 
   // Invalid checksum
-  checksum = ostree_repo_write_regfile_inline (repo, "3272139f889f6a7007b3d64adc74be9e2979bf6bbe663d1512e5bd43f4de24a1", 
+  checksum = ostree_repo_write_regfile_inline (repo, "3272139f889f6a7007b3d64adc74be9e2979bf6bbe663d1512e5bd43f4de24a1",
               0, 0, S_IFREG | 0644, NULL, (const guint8*)contents, sizeof (contents)-1, NULL, &error);
   g_assert (checksum == NULL);
   g_assert (error != NULL);
   g_clear_error (&error);
-  
-  // Now with xattrs 
+
+  // Now with xattrs
   g_clear_pointer (&checksum, g_free);
   checksum = ostree_repo_write_regfile_inline (repo, NULL, 0, 0, S_IFREG | 0644, xattrs, (const guint8*)contents, sizeof (contents)-1, NULL, &error);
   g_assert_no_error (error);

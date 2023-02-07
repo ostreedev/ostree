@@ -47,7 +47,7 @@
 #endif
 
 /* Understanding ostree's fsync strategy
- * 
+ *
  * A long time ago, ostree used to invoke fsync() on each object,
  * then move it into the objects directory.  However, it turned
  * out to be a *lot* faster to write the objects into a separate "staging"
@@ -2856,7 +2856,7 @@ ostree_repo_write_regfile_inline (OstreeRepo       *self,
  * Returns: (transfer full): Checksum (as a hex string) of the committed file
  * Since: 2021.2
  */
-char *      
+char *
 ostree_repo_write_symlink (OstreeRepo       *self,
                            const char       *expected_checksum,
                            guint32           uid,
@@ -2888,14 +2888,14 @@ ostree_repo_write_symlink (OstreeRepo       *self,
  * @content_len: Expected content length
  * @xattrs: (allow-none): Extended attributes (GVariant type `(ayay)`)
  * @error: Error
- * 
+ *
  * Create an `OstreeContentWriter` that allows streaming output into
  * the repository.
  *
  * Returns: (transfer full): A new writer, or %NULL on error
  * Since: 2021.2
  */
-OstreeContentWriter *    
+OstreeContentWriter *
 ostree_repo_write_regfile (OstreeRepo       *self,
                            const char       *expected_checksum,
                            guint32           uid,
@@ -4402,7 +4402,7 @@ ostree_repo_commit_modifier_set_sepolicy (OstreeRepoCommitModifier              
  *
  * Since: 2020.4
  */
-gboolean 
+gboolean
 ostree_repo_commit_modifier_set_sepolicy_from_commit (OstreeRepoCommitModifier              *modifier,
                                                       OstreeRepo                            *repo,
                                                       const char                            *rev,

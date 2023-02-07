@@ -107,24 +107,24 @@ ot_admin_builtin_set_origin (int argc, char **argv, OstreeCommandInvocation *inv
     remote_options = g_variant_ref_sink (g_variant_builder_end (optbuilder));
 
     if (!ostree_repo_remote_change (repo, NULL,
-                                    OSTREE_REPO_REMOTE_CHANGE_ADD_IF_NOT_EXISTS, 
+                                    OSTREE_REPO_REMOTE_CHANGE_ADD_IF_NOT_EXISTS,
                                     remotename, url,
                                     remote_options,
                                     cancellable, error))
       goto out;
   }
-  
+
   { GKeyFile *old_origin = ostree_deployment_get_origin (target_deployment);
     g_autofree char *origin_refspec = g_key_file_get_string (old_origin, "origin", "refspec", NULL);
     g_autofree char *origin_remote = NULL;
     g_autofree char *origin_ref = NULL;
-  
+
     if (!ostree_parse_refspec (origin_refspec, &origin_remote, &origin_ref, error))
       goto out;
 
     { g_autofree char *new_refspec = g_strconcat (remotename, ":", branch ? branch : origin_ref, NULL);
       g_autoptr(GKeyFile) new_origin = NULL;
-      
+
       new_origin = ostree_sysroot_origin_new_from_refspec (sysroot, new_refspec);
 
       if (!ostree_sysroot_write_origin_file (sysroot, target_deployment, new_origin,

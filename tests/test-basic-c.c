@@ -512,7 +512,7 @@ test_read_xattrs (void)
   {
     g_autoptr(GVariant) current_xattrs = ostree_fs_get_all_xattrs (tmpd.fd, NULL, error);
     g_assert_no_error (local_error);
-  
+
     int r = fsetxattr (tmpd.fd, "user.ostreetesting", value, sizeof (value), 0);
 
     if (r != 0)
@@ -525,7 +525,7 @@ test_read_xattrs (void)
 
     g_autoptr(GVariant) new_xattrs = ostree_fs_get_all_xattrs (tmpd.fd, NULL, error);
     g_assert_no_error (local_error);
-  
+
     compare_xattrs (current_xattrs, new_xattrs);
   }
 
@@ -546,10 +546,10 @@ test_read_xattrs (void)
     // if (r < 0)
     //   glnx_throw_errno_prefix (error, "lsetxattr");
     // g_assert_no_error (local_error);
-  
+
     // g_autoptr(GVariant) new_xattrs = ostree_fs_get_all_xattrs_at (tmpd.fd, "somelink", NULL, error);
     // g_assert_no_error (local_error);
-  
+
     // compare_xattrs (current_xattrs, new_xattrs);
   }
 }

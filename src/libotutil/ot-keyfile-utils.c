@@ -133,7 +133,7 @@ ot_keyfile_get_value_with_default_group_optional (GKeyFile      *keyfile,
  * zero or one of the separators and none of the others, read the
  * string as a NULL-terminated array out_value.  If the value string
  * contains multiple of the separators, give an error.
- * 
+ *
  * Returns TRUE on success, FALSE on error. */
 gboolean
 ot_keyfile_get_string_list_with_separator_choice (GKeyFile      *keyfile,

@@ -1413,8 +1413,8 @@ ostree_repo_init (OstreeRepo *self)
   self->remotes = g_hash_table_new_full (g_str_hash, g_str_equal,
                                          (GDestroyNotify) NULL,
                                          (GDestroyNotify) ostree_remote_unref);
-  self->bls_append_values = g_hash_table_new_full (g_str_hash, g_str_equal, 
-                                                   (GDestroyNotify) g_free, 
+  self->bls_append_values = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                   (GDestroyNotify) g_free,
                                                    (GDestroyNotify) g_free);
   g_mutex_init (&self->remotes_lock);
 
@@ -3363,7 +3363,7 @@ reload_core_config (OstreeRepo          *self,
 
   if (!_ostree_repo_parse_fsverity_config (self, error))
     return FALSE;
-  
+
   {
     g_clear_pointer (&self->collection_id, g_free);
     if (!ot_keyfile_get_value_with_default (self->config, "core", "collection-id",
@@ -3525,16 +3525,16 @@ reload_sysroot_config (OstreeRepo          *self,
           valid_bootloader = TRUE;
         }
     }
-  if (!valid_bootloader) 
+  if (!valid_bootloader)
   {
     return glnx_throw (error, "Invalid bootloader configuration: '%s'", bootloader);
   }
   /* Parse bls-append-except-default string list. */
   g_auto(GStrv) read_values = NULL;
-  if (!ot_keyfile_get_string_list_with_default (self->config, "sysroot", "bls-append-except-default", 
+  if (!ot_keyfile_get_string_list_with_default (self->config, "sysroot", "bls-append-except-default",
                                                 ';', NULL, &read_values, error))
       return glnx_throw(error, "Unable to parse bls-append-except-default");
-    
+
   /* get all key value pairs in bls-append-except-default */
   g_hash_table_remove_all (self->bls_append_values);
   for (char **iter = read_values; iter && *iter; iter++)
@@ -3548,7 +3548,7 @@ reload_sysroot_config (OstreeRepo          *self,
         }
       char *key = g_strndup (key_value, sep - key_value);
       char *value = g_strdup (sep + 1);
-      g_hash_table_replace (self->bls_append_values, key, value); 
+      g_hash_table_replace (self->bls_append_values, key, value);
     }
 
   return TRUE;
@@ -4383,7 +4383,7 @@ _ostree_repo_load_file_bare (OstreeRepo         *self,
         {
           if (self->disable_xattrs)
             ret_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
-          else 
+          else
             {
               ret_xattrs = ostree_fs_get_all_xattrs (fd, cancellable, error);
               if (!ret_xattrs)

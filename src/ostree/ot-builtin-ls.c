@@ -92,7 +92,7 @@ print_one_file_text (GFile        *f,
                           g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
                           g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
                           g_file_info_get_attribute_uint64 (file_info, "standard::size"));
-  
+
   if (opt_checksum)
     {
       if (type == G_FILE_TYPE_DIRECTORY)
@@ -107,7 +107,7 @@ print_one_file_text (GFile        *f,
 
       if (!ostree_repo_file_get_xattrs ((OstreeRepoFile*)f, &xattrs, cancellable, error))
         return FALSE;
-      
+
       formatted = g_variant_print (xattrs, TRUE);
       g_string_append (buf, "{ ");
       g_string_append (buf, formatted);
@@ -120,7 +120,7 @@ print_one_file_text (GFile        *f,
 
   if (type == G_FILE_TYPE_SYMBOLIC_LINK)
     g_string_append_printf (buf, " -> %s", g_file_info_get_attribute_byte_string (file_info, "standard::symlink-target"));
-      
+
   g_print ("%s\n", buf->str);
 
   return TRUE;
@@ -175,13 +175,13 @@ print_directory_recurse (GFile        *f,
   else
     g_assert (depth == -1);
 
-  dir_enum = g_file_enumerate_children (f, OSTREE_GIO_FAST_QUERYINFO, 
+  dir_enum = g_file_enumerate_children (f, OSTREE_GIO_FAST_QUERYINFO,
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        NULL, 
+                                        NULL,
                                         error);
   if (dir_enum == NULL)
     return FALSE;
-  
+
   while ((child_info = g_file_enumerator_next_file (dir_enum, NULL, &temp_error)) != NULL)
     {
       g_clear_object (&child);
@@ -227,10 +227,10 @@ print_one_argument (OstreeRepo   *repo,
                                  cancellable, error);
   if (file_info == NULL)
     return FALSE;
-  
+
   if (!print_one_file (f, file_info, cancellable, error))
     return FALSE;
-      
+
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
     {
       if (opt_recursive)
@@ -244,7 +244,7 @@ print_one_argument (OstreeRepo   *repo,
             return FALSE;
         }
     }
-  
+
   return TRUE;
 }
 
@@ -285,6 +285,6 @@ ostree_builtin_ls (int argc, char **argv, OstreeCommandInvocation *invocation, G
       if (!print_one_argument (repo, root, "/", cancellable, error))
         return FALSE;
     }
-  
+
   return TRUE;
 }

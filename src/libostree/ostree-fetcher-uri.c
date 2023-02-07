@@ -156,7 +156,7 @@ _ostree_fetcher_uri_to_string (OstreeFetcherURI *uri)
  * out invalid input.
  */
 gboolean
-_ostree_fetcher_uri_validate (OstreeFetcherURI *uri, GError **error) 
+_ostree_fetcher_uri_validate (OstreeFetcherURI *uri, GError **error)
 {
   const char *scheme = g_uri_get_scheme ((GUri*)uri);
   // TODO only allow file if explicitly requested by a higher level

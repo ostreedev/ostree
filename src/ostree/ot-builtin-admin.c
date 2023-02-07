@@ -188,7 +188,7 @@ ostree_builtin_admin (int argc, char **argv, OstreeCommandInvocation *invocation
   OstreeCommandInvocation sub_invocation = { .command = subcommand };
   if (!subcommand->fn (argc, argv, &sub_invocation, cancellable, error))
     goto out;
- 
+
   ret = TRUE;
  out:
   return ret;

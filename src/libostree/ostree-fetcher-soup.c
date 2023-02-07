@@ -908,7 +908,7 @@ remove_pending (OstreeFetcherPendingURI *pending)
 static void
 on_out_splice_complete (GObject        *object,
                         GAsyncResult   *result,
-                        gpointer        user_data) 
+                        gpointer        user_data)
 {
   GTask *task = G_TASK (user_data);
   OstreeFetcherPendingURI *pending;
@@ -944,7 +944,7 @@ on_out_splice_complete (GObject        *object,
 static void
 on_stream_read (GObject        *object,
                 GAsyncResult   *result,
-                gpointer        user_data) 
+                gpointer        user_data)
 {
   GTask *task = G_TASK (user_data);
   OstreeFetcherPendingURI *pending;
@@ -1055,7 +1055,7 @@ on_stream_read (GObject        *object,
 static void
 on_request_sent (GObject        *object,
                  GAsyncResult   *result,
-                 gpointer        user_data) 
+                 gpointer        user_data)
 {
   GTask *task = G_TASK (user_data);
   /* Hold a ref to the pending across this function, since we remove
@@ -1175,7 +1175,7 @@ on_request_sent (GObject        *object,
     }
 
   pending->state = OSTREE_FETCHER_STATE_DOWNLOADING;
-  
+
   pending->content_length = soup_request_get_content_length (pending->request);
 
   g_input_stream_read_bytes_async (pending->request_body,

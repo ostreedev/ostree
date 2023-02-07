@@ -54,7 +54,7 @@ build_content_sizenames_recurse (OstreeRepo                     *repo,
     {
       OstreeRepoCommitIterResult iterres =
         ostree_repo_commit_traverse_iter_next (iter, cancellable, error);
-          
+
       if (iterres == OSTREE_REPO_COMMIT_ITER_RESULT_ERROR)
         goto out;
       else if (iterres == OSTREE_REPO_COMMIT_ITER_RESULT_END)
@@ -64,7 +64,7 @@ build_content_sizenames_recurse (OstreeRepo                     *repo,
           char *name;
           char *checksum;
           OstreeDeltaContentSizeNames *csizenames;
-            
+
           ostree_repo_commit_traverse_iter_get_file (iter, &name, &checksum);
 
           if (include_only_objects && !g_hash_table_contains (include_only_objects, checksum))
@@ -103,7 +103,7 @@ build_content_sizenames_recurse (OstreeRepo                     *repo,
             OstreeRepoCommitTraverseIter subiter = { 0, };
 
           ostree_repo_commit_traverse_iter_get_dir (iter, &name, &content_checksum, &meta_checksum);
-          
+
           if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_DIR_TREE,
                                          content_checksum, &dirtree,
                                          error))

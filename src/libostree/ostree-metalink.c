@@ -62,7 +62,7 @@ typedef struct
 
   guint passthrough_depth;
   OstreeMetalinkState passthrough_previous;
-  
+
   guint found_a_file_element : 1;
   guint found_our_file_element : 1;
   guint verification_known : 1;
@@ -550,7 +550,7 @@ try_metalink_targets (OstreeMetalinkRequest      *self,
       GError *temp_error = NULL;
 
       target_uri = self->urls->pdata[self->current_url_index];
-      
+
       if (try_one_url (self, target_uri, &ret_data, &temp_error))
         break;
       else

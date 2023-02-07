@@ -105,7 +105,7 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeCommandInvocation *invoc
   if (src_repo_arg[0] == '/')
     src_repo_uri = g_strconcat ("file://", src_repo_arg, NULL);
   else
-    { 
+    {
       g_autofree char *cwd = g_get_current_dir ();
       src_repo_uri = g_strconcat ("file://", cwd, "/", src_repo_arg, NULL);
     }
@@ -139,7 +139,7 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeCommandInvocation *invoc
 
       { GHashTableIter hashiter;
         gpointer hkey, hvalue;
-        
+
         g_hash_table_iter_init (&hashiter, refs_to_clone);
         while (g_hash_table_iter_next (&hashiter, &hkey, &hvalue))
           g_ptr_array_add (refs_to_fetch, g_strdup (hkey));
@@ -152,7 +152,7 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeCommandInvocation *invoc
       for (i = 2; i < argc; i++)
         {
           const char *ref = argv[i];
-          
+
           g_ptr_array_add (refs_to_fetch, (char*)ref);
         }
       g_ptr_array_add (refs_to_fetch, NULL);
@@ -202,7 +202,7 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeCommandInvocation *invoc
       progress = ostree_async_progress_new_and_connect (noninteractive_console_progress_changed, &console);
 
     opts = g_variant_ref_sink (g_variant_builder_end (&builder));
-    if (!ostree_repo_pull_with_options (repo, src_repo_uri, 
+    if (!ostree_repo_pull_with_options (repo, src_repo_uri,
                                         opts,
                                         progress,
                                         cancellable, error))

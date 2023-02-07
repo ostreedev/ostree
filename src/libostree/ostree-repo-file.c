@@ -131,7 +131,7 @@ ostree_repo_file_new_child (OstreeRepoFile *parent,
 {
   OstreeRepoFile *self;
   size_t len;
-  
+
   self = g_object_new (OSTREE_TYPE_REPO_FILE, NULL);
   self->repo = g_object_ref (parent->repo);
   self->parent = g_object_ref (parent);
@@ -534,7 +534,7 @@ static guint
 ostree_repo_file_hash (GFile *file)
 {
   OstreeRepoFile *self = OSTREE_REPO_FILE (file);
-  
+
   if (self->parent)
     return g_file_hash (self->parent) + g_str_hash (self->name);
   else
@@ -563,7 +563,7 @@ ostree_repo_file_equal (GFile *file1,
 }
 
 static const char *
-match_prefix (const char *path, 
+match_prefix (const char *path,
               const char *prefix)
 {
   int prefix_len;
@@ -571,13 +571,13 @@ match_prefix (const char *path,
   prefix_len = strlen (prefix);
   if (strncmp (path, prefix, prefix_len) != 0)
     return NULL;
-  
+
   /* Handle the case where prefix is the root, so that
    * the IS_DIR_SEPRARATOR check below works */
   if (prefix_len > 0 &&
       G_IS_DIR_SEPARATOR (prefix[prefix_len-1]))
     prefix_len--;
-  
+
   return path + prefix_len;
 }
 
@@ -608,7 +608,7 @@ ostree_repo_file_get_relative_path (GFile *parent,
   parent_path = gs_file_get_path_cached (parent);
   descendant_path = gs_file_get_path_cached (descendant);
   remainder = match_prefix (descendant_path, parent_path);
-  
+
   if (remainder != NULL && G_IS_DIR_SEPARATOR (*remainder))
     return g_strdup (remainder + 1);
   return NULL;
@@ -649,7 +649,7 @@ ostree_repo_file_resolve_relative_path (GFile      *file,
 
   parent = ostree_repo_file_new_child (self, filename);
   g_free (filename);
-    
+
   if (!rest)
     ret = (GFile*)parent;
   else

@@ -823,7 +823,7 @@ ostree_kernel_args_append_if_missing (OstreeKernelArgs  *kargs,
   // Don't insert a duplicate key.
   if (ostree_kernel_args_contains (kargs, arg))
     return;
- 
+
   ostree_kernel_args_append (kargs, arg);
 }
 

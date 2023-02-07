@@ -29,7 +29,7 @@
 #include <linux/fsverity.h>
 #endif
 
-gboolean 
+gboolean
 _ostree_repo_parse_fsverity_config (OstreeRepo *self, GError **error)
 {
   /* Currently experimental */
@@ -51,7 +51,7 @@ _ostree_repo_parse_fsverity_config (OstreeRepo *self, GError **error)
         return glnx_throw (error, "fsverity required, but libostree compiled without support");
     }
   else
-    {  
+    {
       gboolean fsverity_opportunistic = FALSE;
       if (!ot_keyfile_get_boolean_with_default (self->config, fsverity_key, "opportunistic",
                                                 FALSE, &fsverity_opportunistic, error))
@@ -108,7 +108,7 @@ _ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf,
             return glnx_throw_errno_prefix (error, "ioctl(FS_IOC_ENABLE_VERITY)");
         }
     }
-  
+
   if (supported)
     *supported = TRUE;
 #endif
@@ -161,7 +161,7 @@ _ostree_tmpf_fsverity (OstreeRepo  *self,
       g_mutex_unlock (&self->txn_lock);
       return TRUE;
     }
-  
+
   g_mutex_lock (&self->txn_lock);
   self->fs_verity_supported = _OSTREE_FEATURE_YES;
   g_mutex_unlock (&self->txn_lock);

@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (C) 2017 Colin Walters <walters@verbum.org>
  * Copyright (C) 2022 Igalia S.L.
  *

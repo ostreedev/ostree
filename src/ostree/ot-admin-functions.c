@@ -84,7 +84,7 @@ ot_admin_get_indexed_deployment (OstreeSysroot  *sysroot,
                    current_deployments->len);
       return NULL;
     }
-  
+
   return g_object_ref (current_deployments->pdata[index]);
 }
 

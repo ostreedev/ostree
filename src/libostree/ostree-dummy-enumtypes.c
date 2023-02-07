@@ -21,7 +21,7 @@
 
 #include "ostree-dummy-enumtypes.h"
 
-/* Exported for backwards compat - see 
+/* Exported for backwards compat - see
  * https://bugzilla.gnome.org/show_bug.cgi?id=764131
  */
 GType

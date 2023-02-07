@@ -54,7 +54,7 @@ test_data_init (TestData *td)
 
   g_assert_no_error (error);
   g_assert (td->fd >= 0);
-  
+
   g_assert_cmpint (0, ==, archive_write_set_format_pax (a));
   g_assert_cmpint (0, ==, archive_write_add_filter_gzip (a));
   g_assert_cmpint (0, ==, archive_write_open_fd (a, td->fd));

@@ -164,11 +164,11 @@ ostree_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocation,
 
   if (opt_fs_diff)
     {
-      OstreeDiffFlags diff_flags = OSTREE_DIFF_FLAGS_NONE; 
+      OstreeDiffFlags diff_flags = OSTREE_DIFF_FLAGS_NONE;
 
       if (opt_no_xattrs)
         diff_flags |= OSTREE_DIFF_FLAGS_IGNORE_XATTRS;
-      
+
       if (!parse_file_or_commit (repo, src, &srcf, cancellable, error))
         return FALSE;
       if (!parse_file_or_commit (repo, target, &targetf, cancellable, error))

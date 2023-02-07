@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (C) 2011 Colin Walters <walters@verbum.org>
  * Copyright (C) 2022 Igalia S.L.
  *
@@ -80,7 +80,7 @@ ostree_checksum_input_stream_set_property (GObject         *object,
 					     GParamSpec      *pspec)
 {
   OstreeChecksumInputStream *self;
-  
+
   self = OSTREE_CHECKSUM_INPUT_STREAM (object);
 
   switch (prop_id)

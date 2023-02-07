@@ -77,10 +77,10 @@ int main (int argc, char **argv)
 
   g_test_init (&argc, &argv, NULL);
 
-  sysroot = ot_test_setup_sysroot (NULL, &error); 
+  sysroot = ot_test_setup_sysroot (NULL, &error);
   if (!sysroot)
     goto out;
-  
+
   g_test_add_data_func ("/sysroot-reload", sysroot, test_sysroot_reload);
 
   return g_test_run();

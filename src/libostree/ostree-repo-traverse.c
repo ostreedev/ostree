@@ -124,7 +124,7 @@ ostree_repo_commit_traverse_iter_init_dirtree (OstreeRepoCommitTraverseIter   *i
  * data for that directory.  Similarly, if
  * %OSTREE_REPO_COMMIT_ITER_RESULT_FILE is returned, call
  * ostree_repo_commit_traverse_iter_get_file().
- * 
+ *
  * If %OSTREE_REPO_COMMIT_ITER_RESULT_ERROR is returned, it is a
  * program error to call any further API on @iter except for
  * ostree_repo_commit_traverse_iter_clear().
@@ -195,7 +195,7 @@ ostree_repo_commit_traverse_iter_next (OstreeRepoCommitTraverseIter *iter,
           if (!csum)
             goto out;
           ostree_checksum_inplace_from_bytes (csum, real->checksum_meta);
-          
+
           res = OSTREE_REPO_COMMIT_ITER_RESULT_DIR;
 
           real->idx++;
@@ -203,7 +203,7 @@ ostree_repo_commit_traverse_iter_next (OstreeRepoCommitTraverseIter *iter,
       else
         res = OSTREE_REPO_COMMIT_ITER_RESULT_END;
     }
-  
+
   real->state = res;
  out:
   return res;
@@ -607,7 +607,7 @@ ostree_repo_traverse_commit_with_flags (OstreeRepo                     *repo,
       g_hash_table_add (inout_reachable, g_variant_ref (key));
 
       /* Save time by skipping traversal of non-commit objects */
-      if (!commit_only) 
+      if (!commit_only)
         {
           g_debug ("Traversing commit %s", commit_checksum);
           ostree_cleanup_repo_commit_traverse_iter
@@ -619,7 +619,7 @@ ostree_repo_traverse_commit_with_flags (OstreeRepo                     *repo,
 
           if (!traverse_iter (repo, &iter, key, inout_reachable, inout_parents, ignore_missing_dirs, cancellable, error))
             return FALSE;
-        } 
+        }
 
       gboolean recurse = FALSE;
       if (maxdepth == -1 || maxdepth > 0)

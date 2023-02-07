@@ -55,7 +55,7 @@ ot_admin_instutil_builtin_grub2_generate (int argc, char **argv, OstreeCommandIn
       goto out;
         }
     }
-  else 
+  else
     {
       const char *bootversion_env = g_getenv ("_OSTREE_GRUB2_BOOTVERSION");
       if (bootversion_env)
