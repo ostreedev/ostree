@@ -207,7 +207,7 @@ AS_IF([test x$with_curl != xno || test x$with_soup != xno],
 AS_IF([test x$with_curl = xyes], [fetcher_backend=curl], [test x$with_soup = xyes], [fetcher_backend=libsoup], [fetcher_backend=none])
 
 m4_ifdef([GOBJECT_INTROSPECTION_CHECK], [
-  GOBJECT_INTROSPECTION_CHECK([1.34.0])
+  GOBJECT_INTROSPECTION_CHECK([1.51.5])
 ])
 AM_CONDITIONAL(BUILDOPT_INTROSPECTION, test "x$found_introspection" = xyes)
 
