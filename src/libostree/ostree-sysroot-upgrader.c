@@ -323,7 +323,7 @@ ostree_sysroot_upgrader_new_for_os_with_flags (OstreeSysroot              *sysro
  * ostree_sysroot_upgrader_get_origin:
  * @self: Sysroot
  *
- * Returns: (transfer none): The origin file, or %NULL if unknown
+ * Returns: (transfer none) (nullable): The origin file, or %NULL if unknown.
  */
 GKeyFile *
 ostree_sysroot_upgrader_get_origin (OstreeSysrootUpgrader *self)
@@ -335,7 +335,7 @@ ostree_sysroot_upgrader_get_origin (OstreeSysrootUpgrader *self)
  * ostree_sysroot_upgrader_dup_origin:
  * @self: Sysroot
  *
- * Returns: (transfer full): A copy of the origin file, or %NULL if unknown
+ * Returns: (transfer full) (nullable): A copy of the origin file, or %NULL if unknown.
  */
 GKeyFile *
 ostree_sysroot_upgrader_dup_origin (OstreeSysrootUpgrader *self)
@@ -388,7 +388,7 @@ ostree_sysroot_upgrader_set_origin (OstreeSysrootUpgrader *self,
  * ostree_sysroot_upgrader_get_origin_description:
  * @self: Upgrader
  *
- * Returns: A one-line descriptive summary of the origin, or %NULL if unknown
+ * Returns: (transfer full) (nullable): A one-line descriptive summary of the origin, or %NULL if unknown.
  */
 char *
 ostree_sysroot_upgrader_get_origin_description (OstreeSysrootUpgrader *self)
