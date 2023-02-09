@@ -71,7 +71,7 @@ _OSTREE_PUBLIC
 void ostree_collection_ref_freev (OstreeCollectionRef **refs);
 
 /**
- * OstreeCollectionRefv:
+ * OstreeCollectionRefv: (skip)
  *
  * A %NULL-terminated array of #OstreeCollectionRef instances, designed to
  * be used with g_auto():

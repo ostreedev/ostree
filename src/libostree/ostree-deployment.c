@@ -89,7 +89,7 @@ ostree_deployment_get_bootserial (OstreeDeployment *self)
  * ostree_deployment_get_bootconfig:
  * @self: Deployment
  *
- * Returns: (transfer none): Boot configuration
+ * Returns: (transfer none) (nullable): Boot configuration
  */
 OstreeBootconfigParser *
 ostree_deployment_get_bootconfig (OstreeDeployment *self)
@@ -101,7 +101,7 @@ ostree_deployment_get_bootconfig (OstreeDeployment *self)
  * ostree_deployment_get_origin:
  * @self: Deployment
  *
- * Returns: (transfer none): Origin
+ * Returns: (transfer none) (nullable): Origin
  */
 GKeyFile *
 ostree_deployment_get_origin (OstreeDeployment *self)
@@ -157,9 +157,7 @@ ostree_deployment_set_bootserial (OstreeDeployment *self, int index)
 void
 ostree_deployment_set_bootconfig (OstreeDeployment *self, OstreeBootconfigParser *bootconfig)
 {
-  g_clear_object (&self->bootconfig);
-  if (bootconfig)
-    self->bootconfig = g_object_ref (bootconfig);
+  g_set_object (&self->bootconfig, bootconfig);
 }
 
 /**
@@ -173,6 +171,9 @@ ostree_deployment_set_bootconfig (OstreeDeployment *self, OstreeBootconfigParser
 void
 ostree_deployment_set_origin (OstreeDeployment *self, GKeyFile *origin)
 {
+  if (self->origin == origin)
+    return;
+
   g_clear_pointer (&self->origin, g_key_file_unref);
   if (origin)
     self->origin = g_key_file_ref (origin);

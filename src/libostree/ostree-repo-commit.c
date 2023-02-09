@@ -2444,9 +2444,9 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
  * ostree_repo_write_metadata:
  * @self: Repo
  * @objtype: Object type
- * @expected_checksum: (allow-none): If provided, validate content against this checksum
+ * @expected_checksum: (nullable): If provided, validate content against this checksum
  * @object: Metadata
- * @out_csum: (out) (array fixed-size=32) (allow-none): Binary checksum
+ * @out_csum: (out) (array fixed-size=32) (optional): Binary checksum
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -2619,7 +2619,7 @@ write_metadata_thread (GTask               *task,
  * ostree_repo_write_metadata_async:
  * @self: Repo
  * @objtype: Object type
- * @expected_checksum: (allow-none): If provided, validate content against this checksum
+ * @expected_checksum: (nullable): If provided, validate content against this checksum
  * @object: Metadata
  * @cancellable: Cancellable
  * @callback: Invoked when metadata is writed
@@ -2739,7 +2739,7 @@ ostree_repo_write_content_trusted (OstreeRepo       *self,
  * @expected_checksum: (allow-none): If provided, validate content against this checksum
  * @object_input: Content object stream
  * @length: Length of @object_input
- * @out_csum: (out) (array fixed-size=32) (allow-none): Binary checksum
+ * @out_csum: (out) (array fixed-size=32) (optional) (nullable): Binary checksum
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -2994,7 +2994,8 @@ ostree_repo_write_content_async (OstreeRepo               *self,
  * ostree_repo_write_content_finish:
  * @self: a #OstreeRepo
  * @result: a #GAsyncResult
- * @out_csum: (out) (transfer full): A binary SHA256 checksum of the content object
+ * @out_csum: (out) (transfer full) (optional): A binary SHA256
+ * checksum of the content object
  * @error: a #GError
  *
  * Completes an invocation of ostree_repo_write_content_async().
@@ -3032,12 +3033,13 @@ create_empty_gvariant_dict (void)
 /**
  * ostree_repo_write_commit:
  * @self: Repo
- * @parent: (allow-none): ASCII SHA256 checksum for parent, or %NULL for none
- * @subject: (allow-none): Subject
- * @body: (allow-none): Body
- * @metadata: (allow-none): GVariant of type a{sv}, or %NULL for none
+ * @parent: (nullable): ASCII SHA256 checksum for parent, or %NULL for none
+ * @subject: (nullable): Subject
+ * @body: (nullable): Body
+ * @metadata: (nullable): GVariant of type a{sv}, or %NULL for none
  * @root: The tree to point the commit to
- * @out_commit: (out): Resulting ASCII SHA256 checksum for commit
+ * @out_commit: (out) (optional): Resulting ASCII SHA256 checksum for
+ * commit
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -3085,13 +3087,14 @@ ostree_repo_write_commit (OstreeRepo      *self,
 /**
  * ostree_repo_write_commit_with_time:
  * @self: Repo
- * @parent: (allow-none): ASCII SHA256 checksum for parent, or %NULL for none
- * @subject: (allow-none): Subject
- * @body: (allow-none): Body
- * @metadata: (allow-none): GVariant of type a{sv}, or %NULL for none
+ * @parent: (nullable): ASCII SHA256 checksum for parent, or %NULL for none
+ * @subject: (nullable): Subject
+ * @body: (nullable): Body
+ * @metadata: (nullable): GVariant of type a{sv}, or %NULL for none
  * @root: The tree to point the commit to
  * @time: The time to use to stamp the commit
- * @out_commit: (out): Resulting ASCII SHA256 checksum for commit
+ * @out_commit: (out) (optional): Resulting ASCII SHA256 checksum for
+ * commit
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -3190,7 +3193,7 @@ ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
  * ostree_repo_write_commit_detached_metadata:
  * @self: Repo
  * @checksum: ASCII SHA256 commit checksum
- * @metadata: (allow-none): Metadata to associate with commit in with format "a{sv}", or %NULL to delete
+ * @metadata: (nullable): Metadata to associate with commit in with format "a{sv}", or %NULL to delete
  * @cancellable: Cancellable
  * @error: Error
  *

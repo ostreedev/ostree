@@ -566,8 +566,8 @@ ostree_kernel_args_replace_argv (OstreeKernelArgs  *kargs,
 /**
  * ostree_kernel_args_append_argv_filtered:
  * @kargs: a OstreeKernelArgs instance
- * @argv: an array of key=value argument pairs
- * @prefixes: an array of prefix strings
+ * @argv: (array zero-terminated=1): an array of key=value argument pairs
+ * @prefixes: (array zero-terminated=1): an array of prefix strings
  *
  * Appends each argument that does not have one of the @prefixes as prefix to the @kargs
  *
@@ -592,7 +592,7 @@ ostree_kernel_args_append_argv_filtered (OstreeKernelArgs  *kargs,
 /**
  * ostree_kernel_args_append_argv:
  * @kargs: a OstreeKernelArgs instance
- * @argv: an array of key=value argument pairs
+ * @argv: (array zero-terminated=1): an array of key=value argument pairs
  *
  * Appends each value in @argv to the corresponding value array and
  * appends key to kargs->order if it is not in the hash table already.
@@ -787,7 +787,7 @@ ostree_kernel_args_to_string (OstreeKernelArgs *kargs)
  * corresponding to the @key in @kargs hash table. Note that the application
  * will be terminated if the @key is found but the value array is empty
  *
- * Returns: NULL if @key is not found in the @kargs hash table,
+ * Returns: (nullable): %NULL if @key is not found in the @kargs hash table,
  * otherwise returns last element of value array corresponding to @key
  *
  * Since: 2019.3

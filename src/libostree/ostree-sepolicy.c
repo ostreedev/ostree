@@ -549,7 +549,7 @@ ostree_sepolicy_get_csum (OstreeSePolicy *self)
  * @self: Self
  * @relpath: Path
  * @unix_mode: Unix mode
- * @out_label: (allow-none) (out) (transfer full): Return location for security context
+ * @out_label: (nullable) (out) (transfer full): Return location for security context
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -565,6 +565,7 @@ ostree_sepolicy_get_label (OstreeSePolicy    *self,
                            GCancellable     *cancellable,
                            GError          **error)
 {
+  *out_label = NULL;
 #ifdef HAVE_SELINUX
   /* Early return if no policy */
   if (!self->selinux_hnd)
@@ -600,10 +601,10 @@ ostree_sepolicy_get_label (OstreeSePolicy    *self,
  * ostree_sepolicy_restorecon:
  * @self: Self
  * @path: Path string to use for policy lookup
- * @info: (allow-none): File attributes
+ * @info: (nullable): File attributes
  * @target: Physical path to target file
  * @flags: Flags controlling behavior
- * @out_new_label: (allow-none) (out): New label, or %NULL if unchanged
+ * @out_new_label: (nullable) (optional) (out): New label, or %NULL if unchanged
  * @cancellable: Cancellable
  * @error: Error
  *

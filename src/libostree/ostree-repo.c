@@ -972,8 +972,8 @@ _ostree_repo_remote_name_is_file (const char *remote_name)
  * @self: A OstreeRepo
  * @remote_name: Name
  * @option_name: Option
- * @default_value: (allow-none): Value returned if @option_name is not present
- * @out_value: (out): Return location for value
+ * @default_value: (nullable): Value returned if @option_name is not present
+ * @out_value: (out) (nullable): Return location for value
  * @error: Error
  *
  * OSTree remotes are represented by keyfile groups, formatted like:
@@ -2157,7 +2157,7 @@ ostree_repo_remote_list (OstreeRepo *self,
  * ostree_repo_remote_get_url:
  * @self: Repo
  * @name: Name of remote
- * @out_url: (out) (allow-none): Remote's URL
+ * @out_url: (out) (optional): Remote's URL
  * @error: Error
  *
  * Return the URL of the remote named @name through @out_url.  It is an
@@ -2200,7 +2200,7 @@ ostree_repo_remote_get_url (OstreeRepo  *self,
  * ostree_repo_remote_get_gpg_verify:
  * @self: Repo
  * @name: Name of remote
- * @out_gpg_verify: (out) (allow-none): Remote's GPG option
+ * @out_gpg_verify: (out) (optional): Remote's GPG option
  * @error: Error
  *
  * Return whether GPG verification is enabled for the remote named @name
@@ -3917,7 +3917,7 @@ ostree_repo_get_min_free_space_bytes (OstreeRepo  *self, guint64 *out_reserved_b
  * Before this function can be used, ostree_repo_init() must have been
  * called.
  *
- * Returns: (transfer none): Parent repository, or %NULL if none
+ * Returns: (transfer none) (nullable): Parent repository, or %NULL if none
  */
 OstreeRepo *
 ostree_repo_get_parent (OstreeRepo  *self)
@@ -5078,8 +5078,8 @@ ostree_repo_list_commit_objects_starting_with (OstreeRepo                  *self
  * ostree_repo_read_commit:
  * @self: Repo
  * @ref: Ref or ASCII checksum
- * @out_root: (out): An #OstreeRepoFile corresponding to the root
- * @out_commit: (out): The resolved commit checksum
+ * @out_root: (out) (optional): An #OstreeRepoFile corresponding to the root
+ * @out_commit: (out) (optional): The resolved commit checksum
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -5662,9 +5662,9 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
  * ostree_repo_gpg_sign_data:
  * @self: Self
  * @data: Data as a #GBytes
- * @old_signatures: Existing signatures to append to (or %NULL)
+ * @old_signatures: (nullable): Existing signatures to append to (or %NULL)
  * @key_id: (array zero-terminated=1) (element-type utf8): NULL-terminated array of GPG keys.
- * @homedir: (allow-none): GPG home directory, or %NULL
+ * @homedir: (nullable): GPG home directory, or %NULL
  * @out_signatures: (out): in case of success will contain signature
  * @cancellable: A #GCancellable
  * @error: a #GError
@@ -5675,8 +5675,8 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
  *
  * You can use ostree_repo_gpg_verify_data() to verify the signatures.
  *
- * Returns: @TRUE if @data has been signed successfully,
- * @FALSE in case of error (@error will contain the reason).
+ * Returns: %TRUE if @data has been signed successfully,
+ * %FALSE in case of error (@error will contain the reason).
  *
  * Since: 2020.8
  */

@@ -6564,10 +6564,9 @@ ostree_repo_pull_from_remotes_finish (OstreeRepo    *self,
  * @self: Self
  * @name: name of a remote
  * @options: (nullable): A GVariant a{sv} with an extensible set of flags
- * @out_summary: (out) (optional): return location for raw summary data, or
- *               %NULL
- * @out_signatures: (out) (optional): return location for raw summary
- *                  signature data, or %NULL
+ * @out_summary: (out) (optional): return location for raw summary data, or %NULL
+ * @out_signatures: (out) (optional): return location for raw summary signature
+ *                  data, or %NULL
  * @cancellable: a #GCancellable
  * @error: a #GError
  *

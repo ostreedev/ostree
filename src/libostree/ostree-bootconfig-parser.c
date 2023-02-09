@@ -134,6 +134,14 @@ ostree_bootconfig_parser_parse (OstreeBootconfigParser  *self,
                                             cancellable, error);
 }
 
+/**
+ * ostree_bootconfig_parser_set:
+ * @self: Parser
+ * @key: the key
+ * @value: the key
+ *
+ * Set the @key/@value pair to the boot configuration dictionary.
+ */
 void
 ostree_bootconfig_parser_set (OstreeBootconfigParser  *self,
                               const char      *key,
@@ -142,6 +150,16 @@ ostree_bootconfig_parser_set (OstreeBootconfigParser  *self,
   g_hash_table_replace (self->options, g_strdup (key), g_strdup (value));
 }
 
+/**
+ * ostree_bootconfig_parser_get:
+ * @self: Parser
+ * @key: the key name to retrieve
+ *
+ * Get the value corresponding to @key from the boot configuration dictionary.
+ *
+ * Returns: (nullable): The corresponding value, or %NULL if the key hasn't been
+ * found.
+ */
 const char *
 ostree_bootconfig_parser_get (OstreeBootconfigParser  *self,
                               const char      *key)
