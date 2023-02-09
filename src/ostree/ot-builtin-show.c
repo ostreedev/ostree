@@ -31,6 +31,8 @@ static gboolean opt_print_related;
 static char* opt_print_variant_type;
 static char* opt_print_metadata_key;
 static char* opt_print_detached_metadata_key;
+static gboolean opt_list_metadata_keys;
+static gboolean opt_list_detached_metadata_keys;
 static gboolean opt_print_sizes;
 static gboolean opt_raw;
 static gboolean opt_no_byteswap;
@@ -45,7 +47,9 @@ static char *opt_gpg_verify_remote;
 static GOptionEntry options[] = {
   { "print-related", 0, 0, G_OPTION_ARG_NONE, &opt_print_related, "Show the \"related\" commits", NULL },
   { "print-variant-type", 0, 0, G_OPTION_ARG_STRING, &opt_print_variant_type, "Memory map OBJECT (in this case a filename) to the GVariant type string", "TYPE" },
+  { "list-metadata-keys", 0, 0, G_OPTION_ARG_NONE, &opt_list_metadata_keys, "List the available metadata keys", NULL },
   { "print-metadata-key", 0, 0, G_OPTION_ARG_STRING, &opt_print_metadata_key, "Print string value of metadata key", "KEY" },
+  { "list-detached-metadata-keys", 0, 0, G_OPTION_ARG_NONE, &opt_list_detached_metadata_keys, "List the available detached metadata keys", NULL },
   { "print-detached-metadata-key", 0, 0, G_OPTION_ARG_STRING, &opt_print_detached_metadata_key, "Print string value of detached metadata key", "KEY" },
   { "print-sizes", 0, 0, G_OPTION_ARG_NONE, &opt_print_sizes, "Show the commit size metadata", NULL },
   { "raw", 0, 0, G_OPTION_ARG_NONE, &opt_raw, "Show raw variant data" },
@@ -98,12 +102,14 @@ do_print_related (OstreeRepo  *repo,
 }
 
 static gboolean
-do_print_metadata_key (OstreeRepo     *repo,
-                       const char     *resolved_rev,
-                       gboolean        detached,
-                       const char     *key,
-                       GError        **error)
+get_metadata (OstreeRepo  *repo,
+              const char  *resolved_rev,
+              gboolean     detached,
+              GVariant   **out_metadata,
+              GError     **error)
 {
+  g_assert (out_metadata != NULL);
+
   g_autoptr(GVariant) commit = NULL;
   g_autoptr(GVariant) metadata = NULL;
 
@@ -127,6 +133,59 @@ do_print_metadata_key (OstreeRepo     *repo,
           return FALSE;
         }
     }
+
+  *out_metadata = g_steal_pointer (&metadata);
+
+  return TRUE;
+}
+
+static gint
+strptr_cmp (gconstpointer a,
+            gconstpointer b)
+{
+  const char *a_str = *((const char **) a);
+  const char *b_str = *((const char **) b);
+
+  return g_strcmp0 (a_str, b_str);
+}
+
+static gboolean
+do_list_metadata_keys (OstreeRepo  *repo,
+                       const char  *resolved_rev,
+                       gboolean     detached,
+                       GError     **error)
+{
+  g_autoptr(GVariant) metadata = NULL;
+  if (!get_metadata (repo, resolved_rev, detached, &metadata, error))
+    return FALSE;
+
+  GVariantIter iter;
+  const char *key = NULL;
+  g_autoptr(GPtrArray) keys = g_ptr_array_new ();
+  g_variant_iter_init (&iter, metadata);
+  while (g_variant_iter_loop (&iter, "{&s@v}", &key, NULL))
+    g_ptr_array_add (keys, (gpointer) key);
+
+  g_ptr_array_sort (keys, strptr_cmp);
+  for (guint i = 0; i < keys-> len; i++)
+    {
+      key = keys->pdata[i];
+      g_print ("%s\n", key);
+    }
+
+  return TRUE;
+}
+
+static gboolean
+do_print_metadata_key (OstreeRepo     *repo,
+                       const char     *resolved_rev,
+                       gboolean        detached,
+                       const char     *key,
+                       GError        **error)
+{
+  g_autoptr(GVariant) metadata = NULL;
+  if (!get_metadata (repo, resolved_rev, detached, &metadata, error))
+    return FALSE;
 
   g_autoptr(GVariant) value = g_variant_lookup_value (metadata, key, NULL);
   if (!value)
@@ -321,8 +380,14 @@ ostree_builtin_show (int argc, char **argv, OstreeCommandInvocation *invocation,
       const char *key = detached ? opt_print_detached_metadata_key : opt_print_metadata_key;
       if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
         return FALSE;
-
       if (!do_print_metadata_key (repo, resolved_rev, detached, key, error))
+        return FALSE;
+    }
+  else if (opt_list_metadata_keys || opt_list_detached_metadata_keys)
+    {
+      if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
+        return FALSE;
+      if (!do_list_metadata_keys (repo, resolved_rev, opt_list_detached_metadata_keys, error))
         return FALSE;
     }
   else if (opt_print_related)

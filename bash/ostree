@@ -900,7 +900,6 @@ _ostree_pull() {
     local boolean_options="
         $main_boolean_options
         --commit-metadata-only
-        --cache-dir
         --disable-fsync
         --disable-static-deltas
         --require-static-deltas
@@ -912,6 +911,7 @@ _ostree_pull() {
     "
 
     local options_with_args="
+        --cache-dir
         --depth
         --http-header
         --localcache-repo -L
@@ -925,7 +925,7 @@ _ostree_pull() {
     local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
 
     case "$prev" in
-        --localcache-repo|-L|--repo|--subpath)
+        --cache-dir|--localcache-repo|-L|--repo|--subpath)
             __ostree_compreply_dirs_only
             return 0
             ;;
@@ -953,6 +953,7 @@ _ostree_pull() {
 _ostree_refs() {
     local boolean_options="
         $main_boolean_options
+        --revision -r
         --alias -A
         --collections -c
         --delete
@@ -1274,17 +1275,18 @@ _ostree_remote_list_gpg_keys() {
 _ostree_remote_refs() {
     local boolean_options="
         $main_boolean_options
-        --cache-dir
+        --revision -r
     "
 
     local options_with_args="
+        --cache-dir
         --repo
     "
 
     local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
 
     case "$prev" in
-        --repo)
+        --cache-dir|--repo)
             __ostree_compreply_dirs_only
             return 0
             ;;
@@ -1343,18 +1345,20 @@ _ostree_remote_show_url() {
 _ostree_remote_summary() {
     local boolean_options="
         $main_boolean_options
-        --cache-dir
+        --list-metadata-keys
         --raw
     "
 
     local options_with_args="
+        --cache-dir
+        --print-metadata-key
         --repo
     "
 
     local options_with_args_glob=$( __ostree_to_extglob "$options_with_args" )
 
     case "$prev" in
-        --repo)
+        --cache-dir|--repo)
             __ostree_compreply_dirs_only
             return 0
             ;;
@@ -1484,6 +1488,8 @@ _ostree_rev_parse() {
 _ostree_show() {
     local boolean_options="
         $main_boolean_options
+        --list-detached-metadata-keys
+        --list-metadata-keys
         --print-related
         --print-sizes
         --raw
@@ -1812,6 +1818,7 @@ _ostree_static_delta() {
 _ostree_summary() {
     local boolean_options="
         $main_boolean_options
+        --list-metadata-keys
         --raw
         --update -u
         --view -v
@@ -1821,6 +1828,7 @@ _ostree_summary() {
         --add-metadata -m
         --gpg-homedir
         --gpg-sign
+        --print-metadata-key
         --repo
     "
 

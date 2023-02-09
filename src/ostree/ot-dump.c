@@ -407,6 +407,66 @@ ot_dump_summary_bytes (GBytes          *summary_bytes,
     }
 }
 
+static gint
+strptr_cmp (gconstpointer a,
+            gconstpointer b)
+{
+  const char *a_str = *((const char **) a);
+  const char *b_str = *((const char **) b);
+
+  return g_strcmp0 (a_str, b_str);
+}
+
+void
+ot_dump_summary_metadata_keys (GBytes *summary_bytes)
+{
+  g_autoptr(GVariant) summary = NULL;
+  g_autoptr(GVariant) metadata = NULL;
+
+  summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT,
+                                      summary_bytes, FALSE);
+  metadata = g_variant_get_child_value (summary, 1);
+
+  GVariantIter iter;
+  const char *key = NULL;
+  g_autoptr(GPtrArray) keys = g_ptr_array_new ();
+  g_variant_iter_init (&iter, metadata);
+  while (g_variant_iter_loop (&iter, "{&s@v}", &key, NULL))
+    g_ptr_array_add (keys, (gpointer) key);
+
+  g_ptr_array_sort (keys, strptr_cmp);
+  for (guint i = 0; i < keys-> len; i++)
+    {
+      key = keys->pdata[i];
+      g_print ("%s\n", key);
+    }
+}
+
+gboolean
+ot_dump_summary_metadata_key (GBytes      *summary_bytes,
+                              const char  *key,
+                              GError     **error)
+{
+  g_autoptr(GVariant) summary = NULL;
+  g_autoptr(GVariant) metadata = NULL;
+  g_autoptr(GVariant) value = NULL;
+
+  summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT,
+                                      summary_bytes, FALSE);
+  metadata = g_variant_get_child_value (summary, 1);
+  value = g_variant_lookup_value (metadata, key, NULL);
+  if (!value)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "No such metadata key '%s'", key);
+      return FALSE;
+    }
+
+  ot_dump_variant (value);
+
+  return TRUE;
+}
+
 static gboolean
 dump_gpg_subkey (GVariant  *subkey,
                  gboolean   primary,

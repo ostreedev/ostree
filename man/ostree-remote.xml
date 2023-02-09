@@ -195,6 +195,31 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
     </refsect1>
 
     <refsect1>
+        <title>'Refs' Options</title>
+
+        <variablelist>
+            <varlistentry>
+                <term><option>--revision</option>, <option>-r</option></term>
+
+                <listitem><para>
+                    Also print the revisions for each ref. The revisions will
+                    be separated by a tab character.
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
+
+        <variablelist>
+            <varlistentry>
+                <term><option>--cache-dir</option>=DIR</term>
+
+                <listitem><para>
+                    Use an alternate cache directory in <literal>DIR</literal>.
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
         <title>'GPG-Import' Options</title>
 
         <variablelist>
@@ -226,6 +251,14 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
         <title>'Summary' Options</title>
 
         <variablelist>
+            <varlistentry>
+                <term><option>--cache-dir</option>=DIR</term>
+
+                <listitem><para>
+                    Use an alternate cache directory in <literal>DIR</literal>.
+                </para></listitem>
+            </varlistentry>
+
             <varlistentry>
                 <term><option>--raw</option></term>
 

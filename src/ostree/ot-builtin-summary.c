@@ -28,6 +28,8 @@
 #include "ostree-sign.h"
 
 static gboolean opt_update, opt_view, opt_raw;
+static gboolean opt_list_metadata_keys;
+static char *opt_print_metadata_key;
 static char **opt_gpg_key_ids;
 static char *opt_gpg_homedir;
 static char **opt_key_ids;
@@ -43,6 +45,8 @@ static GOptionEntry options[] = {
   { "update", 'u', 0, G_OPTION_ARG_NONE, &opt_update, "Update the summary", NULL },
   { "view", 'v', 0, G_OPTION_ARG_NONE, &opt_view, "View the local summary file", NULL },
   { "raw", 0, 0, G_OPTION_ARG_NONE, &opt_raw, "View the raw bytes of the summary file", NULL },
+  { "list-metadata-keys", 0, 0, G_OPTION_ARG_NONE, &opt_list_metadata_keys, "List the available metadata keys", NULL },
+  { "print-metadata-key", 0, 0, G_OPTION_ARG_STRING, &opt_print_metadata_key, "Print string value of metadata key", "KEY" },
   { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_gpg_key_ids, "GPG Key ID to sign the summary with", "KEY-ID"},
   { "gpg-homedir", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "HOMEDIR"},
   { "sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "Key ID to sign the summary with", "KEY-ID"},
@@ -83,6 +87,26 @@ build_additional_metadata (const char * const  *args,
     }
 
   return g_variant_ref_sink (g_variant_builder_end (builder));
+}
+
+static gboolean
+get_summary_data (OstreeRepo  *repo,
+                  GBytes     **out_summary_data,
+                  GError     **error)
+{
+  g_assert (out_summary_data != NULL);
+
+  g_autoptr(GBytes) summary_data = NULL;
+  glnx_autofd int fd = -1;
+  if (!glnx_openat_rdonly (repo->repo_dir_fd, "summary", TRUE, &fd, error))
+    return FALSE;
+  summary_data = ot_fd_readall_or_mmap (fd, 0, error);
+  if (!summary_data)
+    return FALSE;
+
+  *out_summary_data = g_steal_pointer (&summary_data);
+
+  return TRUE;
 }
 
 gboolean
@@ -275,14 +299,29 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
       if (opt_raw)
         flags |= OSTREE_DUMP_RAW;
 
-      glnx_autofd int fd = -1;
-      if (!glnx_openat_rdonly (repo->repo_dir_fd, "summary", TRUE, &fd, error))
-        return FALSE;
-      summary_data = ot_fd_readall_or_mmap (fd, 0, error);
-      if (!summary_data)
+      if (!get_summary_data (repo, &summary_data, error))
         return FALSE;
 
       ot_dump_summary_bytes (summary_data, flags);
+    }
+  else if (opt_list_metadata_keys)
+    {
+      g_autoptr(GBytes) summary_data = NULL;
+
+      if (!get_summary_data (repo, &summary_data, error))
+        return FALSE;
+
+      ot_dump_summary_metadata_keys (summary_data);
+    }
+  else if (opt_print_metadata_key)
+    {
+      g_autoptr(GBytes) summary_data = NULL;
+
+      if (!get_summary_data (repo, &summary_data, error))
+        return FALSE;
+
+      if (!ot_dump_summary_metadata_key (summary_data, opt_print_metadata_key, error))
+        return FALSE;
     }
   else
     {

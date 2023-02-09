@@ -27,6 +27,7 @@
 
 static gboolean opt_delete;
 static gboolean opt_list;
+static gboolean opt_revision;
 static gboolean opt_alias;
 static char *opt_create;
 static gboolean opt_collections;
@@ -40,12 +41,23 @@ static gboolean opt_force;
 static GOptionEntry options[] = {
   { "delete", 0, 0, G_OPTION_ARG_NONE, &opt_delete, "Delete refs which match PREFIX, rather than listing them", NULL },
   { "list", 0, 0, G_OPTION_ARG_NONE, &opt_list, "Do not remove the prefix from the refs", NULL },
+  { "revision", 'r', 0, G_OPTION_ARG_NONE, &opt_revision, "Show revisions in listing", NULL },
   { "alias", 'A', 0, G_OPTION_ARG_NONE, &opt_alias, "If used with --create, create an alias, otherwise just list aliases", NULL },
   { "create", 0, 0, G_OPTION_ARG_STRING, &opt_create, "Create a new ref for an existing commit", "NEWREF" },
   { "collections", 'c', 0, G_OPTION_ARG_NONE, &opt_collections, "Enable listing collection IDs for refs", NULL },
   { "force", 0, 0, G_OPTION_ARG_NONE, &opt_force, "Overwrite existing refs when creating", NULL },
   { NULL }
 };
+
+static int
+collection_ref_cmp (OstreeCollectionRef *a,
+                    OstreeCollectionRef *b)
+{
+  int ret = g_strcmp0 (a->collection_id, b->collection_id);
+  if (ret == 0)
+    ret = g_strcmp0 (a->ref_name, b->ref_name);
+  return ret;
+}
 
 static gboolean
 do_ref_with_collections (OstreeRepo    *repo,
@@ -66,11 +78,22 @@ do_ref_with_collections (OstreeRepo    *repo,
 
   if (!opt_delete && !opt_create)
     {
-      g_hash_table_iter_init (&hashiter, refs);
-      while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
+      g_autoptr(GList) ordered_keys = g_hash_table_get_keys (refs);
+      ordered_keys = g_list_sort (ordered_keys, (GCompareFunc) collection_ref_cmp);
+
+      for (GList *iter = ordered_keys; iter != NULL; iter = iter->next)
         {
-          const OstreeCollectionRef *ref = hashkey;
-          g_print ("(%s, %s)\n", ref->collection_id, ref->ref_name);
+          OstreeCollectionRef *ref = iter->data;
+
+          if (opt_revision)
+            {
+              const char *rev = g_hash_table_lookup (refs, ref);
+              g_print ("(%s, %s)\t%s\n", ref->collection_id, ref->ref_name, rev);
+            }
+          else
+            {
+              g_print ("(%s, %s)\n", ref->collection_id, ref->ref_name);
+            }
         }
     }
   else if (opt_create)
@@ -179,12 +202,27 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
 
   if (is_list)
     {
-      GLNX_HASH_TABLE_FOREACH_KV (refs, const char *, ref, const char *, value)
+      g_autoptr(GList) ordered_keys = g_hash_table_get_keys (refs);
+      ordered_keys = g_list_sort (ordered_keys, (GCompareFunc) g_strcmp0);
+
+      for (GList *iter = ordered_keys; iter != NULL; iter = iter->next)
         {
+          const char *ref = iter->data;
+
           if (opt_alias)
-            g_print ("%s -> %s\n", ref, value);
+            {
+              const char *alias = g_hash_table_lookup (refs, ref);
+              g_print ("%s -> %s\n", ref, alias);
+            }
+          else if (opt_revision)
+            {
+              const char *rev = g_hash_table_lookup (refs, ref);
+              g_print ("%s\t%s\n", ref, rev);
+            }
           else
-            g_print ("%s\n", ref);
+            {
+              g_print ("%s\n", ref);
+            }
         }
     }
   else if (opt_create)
