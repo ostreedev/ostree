@@ -40,7 +40,7 @@ G_DEFINE_TYPE (OstreeBootconfigParser, ostree_bootconfig_parser, G_TYPE_OBJECT)
 /**
  * ostree_bootconfig_parser_clone:
  * @self: Bootconfig to clone
- * 
+ *
  * Returns: (transfer full): Copy of @self
  */
 OstreeBootconfigParser *

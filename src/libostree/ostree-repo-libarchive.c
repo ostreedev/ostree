@@ -1083,7 +1083,7 @@ file_to_archive_entry_common (GFile         *root,
   if (!opts->disable_xattrs)
     {
       int i, n;
-      
+
       n = g_variant_n_children (xattrs);
       for (i = 0; i < n; i++)
         {
@@ -1152,7 +1152,7 @@ write_directory_to_libarchive_recurse (OstreeRepo               *self,
   if (!write_header_free_entry (a, &entry, error))
     goto out;
 
-  dir_enum = g_file_enumerate_children (dir, OSTREE_GIO_FAST_QUERYINFO, 
+  dir_enum = g_file_enumerate_children (dir, OSTREE_GIO_FAST_QUERYINFO,
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                         cancellable, error);
   if (!dir_enum)

@@ -1,7 +1,5 @@
-/* This file declares a stub function that is only exported
- * to pacify ABI checkers - no one could really have used it.
- *
- * Copyright (C) 2016 Red Hat, Inc.
+/*
+ * Copyright © 2023 Endless OS Foundation LLC
  *
  * SPDX-License-Identifier: LGPL-2.0+
  *
@@ -17,15 +15,25 @@
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * Authors:
+ *  - Dan Nicholson <dbn@endlessos.org>
  */
 
-#include "ostree-dummy-enumtypes.h"
+#pragma once
 
-/* Exported for backwards compat - see
- * https://bugzilla.gnome.org/show_bug.cgi?id=764131
- */
-GType
-ostree_fetcher_config_flags_get_type (void)
-{
-  return G_TYPE_INVALID;
-}
+#include <glib.h>
+
+#include "ostree-sign.h"
+#include "ostree-types.h"
+
+G_BEGIN_DECLS
+
+gboolean _ostree_sign_summary_at (OstreeSign    *self,
+                                  OstreeRepo    *repo,
+                                  int            dir_fd,
+                                  GVariant      *keys,
+                                  GCancellable  *cancellable,
+                                  GError       **error);
+
+G_END_DECLS

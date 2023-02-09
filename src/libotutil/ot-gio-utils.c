@@ -51,7 +51,7 @@ ot_gfile_resolve_path_printf (GFile       *path,
 
 /**
  * ot_gfile_replace_contents_fsync:
- * 
+ *
  * Like g_file_replace_contents(), except always uses fdatasync().
  */
 gboolean

@@ -47,7 +47,7 @@
 #endif
 
 /* Understanding ostree's fsync strategy
- * 
+ *
  * A long time ago, ostree used to invoke fsync() on each object,
  * then move it into the objects directory.  However, it turned
  * out to be a *lot* faster to write the objects into a separate "staging"
@@ -2350,7 +2350,8 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
   /* Update the summary if auto-update-summary is set, because doing so was
    * delayed for each ref change during the transaction.
    */
-  if ((self->txn.refs || self->txn.collection_refs) &&
+  if (!self->txn.disable_auto_summary &&
+      (self->txn.refs || self->txn.collection_refs) &&
       !_ostree_repo_maybe_regenerate_summary (self, cancellable, error))
     return FALSE;
 
@@ -2856,7 +2857,7 @@ ostree_repo_write_regfile_inline (OstreeRepo       *self,
  * Returns: (transfer full): Checksum (as a hex string) of the committed file
  * Since: 2021.2
  */
-char *      
+char *
 ostree_repo_write_symlink (OstreeRepo       *self,
                            const char       *expected_checksum,
                            guint32           uid,
@@ -2888,14 +2889,14 @@ ostree_repo_write_symlink (OstreeRepo       *self,
  * @content_len: Expected content length
  * @xattrs: (allow-none): Extended attributes (GVariant type `(ayay)`)
  * @error: Error
- * 
+ *
  * Create an `OstreeContentWriter` that allows streaming output into
  * the repository.
  *
  * Returns: (transfer full): A new writer, or %NULL on error
  * Since: 2021.2
  */
-OstreeContentWriter *    
+OstreeContentWriter *
 ostree_repo_write_regfile (OstreeRepo       *self,
                            const char       *expected_checksum,
                            guint32           uid,
@@ -4402,7 +4403,7 @@ ostree_repo_commit_modifier_set_sepolicy (OstreeRepoCommitModifier              
  *
  * Since: 2020.4
  */
-gboolean 
+gboolean
 ostree_repo_commit_modifier_set_sepolicy_from_commit (OstreeRepoCommitModifier              *modifier,
                                                       OstreeRepo                            *repo,
                                                       const char                            *rev,
@@ -4870,3 +4871,72 @@ ostree_repo_transaction_stats_free (OstreeRepoTransactionStats *stats)
 G_DEFINE_BOXED_TYPE(OstreeRepoTransactionStats, ostree_repo_transaction_stats,
                     ostree_repo_transaction_stats_copy,
                     ostree_repo_transaction_stats_free);
+
+
+gboolean
+_ostree_repo_transaction_write_repo_metadata (OstreeRepo    *self,
+                                              GVariant      *additional_metadata,
+                                              char         **out_checksum,
+                                              GCancellable  *cancellable,
+                                              GError       **error)
+{
+  g_assert (self != NULL);
+  g_assert (OSTREE_IS_REPO (self));
+  g_assert (self->in_transaction == TRUE);
+
+  const char *collection_id = ostree_repo_get_collection_id (self);
+  if (collection_id == NULL)
+    return glnx_throw (error, "Repository must have collection ID to write repo metadata");
+
+  OstreeCollectionRef collection_ref = { (gchar *) collection_id,
+                                         (gchar *) OSTREE_REPO_METADATA_REF };
+  g_autofree char *old_checksum = NULL;
+  if (!ostree_repo_resolve_rev (self, OSTREE_REPO_METADATA_REF, TRUE,
+                                &old_checksum, error))
+    return FALSE;
+
+  /* Add bindings to the commit metadata. */
+  g_autoptr(GVariantDict) metadata_dict = g_variant_dict_new (additional_metadata);
+  g_variant_dict_insert (metadata_dict, OSTREE_COMMIT_META_KEY_COLLECTION_BINDING,
+                         "s", collection_ref.collection_id);
+  g_variant_dict_insert_value (metadata_dict, OSTREE_COMMIT_META_KEY_REF_BINDING,
+                               g_variant_new_strv ((const gchar * const *) &collection_ref.ref_name, 1));
+  g_autoptr(GVariant) metadata = g_variant_dict_end (metadata_dict);
+
+  /* Set up an empty mtree. */
+  g_autoptr(OstreeMutableTree) mtree = ostree_mutable_tree_new ();
+
+  glnx_unref_object GFileInfo *fi = g_file_info_new ();
+  g_file_info_set_attribute_uint32 (fi, "unix::uid", 0);
+  g_file_info_set_attribute_uint32 (fi, "unix::gid", 0);
+  g_file_info_set_attribute_uint32 (fi, "unix::mode", (0755 | S_IFDIR));
+
+  g_autoptr(GVariant) dirmeta = ostree_create_directory_metadata (fi, NULL /* xattrs */);
+
+  g_autofree guchar *csum_raw = NULL;
+  if (!ostree_repo_write_metadata (self, OSTREE_OBJECT_TYPE_DIR_META, NULL,
+                                   dirmeta, &csum_raw, cancellable, error))
+    return FALSE;
+
+  g_autofree char *csum = ostree_checksum_from_bytes (csum_raw);
+  ostree_mutable_tree_set_metadata_checksum (mtree, csum);
+
+  g_autoptr(OstreeRepoFile) repo_file = NULL;
+  if (!ostree_repo_write_mtree (self, mtree, (GFile **) &repo_file, cancellable, error))
+    return FALSE;
+
+  g_autofree gchar *new_checksum = NULL;
+  if (!ostree_repo_write_commit (self, old_checksum,
+                                 NULL  /* subject */, NULL  /* body */,
+                                 metadata, repo_file,
+                                 &new_checksum,
+                                 cancellable, error))
+    return FALSE;
+
+  ostree_repo_transaction_set_collection_ref (self, &collection_ref, new_checksum);
+
+  if (out_checksum != NULL)
+    *out_checksum = g_steal_pointer (&new_checksum);
+
+  return TRUE;
+}

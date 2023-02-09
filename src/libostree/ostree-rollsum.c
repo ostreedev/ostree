@@ -49,7 +49,7 @@ rollsum_chunks_crc32 (GBytes           *bytes)
 
       if (!rollsum_end)
         {
-          offset = bupsplit_find_ofs (buf + start, MIN(G_MAXINT32, remaining), &bits); 
+          offset = bupsplit_find_ofs (buf + start, MIN(G_MAXINT32, remaining), &bits);
           if (offset == 0)
             {
               rollsum_end = TRUE;
@@ -94,7 +94,7 @@ compare_matches (const void *app,
   GVariant **bvpp = (GVariant**)bpp;
   GVariant *b = *bvpp;
   guint64 a_start, b_start;
-  
+
   g_variant_get_child (a, 2, "t", &a_start);
   g_variant_get_child (b, 2, "t", &b_start);
 
@@ -165,7 +165,7 @@ _ostree_compute_rollsum_matches (GBytes                           *from,
                   /* Same crc32 but different length, skip it.  */
                   if (to_offset != from_offset)
                     continue;
-                  
+
                   /* Rsync uses a cryptographic checksum, but let's be
                    * very conservative here and just memcmp.
                    */
@@ -176,7 +176,7 @@ _ostree_compute_rollsum_matches (GBytes                           *from,
                       ret_rollsum->match_size += to_offset;
                       g_ptr_array_add (matches, g_variant_ref_sink (match));
                       break; /* Don't need any more matches */
-                    } 
+                    }
                 }
             }
         }

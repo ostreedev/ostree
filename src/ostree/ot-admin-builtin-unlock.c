@@ -47,7 +47,7 @@ ot_admin_builtin_unlock (int argc, char **argv, OstreeCommandInvocation *invocat
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
                                           invocation, &sysroot, cancellable, error))
     return FALSE;
-  
+
   if (argc > 1)
     {
       ot_util_usage_error (context, "This command takes no extra arguments", error);

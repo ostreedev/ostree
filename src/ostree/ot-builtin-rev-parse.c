@@ -92,6 +92,6 @@ ostree_builtin_rev_parse (int argc, char **argv, OstreeCommandInvocation *invoca
         return FALSE;
       g_print ("%s\n", resolved_rev);
     }
- 
+
   return TRUE;
 }

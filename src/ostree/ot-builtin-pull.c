@@ -298,10 +298,10 @@ ostree_builtin_pull (int argc, char **argv, OstreeCommandInvocation *invocation,
                              g_variant_new_variant (g_variant_new_strv ((const char *const*) refs_to_fetch->pdata, -1)));
     g_variant_builder_add (&builder, "{s@v}", "depth",
                            g_variant_new_variant (g_variant_new_int32 (opt_depth)));
-   
+
     g_variant_builder_add (&builder, "{s@v}", "update-frequency",
                            g_variant_new_variant (g_variant_new_uint32 (opt_frequency)));
-    
+
     if (opt_network_retries >= 0)
       g_variant_builder_add (&builder, "{s@v}", "n-network-retries",
                              g_variant_new_variant (g_variant_new_uint32 (opt_network_retries)));

@@ -75,7 +75,7 @@ _ostree_read_varuint64 (const guint8   *buf,
   guint64 result = 0;
   int count = 0;
   guint8 b;
-  
+
   /* Adapted from CodedInputStream::ReadVarint64Slow */
 
   do

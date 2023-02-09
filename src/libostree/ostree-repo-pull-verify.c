@@ -368,7 +368,7 @@ validate_metadata_size (const char *prefix, GBytes *buf, GError **error)
  * contain at least one valid signature.  If GPG and signapi are
  * both enabled, then both must find at least one valid signature.
  */
-gboolean 
+gboolean
 ostree_repo_signature_verify_commit_data (OstreeRepo    *self,
                                           const char    *remote_name,
                                           GBytes        *commit_data,

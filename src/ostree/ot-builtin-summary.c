@@ -146,151 +146,39 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
             return FALSE;
         }
 
-      const char *collection_id = ostree_repo_get_collection_id (repo);
-
-      /* Write out a new metadata commit for the repository. */
-      if (collection_id != NULL)
+      /* Regenerate and sign the repo metadata. */
+      g_auto(GVariantBuilder) metadata_opts_builder = G_VARIANT_BUILDER_INIT (G_VARIANT_TYPE_VARDICT);
+      g_autoptr(GVariant) metadata_opts = NULL;
+      if (opt_gpg_key_ids != NULL)
+        g_variant_builder_add (&metadata_opts_builder, "{sv}", "gpg-key-ids",
+                               g_variant_new_strv ((const char * const *) opt_gpg_key_ids, -1));
+      if (opt_gpg_homedir != NULL)
+        g_variant_builder_add (&metadata_opts_builder, "{sv}", "gpg-homedir",
+                               g_variant_new_string (opt_gpg_homedir));
+      if (opt_key_ids != NULL)
         {
-          OstreeCollectionRef collection_ref = { (gchar *) collection_id, (gchar *) OSTREE_REPO_METADATA_REF };
-          g_autofree char *old_ostree_metadata_checksum = NULL;
-          g_autofree gchar *new_ostree_metadata_checksum = NULL;
-          g_autoptr(OstreeMutableTree) mtree = NULL;
-          g_autoptr(OstreeRepoFile) repo_file = NULL;
-          g_autoptr(GVariantDict) new_summary_commit_dict = NULL;
-          g_autoptr(GVariant) new_summary_commit = NULL;
+          g_auto(GVariantBuilder) sk_builder = G_VARIANT_BUILDER_INIT (G_VARIANT_TYPE_ARRAY);
 
-          if (!ostree_repo_resolve_rev (repo, OSTREE_REPO_METADATA_REF,
-                                        TRUE, &old_ostree_metadata_checksum, error))
-            return FALSE;
-
-          /* Add bindings to the metadata. */
-          new_summary_commit_dict = g_variant_dict_new (additional_metadata);
-          g_variant_dict_insert (new_summary_commit_dict, OSTREE_COMMIT_META_KEY_COLLECTION_BINDING,
-                                 "s", collection_ref.collection_id);
-          g_variant_dict_insert_value (new_summary_commit_dict, OSTREE_COMMIT_META_KEY_REF_BINDING,
-                                       g_variant_new_strv ((const gchar * const *) &collection_ref.ref_name, 1));
-          new_summary_commit = g_variant_dict_end (new_summary_commit_dict);
-
-          if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
-            return FALSE;
-
-          /* Set up an empty mtree. */
-          mtree = ostree_mutable_tree_new ();
-
-          glnx_unref_object GFileInfo *fi = g_file_info_new ();
-          g_file_info_set_attribute_uint32 (fi, "unix::uid", 0);
-          g_file_info_set_attribute_uint32 (fi, "unix::gid", 0);
-          g_file_info_set_attribute_uint32 (fi, "unix::mode", (0755 | S_IFDIR));
-
-          g_autofree guchar *csum_raw = NULL;
-          g_autofree char *csum = NULL;
-
-          g_autoptr(GVariant) dirmeta = ostree_create_directory_metadata (fi, NULL /* xattrs */);
-
-          if (!ostree_repo_write_metadata (repo, OSTREE_OBJECT_TYPE_DIR_META, NULL,
-                                           dirmeta, &csum_raw, cancellable, error))
-            return FALSE;
-
-          csum = ostree_checksum_from_bytes (csum_raw);
-          ostree_mutable_tree_set_metadata_checksum (mtree, csum);
-
-          if (!ostree_repo_write_mtree (repo, mtree, (GFile **) &repo_file, NULL, error))
-            return FALSE;
-
-          if (!ostree_repo_write_commit (repo, old_ostree_metadata_checksum,
-                                         NULL  /* subject */, NULL  /* body */,
-                                         new_summary_commit, repo_file, &new_ostree_metadata_checksum,
-                                         NULL, error))
-            return FALSE;
-          if (opt_gpg_key_ids != NULL)
+          /* Currently only strings are used as keys for supported
+           * signature types. */
+          for (const char * const *iter = (const char * const *) opt_key_ids;
+               iter != NULL && *iter != NULL; iter++)
             {
-              for (const char * const *iter = (const char * const *) opt_gpg_key_ids;
-                   iter != NULL && *iter != NULL; iter++)
-                {
-                  const char *key_id = *iter;
-
-                  if (!ostree_repo_sign_commit (repo,
-                                                new_ostree_metadata_checksum,
-                                                key_id,
-                                                opt_gpg_homedir,
-                                                cancellable,
-                                                error))
-                    return FALSE;
-                }
+              const char *key_id = *iter;
+              g_variant_builder_add (&sk_builder, "v", g_variant_new_string (key_id));
             }
 
-          if (opt_key_ids)
-            {
-              char **iter;
-              for (iter = opt_key_ids; iter && *iter; iter++)
-                {
-                  const char *keyid = *iter;
-                  g_autoptr (GVariant) secret_key = NULL;
-
-                  secret_key = g_variant_new_string (keyid);
-                  if (!ostree_sign_set_sk (sign, secret_key, error))
-                    return FALSE;
-
-                  if (!ostree_sign_commit (sign,
-                                           repo,
-                                           new_ostree_metadata_checksum,
-                                           cancellable,
-                                           error))
-                    return FALSE;
-                }
-            }
-
-          ostree_repo_transaction_set_collection_ref (repo, &collection_ref,
-                                                      new_ostree_metadata_checksum);
-
-          if (!ostree_repo_commit_transaction (repo, NULL, cancellable, error))
-            return FALSE;
+          g_variant_builder_add (&metadata_opts_builder, "{sv}", "sign-keys",
+                                 g_variant_builder_end (&sk_builder));
         }
+      if (opt_sign_name != NULL)
+        g_variant_builder_add (&metadata_opts_builder, "{sv}", "sign-type",
+                               g_variant_new_string (opt_sign_name));
 
-      /* Regenerate and sign the conventional summary file. */
-      if (!ostree_repo_regenerate_summary (repo, additional_metadata, cancellable, error))
+      metadata_opts = g_variant_ref_sink (g_variant_builder_end (&metadata_opts_builder));
+      if (!ostree_repo_regenerate_metadata (repo, additional_metadata, metadata_opts,
+                                            cancellable, error))
         return FALSE;
-
-#ifndef OSTREE_DISABLE_GPGME
-      if (opt_gpg_key_ids)
-        {
-          if (!ostree_repo_add_gpg_signature_summary (repo,
-                                                      (const gchar **) opt_gpg_key_ids,
-                                                      opt_gpg_homedir,
-                                                      cancellable,
-                                                      error))
-            return FALSE;
-        }
-#endif
-      if (opt_key_ids)
-        {
-          g_autoptr (GVariant) secret_keys = NULL;
-          g_autoptr (GVariantBuilder) sk_builder = NULL;
-
-          sk_builder = g_variant_builder_new (G_VARIANT_TYPE_ARRAY);
-
-          char **iter;
-          for (iter = opt_key_ids; iter && *iter; iter++)
-            {
-              const char *keyid = *iter;
-              GVariant *secret_key = NULL;
-
-              /* Currently only strings are used as keys
-               * for supported signature types */
-              secret_key = g_variant_new_string (keyid);
-
-              g_variant_builder_add (sk_builder, "v", secret_key);
-            }
-
-          secret_keys = g_variant_builder_end (sk_builder);
-
-          if (! ostree_sign_summary (sign,
-                                     repo,
-                                     secret_keys,
-                                     cancellable,
-                                     error))
-            return FALSE;
-        }
     }
   else if (opt_view || opt_raw)
     {

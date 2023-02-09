@@ -28,7 +28,7 @@
 
 #include "otutil.h"
 
-static gboolean 
+static gboolean
 impl_ostree_generate_grub2_config (OstreeSysroot *sysroot, int bootversion, int target_fd, GCancellable *cancellable, GError **error)
 {
   return _ostree_bootloader_grub2_generate_config (sysroot, bootversion, target_fd, cancellable, error);

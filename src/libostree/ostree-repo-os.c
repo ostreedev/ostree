@@ -41,7 +41,7 @@ gboolean
 ostree_commit_metadata_for_bootable (GFile *root, GVariantDict *dict, GCancellable *cancellable, GError **error)
 {
   g_autoptr(GFile) modules = g_file_resolve_relative_path (root, "usr/lib/modules");
-  g_autoptr(GFileEnumerator) dir_enum 
+  g_autoptr(GFileEnumerator) dir_enum
     = g_file_enumerate_children (modules, OSTREE_GIO_FAST_QUERYINFO,
                                  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                  cancellable, error);
@@ -60,7 +60,7 @@ ostree_commit_metadata_for_bootable (GFile *root, GVariantDict *dict, GCancellab
         break;
       if (g_file_info_get_file_type (child_info) != G_FILE_TYPE_DIRECTORY)
         continue;
-    
+
       g_autoptr(GFile) kernel_path = g_file_resolve_relative_path (child_path, "vmlinuz");
       if (!g_file_query_exists (kernel_path, NULL))
         continue;

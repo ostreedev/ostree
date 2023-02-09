@@ -3561,7 +3561,7 @@ _ostree_sysroot_finalize_staged (OstreeSysroot *self,
     {
       g_autoptr(GError) writing_error = NULL;
       g_assert_cmpint (self->boot_fd, !=, -1);
-      if (!glnx_file_replace_contents_at (self->boot_fd, _OSTREE_FINALIZE_STAGED_FAILURE_PATH, 
+      if (!glnx_file_replace_contents_at (self->boot_fd, _OSTREE_FINALIZE_STAGED_FAILURE_PATH,
                                            (guint8*)finalization_error->message, -1,
                                            0, cancellable, &writing_error))
         {
@@ -3687,15 +3687,15 @@ ostree_sysroot_deployment_set_kargs_in_place (OstreeSysroot     *self,
         g_variant_new_from_bytes ((GVariantType*)"a{sv}", contents, TRUE);
       g_autoptr(GVariantDict) staged_deployment_dict =
         g_variant_dict_new (staged_deployment_data);
-      
+
       g_autoptr(OstreeKernelArgs) kargs = ostree_kernel_args_from_string (kargs_str);
       g_auto(GStrv) kargs_strv = ostree_kernel_args_to_strv (kargs);
-      
+
       g_variant_dict_insert (staged_deployment_dict, "kargs", "^a&s", kargs_strv);
       g_autoptr(GVariant) new_staged_deployment_data = g_variant_dict_end (staged_deployment_dict);
-      
+
       if (!glnx_file_replace_contents_at (fd, _OSTREE_SYSROOT_RUNSTATE_STAGED,
-                                          g_variant_get_data (new_staged_deployment_data), 
+                                          g_variant_get_data (new_staged_deployment_data),
                                           g_variant_get_size (new_staged_deployment_data),
                                           GLNX_FILE_REPLACE_NODATASYNC,
                                           cancellable, error))

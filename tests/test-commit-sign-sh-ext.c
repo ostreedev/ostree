@@ -73,31 +73,31 @@ run (GError **error)
   g_autoptr(GBytes) commit_bytes = g_variant_get_data_as_bytes (commit);
   g_autoptr(GBytes) detached_meta_bytes = g_variant_get_data_as_bytes (detached_meta);
   g_autofree char *verify_report = NULL;
-  if (!ostree_repo_signature_verify_commit_data (repo, "origin", commit_bytes, detached_meta_bytes, 0, 
+  if (!ostree_repo_signature_verify_commit_data (repo, "origin", commit_bytes, detached_meta_bytes, 0,
                                                  &verify_report, error))
     return FALSE;
 
-  if (ostree_repo_signature_verify_commit_data (repo, "origin", commit_bytes, detached_meta_bytes, 
-                                                OSTREE_REPO_VERIFY_FLAGS_NO_GPG | OSTREE_REPO_VERIFY_FLAGS_NO_SIGNAPI, 
+  if (ostree_repo_signature_verify_commit_data (repo, "origin", commit_bytes, detached_meta_bytes,
+                                                OSTREE_REPO_VERIFY_FLAGS_NO_GPG | OSTREE_REPO_VERIFY_FLAGS_NO_SIGNAPI,
                                                 &verify_report, error))
     return glnx_throw (error, "Should not have validated");
   assert_error_contains (error, "No commit verification types enabled");
 
   // No signatures
   g_autoptr(GBytes) empty = g_bytes_new_static ("", 0);
-  if (ostree_repo_signature_verify_commit_data (repo, "origin", commit_bytes, empty, 0, 
+  if (ostree_repo_signature_verify_commit_data (repo, "origin", commit_bytes, empty, 0,
                                                  &verify_report, error))
     return glnx_throw (error, "Should not have validated");
   assert_error_contains (error, "no signatures found");
   // No such remote
-  if (ostree_repo_signature_verify_commit_data (repo, "nosuchremote", commit_bytes, detached_meta_bytes, 0, 
+  if (ostree_repo_signature_verify_commit_data (repo, "nosuchremote", commit_bytes, detached_meta_bytes, 0,
                                                  &verify_report, error))
     return glnx_throw (error, "Should not have validated");
   assert_error_contains (error, "Remote \"nosuchremote\" not found");
 
   // Corrupted commit
   g_autoptr(GBytes) corrupted_commit = corrupt (commit_bytes);
-  if (ostree_repo_signature_verify_commit_data (repo, "origin", corrupted_commit, detached_meta_bytes, 0, 
+  if (ostree_repo_signature_verify_commit_data (repo, "origin", corrupted_commit, detached_meta_bytes, 0,
                                                  &verify_report, error))
     return glnx_throw (error, "Should not have validated");
   assert_error_contains (error, "BAD signature");

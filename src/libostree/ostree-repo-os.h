@@ -23,14 +23,14 @@
 
 G_BEGIN_DECLS
 
-/** 
+/**
  * OSTREE_METADATA_KEY_BOOTABLE:
  *
  * GVariant type `b`: Set if this commit is intended to be bootable
  * Since: 2021.1
  */
 #define OSTREE_METADATA_KEY_BOOTABLE "ostree.bootable"
-/** 
+/**
  * OSTREE_METADATA_KEY_LINUX:
  *
  * GVariant type `s`: Contains the Linux kernel release (i.e. `uname -r`)

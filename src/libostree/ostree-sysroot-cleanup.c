@@ -161,7 +161,7 @@ list_all_boot_directories (OstreeSysroot       *self,
         {
           g_clear_error (&temp_error);
           goto done;
-        } 
+        }
       else
         {
           g_propagate_error (error, temp_error);
@@ -190,10 +190,10 @@ list_all_boot_directories (OstreeSysroot       *self,
       name = g_file_info_get_name (file_info);
       if (!parse_bootdir_name (name, NULL, NULL))
         continue;
-      
+
       g_ptr_array_add (ret_bootdirs, g_object_ref (child));
     }
-  
+
  done:
   ret = TRUE;
   ot_transfer_out_value (out_bootdirs, &ret_bootdirs);

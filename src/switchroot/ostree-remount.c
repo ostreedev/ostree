@@ -70,7 +70,7 @@ do_remount (const char *target,
       /* Also ignore EINVAL - if the target isn't a mountpoint
        * already, then assume things are OK.
        */
-      if (errno != EINVAL)  
+      if (errno != EINVAL)
         err (EXIT_FAILURE, "failed to remount(%s) %s", writable ? "rw" : "ro", target);
       else
         return;

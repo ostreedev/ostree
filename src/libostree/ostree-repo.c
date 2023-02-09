@@ -43,6 +43,7 @@
 #include "ostree-repo-static-delta-private.h"
 #include "ot-fs-utils.h"
 #include "ostree-autocleanups.h"
+#include "ostree-sign-private.h"
 
 #include <locale.h>
 #include <glib/gstdio.h>
@@ -1413,8 +1414,8 @@ ostree_repo_init (OstreeRepo *self)
   self->remotes = g_hash_table_new_full (g_str_hash, g_str_equal,
                                          (GDestroyNotify) NULL,
                                          (GDestroyNotify) ostree_remote_unref);
-  self->bls_append_values = g_hash_table_new_full (g_str_hash, g_str_equal, 
-                                                   (GDestroyNotify) g_free, 
+  self->bls_append_values = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                   (GDestroyNotify) g_free,
                                                    (GDestroyNotify) g_free);
   g_mutex_init (&self->remotes_lock);
 
@@ -3363,7 +3364,7 @@ reload_core_config (OstreeRepo          *self,
 
   if (!_ostree_repo_parse_fsverity_config (self, error))
     return FALSE;
-  
+
   {
     g_clear_pointer (&self->collection_id, g_free);
     if (!ot_keyfile_get_value_with_default (self->config, "core", "collection-id",
@@ -3525,16 +3526,16 @@ reload_sysroot_config (OstreeRepo          *self,
           valid_bootloader = TRUE;
         }
     }
-  if (!valid_bootloader) 
+  if (!valid_bootloader)
   {
     return glnx_throw (error, "Invalid bootloader configuration: '%s'", bootloader);
   }
   /* Parse bls-append-except-default string list. */
   g_auto(GStrv) read_values = NULL;
-  if (!ot_keyfile_get_string_list_with_default (self->config, "sysroot", "bls-append-except-default", 
+  if (!ot_keyfile_get_string_list_with_default (self->config, "sysroot", "bls-append-except-default",
                                                 ';', NULL, &read_values, error))
       return glnx_throw(error, "Unable to parse bls-append-except-default");
-    
+
   /* get all key value pairs in bls-append-except-default */
   g_hash_table_remove_all (self->bls_append_values);
   for (char **iter = read_values; iter && *iter; iter++)
@@ -3548,7 +3549,7 @@ reload_sysroot_config (OstreeRepo          *self,
         }
       char *key = g_strndup (key_value, sep - key_value);
       char *value = g_strdup (sep + 1);
-      g_hash_table_replace (self->bls_append_values, key, value); 
+      g_hash_table_replace (self->bls_append_values, key, value);
     }
 
   return TRUE;
@@ -4383,7 +4384,7 @@ _ostree_repo_load_file_bare (OstreeRepo         *self,
         {
           if (self->disable_xattrs)
             ret_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
-          else 
+          else
             {
               ret_xattrs = ostree_fs_get_all_xattrs (fd, cancellable, error);
               if (!ret_xattrs)
@@ -5592,26 +5593,17 @@ ostree_repo_sign_delta (OstreeRepo     *self,
   return FALSE;
 }
 
-/**
- * ostree_repo_add_gpg_signature_summary:
- * @self: Self
- * @key_id: (array zero-terminated=1) (element-type utf8): NULL-terminated array of GPG keys.
- * @homedir: (allow-none): GPG home directory, or %NULL
- * @cancellable: A #GCancellable
- * @error: a #GError
- *
- * Add a GPG signature to a summary file.
- */
-gboolean
-ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
-                                       const gchar    **key_id,
-                                       const gchar    *homedir,
-                                       GCancellable   *cancellable,
-                                       GError        **error)
+static gboolean
+_ostree_repo_add_gpg_signature_summary_at (OstreeRepo    *self,
+                                           int            dir_fd,
+                                           const gchar  **key_id,
+                                           const gchar   *homedir,
+                                           GCancellable  *cancellable,
+                                           GError       **error)
 {
 #ifndef OSTREE_DISABLE_GPGME
   glnx_autofd int fd = -1;
-  if (!glnx_openat_rdonly (self->repo_dir_fd, "summary", TRUE, &fd, error))
+  if (!glnx_openat_rdonly (dir_fd, "summary", TRUE, &fd, error))
     return FALSE;
   g_autoptr(GBytes) summary_data = ot_fd_readall_or_mmap (fd, 0, error);
   if (!summary_data)
@@ -5620,7 +5612,7 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
   glnx_close_fd (&fd);
 
   g_autoptr(GVariant) metadata = NULL;
-  if (!ot_openat_ignore_enoent (self->repo_dir_fd, "summary.sig", &fd, error))
+  if (!ot_openat_ignore_enoent (dir_fd, "summary.sig", &fd, error))
     return FALSE;
   if (fd >= 0)
     {
@@ -5644,7 +5636,7 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
   g_autoptr(GVariant) normalized = g_variant_get_normal_form (metadata);
 
   if (!_ostree_repo_file_replace_contents (self,
-                                           self->repo_dir_fd,
+                                           dir_fd,
                                            "summary.sig",
                                            g_variant_get_data (normalized),
                                            g_variant_get_size (normalized),
@@ -5652,6 +5644,35 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
     return FALSE;
 
   return TRUE;
+#else
+  return glnx_throw (error, "GPG feature is disabled at build time");
+#endif /* OSTREE_DISABLE_GPGME */
+}
+
+/**
+ * ostree_repo_add_gpg_signature_summary:
+ * @self: Self
+ * @key_id: (array zero-terminated=1) (element-type utf8): NULL-terminated array of GPG keys.
+ * @homedir: (allow-none): GPG home directory, or %NULL
+ * @cancellable: A #GCancellable
+ * @error: a #GError
+ *
+ * Add a GPG signature to a summary file.
+ */
+gboolean
+ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
+                                       const gchar    **key_id,
+                                       const gchar    *homedir,
+                                       GCancellable   *cancellable,
+                                       GError        **error)
+{
+#ifndef OSTREE_DISABLE_GPGME
+  return _ostree_repo_add_gpg_signature_summary_at (self,
+                                                    self->repo_dir_fd,
+                                                    key_id,
+                                                    homedir,
+                                                    cancellable,
+                                                    error);
 #else
   return glnx_throw (error, "GPG feature is disabled in a build time");
 #endif /* OSTREE_DISABLE_GPGME */
@@ -6235,37 +6256,13 @@ summary_add_ref_entry (OstreeRepo       *self,
   return TRUE;
 }
 
-/**
- * ostree_repo_regenerate_summary:
- * @self: Repo
- * @additional_metadata: (allow-none): A GVariant of type a{sv}, or %NULL
- * @cancellable: Cancellable
- * @error: Error
- *
- * An OSTree repository can contain a high level "summary" file that
- * describes the available branches and other metadata.
- *
- * If the timetable for making commits and updating the summary file is fairly
- * regular, setting the `ostree.summary.expires` key in @additional_metadata
- * will aid clients in working out when to check for updates.
- *
- * It is regenerated automatically after any ref is
- * added, removed, or updated if `core/auto-update-summary` is set.
- *
- * If the `core/collection-id` key is set in the configuration, it will be
- * included as %OSTREE_SUMMARY_COLLECTION_ID in the summary file. Refs that
- * have associated collection IDs will be included in the generated summary
- * file, listed under the %OSTREE_SUMMARY_COLLECTION_MAP key. Collection IDs
- * and refs in %OSTREE_SUMMARY_COLLECTION_MAP are guaranteed to be in
- * lexicographic order.
- *
- * Locking: shared (Prior to 2021.7, this was exclusive)
- */
-gboolean
-ostree_repo_regenerate_summary (OstreeRepo     *self,
-                                GVariant       *additional_metadata,
-                                GCancellable   *cancellable,
-                                GError        **error)
+static gboolean
+regenerate_metadata (OstreeRepo    *self,
+                     gboolean       do_metadata_commit,
+                     GVariant      *additional_metadata,
+                     GVariant      *options,
+                     GCancellable  *cancellable,
+                     GError       **error)
 {
   g_autoptr(OstreeRepoAutoLock) lock = NULL;
   gboolean no_deltas_in_summary = FALSE;
@@ -6275,11 +6272,98 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
   if (!lock)
     return FALSE;
 
+  /* Parse options vardict. */
+  g_autofree char **gpg_key_ids = NULL;
+  const char *gpg_homedir = NULL;
+  g_autoptr(GVariant) sign_keys = NULL;
+  const char *sign_type = NULL;
+  g_autoptr(OstreeSign) sign = NULL;
+
+  if (options != NULL)
+    {
+      if (!g_variant_is_of_type (options, G_VARIANT_TYPE_VARDICT))
+        return glnx_throw (error, "Invalid options doesn't match variant type '%s'",
+                           (const char *) G_VARIANT_TYPE_VARDICT);
+
+      g_variant_lookup (options, "gpg-key-ids", "^a&s", &gpg_key_ids);
+      g_variant_lookup (options, "gpg-homedir", "&s", &gpg_homedir);
+      sign_keys = g_variant_lookup_value (options, "sign-keys", G_VARIANT_TYPE_ARRAY);
+      g_variant_lookup (options, "sign-type", "&s", &sign_type);
+
+      if (sign_keys != NULL)
+        {
+          if (sign_type == NULL)
+            sign_type = OSTREE_SIGN_NAME_ED25519;
+
+          sign = ostree_sign_get_by_name (sign_type, error);
+          if (sign == NULL)
+            return FALSE;
+        }
+    }
+
+  const gchar *main_collection_id = ostree_repo_get_collection_id (self);
+
+  /* Write out a new metadata commit for the repository when it has a collection ID. */
+  if (do_metadata_commit && main_collection_id != NULL)
+    {
+      g_autoptr(OstreeRepoAutoTransaction) txn =
+        _ostree_repo_auto_transaction_start (self, cancellable, error);
+      if (!txn)
+        return FALSE;
+
+      /* Disable automatic summary updating since we're already doing it */
+      self->txn.disable_auto_summary = TRUE;
+
+      g_autofree gchar *new_ostree_metadata_checksum = NULL;
+      if (!_ostree_repo_transaction_write_repo_metadata (self,
+                                                         additional_metadata,
+                                                         &new_ostree_metadata_checksum,
+                                                         cancellable,
+                                                         error))
+        return FALSE;
+
+      /* Sign the new commit. */
+      if (gpg_key_ids != NULL)
+        {
+          for (const char * const *iter = (const char * const *) gpg_key_ids;
+               iter != NULL && *iter != NULL; iter++)
+            {
+              const char *gpg_key_id = *iter;
+
+              if (!ostree_repo_sign_commit (self,
+                                            new_ostree_metadata_checksum,
+                                            gpg_key_id,
+                                            gpg_homedir,
+                                            cancellable,
+                                            error))
+                return FALSE;
+            }
+        }
+
+      if (sign_keys != NULL)
+        {
+          GVariantIter *iter;
+          GVariant *key;
+
+          g_variant_get (sign_keys, "av", &iter);
+          while (g_variant_iter_loop (iter, "v", &key))
+            {
+              if (!ostree_sign_set_sk (sign, key, error))
+                return FALSE;
+
+              if (!ostree_sign_commit (sign, self, new_ostree_metadata_checksum,
+                                       cancellable, error))
+                return FALSE;
+            }
+        }
+
+      if (!_ostree_repo_auto_transaction_commit (txn, NULL, cancellable, error))
+        return FALSE;
+    }
+
   g_auto(GVariantDict) additional_metadata_builder = OT_VARIANT_BUILDER_INITIALIZER;
   g_variant_dict_init (&additional_metadata_builder, additional_metadata);
   g_autoptr(GVariantBuilder) refs_builder = g_variant_builder_new (G_VARIANT_TYPE ("a(s(taya{sv}))"));
-
-  const gchar *main_collection_id = ostree_repo_get_collection_id (self);
 
   {
     if (main_collection_id == NULL)
@@ -6460,8 +6544,17 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
   if (!ostree_repo_static_delta_reindex (self, 0, NULL, cancellable, error))
     return FALSE;
 
+  /* Create the summary and signature in a temporary directory so that
+   * the summary isn't published without a matching signature.
+   */
+  g_auto(GLnxTmpDir) summary_tmpdir = { 0, };
+  if (!glnx_mkdtempat (self->tmp_dir_fd, "summary-XXXXXX", 0777,
+                       &summary_tmpdir, error))
+    return FALSE;
+  g_debug ("Using summary tmpdir %s", summary_tmpdir.path);
+
   if (!_ostree_repo_file_replace_contents (self,
-                                           self->repo_dir_fd,
+                                           summary_tmpdir.fd,
                                            "summary",
                                            g_variant_get_data (summary),
                                            g_variant_get_size (summary),
@@ -6469,10 +6562,122 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                            error))
     return FALSE;
 
-  if (!ot_ensure_unlinked_at (self->repo_dir_fd, "summary.sig", error))
+  if (gpg_key_ids != NULL &&
+      !_ostree_repo_add_gpg_signature_summary_at (self, summary_tmpdir.fd,
+                                                  (const char **) gpg_key_ids, gpg_homedir,
+                                                  cancellable, error))
     return FALSE;
 
+  if (sign_keys != NULL &&
+      !_ostree_sign_summary_at (sign, self, summary_tmpdir.fd, sign_keys,
+                                cancellable, error))
+    return FALSE;
+
+  /* Rename them into place */
+  if (!glnx_renameat (summary_tmpdir.fd, "summary",
+                      self->repo_dir_fd, "summary",
+                      error))
+    return glnx_prefix_error (error, "Unable to rename summary file: ");
+
+  if (gpg_key_ids != NULL || sign_keys != NULL)
+    {
+      if (!glnx_renameat (summary_tmpdir.fd, "summary.sig",
+                          self->repo_dir_fd, "summary.sig",
+                          error))
+        {
+          /* Delete an existing signature since it no longer corresponds
+           * to the published summary.
+           */
+          g_debug ("Deleting existing unmatched summary.sig file");
+          (void) ot_ensure_unlinked_at (self->repo_dir_fd, "summary.sig", NULL);
+
+          return glnx_prefix_error (error, "Unable to rename summary signature file: ");
+        }
+    }
+  else
+    {
+      g_debug ("Deleting existing unmatched summary.sig file");
+      if (!ot_ensure_unlinked_at (self->repo_dir_fd, "summary.sig", error))
+        return glnx_prefix_error (error, "Unable to delete summary signature file: ");
+    }
+
   return TRUE;
+}
+
+/**
+ * ostree_repo_regenerate_summary:
+ * @self: Repo
+ * @additional_metadata: (allow-none): A GVariant of type a{sv}, or %NULL
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * An OSTree repository can contain a high level "summary" file that
+ * describes the available branches and other metadata.
+ *
+ * If the timetable for making commits and updating the summary file is fairly
+ * regular, setting the `ostree.summary.expires` key in @additional_metadata
+ * will aid clients in working out when to check for updates.
+ *
+ * It is regenerated automatically after any ref is
+ * added, removed, or updated if `core/auto-update-summary` is set.
+ *
+ * If the `core/collection-id` key is set in the configuration, it will be
+ * included as %OSTREE_SUMMARY_COLLECTION_ID in the summary file. Refs that
+ * have associated collection IDs will be included in the generated summary
+ * file, listed under the %OSTREE_SUMMARY_COLLECTION_MAP key. Collection IDs
+ * and refs in %OSTREE_SUMMARY_COLLECTION_MAP are guaranteed to be in
+ * lexicographic order.
+ *
+ * Locking: shared (Prior to 2021.7, this was exclusive)
+ */
+gboolean
+ostree_repo_regenerate_summary (OstreeRepo     *self,
+                                GVariant       *additional_metadata,
+                                GCancellable   *cancellable,
+                                GError        **error)
+{
+  return regenerate_metadata (self, FALSE, additional_metadata, NULL, cancellable, error);
+}
+
+/**
+ * ostree_repo_regenerate_metadata:
+ * @self: Repo
+ * @additional_metadata: (nullable): A GVariant `a{sv}`, or %NULL
+ * @options: (nullable): A GVariant `a{sv}` with an extensible set of flags
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Regenerate the OSTree repository metadata used by clients to describe
+ * available branches and other metadata.
+ *
+ * The repository metadata currently consists of the `summary` file. See
+ * ostree_repo_regenerate_summary() and %OSTREE_SUMMARY_GVARIANT_FORMAT for
+ * additional details on its contents.
+ *
+ * Additionally, if the `core/collection-id` key is set in the configuration, a
+ * %OSTREE_REPO_METADATA_REF commit will be created.
+ *
+ * The following @options are currently defined:
+ *
+ *   * `gpg-key-ids` (`as`): Array of GPG key IDs to sign the metadata with.
+ *   * `gpg-homedir` (`s`): GPG home directory.
+ *   * `sign-keys` (`av`): Array of keys to sign the metadata with. The key
+ *   type is specific to the sign engine used.
+ *   * `sign-type` (`s`): Sign engine type to use. If not specified,
+ *   %OSTREE_SIGN_NAME_ED25519 is used.
+ *
+ * Locking: shared
+ *
+ * Since: 2023.1
+ */
+gboolean
+ostree_repo_regenerate_metadata (OstreeRepo    *self,
+                                 GVariant      *additional_metadata,
+                                 GVariant      *options,
+                                 GCancellable  *cancellable,
+                                 GError       **error)
+{
+  return regenerate_metadata (self, TRUE, additional_metadata, options, cancellable, error);
 }
 
 /* Regenerate the summary if `core/auto-update-summary` is set. We default to FALSE for

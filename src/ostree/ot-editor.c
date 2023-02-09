@@ -91,7 +91,7 @@ ot_editor_prompt (OstreeRepo *repo,
     args = g_strconcat (editor, " ", quoted_file, NULL);
   }
 
-  proc = g_subprocess_new (G_SUBPROCESS_FLAGS_STDIN_INHERIT, error, 
+  proc = g_subprocess_new (G_SUBPROCESS_FLAGS_STDIN_INHERIT, error,
                            "/bin/sh", "-c", args, NULL);
 
   if (!g_subprocess_wait_check (proc, cancellable, error))

@@ -4017,7 +4017,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       if (custom_backend)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Cannot fetch via libostree - remote '%s' uses custom backend '%s'", 
+                       "Cannot fetch via libostree - remote '%s' uses custom backend '%s'",
                        pull_data->remote_name, custom_backend);
           goto out;
         }

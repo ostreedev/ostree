@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (C) 2011 Colin Walters <walters@verbum.org>
  * Copyright (C) 2022 Igalia S.L.
  *
@@ -94,7 +94,7 @@ ostree_libarchive_input_stream_set_property (GObject         *object,
 					     GParamSpec      *pspec)
 {
   OstreeLibarchiveInputStream *self;
-  
+
   self = OSTREE_LIBARCHIVE_INPUT_STREAM (object);
 
   switch (prop_id)

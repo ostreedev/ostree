@@ -88,7 +88,7 @@ G_BEGIN_DECLS
  *
  * The metadata would include things like a version number, as well as
  * extended verification data like a GPG signature.
- * 
+ *
  * The second array is an array of delta objects that should be
  * fetched and applied before this one.  This is a fairly generic
  * recursion mechanism that would potentially allow saving significant
@@ -99,7 +99,7 @@ G_BEGIN_DECLS
  * Finally, we have the fallback array, which is the set of objects to
  * fetch individually - the compiler determined it wasn't worth
  * duplicating the space.
- */ 
+ */
 #define OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT "(a{sv}tayay" OSTREE_COMMIT_GVARIANT_STRING "aya" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT "a" OSTREE_STATIC_DELTA_FALLBACK_FORMAT ")"
 
 /**
@@ -168,7 +168,7 @@ void _ostree_static_delta_part_execute_async (OstreeRepo      *repo,
 
 gboolean _ostree_static_delta_part_execute_finish (OstreeRepo      *repo,
                                                    GAsyncResult    *result,
-                                                   GError         **error); 
+                                                   GError         **error);
 
 gboolean
 _ostree_static_delta_parse_checksum_array (GVariant      *array,

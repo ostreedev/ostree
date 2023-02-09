@@ -157,7 +157,7 @@ get_directory_listing (int dfd,
   for (i = 0; i < entries->len; i++)
     {
       g_string_append_printf (listing, "<a href=\"%s\">%s</a><br>\r\n",
-                              (char *)entries->pdata[i], 
+                              (char *)entries->pdata[i],
                               (char *)entries->pdata[i]);
       g_free (g_steal_pointer (&entries->pdata[i]));
     }
@@ -367,7 +367,7 @@ do_get (OtTrivialHttpd    *self,
             }
         }
     }
-  else 
+  else
     {
       if (!S_ISREG (stbuf.st_mode))
         {
@@ -401,7 +401,7 @@ do_get (OtTrivialHttpd    *self,
       g_autofree gchar *etag = calculate_etag (mapping);
       if (etag != NULL)
         soup_message_headers_append (msg->response_headers, "ETag", etag);
-      
+
       if (msg->method == SOUP_METHOD_GET)
         {
           gsize buffer_length, file_size;
@@ -729,7 +729,7 @@ run (int argc, char **argv, GCancellable *cancellable, GError **error)
       GSList *listeners = soup_server_get_listeners (server);
       g_autoptr(GSocket) listener = NULL;
       g_autoptr(GSocketAddress) addr = NULL;
-      
+
       g_assert (listeners);
       listener = g_object_ref (listeners->data);
       g_slist_free (listeners);
@@ -739,7 +739,7 @@ run (int argc, char **argv, GCancellable *cancellable, GError **error)
         goto out;
 
       g_assert (G_IS_INET_SOCKET_ADDRESS (addr));
-      
+
       portstr = g_strdup_printf ("%u\n", g_inet_socket_address_get_port ((GInetSocketAddress*)addr));
 #else
       portstr = g_strdup_printf ("%u\n", soup_server_get_port (server));

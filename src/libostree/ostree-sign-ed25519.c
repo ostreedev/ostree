@@ -504,7 +504,7 @@ _load_pk_from_stream (OstreeSign *self,
 
       if (line == NULL)
         return ret;
-      
+
       /* Read the key itself */
       /* base64 encoded key */
       pk = g_variant_new_string (line);
@@ -549,14 +549,14 @@ _load_pk_from_file (OstreeSign *self,
   key_stream_in = g_file_read (keyfile, NULL, error);
   if (key_stream_in == NULL)
     return FALSE;
- 
+
   key_data_in = g_data_input_stream_new (G_INPUT_STREAM(key_stream_in));
   g_assert (key_data_in != NULL);
 
   if (!_load_pk_from_stream (self, key_data_in, trusted, error))
     {
       if (error == NULL || *error == NULL)
-        return glnx_throw (error, 
+        return glnx_throw (error,
                            "signature: ed25519: no valid keys in file '%s'",
                            filename);
       else
@@ -598,7 +598,7 @@ _ed25519_load_pk (OstreeSign *self,
       g_autofree gchar *base_dir = NULL;
       g_autoptr (GDir) dir = NULL;
 
-      base_name = g_build_filename ((gchar *)g_ptr_array_index (base_dirs, i), 
+      base_name = g_build_filename ((gchar *)g_ptr_array_index (base_dirs, i),
                                     trusted ? "trusted.ed25519" : "revoked.ed25519",
                                     NULL);
 

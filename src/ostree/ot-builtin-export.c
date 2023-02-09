@@ -82,7 +82,7 @@ ostree_builtin_export (int argc, char **argv, OstreeCommandInvocation *invocatio
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
     goto out;
 
-#ifdef HAVE_LIBARCHIVE  
+#ifdef HAVE_LIBARCHIVE
 
   if (argc <= 1)
     {
@@ -157,8 +157,8 @@ ostree_builtin_export (int argc, char **argv, OstreeCommandInvocation *invocatio
   g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
                "This version of ostree is not compiled with libarchive support");
   goto out;
-#endif  
-  
+#endif
+
   ret = TRUE;
  out:
   return ret;

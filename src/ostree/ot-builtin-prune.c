@@ -354,7 +354,7 @@ ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation
     }
 
   g_autofree char *formatted_freed_size = g_format_size_full (objsize_total, 0);
-  if (opt_commit_only) 
+  if (opt_commit_only)
     g_print("Total (commit only) objects: %u\n", n_objects_total);
   else
     g_print ("Total objects: %u\n", n_objects_total);

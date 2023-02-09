@@ -365,7 +365,7 @@ ostree_repo_traverse_reachable_refs (OstreeRepo *self,
                                      GCancellable *cancellable,
                                      GError      **error)
 {
-  return traverse_reachable_internal (self, 
+  return traverse_reachable_internal (self,
                                       OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE,
                                       depth, reachable,
                                       cancellable, error);
@@ -439,9 +439,9 @@ ostree_repo_prune (OstreeRepo        *self,
   if (commit_only)
     {
       if (!ostree_repo_list_commit_objects_starting_with (self, "", &objects, cancellable, error))
-        return FALSE; 
+        return FALSE;
     }
-  else 
+  else
     {
       objects = ostree_repo_list_objects_set (self, OSTREE_REPO_LIST_OBJECTS_ALL | OSTREE_REPO_LIST_OBJECTS_NO_PARENTS,
                                           cancellable, error);
@@ -519,11 +519,11 @@ ostree_repo_prune_from_reachable (OstreeRepo        *self,
   g_autoptr(GHashTable) objects = NULL;
   OstreeRepoPruneFlags flags = options->flags;
   gboolean commit_only = (flags & OSTREE_REPO_PRUNE_FLAGS_COMMIT_ONLY) > 0;
-  if (commit_only) 
+  if (commit_only)
     {
       if (!ostree_repo_list_commit_objects_starting_with (self, "", &objects, cancellable, error))
-        return FALSE;  
-    } 
+        return FALSE;
+    }
   else
     {
       objects =

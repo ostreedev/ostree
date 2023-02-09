@@ -307,7 +307,7 @@ ostree_sepolicy_new_from_commit (OstreeRepo  *repo,
        OstreeRepoCheckoutAtOptions coopts = {0,};
        coopts.mode = OSTREE_REPO_CHECKOUT_MODE_USER;
        coopts.subpath = glnx_strjoina ("/", policypath);
-     
+
        if (!ostree_repo_checkout_at (repo, &coopts, tmpdir.fd, policypath, commit, cancellable, error))
          return glnx_prefix_error_null (error, "policy checkout");
     }

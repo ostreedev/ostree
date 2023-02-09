@@ -308,7 +308,7 @@ ostree_sysroot_initialize_with_mount_namespace (OstreeSysroot *self, GCancellabl
 
   // If the mount namespaces are the same, we need to unshare().
   if (strcmp (mntns_pid1, mntns_self) == 0)
-    { 
+    {
       if (unshare (CLONE_NEWNS) < 0)
         return glnx_throw_errno_prefix (error, "Failed to invoke unshare(CLONE_NEWNS)");
     }
@@ -442,7 +442,7 @@ ostree_sysroot_get_fd (OstreeSysroot *self)
  * @self: Sysroot
  *
  * Can only be invoked after `ostree_sysroot_initialize()`.
- * 
+ *
  * Returns: %TRUE iff the sysroot points to a booted deployment
  * Since: 2020.1
  */

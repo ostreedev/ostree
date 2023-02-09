@@ -1,4 +1,4 @@
-/* 
+/*
  * SPDX-License-Identifier: LGPL-2.0+
  *
  * This library is free software; you can redistribute it and/or
@@ -46,7 +46,7 @@ ostree_content_writer_class_init (OstreeContentWriterClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GOutputStreamClass *stream_class = G_OUTPUT_STREAM_CLASS (klass);
-  
+
   gobject_class->finalize     = ostree_content_writer_finalize;
 
   stream_class->write_fn = ostree_content_writer_write;

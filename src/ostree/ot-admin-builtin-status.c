@@ -197,7 +197,7 @@ deployment_print_status (OstreeSysroot    *sysroot,
         return glnx_throw (error, "Cannot verify deployment without remote");
 
       g_autoptr(GBytes) commit_data = g_variant_get_data_as_bytes (commit);
-      g_autoptr(GBytes) commit_detached_metadata_bytes = 
+      g_autoptr(GBytes) commit_detached_metadata_bytes =
         commit_detached_metadata ? g_variant_get_data_as_bytes (commit_detached_metadata) : NULL;
       g_autofree char *verify_text = NULL;
       if (!ostree_repo_signature_verify_commit_data (repo, remote, commit_data, commit_detached_metadata_bytes, 0, &verify_text, error))
