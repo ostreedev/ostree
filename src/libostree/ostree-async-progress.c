@@ -469,7 +469,13 @@ ostree_async_progress_new (void)
   return (OstreeAsyncProgress*)g_object_new (OSTREE_TYPE_ASYNC_PROGRESS, NULL);
 }
 
-
+/**
+ * ostree_async_progress_new_and_connect: (skip)
+ * @changed: a notification callback
+ * @user_data: data to pass to @changed
+ *
+ * Returns: (transfer full): A new progress object
+ */
 OstreeAsyncProgress *
 ostree_async_progress_new_and_connect (void (*changed) (OstreeAsyncProgress *self, gpointer user_data),
                                        gpointer user_data)
