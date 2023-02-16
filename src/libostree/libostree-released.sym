@@ -696,6 +696,11 @@ global:
   ostree_sysroot_initialize_with_mount_namespace;
 } LIBOSTREE_2022.5;
 
+LIBOSTREE_2023.1 {
+global:
+  ostree_repo_regenerate_metadata;
+} LIBOSTREE_2022.7;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
