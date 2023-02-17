@@ -9,7 +9,7 @@ name = "ostree"
 readme = "rust-bindings/README.md"
 repository = "https://github.com/ostreedev/ostree"
 rust-version = "1.63.0"
-version = "0.17.0"
+version = "0.17.1"
 
 exclude = [
     "/*.am", "/apidoc", "/autogen.sh", "/bash", "/bsdiff",
