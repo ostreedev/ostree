@@ -543,8 +543,8 @@ impl Sysroot {
     #[cfg(any(feature = "v2017_10", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_10")))]
     #[doc(alias = "journal-msg")]
-    pub fn connect_journal_msg<F: Fn(&Self, &str) + 'static>(&self, f: F) -> SignalHandlerId {
-        unsafe extern "C" fn journal_msg_trampoline<F: Fn(&Sysroot, &str) + 'static>(this: *mut ffi::OstreeSysroot, msg: *mut libc::c_char, f: glib::ffi::gpointer) {
+    pub fn connect_journal_msg<F: Fn(&Self, &str) + Send + 'static>(&self, f: F) -> SignalHandlerId {
+        unsafe extern "C" fn journal_msg_trampoline<F: Fn(&Sysroot, &str) + Send + 'static>(this: *mut ffi::OstreeSysroot, msg: *mut libc::c_char, f: glib::ffi::gpointer) {
             let f: &F = &*(f as *const F);
             f(&from_glib_borrow(this), &glib::GString::from_glib_borrow(msg))
         }
@@ -555,6 +555,8 @@ impl Sysroot {
         }
     }
 }
+
+unsafe impl Send for Sysroot {}
 
 impl fmt::Display for Sysroot {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
