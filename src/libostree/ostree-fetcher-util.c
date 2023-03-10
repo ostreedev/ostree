@@ -37,6 +37,7 @@ typedef struct
   char            *result_etag;
   guint64          result_last_modified;  /* second since the epoch */
   gboolean         done;
+  GMainContext    *main_context;  /* (owned) */
   GError         **error;
 }
   FetchUriSyncData;
@@ -54,6 +55,7 @@ fetch_uri_sync_on_complete (GObject        *object,
                                                   &data->result_etag, &data->result_last_modified,
                                                   data->error);
   data->done = TRUE;
+  g_main_context_wakeup (data->main_context);
 }
 
 static gboolean
@@ -84,6 +86,7 @@ _ostree_fetcher_mirrored_request_to_membuf_once  (OstreeFetcher              *fe
   mainctx = g_main_context_new ();
   g_main_context_push_thread_default (mainctx);
 
+  data.main_context = g_main_context_ref (mainctx);
   data.done = FALSE;
   data.error = error;
 
@@ -127,6 +130,7 @@ _ostree_fetcher_mirrored_request_to_membuf_once  (OstreeFetcher              *fe
     g_main_context_pop_thread_default (mainctx);
   g_clear_pointer (&data.result_buf, g_bytes_unref);
   g_clear_pointer (&data.result_etag, g_free);
+  g_clear_pointer (&data.main_context, g_main_context_unref);
   return ret;
 }
 
