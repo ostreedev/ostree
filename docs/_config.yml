@@ -24,7 +24,7 @@ exclude:
 # prep-docs.sh before jekyll to put it in place.
 include: [reference, man]
 
-remote_theme: coreos/just-the-docs
+remote_theme: just-the-docs/just-the-docs@v0.4.1
 plugins:
   - jekyll-remote-theme
 
