@@ -687,6 +687,18 @@ impl Repo {
         }
     }
 
+    #[cfg(any(feature = "v2023_1", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2023_1")))]
+    #[doc(alias = "ostree_repo_regenerate_metadata")]
+    pub fn regenerate_metadata(&self, additional_metadata: Option<&glib::Variant>, options: Option<&glib::Variant>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let is_ok = ffi::ostree_repo_regenerate_metadata(self.to_glib_none().0, additional_metadata.to_glib_none().0, options.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
     #[doc(alias = "ostree_repo_regenerate_summary")]
     pub fn regenerate_summary(&self, additional_metadata: Option<&glib::Variant>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {

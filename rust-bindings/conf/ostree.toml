@@ -217,6 +217,7 @@ status = "generate"
 [[object]]
 name = "OSTree.Sysroot"
 status = "generate"
+concurrency = "send"
     [[object.function]]
     name = "deploy_tree_with_options"
     [[object.function.parameter]]

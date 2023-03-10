@@ -318,6 +318,14 @@ pub struct _OstreeBootloader {
 pub type OstreeBootloader = *mut _OstreeBootloader;
 
 #[repr(C)]
+pub struct _OstreeBootloaderAboot {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
+
+pub type OstreeBootloaderAboot = *mut _OstreeBootloaderAboot;
+
+#[repr(C)]
 pub struct _OstreeBootloaderGrub2 {
     _data: [u8; 0],
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
@@ -332,14 +340,6 @@ pub struct _OstreeBootloaderSyslinux {
 }
 
 pub type OstreeBootloaderSyslinux = *mut _OstreeBootloaderSyslinux;
-
-#[repr(C)]
-pub struct _OstreeBootloaderAboot {
-    _data: [u8; 0],
-    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
-}
-
-pub type OstreeBootloaderAboot = *mut _OstreeBootloaderAboot;
 
 #[repr(C)]
 pub struct _OstreeBootloaderUboot {
@@ -2379,6 +2379,15 @@ extern "C" {
         self_: *mut OstreeRepo,
         checksum: *const c_char,
         out_metadata: *mut *mut glib::GVariant,
+        cancellable: *mut gio::GCancellable,
+        error: *mut *mut glib::GError,
+    ) -> gboolean;
+    #[cfg(any(feature = "v2023_1", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2023_1")))]
+    pub fn ostree_repo_regenerate_metadata(
+        self_: *mut OstreeRepo,
+        additional_metadata: *mut glib::GVariant,
+        options: *mut glib::GVariant,
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
