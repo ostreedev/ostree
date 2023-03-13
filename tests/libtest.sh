@@ -32,6 +32,9 @@ else
 fi
 . ${test_srcdir}/libtest-core.sh
 
+# Make sure /sbin/capsh etc. are in our PATH even if non-root
+PATH="$PATH:/usr/sbin:/sbin"
+
 # Array of expressions to execute when exiting. Each expression should
 # be a single string (quoting if necessary) that will be eval'd. To add
 # a command to run on exit, append to the libtest_exit_cmds array like
