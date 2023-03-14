@@ -678,12 +678,13 @@ create_regular_tmpfile_linkable_with_content (OstreeRepo *self,
        *    e.g. 10 bytes but is actually gigabytes.
        *  - Due to GLib bugs that pointlessly calls `poll()` on the output fd for every write
        */
-      char buf[8192];
+      gsize buf_size = MIN(length, 1048576);
+      g_autofree gchar * buf = g_malloc(buf_size);
       guint64 remaining = length;
       while (remaining > 0)
         {
           const gssize bytes_read =
-            g_input_stream_read (input, buf, MIN (remaining, sizeof (buf)), cancellable, error);
+            g_input_stream_read (input, buf, MIN (remaining, buf_size), cancellable, error);
           if (bytes_read < 0)
             return FALSE;
           else if (bytes_read == 0)
