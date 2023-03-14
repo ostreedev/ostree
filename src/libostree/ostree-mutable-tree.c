@@ -358,7 +358,7 @@ ostree_mutable_tree_remove (OstreeMutableTree *self,
  * ostree_mutable_tree_ensure_dir:
  * @self: Tree
  * @name: Name of subdirectory of self to retrieve/creates
- * @out_subdir: (out) (transfer full): the subdirectory
+ * @out_subdir: (out) (transfer full) (optional): the subdirectory
  * @error: a #GError
  *
  * Returns the subdirectory of self with filename @name, creating an empty one
@@ -400,6 +400,12 @@ ostree_mutable_tree_ensure_dir (OstreeMutableTree *self,
  * @out_file_checksum: (out) (transfer full) (nullable) (optional): checksum
  * @out_subdir: (out) (transfer full) (nullable) (optional): subdirectory
  * @error: a #GError
+ *
+ * Lookup @name and returns @out_file_checksum or @out_subdir depending on its
+ * file type.
+ *
+ * Returns: %TRUE on success and either @out_file_checksum or @out_subdir are
+ * filled, %FALSE otherwise.
  */
 gboolean
 ostree_mutable_tree_lookup (OstreeMutableTree   *self,
@@ -433,7 +439,7 @@ ostree_mutable_tree_lookup (OstreeMutableTree   *self,
  * @self: Tree
  * @split_path: (element-type utf8): File path components
  * @metadata_checksum: SHA256 checksum for metadata
- * @out_parent: (out) (transfer full): The parent tree
+ * @out_parent: (out) (transfer full) (optional): The parent tree
  * @error: a #GError
  *
  * Create all parent trees necessary for the given @split_path to

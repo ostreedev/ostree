@@ -361,7 +361,7 @@ validate_metadata_size (const char *prefix, GBytes *buf, GError **error)
  * @commit_data: Commit object data (GVariant)
  * @commit_metadata: Commit metadata (GVariant `a{sv}`), must contain at least one valid signature
  * @flags: Optionally disable GPG or signapi
- * @out_results: (nullable) (out) (transfer full): Textual description of results
+ * @out_results: (optional) (out) (transfer full): Textual description of results
  * @error: Error
  *
  * Validate the commit data using the commit metadata which must

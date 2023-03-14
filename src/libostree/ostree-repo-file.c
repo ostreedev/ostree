@@ -785,12 +785,14 @@ ostree_repo_file_tree_find_child  (OstreeRepoFile  *self,
 /**
  * ostree_repo_file_tree_query_child:
  * @self: #OstreeRepoFile
- * @n:
- * @attributes:
- * @flags:
- * @out_info: (out):
- * @cancellable: Cancellable
- * @error: Error
+ * @n: the child number
+ * @attributes: an attribute string to match, see g_file_attribute_matcher_new()
+ * @flags: a #GFileQueryInfoFlags
+ * @out_info: (out) (transfer full) (optional): the #GFileInfo of the child.
+ * @cancellable: a #GCancellable or %NULL
+ * @error: a #GError or %NULL
+ *
+ * Returns: %TRUE on success and the @out_info is set, %FALSE otherwise.
  */
 gboolean
 ostree_repo_file_tree_query_child (OstreeRepoFile  *self,

@@ -3099,12 +3099,12 @@ sysroot_finalize_deployment (OstreeSysroot     *self,
 /**
  * ostree_sysroot_deploy_tree_with_options:
  * @self: Sysroot
- * @osname: (allow-none): osname to use for merge deployment
+ * @osname: (nullable): osname to use for merge deployment
  * @revision: Checksum to add
- * @origin: (allow-none): Origin to use for upgrades
- * @provided_merge_deployment: (allow-none): Use this deployment for merge path
- * @opts: (allow-none): Options
- * @out_new_deployment: (out): The new deployment path
+ * @origin: (nullable): Origin to use for upgrades
+ * @provided_merge_deployment: (nullable): Use this deployment for merge path
+ * @opts: (nullable): Options
+ * @out_new_deployment: (out) (transfer full): The new deployment path
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -3146,11 +3146,11 @@ ostree_sysroot_deploy_tree_with_options (OstreeSysroot     *self,
 /**
  * ostree_sysroot_deploy_tree:
  * @self: Sysroot
- * @osname: (allow-none): osname to use for merge deployment
+ * @osname: (nullable): osname to use for merge deployment
  * @revision: Checksum to add
- * @origin: (allow-none): Origin to use for upgrades
- * @provided_merge_deployment: (allow-none): Use this deployment for merge path
- * @override_kernel_argv: (allow-none) (array zero-terminated=1) (element-type utf8): Use these as kernel arguments; if %NULL, inherit options from provided_merge_deployment
+ * @origin: (nullable): Origin to use for upgrades
+ * @provided_merge_deployment: (nullable): Use this deployment for merge path
+ * @override_kernel_argv: (nullable) (array zero-terminated=1) (element-type utf8): Use these as kernel arguments; if %NULL, inherit options from provided_merge_deployment
  * @out_new_deployment: (out): The new deployment path
  * @cancellable: Cancellable
  * @error: Error

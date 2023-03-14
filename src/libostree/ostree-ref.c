@@ -45,7 +45,7 @@ G_DEFINE_BOXED_TYPE (OstreeCollectionRef, ostree_collection_ref,
  * refspec; no remote name is included), which can be used for non-P2P
  * operations.
  *
- * Returns: (transfer full) (nullable): a new #OstreeCollectionRef
+ * Returns: (transfer full): a new #OstreeCollectionRef
  * Since: 2018.6
  */
 OstreeCollectionRef *
@@ -102,7 +102,7 @@ ostree_collection_ref_free (OstreeCollectionRef *ref)
 
 /**
  * ostree_collection_ref_hash:
- * @ref: (not nullable): an #OstreeCollectionRef
+ * @ref: (not nullable) (type OstreeCollectionRef): an #OstreeCollectionRef
  *
  * Hash the given @ref. This function is suitable for use with #GHashTable.
  * @ref must be non-%NULL.
@@ -123,8 +123,8 @@ ostree_collection_ref_hash (gconstpointer ref)
 
 /**
  * ostree_collection_ref_equal:
- * @ref1: (not nullable): an #OstreeCollectionRef
- * @ref2 : (not nullable): another #OstreeCollectionRef
+ * @ref1: (not nullable) (type OstreeCollectionRef): an #OstreeCollectionRef
+ * @ref2 : (not nullable) (type OstreeCollectionRef): another #OstreeCollectionRef
  *
  * Compare @ref1 and @ref2 and return %TRUE if they have the same collection ID and
  * ref name, and %FALSE otherwise. Both @ref1 and @ref2 must be non-%NULL.
