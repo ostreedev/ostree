@@ -7,9 +7,9 @@ set -xeuo pipefail
 date
 
 prepare_tmpdir
-truncate -s 20MB testblk.img
+truncate -s 20MiB testblk.img
 blkdev=$(losetup --find --show $(pwd)/testblk.img)
-mkfs.xfs ${blkdev}
+mkfs.ext4 -m 0 ${blkdev}
 mkdir mnt
 mount ${blkdev} mnt
 
@@ -89,7 +89,7 @@ host_commit=$(ostree --repo=mnt/repo1 commit -b test -s test --tree=dir=files)
 origrev=$(ostree --repo=mnt/repo1 rev-parse test)
 ostree --repo=mnt/repo1 static-delta generate --empty --to=${origrev}
 echo 'fsync=false' >> mnt/repo2/config
-echo 'min-free-space-size=12MB' >> mnt/repo2/config
+echo 'min-free-space-size=14MB' >> mnt/repo2/config
 
 deltaprefix=$(get_assert_one_direntry_matching mnt/repo1/deltas '.')
 deltadir=$(get_assert_one_direntry_matching mnt/repo1/deltas/${deltaprefix} '.')
@@ -102,7 +102,7 @@ assert_file_has_content err.txt "min-free-space-size"
 echo "OK min-free-space-size delta pull (error)"
 
 # Re-adjust min-free-space-size so that delta pull succeeds
-sed -i s/min-free-space-size=12MB/min-free-space-size=1MB/g mnt/repo2/config
+sed -i s/min-free-space-size=14MB/min-free-space-size=1MB/g mnt/repo2/config
 rm -rf mnt/repo2/deltas
 ostree --repo=mnt/repo2 static-delta apply-offline mnt/repo1/deltas/${deltaprefix}/${deltadir}
 
