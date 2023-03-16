@@ -176,10 +176,12 @@ static gboolean hi_content_stream_new (GInputStream **out_stream,
                                        GError **error)
 {
   static const char hi[] = "hi";
-  g_autoptr(GMemoryInputStream) hi_memstream = (GMemoryInputStream*)g_memory_input_stream_new_from_data (hi, sizeof(hi)-1, NULL);
+  const size_t len = sizeof(hi)-1;
+  g_autoptr(GMemoryInputStream) hi_memstream = (GMemoryInputStream*)g_memory_input_stream_new_from_data (hi, len, NULL);
   g_autoptr(GFileInfo) finfo = g_file_info_new ();
   g_file_info_set_attribute_uint32 (finfo, "standard::type", G_FILE_TYPE_REGULAR);
   g_file_info_set_attribute_boolean (finfo, "standard::is-symlink", FALSE);
+  g_file_info_set_size (finfo, len);
   g_file_info_set_attribute_uint32 (finfo, "unix::uid", 0);
   g_file_info_set_attribute_uint32 (finfo, "unix::gid", 0);
   g_file_info_set_attribute_uint32 (finfo, "unix::mode", S_IFREG|0644);
