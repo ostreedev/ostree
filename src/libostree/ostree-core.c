@@ -1739,6 +1739,8 @@ _ostree_stbuf_to_gfileinfo (const struct stat *stbuf)
 
   if (S_ISREG (mode))
     g_file_info_set_attribute_uint64 (ret, "standard::size", stbuf->st_size);
+  else
+    g_file_info_set_attribute_uint64 (ret, "standard::size", 0);
 
   return ret;
 }
