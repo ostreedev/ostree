@@ -161,7 +161,7 @@ impl Repo {
     }
 
     #[doc(alias = "ostree_repo_copy_config")]
-    pub fn copy_config(&self) -> Option<glib::KeyFile> {
+    pub fn copy_config(&self) -> glib::KeyFile {
         unsafe {
             from_glib_full(ffi::ostree_repo_copy_config(self.to_glib_none().0))
         }
@@ -217,7 +217,7 @@ impl Repo {
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_2")))]
     #[doc(alias = "ostree_repo_get_bootloader")]
     #[doc(alias = "get_bootloader")]
-    pub fn bootloader(&self) -> Option<glib::GString> {
+    pub fn bootloader(&self) -> glib::GString {
         unsafe {
             from_glib_none(ffi::ostree_repo_get_bootloader(self.to_glib_none().0))
         }
@@ -235,7 +235,7 @@ impl Repo {
 
     #[doc(alias = "ostree_repo_get_config")]
     #[doc(alias = "get_config")]
-    pub fn config(&self) -> Option<glib::KeyFile> {
+    pub fn config(&self) -> glib::KeyFile {
         unsafe {
             from_glib_none(ffi::ostree_repo_get_config(self.to_glib_none().0))
         }
@@ -302,7 +302,7 @@ impl Repo {
 
     #[doc(alias = "ostree_repo_get_path")]
     #[doc(alias = "get_path")]
-    pub fn path(&self) -> Option<gio::File> {
+    pub fn path(&self) -> gio::File {
         unsafe {
             from_glib_none(ffi::ostree_repo_get_path(self.to_glib_none().0))
         }
@@ -340,7 +340,7 @@ impl Repo {
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_5")))]
     #[doc(alias = "ostree_repo_get_remote_option")]
     #[doc(alias = "get_remote_option")]
-    pub fn remote_option(&self, remote_name: &str, option_name: &str, default_value: Option<&str>) -> Result<glib::GString, glib::Error> {
+    pub fn remote_option(&self, remote_name: &str, option_name: &str, default_value: Option<&str>) -> Result<Option<glib::GString>, glib::Error> {
         unsafe {
             let mut out_value = ptr::null_mut();
             let mut error = ptr::null_mut();
@@ -353,7 +353,7 @@ impl Repo {
     #[cfg(any(feature = "v2020_8", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_8")))]
     #[doc(alias = "ostree_repo_gpg_sign_data")]
-    pub fn gpg_sign_data(&self, data: &glib::Bytes, old_signatures: &glib::Bytes, key_id: &[&str], homedir: Option<&str>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<glib::Bytes, glib::Error> {
+    pub fn gpg_sign_data(&self, data: &glib::Bytes, old_signatures: Option<&glib::Bytes>, key_id: &[&str], homedir: Option<&str>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<glib::Bytes, glib::Error> {
         unsafe {
             let mut out_signatures = ptr::null_mut();
             let mut error = ptr::null_mut();
@@ -1001,7 +1001,7 @@ impl Repo {
     #[cfg(any(feature = "v2021_4", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_4")))]
     #[doc(alias = "ostree_repo_signature_verify_commit_data")]
-    pub fn signature_verify_commit_data(&self, remote_name: &str, commit_data: &glib::Bytes, commit_metadata: &glib::Bytes, flags: RepoVerifyFlags) -> Result<Option<glib::GString>, glib::Error> {
+    pub fn signature_verify_commit_data(&self, remote_name: &str, commit_data: &glib::Bytes, commit_metadata: &glib::Bytes, flags: RepoVerifyFlags) -> Result<glib::GString, glib::Error> {
         unsafe {
             let mut out_results = ptr::null_mut();
             let mut error = ptr::null_mut();

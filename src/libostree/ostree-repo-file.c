@@ -269,6 +269,15 @@ do_resolve_nonroot (OstreeRepoFile     *self,
   return TRUE;
 }
 
+/**
+ * ostree_repo_file_ensure_resolved:
+ * @self: A repo file
+ * @error: Error
+ *
+ * Ensure that the backing metadata is loaded.
+ *
+ * Returns: %FALSE if the operation failed, %TRUE otherwise
+ */
 gboolean
 ostree_repo_file_ensure_resolved (OstreeRepoFile  *self,
                                    GError         **error)
@@ -321,18 +330,42 @@ ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
   return TRUE;
 }
 
+/**
+ * ostree_repo_file_tree_get_contents:
+ * @self: A repo file
+ *
+ * This API will return %NULL if the file is not "resolved" i.e. in a loaded
+ * state.  It will also return %NULL if this path is not a directory tree.
+ *
+ * Returns: (nullable): The GVariant representing the children of this directory.
+ */
 GVariant *
 ostree_repo_file_tree_get_contents (OstreeRepoFile  *self)
 {
   return self->tree_contents;
 }
 
+/**
+ * ostree_repo_file_tree_get_metadata:
+ * @self: A repo file
+ *
+ * This API will return %NULL if the file is not "resolved" i.e. in a loaded
+ * state.  It will also return %NULL if this path is not a directory tree.
+ *
+ * Returns: (nullable): The GVariant representing the metadata for this directory.
+ */
 GVariant *
 ostree_repo_file_tree_get_metadata (OstreeRepoFile  *self)
 {
   return self->tree_metadata;
 }
 
+/**
+ * ostree_repo_file_tree_set_metadata:
+ * @self: A repo file
+ *
+ * Replace the metadata checksum and metadata object.
+ */
 void
 ostree_repo_file_tree_set_metadata (OstreeRepoFile *self,
                                      const char     *checksum,
@@ -344,12 +377,24 @@ ostree_repo_file_tree_set_metadata (OstreeRepoFile *self,
   self->tree_metadata_checksum = g_strdup (checksum);
 }
 
+/**
+ * ostree_repo_file_tree_get_contents_checksum:
+ * @self: A repo file
+ *
+ * Returns: (nullable): The SHA256 digest of the content object, or %NULL if this is not a directory.
+ */
 const char *
 ostree_repo_file_tree_get_contents_checksum (OstreeRepoFile  *self)
 {
   return self->tree_contents_checksum;
 }
 
+/**
+ * ostree_repo_file_tree_get_metadata_checksum:
+ * @self: A repo file
+ *
+ * Returns: (nullable): The SHA256 digest of the metadata object, or %NULL if this is not a directory.
+ */
 const char *
 ostree_repo_file_tree_get_metadata_checksum (OstreeRepoFile  *self)
 {
@@ -384,6 +429,12 @@ ostree_repo_file_get_root (OstreeRepoFile  *self)
   return parent;
 }
 
+/**
+ * ostree_repo_file_tree_get_checksum:
+ * @self: A repo file
+ *
+ * Returns: For non-directories, the SHA-256 digest of the object.  For directories, the metadata digest will be returned.
+ */
 const char *
 ostree_repo_file_get_checksum (OstreeRepoFile  *self)
 {

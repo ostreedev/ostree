@@ -31,7 +31,7 @@ impl RepoFile {
 
     #[doc(alias = "ostree_repo_file_get_checksum")]
     #[doc(alias = "get_checksum")]
-    pub fn checksum(&self) -> Option<glib::GString> {
+    pub fn checksum(&self) -> glib::GString {
         unsafe {
             from_glib_none(ffi::ostree_repo_file_get_checksum(self.to_glib_none().0))
         }
@@ -39,7 +39,7 @@ impl RepoFile {
 
     #[doc(alias = "ostree_repo_file_get_repo")]
     #[doc(alias = "get_repo")]
-    pub fn repo(&self) -> Option<Repo> {
+    pub fn repo(&self) -> Repo {
         unsafe {
             from_glib_none(ffi::ostree_repo_file_get_repo(self.to_glib_none().0))
         }
@@ -48,7 +48,7 @@ impl RepoFile {
     #[doc(alias = "ostree_repo_file_get_root")]
     #[doc(alias = "get_root")]
 #[must_use]
-    pub fn root(&self) -> Option<RepoFile> {
+    pub fn root(&self) -> RepoFile {
         unsafe {
             from_glib_none(ffi::ostree_repo_file_get_root(self.to_glib_none().0))
         }
@@ -77,28 +77,28 @@ impl RepoFile {
     }
 
     #[doc(alias = "ostree_repo_file_tree_get_contents")]
-    pub fn tree_get_contents(&self) -> Option<glib::Variant> {
+    pub fn tree_get_contents(&self) -> glib::Variant {
         unsafe {
             from_glib_full(ffi::ostree_repo_file_tree_get_contents(self.to_glib_none().0))
         }
     }
 
     #[doc(alias = "ostree_repo_file_tree_get_contents_checksum")]
-    pub fn tree_get_contents_checksum(&self) -> Option<glib::GString> {
+    pub fn tree_get_contents_checksum(&self) -> glib::GString {
         unsafe {
             from_glib_none(ffi::ostree_repo_file_tree_get_contents_checksum(self.to_glib_none().0))
         }
     }
 
     #[doc(alias = "ostree_repo_file_tree_get_metadata")]
-    pub fn tree_get_metadata(&self) -> Option<glib::Variant> {
+    pub fn tree_get_metadata(&self) -> glib::Variant {
         unsafe {
             from_glib_full(ffi::ostree_repo_file_tree_get_metadata(self.to_glib_none().0))
         }
     }
 
     #[doc(alias = "ostree_repo_file_tree_get_metadata_checksum")]
-    pub fn tree_get_metadata_checksum(&self) -> Option<glib::GString> {
+    pub fn tree_get_metadata_checksum(&self) -> glib::GString {
         unsafe {
             from_glib_none(ffi::ostree_repo_file_tree_get_metadata_checksum(self.to_glib_none().0))
         }

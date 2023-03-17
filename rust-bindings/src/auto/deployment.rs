@@ -28,7 +28,7 @@ impl Deployment {
 
     #[doc(alias = "ostree_deployment_clone")]
 #[must_use]
-    pub fn clone(&self) -> Option<Deployment> {
+    pub fn clone(&self) -> Deployment {
         unsafe {
             from_glib_full(ffi::ostree_deployment_clone(self.to_glib_none().0))
         }
@@ -51,7 +51,7 @@ impl Deployment {
 
     #[doc(alias = "ostree_deployment_get_bootcsum")]
     #[doc(alias = "get_bootcsum")]
-    pub fn bootcsum(&self) -> Option<glib::GString> {
+    pub fn bootcsum(&self) -> glib::GString {
         unsafe {
             from_glib_none(ffi::ostree_deployment_get_bootcsum(self.to_glib_none().0))
         }
@@ -67,7 +67,7 @@ impl Deployment {
 
     #[doc(alias = "ostree_deployment_get_csum")]
     #[doc(alias = "get_csum")]
-    pub fn csum(&self) -> Option<glib::GString> {
+    pub fn csum(&self) -> glib::GString {
         unsafe {
             from_glib_none(ffi::ostree_deployment_get_csum(self.to_glib_none().0))
         }
@@ -99,7 +99,7 @@ impl Deployment {
 
     #[doc(alias = "ostree_deployment_get_origin_relpath")]
     #[doc(alias = "get_origin_relpath")]
-    pub fn origin_relpath(&self) -> Option<glib::GString> {
+    pub fn origin_relpath(&self) -> glib::GString {
         unsafe {
             from_glib_full(ffi::ostree_deployment_get_origin_relpath(self.to_glib_none().0))
         }
@@ -107,7 +107,7 @@ impl Deployment {
 
     #[doc(alias = "ostree_deployment_get_osname")]
     #[doc(alias = "get_osname")]
-    pub fn osname(&self) -> Option<glib::GString> {
+    pub fn osname(&self) -> glib::GString {
         unsafe {
             from_glib_none(ffi::ostree_deployment_get_osname(self.to_glib_none().0))
         }
@@ -188,7 +188,7 @@ impl Deployment {
     #[cfg(any(feature = "v2016_4", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_4")))]
     #[doc(alias = "ostree_deployment_unlocked_state_to_string")]
-    pub fn unlocked_state_to_string(state: DeploymentUnlockedState) -> Option<glib::GString> {
+    pub fn unlocked_state_to_string(state: DeploymentUnlockedState) -> glib::GString {
         unsafe {
             from_glib_none(ffi::ostree_deployment_unlocked_state_to_string(state.into_glib()))
         }

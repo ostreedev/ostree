@@ -85,7 +85,7 @@ pub trait SignExt: 'static {
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
     #[doc(alias = "ostree_sign_get_name")]
     #[doc(alias = "get_name")]
-    fn name(&self) -> Option<glib::GString>;
+    fn name(&self) -> glib::GString;
 
     #[cfg(any(feature = "v2020_2", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
@@ -95,12 +95,12 @@ pub trait SignExt: 'static {
     #[cfg(any(feature = "v2020_2", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
     #[doc(alias = "ostree_sign_metadata_format")]
-    fn metadata_format(&self) -> Option<glib::GString>;
+    fn metadata_format(&self) -> glib::GString;
 
     #[cfg(any(feature = "v2020_2", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
     #[doc(alias = "ostree_sign_metadata_key")]
-    fn metadata_key(&self) -> Option<glib::GString>;
+    fn metadata_key(&self) -> glib::GString;
 
     #[cfg(any(feature = "v2020_2", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
@@ -190,7 +190,7 @@ impl<O: IsA<Sign>> SignExt for O {
 
     #[cfg(any(feature = "v2020_2", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
-    fn name(&self) -> Option<glib::GString> {
+    fn name(&self) -> glib::GString {
         unsafe {
             from_glib_none(ffi::ostree_sign_get_name(self.as_ref().to_glib_none().0))
         }
@@ -209,7 +209,7 @@ impl<O: IsA<Sign>> SignExt for O {
 
     #[cfg(any(feature = "v2020_2", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
-    fn metadata_format(&self) -> Option<glib::GString> {
+    fn metadata_format(&self) -> glib::GString {
         unsafe {
             from_glib_none(ffi::ostree_sign_metadata_format(self.as_ref().to_glib_none().0))
         }
@@ -217,7 +217,7 @@ impl<O: IsA<Sign>> SignExt for O {
 
     #[cfg(any(feature = "v2020_2", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
-    fn metadata_key(&self) -> Option<glib::GString> {
+    fn metadata_key(&self) -> glib::GString {
         unsafe {
             from_glib_none(ffi::ostree_sign_metadata_key(self.as_ref().to_glib_none().0))
         }

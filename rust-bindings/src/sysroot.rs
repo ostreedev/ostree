@@ -85,7 +85,7 @@ mod tests {
             assert_eq!(sysroot.subbootversion(), 0);
             sysroot.cleanup(gio::Cancellable::NONE).unwrap();
 
-            sysroot.path().unwrap()
+            sysroot.path()
         };
         let path_loaded = {
             let tmp_path = Some(tmpdir.path().to_path_buf());
@@ -100,7 +100,7 @@ mod tests {
             assert_eq!(sysroot.subbootversion(), 0);
             sysroot.cleanup(gio::Cancellable::NONE).unwrap();
 
-            sysroot.path().unwrap()
+            sysroot.path()
         };
         assert_eq!(path_created.to_string(), path_loaded.to_string());
     }

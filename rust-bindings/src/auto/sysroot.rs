@@ -185,7 +185,7 @@ impl Sysroot {
 
     #[doc(alias = "ostree_sysroot_get_deployment_directory")]
     #[doc(alias = "get_deployment_directory")]
-    pub fn deployment_directory(&self, deployment: &Deployment) -> Option<gio::File> {
+    pub fn deployment_directory(&self, deployment: &Deployment) -> gio::File {
         unsafe {
             from_glib_full(ffi::ostree_sysroot_get_deployment_directory(self.to_glib_none().0, deployment.to_glib_none().0))
         }
@@ -193,7 +193,7 @@ impl Sysroot {
 
     #[doc(alias = "ostree_sysroot_get_deployment_dirpath")]
     #[doc(alias = "get_deployment_dirpath")]
-    pub fn deployment_dirpath(&self, deployment: &Deployment) -> Option<glib::GString> {
+    pub fn deployment_dirpath(&self, deployment: &Deployment) -> glib::GString {
         unsafe {
             from_glib_full(ffi::ostree_sysroot_get_deployment_dirpath(self.to_glib_none().0, deployment.to_glib_none().0))
         }
@@ -225,7 +225,7 @@ impl Sysroot {
 
     #[doc(alias = "ostree_sysroot_get_path")]
     #[doc(alias = "get_path")]
-    pub fn path(&self) -> Option<gio::File> {
+    pub fn path(&self) -> gio::File {
         unsafe {
             from_glib_none(ffi::ostree_sysroot_get_path(self.to_glib_none().0))
         }
@@ -369,7 +369,7 @@ impl Sysroot {
     }
 
     #[doc(alias = "ostree_sysroot_origin_new_from_refspec")]
-    pub fn origin_new_from_refspec(&self, refspec: &str) -> Option<glib::KeyFile> {
+    pub fn origin_new_from_refspec(&self, refspec: &str) -> glib::KeyFile {
         unsafe {
             from_glib_full(ffi::ostree_sysroot_origin_new_from_refspec(self.to_glib_none().0, refspec.to_glib_none().0))
         }
@@ -400,7 +400,7 @@ impl Sysroot {
     #[cfg(any(feature = "v2017_7", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_7")))]
     #[doc(alias = "ostree_sysroot_repo")]
-    pub fn repo(&self) -> Option<Repo> {
+    pub fn repo(&self) -> Repo {
         unsafe {
             from_glib_none(ffi::ostree_sysroot_repo(self.to_glib_none().0))
         }
@@ -534,7 +534,7 @@ impl Sysroot {
 
     #[doc(alias = "ostree_sysroot_get_deployment_origin_path")]
     #[doc(alias = "get_deployment_origin_path")]
-    pub fn deployment_origin_path(deployment_path: &impl IsA<gio::File>) -> Option<gio::File> {
+    pub fn deployment_origin_path(deployment_path: &impl IsA<gio::File>) -> gio::File {
         unsafe {
             from_glib_full(ffi::ostree_sysroot_get_deployment_origin_path(deployment_path.as_ref().to_glib_none().0))
         }

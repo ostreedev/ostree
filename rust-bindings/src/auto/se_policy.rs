@@ -55,7 +55,7 @@ impl SePolicy {
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_5")))]
     #[doc(alias = "ostree_sepolicy_get_csum")]
     #[doc(alias = "get_csum")]
-    pub fn csum(&self) -> Option<glib::GString> {
+    pub fn csum(&self) -> glib::GString {
         unsafe {
             from_glib_none(ffi::ostree_sepolicy_get_csum(self.to_glib_none().0))
         }
@@ -63,7 +63,7 @@ impl SePolicy {
 
     #[doc(alias = "ostree_sepolicy_get_label")]
     #[doc(alias = "get_label")]
-    pub fn label(&self, relpath: &str, unix_mode: u32, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<glib::GString, glib::Error> {
+    pub fn label(&self, relpath: &str, unix_mode: u32, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<Option<glib::GString>, glib::Error> {
         unsafe {
             let mut out_label = ptr::null_mut();
             let mut error = ptr::null_mut();
@@ -75,7 +75,7 @@ impl SePolicy {
 
     #[doc(alias = "ostree_sepolicy_get_name")]
     #[doc(alias = "get_name")]
-    pub fn name(&self) -> Option<glib::GString> {
+    pub fn name(&self) -> glib::GString {
         unsafe {
             from_glib_none(ffi::ostree_sepolicy_get_name(self.to_glib_none().0))
         }
@@ -83,14 +83,14 @@ impl SePolicy {
 
     #[doc(alias = "ostree_sepolicy_get_path")]
     #[doc(alias = "get_path")]
-    pub fn path(&self) -> Option<gio::File> {
+    pub fn path(&self) -> gio::File {
         unsafe {
             from_glib_none(ffi::ostree_sepolicy_get_path(self.to_glib_none().0))
         }
     }
 
     #[doc(alias = "ostree_sepolicy_restorecon")]
-    pub fn restorecon(&self, path: &str, info: Option<&gio::FileInfo>, target: &impl IsA<gio::File>, flags: SePolicyRestoreconFlags, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<glib::GString, glib::Error> {
+    pub fn restorecon(&self, path: &str, info: Option<&gio::FileInfo>, target: &impl IsA<gio::File>, flags: SePolicyRestoreconFlags, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<Option<glib::GString>, glib::Error> {
         unsafe {
             let mut out_new_label = ptr::null_mut();
             let mut error = ptr::null_mut();
@@ -116,10 +116,11 @@ impl SePolicy {
     }
 }
 
-unsafe impl Send for SePolicy {}
-
 impl fmt::Display for SePolicy {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("SePolicy")
+        f.write_str(&self.name())
     }
 }
+
+unsafe impl Send for SePolicy {}

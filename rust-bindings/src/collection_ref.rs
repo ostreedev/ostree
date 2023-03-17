@@ -54,7 +54,7 @@ mod tests {
 
     #[test]
     fn should_get_collection_id() {
-        let collection_ref = CollectionRef::new(Some("collection.id"), "ref").unwrap();
+        let collection_ref = CollectionRef::new(Some("collection.id"), "ref");
         let id = collection_ref.collection_id().unwrap().to_str().unwrap();
 
         assert_eq!(id, "collection.id");
@@ -62,7 +62,7 @@ mod tests {
 
     #[test]
     fn should_get_none_collection_id() {
-        let collection_ref = CollectionRef::new(None, "ref").unwrap();
+        let collection_ref = CollectionRef::new(None, "ref");
         let id = collection_ref.collection_id();
 
         assert_eq!(id, None);
@@ -70,7 +70,7 @@ mod tests {
 
     #[test]
     fn should_get_ref_name() {
-        let collection_ref = CollectionRef::new(Some("collection.id"), "ref-name").unwrap();
+        let collection_ref = CollectionRef::new(Some("collection.id"), "ref-name");
         let ref_name = collection_ref.ref_name().to_str().unwrap();
 
         assert_eq!(ref_name, "ref-name");

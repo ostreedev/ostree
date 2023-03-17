@@ -8,7 +8,7 @@ use ostree::{gio, glib};
 #[test]
 fn sign_api_should_work() {
     let dummy_sign = ostree::Sign::by_name("dummy").unwrap();
-    assert_eq!(dummy_sign.name().unwrap(), "dummy");
+    assert_eq!(dummy_sign.name(), "dummy");
 
     let result = ostree::prelude::SignExt::data(
         &dummy_sign,
@@ -25,7 +25,7 @@ fn sign_api_should_work() {
 }
 
 fn inner_sign_ed25519<T: SignExt>(signer: T) {
-    assert_eq!(signer.name().unwrap(), "ed25519");
+    assert_eq!(signer.name(), "ed25519");
 
     let td = tempfile::tempdir().unwrap();
     let path = td.path();

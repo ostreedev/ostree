@@ -186,7 +186,7 @@ ostree_remote_get_name (OstreeRemote *remote)
  *
  * Get the URL from the remote.
  *
- * Returns: (transfer full): the remote's URL
+ * Returns: (transfer full) (nullable): the remote's URL
  * Since: 2018.6
  */
 gchar *
