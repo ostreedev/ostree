@@ -502,7 +502,7 @@ ostree_sepolicy_new_at (int         rootfs_dfd,
  * policy objects to be created from file-descriptor relative paths, which
  * may not be globally accessible.
  *
- * Returns: (transfer none): Path to rootfs
+ * Returns: (transfer none) (nullable): Path to rootfs
  */
 GFile *
 ostree_sepolicy_get_path (OstreeSePolicy  *self)
@@ -530,7 +530,7 @@ ostree_sepolicy_get_name (OstreeSePolicy *self)
  * ostree_sepolicy_get_csum:
  * @self:
  *
- * Returns: (transfer none): Checksum of current policy
+ * Returns: (transfer none) (nullable): Checksum of current policy
  *
  * Since: 2016.5
  */
