@@ -115,7 +115,7 @@ impl MutableTree {
 
     //#[doc(alias = "ostree_mutable_tree_get_subdirs")]
     //#[doc(alias = "get_subdirs")]
-    //pub fn subdirs(&self) -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 1, id: 42 } {
+    //pub fn subdirs(&self) -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 0, id: 28 }/TypeId { ns_id: 1, id: 24 } {
     //    unsafe { TODO: call ffi:ostree_mutable_tree_get_subdirs() }
     //}
 

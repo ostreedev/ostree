@@ -77,28 +77,28 @@ impl RepoFile {
     }
 
     #[doc(alias = "ostree_repo_file_tree_get_contents")]
-    pub fn tree_get_contents(&self) -> glib::Variant {
+    pub fn tree_get_contents(&self) -> Option<glib::Variant> {
         unsafe {
             from_glib_full(ffi::ostree_repo_file_tree_get_contents(self.to_glib_none().0))
         }
     }
 
     #[doc(alias = "ostree_repo_file_tree_get_contents_checksum")]
-    pub fn tree_get_contents_checksum(&self) -> glib::GString {
+    pub fn tree_get_contents_checksum(&self) -> Option<glib::GString> {
         unsafe {
             from_glib_none(ffi::ostree_repo_file_tree_get_contents_checksum(self.to_glib_none().0))
         }
     }
 
     #[doc(alias = "ostree_repo_file_tree_get_metadata")]
-    pub fn tree_get_metadata(&self) -> glib::Variant {
+    pub fn tree_get_metadata(&self) -> Option<glib::Variant> {
         unsafe {
             from_glib_full(ffi::ostree_repo_file_tree_get_metadata(self.to_glib_none().0))
         }
     }
 
     #[doc(alias = "ostree_repo_file_tree_get_metadata_checksum")]
-    pub fn tree_get_metadata_checksum(&self) -> glib::GString {
+    pub fn tree_get_metadata_checksum(&self) -> Option<glib::GString> {
         unsafe {
             from_glib_none(ffi::ostree_repo_file_tree_get_metadata_checksum(self.to_glib_none().0))
         }

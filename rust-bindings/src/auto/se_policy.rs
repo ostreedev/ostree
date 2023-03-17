@@ -55,7 +55,7 @@ impl SePolicy {
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_5")))]
     #[doc(alias = "ostree_sepolicy_get_csum")]
     #[doc(alias = "get_csum")]
-    pub fn csum(&self) -> glib::GString {
+    pub fn csum(&self) -> Option<glib::GString> {
         unsafe {
             from_glib_none(ffi::ostree_sepolicy_get_csum(self.to_glib_none().0))
         }
@@ -83,7 +83,7 @@ impl SePolicy {
 
     #[doc(alias = "ostree_sepolicy_get_path")]
     #[doc(alias = "get_path")]
-    pub fn path(&self) -> gio::File {
+    pub fn path(&self) -> Option<gio::File> {
         unsafe {
             from_glib_none(ffi::ostree_sepolicy_get_path(self.to_glib_none().0))
         }

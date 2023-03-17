@@ -27,7 +27,7 @@ impl Remote {
 
     #[doc(alias = "ostree_remote_get_url")]
     #[doc(alias = "get_url")]
-    pub fn url(&self) -> glib::GString {
+    pub fn url(&self) -> Option<glib::GString> {
         unsafe {
             from_glib_full(ffi::ostree_remote_get_url(self.to_glib_none().0))
         }

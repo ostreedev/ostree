@@ -309,62 +309,6 @@ impl ::std::fmt::Debug for OstreeAsyncProgressClass {
     }
 }
 
-#[repr(C)]
-pub struct _OstreeBootloader {
-    _data: [u8; 0],
-    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
-}
-
-pub type OstreeBootloader = *mut _OstreeBootloader;
-
-#[repr(C)]
-pub struct _OstreeBootloaderAboot {
-    _data: [u8; 0],
-    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
-}
-
-pub type OstreeBootloaderAboot = *mut _OstreeBootloaderAboot;
-
-#[repr(C)]
-pub struct _OstreeBootloaderGrub2 {
-    _data: [u8; 0],
-    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
-}
-
-pub type OstreeBootloaderGrub2 = *mut _OstreeBootloaderGrub2;
-
-#[repr(C)]
-pub struct _OstreeBootloaderSyslinux {
-    _data: [u8; 0],
-    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
-}
-
-pub type OstreeBootloaderSyslinux = *mut _OstreeBootloaderSyslinux;
-
-#[repr(C)]
-pub struct _OstreeBootloaderUboot {
-    _data: [u8; 0],
-    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
-}
-
-pub type OstreeBootloaderUboot = *mut _OstreeBootloaderUboot;
-
-#[repr(C)]
-pub struct _OstreeBootloaderZipl {
-    _data: [u8; 0],
-    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
-}
-
-pub type OstreeBootloaderZipl = *mut _OstreeBootloaderZipl;
-
-#[repr(C)]
-pub struct _OstreeChecksumInputStreamPrivate {
-    _data: [u8; 0],
-    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
-}
-
-pub type OstreeChecksumInputStreamPrivate = *mut _OstreeChecksumInputStreamPrivate;
-
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct OstreeCollectionRef {
@@ -466,14 +410,6 @@ impl ::std::fmt::Debug for OstreeDiffItem {
 }
 
 #[repr(C)]
-pub struct _OstreeGpgVerifier {
-    _data: [u8; 0],
-    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
-}
-
-pub type OstreeGpgVerifier = *mut _OstreeGpgVerifier;
-
-#[repr(C)]
 pub struct _OstreeKernelArgs {
     _data: [u8; 0],
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
@@ -488,30 +424,6 @@ pub struct _OstreeKernelArgsEntry {
 }
 
 pub type OstreeKernelArgsEntry = *mut _OstreeKernelArgsEntry;
-
-#[repr(C)]
-pub struct _OstreeLibarchiveInputStreamPrivate {
-    _data: [u8; 0],
-    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
-}
-
-pub type OstreeLibarchiveInputStreamPrivate = *mut _OstreeLibarchiveInputStreamPrivate;
-
-#[repr(C)]
-pub struct _OstreeLzmaCompressor {
-    _data: [u8; 0],
-    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
-}
-
-pub type OstreeLzmaCompressor = *mut _OstreeLzmaCompressor;
-
-#[repr(C)]
-pub struct _OstreeLzmaDecompressor {
-    _data: [u8; 0],
-    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
-}
-
-pub type OstreeLzmaDecompressor = *mut _OstreeLzmaDecompressor;
 
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -698,14 +610,6 @@ impl ::std::fmt::Debug for OstreeRepoFileClass {
             .finish()
     }
 }
-
-#[repr(C)]
-pub struct _OstreeRepoFileEnumerator {
-    _data: [u8; 0],
-    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
-}
-
-pub type OstreeRepoFileEnumerator = *mut _OstreeRepoFileEnumerator;
 
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -1664,12 +1568,6 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-
-    //=========================================================================
-    // OstreeChecksumInputStream
-    //=========================================================================
-    pub fn ostree_checksum_input_stream_get_type() -> GType;
-    //pub fn ostree_checksum_input_stream_new(stream: *mut gio::GInputStream, checksum: *mut glib::GChecksum) -> /*Ignored*/*mut OstreeChecksumInputStream;
 
     //=========================================================================
     // OstreeContentWriter
@@ -3543,38 +3441,6 @@ extern "C" {
         data: *mut glib::GBytes,
         signatures: *mut glib::GVariant,
         out_success_message: *mut *mut c_char,
-        error: *mut *mut glib::GError,
-    ) -> gboolean;
-    pub fn ostree_sign_dummy_add_pk(
-        self_: *mut OstreeSign,
-        key: *mut glib::GVariant,
-        error: *mut *mut glib::GError,
-    ) -> gboolean;
-    pub fn ostree_sign_dummy_data(
-        self_: *mut OstreeSign,
-        data: *mut glib::GBytes,
-        signature: *mut *mut glib::GBytes,
-        cancellable: *mut gio::GCancellable,
-        error: *mut *mut glib::GError,
-    ) -> gboolean;
-    pub fn ostree_sign_dummy_data_verify(
-        self_: *mut OstreeSign,
-        data: *mut glib::GBytes,
-        signatures: *mut glib::GVariant,
-        success_message: *mut *mut c_char,
-        error: *mut *mut glib::GError,
-    ) -> gboolean;
-    pub fn ostree_sign_dummy_get_name(self_: *mut OstreeSign) -> *const c_char;
-    pub fn ostree_sign_dummy_metadata_format(self_: *mut OstreeSign) -> *const c_char;
-    pub fn ostree_sign_dummy_metadata_key(self_: *mut OstreeSign) -> *const c_char;
-    pub fn ostree_sign_dummy_set_pk(
-        self_: *mut OstreeSign,
-        key: *mut glib::GVariant,
-        error: *mut *mut glib::GError,
-    ) -> gboolean;
-    pub fn ostree_sign_dummy_set_sk(
-        self_: *mut OstreeSign,
-        key: *mut glib::GVariant,
         error: *mut *mut glib::GError,
     ) -> gboolean;
     pub fn ostree_sign_ed25519_add_pk(
