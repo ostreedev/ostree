@@ -550,7 +550,9 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
   g_autoptr(GBytes) file_header = _ostree_file_header_new (file_info, xattrs);
   *out_input = header_and_input_to_stream (file_header, input);
   if (out_length)
-    *out_length = g_bytes_get_size (file_header) + g_file_info_get_size (file_info);
+    *out_length = g_bytes_get_size (file_header);
+  if (out_length && g_file_info_has_attribute (file_info, "standard::size"))
+    *out_length += g_file_info_get_size (file_info);
   return TRUE;
 }
 
