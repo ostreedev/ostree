@@ -3552,6 +3552,11 @@ reload_sysroot_config (OstreeRepo          *self,
       g_hash_table_replace (self->bls_append_values, key, value);
     }
 
+  if (!ot_keyfile_get_boolean_with_default (self->config, "sysroot",
+                                            "bootprefix", FALSE,
+                                            &self->enable_bootprefix, error))
+    return FALSE;
+
   return TRUE;
 }
 
