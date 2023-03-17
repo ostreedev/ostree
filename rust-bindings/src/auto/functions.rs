@@ -82,7 +82,7 @@ pub fn commit_get_object_sizes(commit_variant: &glib::Variant) -> Result<Vec<Com
 }
 
 #[doc(alias = "ostree_commit_get_parent")]
-pub fn commit_get_parent(commit_variant: &glib::Variant) -> glib::GString {
+pub fn commit_get_parent(commit_variant: &glib::Variant) -> Option<glib::GString> {
     unsafe {
         from_glib_full(ffi::ostree_commit_get_parent(commit_variant.to_glib_none().0))
     }

@@ -982,7 +982,7 @@ _ostree_repo_remote_name_is_file (const char *remote_name)
  * underneath that group, or @default_value if the remote exists but not the
  * option name.  If an error is returned, @out_value will be set to %NULL.
  *
- * Returns: (nullable): %TRUE on success, otherwise %FALSE with @error set
+ * Returns: %TRUE on success, otherwise %FALSE with @error set
  *
  * Since: 2016.5
  */
