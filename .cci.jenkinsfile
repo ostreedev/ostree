@@ -69,5 +69,5 @@ cosaPod(runAsUser: 0, memory: "9Gi", cpu: "4") {
     """)
   }
   kola(cosaDir: "${env.WORKSPACE}")
-  kolaTestIso(cosaDir: "${env.WORKSPACE}", skipMetal4k: true, skipMultipath: true)
+  kolaTestIso(cosaDir: "${env.WORKSPACE}", extraArgs: "--denylist-test *.4k.* --denylist-test *.mpath.*")
 }
