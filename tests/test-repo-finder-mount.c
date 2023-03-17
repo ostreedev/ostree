@@ -166,7 +166,7 @@ assert_create_repos_dir (Fixture      *fixture,
     g_clear_error (&error);
   g_assert_no_error (error);
 
-  *out_repos_dfd = glnx_steal_fd (&repos_dfd);
+  *out_repos_dfd = g_steal_fd (&repos_dfd);
   g_autoptr(GFile) mount_root = g_file_get_child (fixture->working_dir, mount_root_name);
   *out_mount = G_MOUNT (ostree_mock_mount_new (mount_root_name, mount_root));
 

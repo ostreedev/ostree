@@ -687,7 +687,7 @@ ostree_content_file_parse_at (gboolean                compressed,
   if (!glnx_fstat (fd, &stbuf, error))
     return FALSE;
 
-  g_autoptr(GInputStream) file_input = g_unix_input_stream_new (glnx_steal_fd (&fd), TRUE);
+  g_autoptr(GInputStream) file_input = g_unix_input_stream_new (g_steal_fd (&fd), TRUE);
 
   g_autoptr(GFileInfo) ret_file_info = NULL;
   g_autoptr(GVariant) ret_xattrs = NULL;
@@ -1038,7 +1038,7 @@ ostree_checksum_file_at (int               dfd,
       glnx_autofd int fd = -1;
       if (!glnx_openat_rdonly (dfd, path, FALSE, &fd, error))
         return FALSE;
-      in = g_unix_input_stream_new (glnx_steal_fd (&fd), TRUE);
+      in = g_unix_input_stream_new (g_steal_fd (&fd), TRUE);
       if (canonicalize_perms)
         {
           g_file_info_set_attribute_uint32 (file_info, "unix::uid", 0);

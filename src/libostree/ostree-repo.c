@@ -1446,7 +1446,7 @@ repo_open_at_take_fd (int *dfd,
                       GError **error)
 {
   g_autoptr(OstreeRepo) repo = g_object_new (OSTREE_TYPE_REPO, NULL);
-  repo->repo_dir_fd = glnx_steal_fd (dfd);
+  repo->repo_dir_fd = g_steal_fd (dfd);
 
   if (!ostree_repo_open (repo, cancellable, error))
     return NULL;
@@ -2809,7 +2809,7 @@ repo_create_at_internal (int             dfd,
           return FALSE;
 
         /* Note early return */
-        *out_dfd = glnx_steal_fd (&repo_dfd);
+        *out_dfd = g_steal_fd (&repo_dfd);
         return TRUE;
       }
   }
@@ -2872,7 +2872,7 @@ repo_create_at_internal (int             dfd,
         return FALSE;
   }
 
-  *out_dfd = glnx_steal_fd (&repo_dfd);
+  *out_dfd = g_steal_fd (&repo_dfd);
   return TRUE;
 }
 
@@ -2918,7 +2918,7 @@ ostree_repo_create (OstreeRepo     *self,
                                 &repo_dir_fd,
                                 cancellable, error))
     return FALSE;
-  self->repo_dir_fd = glnx_steal_fd (&repo_dir_fd);
+  self->repo_dir_fd = g_steal_fd (&repo_dir_fd);
   if (!ostree_repo_open (self, cancellable, error))
     return FALSE;
   return TRUE;
@@ -3748,7 +3748,7 @@ ostree_repo_set_cache_dir (OstreeRepo    *self,
     return FALSE;
 
   glnx_close_fd (&self->cache_dir_fd);
-  self->cache_dir_fd = glnx_steal_fd (&fd);
+  self->cache_dir_fd = g_steal_fd (&fd);
 
   return TRUE;
 }
@@ -4223,7 +4223,7 @@ repo_load_file_archive (OstreeRepo *self,
       if (!glnx_fstat (fd, &stbuf, error))
         return FALSE;
 
-      g_autoptr(GInputStream) tmp_stream = g_unix_input_stream_new (glnx_steal_fd (&fd), TRUE);
+      g_autoptr(GInputStream) tmp_stream = g_unix_input_stream_new (g_steal_fd (&fd), TRUE);
       /* Note return here */
       return ostree_content_stream_parse (TRUE, tmp_stream, stbuf.st_size, TRUE,
                                           out_input, out_file_info, out_xattrs,
@@ -4421,7 +4421,7 @@ _ostree_repo_load_file_bare (OstreeRepo         *self,
     }
 
   if (out_fd)
-    *out_fd = glnx_steal_fd (&fd);
+    *out_fd = g_steal_fd (&fd);
   if (out_stbuf)
     *out_stbuf = stbuf;
   ot_transfer_out_value (out_symlink, &ret_symlink);
@@ -4472,7 +4472,7 @@ ostree_repo_load_file (OstreeRepo         *self,
       if (out_input)
         {
           if (fd != -1)
-            *out_input = g_unix_input_stream_new (glnx_steal_fd (&fd), TRUE);
+            *out_input = g_unix_input_stream_new (g_steal_fd (&fd), TRUE);
           else
             *out_input = NULL;
         }
@@ -6840,7 +6840,7 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
       g_debug ("Reusing tmpdir %s", dent->d_name);
       reusing_dir = TRUE;
       ret_tmpdir.src_dfd = tmpdir_dfd;
-      ret_tmpdir.fd = glnx_steal_fd (&target_dfd);
+      ret_tmpdir.fd = g_steal_fd (&target_dfd);
       ret_tmpdir.path = g_strdup (dent->d_name);
       ret_tmpdir.initialized = TRUE;
     }

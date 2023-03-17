@@ -82,7 +82,7 @@ ot_openat_read_stream (int             dfd,
   glnx_autofd int fd = -1;
   if (!glnx_openat_rdonly (dfd, path, follow, &fd, error))
     return FALSE;
-  *out_istream = g_unix_input_stream_new (glnx_steal_fd (&fd), TRUE);
+  *out_istream = g_unix_input_stream_new (g_steal_fd (&fd), TRUE);
   return TRUE;
 }
 
