@@ -273,7 +273,7 @@ checksum_dir_recurse (int          dfd,
             return FALSE;
           if (fd != -1)
             {
-              g_autoptr(GInputStream) in = g_unix_input_stream_new (glnx_steal_fd (&fd), TRUE);
+              g_autoptr(GInputStream) in = g_unix_input_stream_new (g_steal_fd (&fd), TRUE);
               if (!ot_gio_splice_update_checksum (NULL, in, checksum, cancellable, error))
                 return FALSE;
             }
@@ -403,7 +403,7 @@ ensure_directory_from_template (int                 orig_etc_fd,
     return FALSE;
 
   if (out_dfd)
-    *out_dfd = glnx_steal_fd (&target_dfd);
+    *out_dfd = g_steal_fd (&target_dfd);
   return TRUE;
 }
 

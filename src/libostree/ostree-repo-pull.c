@@ -1031,7 +1031,7 @@ content_fetch_on_complete (GObject        *object,
       if (!glnx_fstat (tmpf.fd, &stbuf, error))
         goto out;
       /* Non-mirroring path */
-      tmpf_input = g_unix_input_stream_new (glnx_steal_fd (&tmpf.fd), TRUE);
+      tmpf_input = g_unix_input_stream_new (g_steal_fd (&tmpf.fd), TRUE);
 
       /* If it appears corrupted, we'll delete it below */
       if (!ostree_content_stream_parse (TRUE, tmpf_input, stbuf.st_size, FALSE,
@@ -1338,7 +1338,7 @@ static_deltapart_fetch_on_complete (GObject           *object,
     goto out;
 
   /* Transfer ownership of the fd */
-  in = g_unix_input_stream_new (glnx_steal_fd (&tmpf.fd), TRUE);
+  in = g_unix_input_stream_new (g_steal_fd (&tmpf.fd), TRUE);
 
   /* TODO - make async */
   if (!_ostree_static_delta_part_open (in, NULL, 0, fetch_data->expected_checksum,
