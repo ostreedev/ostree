@@ -1211,7 +1211,8 @@ write_content_object (OstreeRepo         *self,
   /* Update statistics */
   g_mutex_lock (&self->txn_lock);
   self->txn.stats.content_objects_written++;
-  self->txn.stats.content_bytes_written += g_file_info_get_size (file_info);
+  if (g_file_info_has_attribute (file_info, "standard::size"))
+    self->txn.stats.content_bytes_written += g_file_info_get_size (file_info);
   self->txn.stats.content_objects_total++;
   g_mutex_unlock (&self->txn_lock);
 

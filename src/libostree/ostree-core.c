@@ -355,7 +355,7 @@ GBytes *
 _ostree_zlib_file_header_new (GFileInfo         *file_info,
                               GVariant          *xattrs)
 {
-  guint64 size = g_file_info_get_size (file_info);
+  guint64 size = 0;
   guint32 uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
   guint32 gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
   guint32 mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
@@ -365,6 +365,9 @@ _ostree_zlib_file_header_new (GFileInfo         *file_info,
     symlink_target = g_file_info_get_symlink_target (file_info);
   else
     symlink_target = "";
+
+  if (g_file_info_has_attribute (file_info, "standard::size"))
+    size = g_file_info_get_size (file_info);
 
   g_autoptr(GVariant) tmp_xattrs = NULL;
   if (xattrs == NULL)
@@ -550,7 +553,9 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
   g_autoptr(GBytes) file_header = _ostree_file_header_new (file_info, xattrs);
   *out_input = header_and_input_to_stream (file_header, input);
   if (out_length)
-    *out_length = g_bytes_get_size (file_header) + g_file_info_get_size (file_info);
+    *out_length = g_bytes_get_size (file_header);
+  if (out_length && g_file_info_has_attribute (file_info, "standard::size"))
+    *out_length += g_file_info_get_size (file_info);
   return TRUE;
 }
 
