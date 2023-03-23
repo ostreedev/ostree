@@ -76,36 +76,48 @@ pub(crate) fn mutate_one_executable_to(
 /// Find ELF files in the srcdir, write new copies to dest (only percentage)
 pub(crate) fn mutate_executables_to(src: &Dir, dest: &Dir, percentage: u32) -> Result<u32> {
     assert!(percentage > 0 && percentage <= 100);
+    println!("Mutating {percentage} executables");
     let mut mutated = 0;
-    for entry in src.entries()? {
-        let entry = entry?;
-        if entry.file_type()? != cap_std::fs::FileType::file() {
-            continue;
+    // Retry until we change at least one
+    'outer: loop {
+        let mut candidates = 0;
+        for entry in src.entries()? {
+            let entry = entry?;
+            if entry.file_type()? != cap_std::fs::FileType::file() {
+                continue;
+            }
+            let meta = entry.metadata()?;
+            let mode = meta.mode();
+            // Must be executable
+            if mode & (libc::S_IXUSR | libc::S_IXGRP | libc::S_IXOTH) == 0 {
+                continue;
+            }
+            // Not suid
+            if mode & (libc::S_ISUID | libc::S_ISGID) == 0 {
+                continue;
+            }
+            // Greater than 1k in size
+            if meta.size() < 1024 {
+                continue;
+            }
+            let mut f = entry.open()?.into_std();
+            if !is_elf(&mut f)? {
+                continue;
+            }
+            candidates += 1;
+            if !rand::thread_rng().gen_ratio(percentage, 100) {
+                continue;
+            }
+            mutate_one_executable_to(&mut f, &entry.file_name(), dest)
+                .with_context(|| format!("Failed updating {:?}", entry.file_name()))?;
+            mutated += 1;
+            break 'outer;
         }
-        let meta = entry.metadata()?;
-        let mode = meta.mode();
-        // Must be executable
-        if mode & (libc::S_IXUSR | libc::S_IXGRP | libc::S_IXOTH) == 0 {
-            continue;
+        println!("Changed {mutated} binaries of {candidates}");
+        // If there's nothing to change, we're done
+        if candidates == 0 {
+            break;
         }
-        // Not suid
-        if mode & (libc::S_ISUID | libc::S_ISGID) == 0 {
-            continue;
-        }
-        // Greater than 1k in size
-        if meta.size() < 1024 {
-            continue;
-        }
-        let mut f = entry.open()?.into_std();
-        if !is_elf(&mut f)? {
-            continue;
-        }
-        if !rand::thread_rng().gen_ratio(percentage, 100) {
-            continue;
-        }
-        mutate_one_executable_to(&mut f, &entry.file_name(), dest)
-            .with_context(|| format!("Failed updating {:?}", entry.file_name()))?;
-        mutated += 1;
     }
     Ok(mutated)
 }
