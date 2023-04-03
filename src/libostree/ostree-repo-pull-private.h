@@ -54,6 +54,10 @@ typedef struct
 
   GVariant *extra_headers;
   char *append_user_agent;
+  guint32 low_speed_limit;
+  guint32 low_speed_time;
+  gboolean retry_all;
+  guint32 max_outstanding_fetcher_requests;
 
   gboolean dry_run;
   gboolean dry_run_emitted_progress;

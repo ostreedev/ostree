@@ -79,6 +79,10 @@ struct OstreeFetcher
   int tmpdir_dfd;
   bool force_anonymous;
   char *custom_user_agent;
+  guint32 opt_low_speed_limit;
+  guint32 opt_low_speed_time;
+  gboolean opt_retry_all;
+  guint32 opt_max_outstanding_fetcher_requests;
 
   GMainContext *mainctx;
   CURLM *multi;
@@ -330,7 +334,13 @@ check_multi_info (OstreeFetcher *fetcher)
             }
           else
             {
-              g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_FAILED,
+              /* When it is not a file, we want to retry the request.
+               * We accomplish that by using G_IO_ERROR_TIMED_OUT.
+               */
+              gboolean opt_retry_all = req->fetcher->opt_retry_all;
+              int g_io_error_code
+                  = (is_file || !opt_retry_all) ? G_IO_ERROR_FAILED : G_IO_ERROR_TIMED_OUT;
+              g_task_return_new_error (task, G_IO_ERROR, g_io_error_code,
                                        "While fetching %s: [%u] %s", eff_url, curlres,
                                        curl_easy_strerror (curlres));
               _ostree_fetcher_journal_failure (req->fetcher->remote_name, eff_url,
@@ -665,6 +675,31 @@ _ostree_fetcher_set_proxy (OstreeFetcher *self, const char *http_proxy)
 }
 
 void
+_ostree_fetcher_set_low_speed_time (OstreeFetcher *self, guint32 opt_low_speed_time)
+{
+  self->opt_low_speed_time = opt_low_speed_time;
+}
+
+void
+_ostree_fetcher_set_low_speed_limit (OstreeFetcher *self, guint32 opt_low_speed_limit)
+{
+  self->opt_low_speed_limit = opt_low_speed_limit;
+}
+
+void
+_ostree_fetcher_set_retry_all (OstreeFetcher *self, gboolean opt_retry_all)
+{
+  self->opt_retry_all = opt_retry_all;
+}
+
+void
+_ostree_fetcher_set_max_outstanding_fetcher_requests (OstreeFetcher *self,
+                                                      guint32 opt_max_outstanding_fetcher_requests)
+{
+  self->opt_max_outstanding_fetcher_requests = opt_max_outstanding_fetcher_requests;
+}
+
+void
 _ostree_fetcher_set_cookie_jar (OstreeFetcher *self, const char *jar_path)
 {
   g_free (self->cookie_jar_path);
@@ -912,14 +947,10 @@ initiate_next_curl_request (FetcherRequest *req, GTask *task)
   g_assert_cmpint (rc, ==, CURLM_OK);
   rc = curl_easy_setopt (req->easy, CURLOPT_CONNECTTIMEOUT, 30L);
   g_assert_cmpint (rc, ==, CURLM_OK);
-  /* We used to set CURLOPT_LOW_SPEED_LIMIT and CURLOPT_LOW_SPEED_TIME
-   * here, but see https://github.com/ostreedev/ostree/issues/878#issuecomment-347228854
-   * basically those options don't play well with HTTP2 at the moment
-   * where we can have lots of outstanding requests.  Further,
-   * we could implement that functionality at a higher level
-   * more consistently too.
-   */
-
+  rc = curl_easy_setopt (req->easy, CURLOPT_LOW_SPEED_LIMIT, req->fetcher->opt_low_speed_limit);
+  g_assert_cmpint (rc, ==, CURLM_OK);
+  rc = curl_easy_setopt (req->easy, CURLOPT_LOW_SPEED_TIME, req->fetcher->opt_low_speed_time);
+  g_assert_cmpint (rc, ==, CURLM_OK);
   /* closure bindings -> task */
   rc = curl_easy_setopt (req->easy, CURLOPT_PRIVATE, task);
   g_assert_cmpint (rc, ==, CURLM_OK);

@@ -39,6 +39,7 @@ static gboolean opt_timestamp_check;
 static gboolean opt_disable_verify_bindings;
 static char *opt_timestamp_check_from_rev;
 static gboolean opt_bareuseronly_files;
+static gboolean opt_retry_all;
 static char **opt_subpaths;
 static char **opt_http_headers;
 static char *opt_cache_dir;
@@ -46,6 +47,9 @@ static char *opt_append_user_agent;
 static int opt_depth = 0;
 static int opt_frequency = 0;
 static int opt_network_retries = -1;
+static int opt_low_speed_limit_bytes = -1;
+static int opt_low_speed_time_seconds = -1;
+static int opt_max_outstanding_fetcher_requests = -1;
 static char *opt_url;
 static char **opt_localcache_repos;
 
@@ -66,6 +70,10 @@ static GOptionEntry options[]
           "Do not use static deltas", NULL },
         { "require-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_require_static_deltas,
           "Require static deltas", NULL },
+        { "disable-retry-on-network-errors", 0, 0, G_OPTION_ARG_NONE, &opt_retry_all,
+          "Do not retry when network issues happen, instead fail automatically. (Currently only "
+          "affects libcurl)",
+          NULL },
         { "mirror", 0, 0, G_OPTION_ARG_NONE, &opt_mirror,
           "Write refs suitable for a mirror and fetches all refs if none provided", NULL },
         { "subpath", 0, 0, G_OPTION_ARG_FILENAME_ARRAY, &opt_subpaths,
@@ -88,6 +96,17 @@ static GOptionEntry options[]
           "Sets the update frequency, in milliseconds (0=1000ms) (default: 0)", "FREQUENCY" },
         { "network-retries", 0, 0, G_OPTION_ARG_INT, &opt_network_retries,
           "Specifies how many times each download should be retried upon error (default: 5)", "N" },
+        { "low-speed-limit-bytes", 0, 0, G_OPTION_ARG_INT, &opt_low_speed_limit_bytes,
+          "The average transfer speed per second of a transfer during the time set via "
+          "'low-speed-time-seconds' for libcurl to abort(default: 1000)",
+          "N" },
+        { "low-speed-time-seconds", 0, 0, G_OPTION_ARG_INT, &opt_low_speed_time_seconds,
+          "The time in number seconds that the transfer speed should be below the "
+          "'low-speed-limit-bytes' setting for libcurl to abort (default: 30)",
+          "N" },
+        { "max-outstanding-fetcher-requests", 0, 0, G_OPTION_ARG_INT,
+          &opt_max_outstanding_fetcher_requests,
+          "The max amount of concurrent connections allowed. (default: 8)", "N" },
         { "localcache-repo", 'L', 0, G_OPTION_ARG_FILENAME_ARRAY, &opt_localcache_repos,
           "Add REPO as local cache source for objects during this pull", "REPO" },
         { "timestamp-check", 'T', 0, G_OPTION_ARG_NONE, &opt_timestamp_check,
@@ -322,6 +341,25 @@ ostree_builtin_pull (int argc, char **argv, OstreeCommandInvocation *invocation,
     if (opt_network_retries >= 0)
       g_variant_builder_add (&builder, "{s@v}", "n-network-retries",
                              g_variant_new_variant (g_variant_new_uint32 (opt_network_retries)));
+
+    if (opt_low_speed_limit_bytes >= 0)
+      g_variant_builder_add (
+          &builder, "{s@v}", "low-speed-limit-bytes",
+          g_variant_new_variant (g_variant_new_uint32 (opt_low_speed_limit_bytes)));
+
+    if (opt_low_speed_time_seconds >= 0)
+      g_variant_builder_add (
+          &builder, "{s@v}", "low-speed-time-seconds",
+          g_variant_new_variant (g_variant_new_uint32 (opt_low_speed_time_seconds)));
+
+    if (opt_max_outstanding_fetcher_requests >= 0)
+      g_variant_builder_add (
+          &builder, "{s@v}", "max-outstanding-fetcher-requests",
+          g_variant_new_variant (g_variant_new_uint32 (opt_max_outstanding_fetcher_requests)));
+
+    if (opt_retry_all)
+      g_variant_builder_add (&builder, "{s@v}", "retry-all-network-errors",
+                             g_variant_new_variant (g_variant_new_boolean (FALSE)));
 
     g_variant_builder_add (
         &builder, "{s@v}", "disable-static-deltas",

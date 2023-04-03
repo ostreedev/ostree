@@ -75,6 +75,8 @@ typedef struct
   /* Also protected by output_stream_set_lock. */
   guint64 total_downloaded;
 
+  guint32 opt_max_outstanding_fetcher_requests;
+
   GError *oob_error;
 
 } ThreadClosure;
@@ -361,6 +363,12 @@ session_thread_set_tls_database_cb (ThreadClosure *thread_closure, gpointer data
 }
 
 static void
+session_thread_set_max_outstanding_fetcher_requests (ThreadClosure *thread_closure, gpointer data)
+{
+  thread_closure->opt_max_outstanding_fetcher_requests = GPOINTER_TO_UINT (data);
+}
+
+static void
 session_thread_set_extra_user_agent_cb (ThreadClosure *thread_closure, gpointer data)
 {
   const char *extra_user_agent = data;
@@ -375,6 +383,33 @@ session_thread_set_extra_user_agent_cb (ThreadClosure *thread_closure, gpointer 
       g_object_set (thread_closure->session, SOUP_SESSION_USER_AGENT,
                     OSTREE_FETCHER_USERAGENT_STRING, NULL);
     }
+}
+
+void
+_ostree_fetcher_set_low_speed_time (OstreeFetcher *self, guint32 opt_low_speed_time)
+{
+  // TODO
+}
+
+void
+_ostree_fetcher_set_low_speed_limit (OstreeFetcher *self, guint32 opt_low_speed_limit)
+{
+  // TODO
+}
+
+void
+_ostree_fetcher_set_retry_all (OstreeFetcher *self, gboolean opt_retry_all)
+{
+  // TODO
+}
+
+void
+_ostree_fetcher_set_max_outstanding_fetcher_requests (OstreeFetcher *self,
+                                                      guint32 opt_max_outstanding_fetcher_requests)
+{
+  session_thread_idle_add (self->thread_closure,
+                           session_thread_set_max_outstanding_fetcher_requests,
+                           GUINT_TO_POINTER (opt_max_outstanding_fetcher_requests), NULL);
 }
 
 static void on_request_sent (GObject *object, GAsyncResult *result, gpointer user_data);
@@ -511,7 +546,7 @@ ostree_fetcher_session_thread (gpointer data)
    * by spreading requests across mirrors. */
   gint max_conns;
   g_object_get (closure->session, "max-conns-per-host", &max_conns, NULL);
-  if (max_conns < _OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS)
+  if (max_conns < closure->opt_max_outstanding_fetcher_requests)
     {
       /* We download a lot of small objects in ostree, so this
        * helps a lot.  Also matches what most modern browsers do.
@@ -522,7 +557,7 @@ ostree_fetcher_session_thread (gpointer data)
        * currently conservative #define SOUP_SESSION_MAX_CONNS_PER_HOST_DEFAULT 2 (as of
        * 2018-02-14).
        */
-      max_conns = _OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS;
+      max_conns = closure->opt_max_outstanding_fetcher_requests;
       g_object_set (closure->session, "max-conns-per-host", max_conns, NULL);
     }
 

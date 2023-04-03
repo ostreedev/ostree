@@ -145,6 +145,42 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
             </varlistentry>
 
             <varlistentry>
+                <term><option>--disable-retry-on-network-errors</option></term>
+
+                <listitem><para>
+                    Do not retry when network issues happen, instead fail automatically. (Currently only affects libcurl)
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--low-speed-limit-bytes</option>=N</term>
+
+                <listitem><para>
+                    The average transfer speed per second of a transfer during the
+                    time set via 'low-speed-time-seconds' for libcurl to abort
+                    (default: 1000)
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--low-speed-time-seconds</option>=N</term>
+
+                <listitem><para>
+                    The time in number seconds that the transfer speed should be
+                    below the 'low-speed-limit-bytes' setting for libcurl to abort
+                    (default: 30)
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--max-outstanding-fetcher-requests</option>=N</term>
+
+                <listitem><para>
+                    The max amount of concurrent connections allowed. (default: 8)
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--disable-verify-bindings</option></term>
 
                 <listitem><para>
