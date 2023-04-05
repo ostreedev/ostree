@@ -124,9 +124,13 @@ resolve_deploy_path (const char * root_mountpoint)
 {
   char destpath[PATH_MAX];
   struct stat stbuf;
-  char *ostree_target, *deploy_path;
+  char __attribute__ ((cleanup (free_char))) *ostree_target;
+  char *deploy_path;
 
   ostree_target = read_proc_cmdline_ostree ();
+  if (!strcmp (ostree_target, ABOOT_KARG))
+    ostree_target = bls_parser_get_ostree_option (root_mountpoint);
+
   if (!ostree_target)
     errx (EXIT_FAILURE, "No OSTree target; expected ostree=/ostree/boot.N/...");
 

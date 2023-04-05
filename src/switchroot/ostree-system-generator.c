@@ -62,7 +62,10 @@ main(int argc, char *argv[])
    * exit so that we don't error, but at the same time work where switchroot
    * is PID 1 (and so hasn't created /run/ostree-booted).
    */
-  char *ostree_cmdline = read_proc_cmdline_ostree ();
+  char __attribute__ ((cleanup (free_char))) *ostree_cmdline = read_proc_cmdline_ostree ();
+  if (!strcmp (ostree_cmdline, ABOOT_KARG))
+    ostree_cmdline = bls_parser_get_ostree_option ("/sysroot");
+
   if (!ostree_cmdline)
     exit (EXIT_SUCCESS);
 

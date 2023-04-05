@@ -21,17 +21,20 @@
 #ifndef __OSTREE_MOUNT_UTIL_H_
 #define __OSTREE_MOUNT_UTIL_H_
 
+#include <dirent.h>
 #include <err.h>
-#include <stdlib.h>
-#include <sys/statvfs.h>
-#include <stdio.h>
-#include <unistd.h>
 #include <fcntl.h>
-#include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/statvfs.h>
+#include <sys/utsname.h>
+#include <unistd.h>
 
 #define INITRAMFS_MOUNT_VAR "/run/ostree/initramfs-mount-var"
 #define _OSTREE_SYSROOT_READONLY_STAMP "/run/ostree-sysroot-ro.stamp"
+#define ABOOT_KARG "aboot"
 
 static inline int
 path_is_on_readonly_fs (const char *path)
@@ -72,6 +75,26 @@ out:
   return cmdline;
 }
 
+static inline void
+free_char (char **to_free)
+{
+  free (*to_free);
+}
+
+static inline void
+close_dir (DIR **dir)
+{
+  if (*dir)
+    closedir (*dir);
+}
+
+static inline void
+close_file (FILE **f)
+{
+  if (*f)
+    fclose (*f);
+}
+
 static inline char *
 read_proc_cmdline_ostree (void)
 {
@@ -104,6 +127,150 @@ read_proc_cmdline_ostree (void)
 
   free (cmdline);
   return ret;
+}
+
+static inline void
+cpy_and_null (char **dest, char **src)
+{
+  *dest = *src;
+  *src = NULL;
+}
+
+/* If the key matches the start of the line, copy line to out
+ */
+static inline bool
+cpy_if_key_match (char **line, const char *key, char **out)
+{
+  /* There should only be one of each key per BLS file, so check for NULL, we
+   * should only parse the first occurance of a key, if there's two, it's a
+   * malformed BLS file
+   */
+  if (!*out && strstr (*line, key) == *line)
+    {
+      cpy_and_null (out, line);
+      return true;
+    }
+
+  return false;
+}
+
+static inline bool
+has_suffix (const char *str, const char *suffix)
+{
+  if (!str || !suffix)
+    return false;
+
+  const size_t str_len = strlen (str);
+  const size_t suffix_len = strlen (suffix);
+  if (str_len < suffix_len)
+    return false;
+
+  return !strcmp (str + str_len - suffix_len, suffix);
+}
+
+/* On completion version and options will be set to new values if the version
+ * is more recent. Will loop line through line on the passed in open FILE.
+ */
+static inline void
+copy_if_higher_version (FILE *f, char **version, char **options)
+{
+  char __attribute__ ((cleanup (free_char))) *line = NULL;
+  char __attribute__ ((cleanup (free_char))) *version_local = NULL;
+  char __attribute__ ((cleanup (free_char))) *options_local = NULL;
+  char __attribute__ ((cleanup (free_char))) *linux_local = NULL;
+  /* Note getline() will reuse the previous buffer when not zero */
+  for (size_t len = 0; getline (&line, &len, f) != -1;)
+    {
+      /* This is an awful hack to avoid depending on GLib in the
+       * initramfs right now.
+       */
+      if (cpy_if_key_match (&line, "version ", &version_local))
+          continue;
+
+      if (cpy_if_key_match (&line, "options ", &options_local))
+          continue;
+
+      if (cpy_if_key_match (&line, "linux ", &linux_local))
+          continue;
+    }
+
+  /* The case where we have no version set yet */
+  if (!*version
+      || strverscmp (version_local + sizeof ("version"), (*version) + sizeof ("version")) > 0)
+    {
+      struct utsname buf;
+      uname (&buf);
+      strtok (linux_local + sizeof ("linux"), " \t\r\n");
+      if (!has_suffix (linux_local, buf.release))
+        return;
+
+      cpy_and_null (version, &version_local);
+      cpy_and_null (options, &options_local);
+    }
+
+  return;
+}
+
+static inline char *
+parse_ostree_from_options (const char *options)
+{
+  if (options)
+    {
+      options += sizeof ("options");
+      char *start_of_ostree = strstr (options, "ostree=");
+      if (start_of_ostree > options)
+        {
+          start_of_ostree += sizeof ("ostree");
+          /* trim everything to the right */
+          strtok (start_of_ostree, " \t\r\n");
+          return strdup (start_of_ostree);
+        }
+    }
+
+  return NULL;
+}
+
+/* This function is for boot arrangements where it is not possible to use a
+ * karg/cmdline, this is the case when the cmdline is part of the signed
+ * boot image, alternatively this function takes the karg from the bls entry
+ * which will have the correct ostree= karg set. This bls entry is not parsed
+ * from the bootloader but from the initramfs instead.
+ */
+static inline char *
+bls_parser_get_ostree_option (const char *sysroot)
+{
+  char out[PATH_MAX] = "";
+  int written = snprintf (out, PATH_MAX, "%s/boot/loader/entries", sysroot);
+  DIR __attribute__ ((cleanup (close_dir))) *dir = opendir (out);
+  if (!dir)
+    {
+      fprintf (stderr, "opendir(\"%s\") failed with %d\n", out, errno);
+      return NULL;
+    }
+
+  char __attribute__ ((cleanup (free_char))) *version = NULL;
+  char __attribute__ ((cleanup (free_char))) *options = NULL;
+  for (struct dirent *ent = 0; (ent = readdir (dir));)
+    {
+      if (ent->d_name[0] == '.')
+        continue;
+
+      if (!has_suffix (ent->d_name, ".conf"))
+        continue;
+
+      snprintf (out + written, PATH_MAX - written, "/%s", ent->d_name);
+
+      FILE __attribute__ ((cleanup (close_file))) *f = fopen (out, "r");
+      if (!f)
+        {
+          fprintf (stderr, "fopen(\"%s\", \"r\") failed with %d\n", out, errno);
+          continue;
+        }
+
+      copy_if_higher_version (f, &version, &options);
+    }
+
+  return parse_ostree_from_options (options);
 }
 
 /* This is an API for other projects to determine whether or not the
