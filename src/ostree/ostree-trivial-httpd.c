@@ -34,6 +34,19 @@
 #include <sys/prctl.h>
 #include <signal.h>
 
+#if ! SOUP_CHECK_VERSION (3, 0, 0)
+#  define SoupServerMessage SoupMessage
+#  define soup_server_message_get_method(msg) ((msg)->method)
+#  define soup_server_message_get_request_headers(msg) ((msg)->request_headers)
+#  define soup_server_message_get_response_headers(msg) ((msg)->response_headers)
+#  define soup_server_message_get_response_body(msg) ((msg)->response_body)
+#  define soup_server_message_set_status(msg, status) soup_message_set_status(msg, status)
+#  define soup_server_message_set_redirect(msg, status, uri) soup_message_set_redirect(msg, status, uri)
+#  define soup_server_message_set_response(msg, ct, ru, rb, rl) soup_message_set_response(msg, ct, ru, rb, rl)
+#else
+#  define soup_server_message_set_status(msg, status) soup_server_message_set_status(msg, status, NULL)
+#endif
+
 static char *opt_port_file = NULL;
 static char *opt_log = NULL;
 static gboolean opt_daemonize;
@@ -188,15 +201,12 @@ is_safe_to_access (struct stat *stbuf)
 }
 
 static void
-close_socket (SoupMessage *msg, gpointer user_data)
+close_socket (SoupServerMessage *msg, gpointer user_data)
 {
-  SoupSocket *sock = user_data;
+  GSocket *sock = user_data;
   int sockfd;
 
-  /* Actually calling soup_socket_disconnect() here would cause
-   * us to leak memory, so just shutdown the socket instead.
-   */
-  sockfd = soup_socket_get_fd (sock);
+  sockfd = g_socket_get_fd (sock);
 #ifdef G_OS_WIN32
   shutdown (sockfd, SD_SEND);
 #else
@@ -213,12 +223,55 @@ calculate_etag (GMappedFile *mapping)
   return g_strconcat ("\"", checksum, "\"", NULL);
 }
 
+static GSList *
+_server_cookies_from_request (SoupServerMessage *msg)
+{
+  SoupCookie *cookie;
+  GSList *cookies = NULL;
+  GHashTable *params;
+  GHashTableIter iter;
+  gpointer name, value;
+  const char *header;
+  const char *host;
+
+  header = soup_message_headers_get_one (soup_server_message_get_request_headers (msg),
+                                         "Cookie");
+  if (!header)
+    return NULL;
+
+#if ! SOUP_CHECK_VERSION (3, 0, 0)
+  host = soup_uri_get_host (soup_message_get_uri (msg));
+#else
+  host = g_uri_get_host (soup_server_message_get_uri (msg));
+#endif
+  params = soup_header_parse_semi_param_list (header);
+  g_hash_table_iter_init (&iter, params);
+
+  while (g_hash_table_iter_next (&iter, &name, &value))
+    {
+      if (!name || !value) continue;
+      cookie = soup_cookie_new (name, value, host, NULL, 0);
+      cookies = g_slist_prepend (cookies, cookie);
+    }
+
+  soup_header_free_param_list (params);
+
+  return g_slist_reverse (cookies);
+}
+
 static void
+#if ! SOUP_CHECK_VERSION (3, 0, 0)
 do_get (OtTrivialHttpd    *self,
         SoupServer        *server,
-        SoupMessage       *msg,
+        SoupServerMessage *msg,
         const char        *path,
         SoupClientContext *context)
+#else
+do_get (OtTrivialHttpd    *self,
+        SoupServer        *server,
+        SoupServerMessage *msg,
+        const char        *path)
+#endif
 {
   char *slash;
   int ret;
@@ -228,7 +281,7 @@ do_get (OtTrivialHttpd    *self,
 
   if (opt_expected_cookies)
     {
-      GSList *cookies = soup_cookies_from_request (msg);
+      GSList *cookies = _server_cookies_from_request (msg);
       GSList *l;
       int i;
 
@@ -253,12 +306,12 @@ do_get (OtTrivialHttpd    *self,
           if (!found)
             {
               httpd_log (self, "Expected cookie not found %s\n", k);
-              soup_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
-              soup_cookies_free (cookies);
+              soup_server_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
+              g_slist_free_full (cookies, (GDestroyNotify)soup_cookie_free);
               goto out;
             }
         }
-      soup_cookies_free (cookies);
+      g_slist_free_full (cookies, (GDestroyNotify)soup_cookie_free);
     }
 
   if (opt_expected_headers)
@@ -273,18 +326,18 @@ do_get (OtTrivialHttpd    *self,
           {
             g_autofree char *k = g_strndup (kv, eq - kv);
             const gchar *expected_v = eq + 1;
-            const gchar *found_v = soup_message_headers_get_one (msg->request_headers, k);
+            const gchar *found_v = soup_message_headers_get_one (soup_server_message_get_request_headers (msg), k);
 
             if (!found_v)
               {
                 httpd_log (self, "Expected header not found %s\n", k);
-                soup_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
+                soup_server_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
                 goto out;
               }
             if (strcmp (found_v, expected_v) != 0)
               {
                 httpd_log (self, "Expected header %s: %s but found %s\n", k, expected_v, found_v);
-                soup_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
+                soup_server_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
                 goto out;
               }
           }
@@ -293,7 +346,7 @@ do_get (OtTrivialHttpd    *self,
 
   if (strstr (path, "../") != NULL)
     {
-      soup_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
+      soup_server_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
       goto out;
     }
 
@@ -302,7 +355,7 @@ do_get (OtTrivialHttpd    *self,
       g_random_int_range (0, 100) < opt_random_500s_percentage)
     {
       emitted_random_500s_count++;
-      soup_message_set_status (msg, SOUP_STATUS_INTERNAL_SERVER_ERROR);
+      soup_server_message_set_status (msg, SOUP_STATUS_INTERNAL_SERVER_ERROR);
       goto out;
     }
   else if (opt_random_408s_percentage > 0 &&
@@ -310,7 +363,7 @@ do_get (OtTrivialHttpd    *self,
            g_random_int_range (0, 100) < opt_random_408s_percentage)
     {
       emitted_random_408s_count++;
-      soup_message_set_status (msg, SOUP_STATUS_REQUEST_TIMEOUT);
+      soup_server_message_set_status (msg, SOUP_STATUS_REQUEST_TIMEOUT);
       goto out;
     }
 
@@ -323,17 +376,17 @@ do_get (OtTrivialHttpd    *self,
   if (ret == -1)
     {
       if (errno == EPERM)
-        soup_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
+        soup_server_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
       else if (errno == ENOENT)
-        soup_message_set_status (msg, SOUP_STATUS_NOT_FOUND);
+        soup_server_message_set_status (msg, SOUP_STATUS_NOT_FOUND);
       else
-        soup_message_set_status (msg, SOUP_STATUS_INTERNAL_SERVER_ERROR);
+        soup_server_message_set_status (msg, SOUP_STATUS_INTERNAL_SERVER_ERROR);
       goto out;
     }
 
   if (!is_safe_to_access (&stbuf))
     {
-      soup_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
+      soup_server_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
       goto out;
     }
 
@@ -344,9 +397,13 @@ do_get (OtTrivialHttpd    *self,
         {
           g_autofree char *redir_uri = NULL;
 
-          redir_uri = g_strdup_printf ("%s/", soup_message_get_uri (msg)->path);
-          soup_message_set_redirect (msg, SOUP_STATUS_MOVED_PERMANENTLY,
-                                     redir_uri);
+#if ! SOUP_CHECK_VERSION (3, 0, 0)
+          redir_uri = g_strdup_printf ("%s/", soup_uri_get_path (soup_message_get_uri (msg)));
+#else
+          redir_uri = g_strdup_printf ("%s/", g_uri_get_path (soup_server_message_get_uri (msg)));
+#endif
+          soup_server_message_set_redirect (msg, SOUP_STATUS_MOVED_PERMANENTLY,
+                                            redir_uri);
         }
       else
         {
@@ -354,15 +411,19 @@ do_get (OtTrivialHttpd    *self,
           if (fstatat (self->root_dfd, index_realpath, &stbuf, 0) != -1)
             {
               g_autofree char *index_path = g_strconcat (path, "/index.html", NULL);
+#if ! SOUP_CHECK_VERSION (3, 0, 0)
               do_get (self, server, msg, index_path, context);
+#else
+              do_get (self, server, msg, index_path);
+#endif
             }
           else
             {
               GString *listing = get_directory_listing (self->root_dfd, path);
-              soup_message_set_response (msg, "text/html",
-                                         SOUP_MEMORY_TAKE,
-                                         listing->str, listing->len);
-              soup_message_set_status (msg, SOUP_STATUS_OK);
+              soup_server_message_set_response (msg, "text/html",
+                                                SOUP_MEMORY_TAKE,
+                                                listing->str, listing->len);
+              soup_server_message_set_status (msg, SOUP_STATUS_OK);
               g_string_free (listing, FALSE);
             }
         }
@@ -371,21 +432,21 @@ do_get (OtTrivialHttpd    *self,
     {
       if (!S_ISREG (stbuf.st_mode))
         {
-          soup_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
+          soup_server_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
           goto out;
         }
 
       glnx_autofd int fd = openat (self->root_dfd, path, O_RDONLY | O_CLOEXEC);
       if (fd < 0)
         {
-          soup_message_set_status (msg, SOUP_STATUS_INTERNAL_SERVER_ERROR);
+          soup_server_message_set_status (msg, SOUP_STATUS_INTERNAL_SERVER_ERROR);
           goto out;
         }
 
       g_autoptr(GMappedFile) mapping = g_mapped_file_new_from_fd (fd, FALSE, NULL);
       if (!mapping)
         {
-          soup_message_set_status (msg, SOUP_STATUS_INTERNAL_SERVER_ERROR);
+          soup_server_message_set_status (msg, SOUP_STATUS_INTERNAL_SERVER_ERROR);
           goto out;
         }
       (void) close (fd); fd = -1;
@@ -395,14 +456,14 @@ do_get (OtTrivialHttpd    *self,
       if (last_modified != NULL)
         {
           g_autofree gchar *formatted = g_date_time_format (last_modified, "%a, %d %b %Y %H:%M:%S GMT");
-          soup_message_headers_append (msg->response_headers, "Last-Modified", formatted);
+          soup_message_headers_append (soup_server_message_get_response_headers (msg), "Last-Modified", formatted);
         }
 
       g_autofree gchar *etag = calculate_etag (mapping);
       if (etag != NULL)
-        soup_message_headers_append (msg->response_headers, "ETag", etag);
+        soup_message_headers_append (soup_server_message_get_response_headers (msg), "ETag", etag);
 
-      if (msg->method == SOUP_METHOD_GET)
+      if (!strcmp (soup_server_message_get_method (msg), "GET"))
         {
           gsize buffer_length, file_size;
           SoupRange *ranges;
@@ -410,13 +471,13 @@ do_get (OtTrivialHttpd    *self,
           gboolean have_ranges;
 
           file_size = g_mapped_file_get_length (mapping);
-          have_ranges = soup_message_headers_get_ranges(msg->request_headers, file_size, &ranges, &ranges_length);
+          have_ranges = soup_message_headers_get_ranges(soup_server_message_get_request_headers (msg), file_size, &ranges, &ranges_length);
           if (opt_force_ranges && !have_ranges && g_strrstr (path, "/objects") != NULL)
             {
-              SoupSocket *sock;
+              GSocket *sock;
               buffer_length = file_size/2;
-              soup_message_headers_set_content_length (msg->response_headers, file_size);
-              soup_message_headers_append (msg->response_headers,
+              soup_message_headers_set_content_length (soup_server_message_get_response_headers (msg), file_size);
+              soup_message_headers_append (soup_server_message_get_response_headers (msg),
                                            "Connection", "close");
 
               /* soup-message-io will wait for us to add
@@ -424,7 +485,11 @@ do_get (OtTrivialHttpd    *self,
                * the declared Content-Length. Instead, we
                * forcibly close the socket at that point.
                */
-              sock = soup_client_context_get_socket (context);
+#if ! SOUP_CHECK_VERSION (3, 0, 0)
+              sock = soup_client_context_get_gsocket (context);
+#else
+              sock = soup_server_message_get_socket (msg);
+#endif
               g_signal_connect (msg, "wrote-chunk", G_CALLBACK (close_socket), sock);
             }
           else
@@ -434,12 +499,13 @@ do_get (OtTrivialHttpd    *self,
             {
               if (ranges_length > 0 && ranges[0].start >= file_size)
                 {
-                  soup_message_set_status (msg, SOUP_STATUS_REQUESTED_RANGE_NOT_SATISFIABLE);
-                  soup_message_headers_free_ranges (msg->request_headers, ranges);
+                  soup_server_message_set_status (msg, SOUP_STATUS_REQUESTED_RANGE_NOT_SATISFIABLE);
+                  soup_message_headers_free_ranges (soup_server_message_get_request_headers (msg), ranges);
                   goto out;
                 }
-              soup_message_headers_free_ranges (msg->request_headers, ranges);
+              soup_message_headers_free_ranges (soup_server_message_get_request_headers (msg), ranges);
             }
+#if ! SOUP_CHECK_VERSION (3, 0, 0)
           if (buffer_length > 0)
             {
               SoupBuffer *buffer;
@@ -451,8 +517,22 @@ do_get (OtTrivialHttpd    *self,
               soup_message_body_append_buffer (msg->response_body, buffer);
               soup_buffer_free (buffer);
             }
+#else
+          if (buffer_length > 0 && buffer_length == file_size)
+            {
+              GBytes *bytes = g_mapped_file_get_bytes (mapping);
+              soup_message_body_append_bytes (soup_server_message_get_response_body (msg), bytes);
+              g_bytes_unref (bytes);
+            }
+          else if (buffer_length > 0)
+            {
+              gchar *contents = g_mapped_file_get_contents (mapping);
+              soup_message_body_append (soup_server_message_get_response_body (msg),
+                                        SOUP_MEMORY_COPY, contents, buffer_length);
+            }
+#endif
         }
-      else /* msg->method == SOUP_METHOD_HEAD */
+      else /* method == HEAD */
         {
           g_autofree char *length = NULL;
 
@@ -461,56 +541,59 @@ do_get (OtTrivialHttpd    *self,
            * But we'll optimize and avoid the extra I/O.
            */
           length = g_strdup_printf ("%lu", (gulong)stbuf.st_size);
-          soup_message_headers_append (msg->response_headers,
+          soup_message_headers_append (soup_server_message_get_response_headers (msg),
                                        "Content-Length", length);
         }
 
       /* Check client’s caching headers. */
-      const gchar *if_modified_since = soup_message_headers_get_one (msg->request_headers,
+      const gchar *if_modified_since = soup_message_headers_get_one (soup_server_message_get_request_headers (msg),
                                                                      "If-Modified-Since");
-      const gchar *if_none_match = soup_message_headers_get_one (msg->request_headers,
+      const gchar *if_none_match = soup_message_headers_get_one (soup_server_message_get_request_headers (msg),
                                                                  "If-None-Match");
 
       if (if_none_match != NULL && etag != NULL)
         {
           if (g_strcmp0 (etag, if_none_match) == 0)
             {
-              soup_message_set_status (msg, SOUP_STATUS_NOT_MODIFIED);
-              soup_message_body_truncate (msg->response_body);
+              soup_server_message_set_status (msg, SOUP_STATUS_NOT_MODIFIED);
+              soup_message_body_truncate (soup_server_message_get_response_body (msg));
             }
           else
             {
-              soup_message_set_status (msg, SOUP_STATUS_OK);
+              soup_server_message_set_status (msg, SOUP_STATUS_OK);
             }
         }
       else if (if_modified_since != NULL && last_modified != NULL)
         {
-          SoupDate *if_modified_since_sd = soup_date_new_from_string (if_modified_since);
           g_autoptr(GDateTime) if_modified_since_dt = NULL;
+#if ! SOUP_CHECK_VERSION (3, 0, 0)
+          SoupDate *if_modified_since_sd = soup_date_new_from_string (if_modified_since);
 
           if (if_modified_since_sd != NULL)
             if_modified_since_dt = g_date_time_new_from_unix_utc (soup_date_to_time_t (if_modified_since_sd));
+#else
+          if_modified_since_dt = soup_date_time_new_from_http_string (if_modified_since);
+#endif
 
           if (if_modified_since_dt != NULL &&
               g_date_time_compare (last_modified, if_modified_since_dt) <= 0)
             {
-              soup_message_set_status (msg, SOUP_STATUS_NOT_MODIFIED);
-              soup_message_body_truncate (msg->response_body);
+              soup_server_message_set_status (msg, SOUP_STATUS_NOT_MODIFIED);
+              soup_message_body_truncate (soup_server_message_get_response_body (msg));
             }
           else
             {
-              soup_message_set_status (msg, SOUP_STATUS_OK);
+              soup_server_message_set_status (msg, SOUP_STATUS_OK);
             }
-
-          g_clear_pointer (&if_modified_since_sd, soup_date_free);
         }
       else
         {
-          soup_message_set_status (msg, SOUP_STATUS_OK);
+          soup_server_message_set_status (msg, SOUP_STATUS_OK);
         }
     }
  out:
   {
+#if ! SOUP_CHECK_VERSION (3, 0, 0)
     guint status = 0;
     g_autofree gchar *reason = NULL;
 
@@ -518,26 +601,41 @@ do_get (OtTrivialHttpd    *self,
                   "status-code", &status,
                   "reason-phrase", &reason,
                   NULL);
+#else
+    guint status = soup_server_message_get_status (msg);
+    const char *reason = soup_server_message_get_reason_phrase (msg);
+#endif
+
     httpd_log (self, "  status: %s (%u)\n", reason, status);
   }
   return;
 }
 
 static void
-httpd_callback (SoupServer *server, SoupMessage *msg,
+#if ! SOUP_CHECK_VERSION (3, 0, 0)
+httpd_callback (SoupServer *server, SoupServerMessage *msg,
                 const char *path, GHashTable *query,
                 SoupClientContext *context, gpointer data)
+#else
+httpd_callback (SoupServer *server, SoupServerMessage *msg,
+                const char *path, GHashTable *query, gpointer data)
+#endif
 {
   OtTrivialHttpd *self = data;
+  const char *meth = soup_server_message_get_method (msg);
 
-  if (msg->method == SOUP_METHOD_GET || msg->method == SOUP_METHOD_HEAD)
+  if (!strcmp (meth, "GET") || !strcmp(meth, "HEAD"))
+#if ! SOUP_CHECK_VERSION (3, 0, 0)
     do_get (self, server, msg, path, context);
+#else
+    do_get (self, server, msg, path);
+#endif
   else
-    soup_message_set_status (msg, SOUP_STATUS_NOT_IMPLEMENTED);
+    soup_server_message_set_status (msg, SOUP_STATUS_NOT_IMPLEMENTED);
 }
 
 static gboolean
-basic_auth_callback (SoupAuthDomain *auth_domain, SoupMessage *msg,
+basic_auth_callback (SoupAuthDomain *auth_domain, SoupServerMessage *msg,
                      const char *username, const char *password, gpointer data)
 {
 	return g_str_equal (username, "foouser") && g_str_equal (password, "barpw");
@@ -703,7 +801,7 @@ run (int argc, char **argv, GCancellable *cancellable, GError **error)
     }
 
 #if SOUP_CHECK_VERSION(2, 48, 0)
-  server = soup_server_new (SOUP_SERVER_SERVER_HEADER, "ostree-httpd ", NULL);
+  server = soup_server_new ("server-header", "ostree-httpd ", NULL);
   if (!soup_server_listen_all (server, opt_port, 0, error))
     goto out;
 #else
@@ -711,13 +809,21 @@ run (int argc, char **argv, GCancellable *cancellable, GError **error)
                             SOUP_SERVER_SERVER_HEADER, "ostree-httpd ",
                             NULL);
 #endif
+
   if (opt_require_basic_auth)
     {
+#if ! SOUP_CHECK_VERSION (3, 0, 0)
       glnx_unref_object SoupAuthDomain *auth_domain =
         soup_auth_domain_basic_new (SOUP_AUTH_DOMAIN_REALM, "auth-test",
                                     SOUP_AUTH_DOMAIN_ADD_PATH, "/",
                                     SOUP_AUTH_DOMAIN_BASIC_AUTH_CALLBACK, basic_auth_callback,
                                     NULL);
+#else
+      glnx_unref_object SoupAuthDomain *auth_domain =
+        soup_auth_domain_basic_new ("realm", "auth-test", NULL);
+      soup_auth_domain_add_path (auth_domain, "/");
+      soup_auth_domain_basic_set_auth_callback (auth_domain, basic_auth_callback, NULL, NULL);
+#endif
       soup_server_add_auth_domain (server, auth_domain);
     }
 

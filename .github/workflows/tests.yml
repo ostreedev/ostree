@@ -194,6 +194,19 @@ jobs:
               apt-get update
               apt-get install -y git
 
+          # A build using libsoup3. After bookworm is released, this can
+          # be switched to Debian Stable.
+          - name: Debian Testing with libsoup3
+            image: debian:testing-slim
+            container-options: --security-opt seccomp=unconfined
+            pre-checkout-setup: |
+              apt-get update
+              apt-get install -y git
+            extra-packages: >-
+              libsoup-3.0-dev
+            configure-options: >-
+              --with-soup3
+
           # Ubuntu builds. Unfortunately, when the latest release is
           # also the latest LTS, latest and rolling are the same. Other
           # options would be to test the previous LTS by name or to test
