@@ -188,6 +188,7 @@ ostree_sysroot_init (OstreeSysroot *self)
 {
   const GDebugKey globalopt_keys[] = {
     { "skip-sync", OSTREE_SYSROOT_GLOBAL_OPT_SKIP_SYNC },
+    { "early-prune", OSTREE_SYSROOT_GLOBAL_OPT_EARLY_PRUNE },
   };
   const GDebugKey keys[] = {
     { "mutable-deployments", OSTREE_SYSROOT_DEBUG_MUTABLE_DEPLOYMENTS },
