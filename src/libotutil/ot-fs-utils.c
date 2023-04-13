@@ -245,3 +245,47 @@ ot_parse_file_by_line (const char    *path,
 
   return TRUE;
 }
+
+/* Calculate the size of the files contained in a directory. Symlinks are not
+ * followed. */
+gboolean
+ot_get_dir_size (int            dfd,
+                 const char    *path,
+                 guint64       *out_size,
+                 GCancellable  *cancellable,
+                 GError       **error)
+{
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  if (!glnx_dirfd_iterator_init_at (dfd, path, FALSE, &dfd_iter, error))
+    return FALSE;
+
+  *out_size = 0;
+  while (TRUE)
+    {
+      struct dirent *dent;
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
+        return FALSE;
+
+      if (dent == NULL)
+        break;
+
+      if (dent->d_type == DT_REG)
+        {
+          struct stat stbuf;
+          if (!glnx_fstatat (dfd_iter.fd, dent->d_name, &stbuf, AT_SYMLINK_NOFOLLOW, error))
+            return FALSE;
+
+          *out_size += stbuf.st_size;
+        }
+      else if (dent->d_type == DT_DIR)
+        {
+          guint64 subdir_size;
+          if (!ot_get_dir_size (dfd_iter.fd, dent->d_name, &subdir_size, cancellable, error))
+            return FALSE;
+
+          *out_size += subdir_size;
+        }
+    }
+
+  return TRUE;
+}
