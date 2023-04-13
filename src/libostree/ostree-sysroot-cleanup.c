@@ -257,13 +257,6 @@ cleanup_old_deployments (OstreeSysroot       *self,
                          GCancellable        *cancellable,
                          GError             **error)
 {
-  /* Gather the device/inode of the rootfs, so we can double
-   * check we won't delete it.
-   */
-  struct stat root_stbuf;
-  if (!glnx_fstatat (AT_FDCWD, "/", &root_stbuf, 0, error))
-    return FALSE;
-
   /* Load all active deployments referenced by bootloader configuration. */
   g_autoptr(GHashTable) active_deployment_dirs =
     g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
