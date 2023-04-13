@@ -108,10 +108,10 @@ list_all_deployment_directories (OstreeSysroot       *self,
   return TRUE;
 }
 
-static gboolean
-parse_bootdir_name (const char *name,
-                    char      **out_osname,
-                    char      **out_csum)
+gboolean
+_ostree_sysroot_parse_bootdir_name (const char *name,
+                                    char      **out_osname,
+                                    char      **out_csum)
 {
   const char *lastdash;
 
@@ -136,11 +136,11 @@ parse_bootdir_name (const char *name,
   return TRUE;
 }
 
-static gboolean
-list_all_boot_directories (OstreeSysroot       *self,
-                           char              ***out_bootdirs,
-                           GCancellable        *cancellable,
-                           GError             **error)
+gboolean
+_ostree_sysroot_list_all_boot_directories (OstreeSysroot       *self,
+                                           char              ***out_bootdirs,
+                                           GCancellable        *cancellable,
+                                           GError             **error)
 {
   g_autoptr(GPtrArray) ret_bootdirs = g_ptr_array_new_with_free_func (g_free);
 
@@ -163,7 +163,7 @@ list_all_boot_directories (OstreeSysroot       *self,
       /* Only look at directories ending in -CHECKSUM; nothing else
        * should be in here, but let's be conservative.
        */
-      if (!parse_bootdir_name (dent->d_name, NULL, NULL))
+      if (!_ostree_sysroot_parse_bootdir_name (dent->d_name, NULL, NULL))
         continue;
 
       g_ptr_array_add (ret_bootdirs, g_strdup (dent->d_name));
@@ -306,7 +306,7 @@ cleanup_old_deployments (OstreeSysroot       *self,
 
   /* Clean up boot directories */
   g_auto(GStrv) all_boot_dirs = NULL;
-  if (!list_all_boot_directories (self, &all_boot_dirs, cancellable, error))
+  if (!_ostree_sysroot_list_all_boot_directories (self, &all_boot_dirs, cancellable, error))
     return FALSE;
 
   for (char **it = all_boot_dirs; it && *it; it++)
@@ -314,8 +314,8 @@ cleanup_old_deployments (OstreeSysroot       *self,
       char *bootdir = *it;
       g_autofree char *bootcsum = NULL;
 
-      if (!parse_bootdir_name (bootdir, NULL, &bootcsum))
-        g_assert_not_reached (); /* checked in list_all_boot_directories() */
+      if (!_ostree_sysroot_parse_bootdir_name (bootdir, NULL, &bootcsum))
+        g_assert_not_reached (); /* checked in _ostree_sysroot_list_all_boot_directories() */
 
       if (g_hash_table_lookup (active_boot_checksums, bootcsum))
         continue;

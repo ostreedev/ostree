@@ -187,4 +187,13 @@ gboolean _ostree_sysroot_cleanup_internal (OstreeSysroot *sysroot,
                                            GCancellable  *cancellable,
                                            GError       **error);
 
+gboolean _ostree_sysroot_parse_bootdir_name (const char *name,
+                                             char      **out_osname,
+                                             char      **out_csum);
+
+gboolean _ostree_sysroot_list_all_boot_directories (OstreeSysroot       *self,
+                                                    char              ***out_bootdirs,
+                                                    GCancellable        *cancellable,
+                                                    GError             **error);
+
 G_END_DECLS
