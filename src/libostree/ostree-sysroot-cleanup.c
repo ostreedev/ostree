@@ -292,10 +292,10 @@ cleanup_old_deployments (OstreeSysroot       *self,
 /* This function deletes any files in the bootfs unreferenced by the active
  * bootloader configuration.
  */
-static gboolean
-cleanup_bootfs (OstreeSysroot       *self,
-                GCancellable        *cancellable,
-                GError             **error)
+gboolean
+_ostree_sysroot_cleanup_bootfs (OstreeSysroot       *self,
+                                GCancellable        *cancellable,
+                                GError             **error)
 {
   /* Load all active bootcsums and overlays referenced by bootloader configuration. */
   g_autoptr(GHashTable) active_boot_checksums =
@@ -572,7 +572,7 @@ _ostree_sysroot_cleanup_internal (OstreeSysroot              *self,
   if (!cleanup_old_deployments (self, cancellable, error))
     return glnx_prefix_error (error, "Cleaning deployments");
 
-  if (!cleanup_bootfs (self, cancellable, error))
+  if (!_ostree_sysroot_cleanup_bootfs (self, cancellable, error))
     return glnx_prefix_error (error, "Cleaning bootfs");
 
   OstreeRepo *repo = ostree_sysroot_repo (self);
