@@ -260,23 +260,12 @@ cleanup_old_deployments (OstreeSysroot       *self,
   /* Load all active deployments referenced by bootloader configuration. */
   g_autoptr(GHashTable) active_deployment_dirs =
     g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-  g_autoptr(GHashTable) active_boot_checksums =
-    g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-  g_autoptr(GHashTable) active_overlay_initrds =
-    g_hash_table_new (g_str_hash, g_str_equal); /* borrows from deployment's bootconfig */
   for (guint i = 0; i < self->deployments->len; i++)
     {
       OstreeDeployment *deployment = self->deployments->pdata[i];
       char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
-      char *bootcsum = g_strdup (ostree_deployment_get_bootcsum (deployment));
       /* Transfer ownership */
       g_hash_table_replace (active_deployment_dirs, deployment_path, deployment_path);
-      g_hash_table_replace (active_boot_checksums, bootcsum, bootcsum);
-
-      OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
-      char **initrds = ostree_bootconfig_parser_get_overlay_initrds (bootconfig);
-      for (char **it = initrds; it && *it; it++)
-        g_hash_table_add (active_overlay_initrds, (char*)glnx_basename (*it));
     }
 
   /* Find all deployment directories, both active and inactive */
@@ -295,6 +284,35 @@ cleanup_old_deployments (OstreeSysroot       *self,
 
       if (!_ostree_sysroot_rmrf_deployment (self, deployment, cancellable, error))
         return FALSE;
+    }
+
+  return TRUE;
+}
+
+/* This function deletes any files in the bootfs unreferenced by the active
+ * bootloader configuration.
+ */
+static gboolean
+cleanup_bootfs (OstreeSysroot       *self,
+                GCancellable        *cancellable,
+                GError             **error)
+{
+  /* Load all active bootcsums and overlays referenced by bootloader configuration. */
+  g_autoptr(GHashTable) active_boot_checksums =
+    g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  g_autoptr(GHashTable) active_overlay_initrds =
+    g_hash_table_new (g_str_hash, g_str_equal); /* borrows from deployment's bootconfig */
+  for (guint i = 0; i < self->deployments->len; i++)
+    {
+      OstreeDeployment *deployment = self->deployments->pdata[i];
+      char *bootcsum = g_strdup (ostree_deployment_get_bootcsum (deployment));
+      /* Transfer ownership */
+      g_hash_table_replace (active_boot_checksums, bootcsum, bootcsum);
+
+      OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
+      char **initrds = ostree_bootconfig_parser_get_overlay_initrds (bootconfig);
+      for (char **it = initrds; it && *it; it++)
+        g_hash_table_add (active_overlay_initrds, (char*)glnx_basename (*it));
     }
 
   /* Clean up boot directories */
@@ -553,6 +571,9 @@ _ostree_sysroot_cleanup_internal (OstreeSysroot              *self,
 
   if (!cleanup_old_deployments (self, cancellable, error))
     return glnx_prefix_error (error, "Cleaning deployments");
+
+  if (!cleanup_bootfs (self, cancellable, error))
+    return glnx_prefix_error (error, "Cleaning bootfs");
 
   OstreeRepo *repo = ostree_sysroot_repo (self);
   if (!generate_deployment_refs (self, repo,
