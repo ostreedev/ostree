@@ -3573,6 +3573,13 @@ _ostree_sysroot_finalize_staged (OstreeSysroot *self,
       g_propagate_error (error, g_steal_pointer (&finalization_error));
       return FALSE;
     }
+  else
+    {
+      /* we may have failed in a previous invocation on this boot, but we were
+       * rerun again (likely manually) and passed this time; nuke any stamp */
+      if (!glnx_shutil_rm_rf_at (self->boot_fd, _OSTREE_FINALIZE_STAGED_FAILURE_PATH, cancellable, error))
+        return FALSE;
+    }
   return TRUE;
 }
 
