@@ -258,3 +258,25 @@ ot_keyfile_copy_group (GKeyFile   *source_keyfile,
  out:
   return ret;
 }
+
+void
+ot_keyfile_get_keys_in_hashtable (GKeyFile   *keyfile,
+                                  GHashTable *table,
+                                  const char *group_name)
+{
+  g_assert (keyfile != NULL);
+  g_assert (table != NULL);
+  g_assert (group_name != NULL);
+
+  gsize length;
+  g_auto(GStrv) keys = g_key_file_get_keys (keyfile, group_name, &length, NULL);
+  if (keys == NULL)
+    return;
+
+  for (gsize i = 0; i < length; i++)
+    {
+      const char *key = keys[i];
+      g_autofree char *val = g_key_file_get_value (keyfile, group_name, key, NULL);
+      g_hash_table_insert (table, g_strdup (key), g_strdup (val));
+    }
+}

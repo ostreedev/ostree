@@ -79,6 +79,9 @@ static OstreeCommand admin_subcommands[] = {
   { "kargs", OSTREE_BUILTIN_FLAG_NO_REPO,
     ot_admin_builtin_kargs,
     "Change kernel arguments" },
+  { "create-toplevel-user-links", OSTREE_BUILTIN_FLAG_NO_REPO | OSTREE_BUILTIN_FLAG_HIDDEN,
+    ot_admin_builtin_create_toplevel_user_links,
+    "Create user-configured top-level symlinks" },
   { NULL, 0, NULL, NULL }
 };
 

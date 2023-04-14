@@ -52,6 +52,7 @@ ostree_cmd__private__ (void)
     _ostree_repo_verify_bindings,
     _ostree_sysroot_finalize_staged,
     _ostree_sysroot_boot_complete,
+    _ostree_sysroot_create_toplevel_user_links,
   };
 
   return &table;

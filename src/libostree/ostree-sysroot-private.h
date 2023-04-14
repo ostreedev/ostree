@@ -187,4 +187,10 @@ gboolean _ostree_sysroot_cleanup_internal (OstreeSysroot *sysroot,
                                            GCancellable  *cancellable,
                                            GError       **error);
 
+gboolean
+_ostree_sysroot_create_toplevel_user_links (OstreeSysroot     *self,
+                                            int                deployment_dfd,
+                                            GCancellable      *cancellable,
+                                            GError           **error);
+
 G_END_DECLS

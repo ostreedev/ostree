@@ -47,6 +47,7 @@ BUILTINPROTO(diff);
 BUILTINPROTO(switch);
 BUILTINPROTO(upgrade);
 BUILTINPROTO(kargs);
+BUILTINPROTO(create_toplevel_user_links);
 
 #undef BUILTINPROTO
 
