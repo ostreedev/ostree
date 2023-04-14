@@ -95,4 +95,11 @@ ot_parse_file_by_line (const char    *path,
                        GCancellable  *cancellable,
                        GError       **error);
 
+gboolean
+ot_get_dir_size (int            dfd,
+                 const char    *path,
+                 guint64       *out_size,
+                 GCancellable  *cancellable,
+                 GError       **error);
+
 G_END_DECLS

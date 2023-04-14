@@ -108,10 +108,10 @@ list_all_deployment_directories (OstreeSysroot       *self,
   return TRUE;
 }
 
-static gboolean
-parse_bootdir_name (const char *name,
-                    char      **out_osname,
-                    char      **out_csum)
+gboolean
+_ostree_sysroot_parse_bootdir_name (const char *name,
+                                    char      **out_osname,
+                                    char      **out_csum)
 {
   const char *lastdash;
 
@@ -136,69 +136,42 @@ parse_bootdir_name (const char *name,
   return TRUE;
 }
 
-static gboolean
-list_all_boot_directories (OstreeSysroot       *self,
-                           GPtrArray          **out_bootdirs,
-                           GCancellable        *cancellable,
-                           GError             **error)
+gboolean
+_ostree_sysroot_list_all_boot_directories (OstreeSysroot       *self,
+                                           char              ***out_bootdirs,
+                                           GCancellable        *cancellable,
+                                           GError             **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GFile) boot_ostree = NULL;
-  g_autoptr(GPtrArray) ret_bootdirs = NULL;
-  GError *temp_error = NULL;
+  g_autoptr(GPtrArray) ret_bootdirs = g_ptr_array_new_with_free_func (g_free);
 
-  boot_ostree = g_file_resolve_relative_path (self->path, "boot/ostree");
+  gboolean exists = FALSE;
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  if (self->boot_fd >= 0 && !ot_dfd_iter_init_allow_noent (self->boot_fd, "ostree", &dfd_iter, &exists, error))
+    return FALSE;
 
-  ret_bootdirs = g_ptr_array_new_with_free_func (g_object_unref);
-
-  g_autoptr(GFileEnumerator) dir_enum =
-    g_file_enumerate_children (boot_ostree, OSTREE_GIO_FAST_QUERYINFO,
-                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                               cancellable, &temp_error);
-  if (!dir_enum)
+  while (exists)
     {
-      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-        {
-          g_clear_error (&temp_error);
-          goto done;
-        }
-      else
-        {
-          g_propagate_error (error, temp_error);
-          goto out;
-        }
-    }
-
-  while (TRUE)
-    {
-      GFileInfo *file_info = NULL;
-      GFile *child = NULL;
-      const char *name;
-
-      if (!g_file_enumerator_iterate (dir_enum, &file_info, &child,
-                                      NULL, error))
-        goto out;
-      if (file_info == NULL)
+      struct dirent *dent;
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
+        return FALSE;
+      if (dent == NULL)
         break;
 
-      if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_DIRECTORY)
+      if (dent->d_type != DT_DIR)
         continue;
 
       /* Only look at directories ending in -CHECKSUM; nothing else
        * should be in here, but let's be conservative.
        */
-      name = g_file_info_get_name (file_info);
-      if (!parse_bootdir_name (name, NULL, NULL))
+      if (!_ostree_sysroot_parse_bootdir_name (dent->d_name, NULL, NULL))
         continue;
 
-      g_ptr_array_add (ret_bootdirs, g_object_ref (child));
+      g_ptr_array_add (ret_bootdirs, g_strdup (dent->d_name));
     }
 
- done:
-  ret = TRUE;
-  ot_transfer_out_value (out_bootdirs, &ret_bootdirs);
- out:
-  return ret;
+  g_ptr_array_add (ret_bootdirs, NULL);
+  *out_bootdirs = (char**)g_ptr_array_free (g_steal_pointer (&ret_bootdirs), FALSE);
+  return TRUE;
 }
 
 /* A sysroot has at most one active "boot version" (pair of version,subversion)
@@ -284,33 +257,15 @@ cleanup_old_deployments (OstreeSysroot       *self,
                          GCancellable        *cancellable,
                          GError             **error)
 {
-  /* Gather the device/inode of the rootfs, so we can double
-   * check we won't delete it.
-   */
-  struct stat root_stbuf;
-  if (!glnx_fstatat (AT_FDCWD, "/", &root_stbuf, 0, error))
-    return FALSE;
-
   /* Load all active deployments referenced by bootloader configuration. */
   g_autoptr(GHashTable) active_deployment_dirs =
     g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-  g_autoptr(GHashTable) active_boot_checksums =
-    g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-  g_autoptr(GHashTable) active_overlay_initrds =
-    g_hash_table_new (g_str_hash, g_str_equal); /* borrows from deployment's bootconfig */
   for (guint i = 0; i < self->deployments->len; i++)
     {
       OstreeDeployment *deployment = self->deployments->pdata[i];
       char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
-      char *bootcsum = g_strdup (ostree_deployment_get_bootcsum (deployment));
       /* Transfer ownership */
       g_hash_table_replace (active_deployment_dirs, deployment_path, deployment_path);
-      g_hash_table_replace (active_boot_checksums, bootcsum, bootcsum);
-
-      OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
-      char **initrds = ostree_bootconfig_parser_get_overlay_initrds (bootconfig);
-      for (char **it = initrds; it && *it; it++)
-        g_hash_table_add (active_overlay_initrds, (char*)glnx_basename (*it));
     }
 
   /* Find all deployment directories, both active and inactive */
@@ -331,26 +286,53 @@ cleanup_old_deployments (OstreeSysroot       *self,
         return FALSE;
     }
 
+  return TRUE;
+}
+
+/* This function deletes any files in the bootfs unreferenced by the active
+ * bootloader configuration.
+ */
+gboolean
+_ostree_sysroot_cleanup_bootfs (OstreeSysroot       *self,
+                                GCancellable        *cancellable,
+                                GError             **error)
+{
+  /* Load all active bootcsums and overlays referenced by bootloader configuration. */
+  g_autoptr(GHashTable) active_boot_checksums =
+    g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  g_autoptr(GHashTable) active_overlay_initrds =
+    g_hash_table_new (g_str_hash, g_str_equal); /* borrows from deployment's bootconfig */
+  for (guint i = 0; i < self->deployments->len; i++)
+    {
+      OstreeDeployment *deployment = self->deployments->pdata[i];
+      char *bootcsum = g_strdup (ostree_deployment_get_bootcsum (deployment));
+      /* Transfer ownership */
+      g_hash_table_replace (active_boot_checksums, bootcsum, bootcsum);
+
+      OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
+      char **initrds = ostree_bootconfig_parser_get_overlay_initrds (bootconfig);
+      for (char **it = initrds; it && *it; it++)
+        g_hash_table_add (active_overlay_initrds, (char*)glnx_basename (*it));
+    }
+
   /* Clean up boot directories */
-  g_autoptr(GPtrArray) all_boot_dirs = NULL;
-  if (!list_all_boot_directories (self, &all_boot_dirs,
-                                  cancellable, error))
+  g_auto(GStrv) all_boot_dirs = NULL;
+  if (!_ostree_sysroot_list_all_boot_directories (self, &all_boot_dirs, cancellable, error))
     return FALSE;
 
-  for (guint i = 0; i < all_boot_dirs->len; i++)
+  for (char **it = all_boot_dirs; it && *it; it++)
     {
-      GFile *bootdir = all_boot_dirs->pdata[i];
-      g_autofree char *osname = NULL;
+      char *bootdir = *it;
       g_autofree char *bootcsum = NULL;
 
-      if (!parse_bootdir_name (glnx_basename (gs_file_get_path_cached (bootdir)),
-                               &osname, &bootcsum))
-        g_assert_not_reached ();
+      if (!_ostree_sysroot_parse_bootdir_name (bootdir, NULL, &bootcsum))
+        g_assert_not_reached (); /* checked in _ostree_sysroot_list_all_boot_directories() */
 
       if (g_hash_table_lookup (active_boot_checksums, bootcsum))
         continue;
 
-      if (!glnx_shutil_rm_rf_at (AT_FDCWD, gs_file_get_path_cached (bootdir), cancellable, error))
+      g_autofree char *subpath = g_build_filename ("ostree", bootdir, NULL);
+      if (!glnx_shutil_rm_rf_at (self->boot_fd, subpath, cancellable, error))
         return FALSE;
     }
 
@@ -589,6 +571,9 @@ _ostree_sysroot_cleanup_internal (OstreeSysroot              *self,
 
   if (!cleanup_old_deployments (self, cancellable, error))
     return glnx_prefix_error (error, "Cleaning deployments");
+
+  if (!_ostree_sysroot_cleanup_bootfs (self, cancellable, error))
+    return glnx_prefix_error (error, "Cleaning bootfs");
 
   OstreeRepo *repo = ostree_sysroot_repo (self);
   if (!generate_deployment_refs (self, repo,
