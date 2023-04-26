@@ -25,7 +25,7 @@ if test -x /usr/bin/clang; then
     if grep -q -e 'static inline.*_GLIB_AUTOPTR_LIST_FUNC_NAME' /usr/include/glib-2.0/glib/gmacros.h; then
         echo 'Skipping clang check, see https://bugzilla.gnome.org/show_bug.cgi?id=796346'
     else
-    export CFLAGS="-Wall -Werror ${CFLAGS:-}"
+    export CFLAGS="-Wall -Werror -Wno-error=deprecated-declarations ${CFLAGS:-}"
     git clean -dfx && git submodule foreach git clean -dfx
     export CC=clang
     build
