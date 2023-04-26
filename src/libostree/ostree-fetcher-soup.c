@@ -485,6 +485,12 @@ session_thread_request_uri (ThreadClosure *thread_closure,
       return;
     }
 
+    {
+      g_autofree gchar *uri_str = soup_uri_to_string (soup_request_get_uri (pending->request), FALSE);
+      g_debug ("%s: starting request %p for URI %s, using GTask %p",
+               G_STRFUNC, pending->request, uri_str, task);
+    }
+
   if (SOUP_IS_REQUEST_HTTP (pending->request) && thread_closure->extra_headers)
     {
       glnx_unref_object SoupMessage *msg = soup_request_http_get_message ((SoupRequestHTTP*) pending->request);
@@ -1068,6 +1074,10 @@ on_request_sent (GObject        *object,
   pending->state = OSTREE_FETCHER_STATE_COMPLETE;
   pending->request_body = soup_request_send_finish ((SoupRequest*) object,
                                                    result, &local_error);
+
+  g_debug ("%s: request %p (GTask %p) finished with request_body %p and error %s",
+           G_STRFUNC, object, task, pending->request_body,
+           (local_error != NULL) ? local_error->message : "none");
 
   if (!pending->request_body)
     goto out;
