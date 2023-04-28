@@ -27,7 +27,7 @@ set -euo pipefail
 set -x
 
 # First, basic static analysis
-./ci/codestyle.sh
+./ci/codestyle.sh clang-format
 
 NOCONFIGURE=1 ./autogen.sh
 
