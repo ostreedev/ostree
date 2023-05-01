@@ -1925,8 +1925,8 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
         }
       else
         {
-          if (!copy_dir_recurse(kernel_layout->boot_dfd, bootcsum_dfd, kernel_layout->devicetree_srcpath,
-                                sysroot->debug_flags, cancellable, error))
+          if (!copy_dir_recurse (kernel_layout->boot_dfd, bootcsum_dfd, kernel_layout->devicetree_srcpath,
+                                 sysroot->debug_flags, cancellable, error))
             return FALSE;
         }
     }
@@ -1958,6 +1958,8 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
             return FALSE;
         }
     }
+
+  /* NOTE: if adding more things in bootcsum_dfd, also update get_kernel_layout_size() */
 
   g_autoptr(GPtrArray) overlay_initrds = NULL;
   for (char **it = _ostree_deployment_get_overlay_initrds (deployment); it && *it; it++)
@@ -2487,6 +2489,247 @@ write_deployments_finish (OstreeSysroot *self,
   return TRUE;
 }
 
+static gboolean
+add_file_size_if_nonnull (int         dfd,
+                          const char *path,
+                          guint64    *inout_size,
+                          GError **error)
+{
+  if (path == NULL)
+    return TRUE;
+
+  struct stat stbuf;
+  if (!glnx_fstatat (dfd, path, &stbuf, 0, error))
+    return FALSE;
+
+  *inout_size += stbuf.st_size;
+  return TRUE;
+}
+
+/* calculates the total size of the bootcsum dir in /boot after we would copy
+ * it. This reflects the logic in  install_deployment_kernel(). */
+static gboolean
+get_kernel_layout_size (OstreeSysroot    *self,
+                        OstreeDeployment *deployment,
+                        guint64          *out_size,
+                        GCancellable     *cancellable,
+                        GError          **error)
+{
+  g_autofree char *deployment_dirpath = ostree_sysroot_get_deployment_dirpath (self, deployment);
+  glnx_autofd int deployment_dfd = -1;
+  if (!glnx_opendirat (self->sysroot_fd, deployment_dirpath, FALSE,
+                       &deployment_dfd, error))
+    return FALSE;
+
+  g_autoptr(OstreeKernelLayout) kernel_layout = NULL;
+  if (!get_kernel_from_tree (self, deployment_dfd, &kernel_layout,
+                             cancellable, error))
+    return FALSE;
+
+  guint64 bootdir_size = 0;
+  if (!add_file_size_if_nonnull (kernel_layout->boot_dfd, kernel_layout->kernel_srcpath, &bootdir_size, error))
+    return FALSE;
+  if (!add_file_size_if_nonnull (kernel_layout->boot_dfd, kernel_layout->initramfs_srcpath, &bootdir_size, error))
+    return FALSE;
+  if (kernel_layout->devicetree_srcpath)
+    {
+      /* These conditionals mirror the logic in install_deployment_kernel(). */
+      if (kernel_layout->devicetree_namever)
+        {
+          if (!add_file_size_if_nonnull (kernel_layout->boot_dfd, kernel_layout->devicetree_srcpath, &bootdir_size, error))
+            return FALSE;
+        }
+      else
+        {
+          guint64 dirsize = 0;
+          if (!ot_get_dir_size (kernel_layout->boot_dfd, kernel_layout->devicetree_srcpath, &dirsize, cancellable, error))
+            return FALSE;
+          bootdir_size += dirsize;
+        }
+    }
+  if (!add_file_size_if_nonnull (kernel_layout->boot_dfd, kernel_layout->kernel_hmac_srcpath, &bootdir_size, error))
+    return FALSE;
+  if (!add_file_size_if_nonnull (kernel_layout->boot_dfd, kernel_layout->aboot_srcpath, &bootdir_size, error))
+    return FALSE;
+
+  *out_size = bootdir_size;
+  return TRUE;
+}
+
+/* Analyze /boot and figure out if the new deployments won't fit in the
+ * remaining space. If they won't, check if deleting the deployments that are
+ * getting rotated out (e.g. the current rollback) would free up sufficient
+ * space. If so, call ostree_sysroot_write_deployments() to delete them. */
+static gboolean
+auto_early_prune_old_deployments (OstreeSysroot     *self,
+                                  GPtrArray         *new_deployments,
+                                  GCancellable      *cancellable,
+                                  GError           **error)
+{
+  /* If we're not booted into a deployment, then this is some kind of e.g. disk
+   * creation/provisioning. The situation isn't as dire, so let's not resort to
+   * auto-pruning and instead let possible ENOSPC errors naturally bubble. */
+  if (self->booted_deployment == NULL)
+    return TRUE;
+
+  {
+    struct stat stbuf;
+    if (!glnx_fstatat (self->boot_fd, ".", &stbuf, 0, error))
+      return FALSE;
+
+    /* if /boot is on the same filesystem as the sysroot (which must be where
+     * the sysroot repo is), don't do anything */
+    if (stbuf.st_dev == self->repo->device)
+      return TRUE;
+  }
+
+  /* pre-emptive cleanup of any cruft in /boot to free up any wasted space */
+  if (!_ostree_sysroot_cleanup_bootfs (self, cancellable, error))
+    return FALSE;
+
+  /* tracks all the bootcsums currently in /boot */
+  g_autoptr(GHashTable) current_bootcsums = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+
+  /* tracks all the bootcsums of new_deployments */
+  g_autoptr(GHashTable) new_bootcsums = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+
+  g_auto(GStrv) bootdirs = NULL;
+  if (!_ostree_sysroot_list_all_boot_directories (self, &bootdirs, cancellable, error))
+    return glnx_prefix_error (error, "listing bootcsum directories in bootfs");
+
+  for (char **it = bootdirs; it && *it; it++)
+    {
+      const char *bootdir = *it;
+
+      g_autofree char *bootcsum = NULL;
+      if (!_ostree_sysroot_parse_bootdir_name (bootdir, NULL, &bootcsum))
+        g_assert_not_reached (); /* checked in _ostree_sysroot_list_all_boot_directories() */
+
+      guint64 bootdir_size;
+      g_autofree char *ostree_bootdir = g_build_filename ("ostree", bootdir, NULL);
+      if (!ot_get_dir_size (self->boot_fd, ostree_bootdir, &bootdir_size, cancellable, error))
+        return FALSE;
+
+      /* for our purposes of sizing bootcsums, it's highly unlikely we need a
+       * guint64; cast it down to guint so we can more easily store it */
+      if (bootdir_size > G_MAXUINT)
+        {
+          /* If it somehow happens, don't make it fatal. this is all an
+           * optimization anyway, so let the deployment continue. But log it so
+           * that users report it and we tweak this code to handle this.
+           *
+           * An alternative is working with the block size instead, which would
+           * be easier to handle. But ideally, `ot_get_dir_size` would be block
+           * size aware too for better accuracy, which is awkward since the
+           * function itself is generic over directories and doesn't consider
+           * e.g. mount points from different filesystems. */
+          g_printerr ("bootcsum %s size exceeds %u; disabling auto-prune optimization\n", bootdir, G_MAXUINT);
+          return TRUE;
+        }
+
+      g_assert_cmpuint (bootdir_size, >, 0);
+      g_hash_table_insert (current_bootcsums, g_steal_pointer (&bootcsum), GUINT_TO_POINTER (bootdir_size));
+    }
+
+  /* total size of all bootcsums dirs that aren't already in /boot */
+  guint64 net_new_bootcsum_dirs_total_size = 0;
+
+  /* now gather all the bootcsums of the new deployments */
+  for (guint i = 0; i < new_deployments->len; i++)
+    {
+      OstreeDeployment *deployment = new_deployments->pdata[i];
+
+      const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
+      gpointer bootdir_sizep = g_hash_table_lookup (current_bootcsums, bootcsum);
+      if (bootdir_sizep != 0)
+        {
+          g_hash_table_insert (new_bootcsums, g_strdup (bootcsum), bootdir_sizep);
+          continue;
+        }
+
+      guint64 bootdir_size;
+      if (!get_kernel_layout_size (self, deployment, &bootdir_size, cancellable, error))
+        return FALSE;
+
+      /* see similar logic in previous loop */
+      if (bootdir_size > G_MAXUINT)
+        {
+          g_printerr ("deployment %s kernel layout size exceeds %u; disabling auto-prune optimization\n",
+                      ostree_deployment_get_csum (deployment), G_MAXUINT);
+          return TRUE;
+        }
+
+      g_hash_table_insert (new_bootcsums, g_strdup (bootcsum), GUINT_TO_POINTER (bootdir_size));
+
+      /* it wasn't in current_bootcsums; add */
+      net_new_bootcsum_dirs_total_size += bootdir_size;
+    }
+
+  /* get bootfs free space */
+  struct statvfs stvfsbuf;
+  if (TEMP_FAILURE_RETRY (fstatvfs (self->boot_fd, &stvfsbuf)) < 0)
+    return glnx_throw_errno_prefix (error, "fstatvfs(boot)");
+
+  guint64 available_size = stvfsbuf.f_bsize * stvfsbuf.f_bfree;
+
+  /* does the bootfs have enough free space for net-new bootdirs? */
+  if (net_new_bootcsum_dirs_total_size <= available_size)
+    return TRUE; /* nothing to do! */
+
+  /* OK, we would fail if we tried to write the new bootdirs. Is it salvageable?
+   * First, calculate how much space we could save with the bootcsums scheduled
+   * for removal. */
+  guint64 size_to_remove = 0;
+  GLNX_HASH_TABLE_FOREACH_KV (current_bootcsums, const char *, bootcsum, gpointer, sizep)
+    {
+      if (!g_hash_table_contains (new_bootcsums, bootcsum))
+        size_to_remove += GPOINTER_TO_UINT (sizep);
+    }
+
+  if (net_new_bootcsum_dirs_total_size > (available_size + size_to_remove))
+    {
+      /* Even if we auto-pruned, the new bootdirs wouldn't fit. Just let the
+       * code continue and let it hit ENOSPC. */
+      return TRUE;
+    }
+
+  g_printerr ("Insufficient space left in bootfs; updating bootloader in two steps\n");
+
+  /* Auto-pruning can salvage the situation. Calculate the set of deployments in common. */
+  g_autoptr(GPtrArray) common_deployments = g_ptr_array_new ();
+  for (guint i = 0; i < self->deployments->len; i++)
+    {
+      OstreeDeployment *deployment = self->deployments->pdata[i];
+      const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
+      if (g_hash_table_contains (new_bootcsums, bootcsum))
+        {
+          g_ptr_array_add (common_deployments, deployment);
+        }
+      else
+        {
+          /* we always keep the booted deployment */
+          g_assert (deployment != self->booted_deployment);
+        }
+    }
+
+  /* if we're here, it means that removing some deployments is possible to gain space */
+  g_assert_cmpuint (common_deployments->len, <, self->deployments->len);
+
+  /* Do an initial write out where we do a pure deployment pruning, keeping
+   * common deployments. To be safe, disable auto-pruning to make recursion
+   * impossible (though the logic in this function shouldn't kick in anyway in
+   * that recursive call). Disable cleaning since it's an intermediate stage. */
+  OstreeSysrootWriteDeploymentsOpts opts = { .do_postclean = FALSE, .disable_auto_early_prune = TRUE };
+  if (!ostree_sysroot_write_deployments_with_options (self, common_deployments, &opts, cancellable, error))
+    return FALSE;
+
+  /* clean up /boot */
+  if (!_ostree_sysroot_cleanup_bootfs (self, cancellable, error))
+    return FALSE;
+
+  return TRUE;
+}
+
 /**
  * ostree_sysroot_write_deployments_with_options:
  * @self: Sysroot
@@ -2514,6 +2757,12 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
   g_assert (self->loadstate == OSTREE_SYSROOT_LOAD_STATE_LOADED);
 
   if (!_ostree_sysroot_ensure_writable (self, error))
+    return FALSE;
+
+  /* for now, this is gated on an environment variable */
+  const gboolean opted_in = (self->opt_flags & OSTREE_SYSROOT_GLOBAL_OPT_EARLY_PRUNE) > 0;
+  if (opted_in && !opts->disable_auto_early_prune &&
+        !auto_early_prune_old_deployments (self, new_deployments, cancellable, error))
     return FALSE;
 
   /* Dealing with the staged deployment is quite tricky here. This function is
@@ -2630,7 +2879,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot     *self,
       OstreeDeployment *deployment = new_deployments->pdata[i];
       g_assert (!ostree_deployment_is_staged (deployment));
 
-      if (deployment == self->booted_deployment)
+      if (ostree_deployment_equal (deployment, self->booted_deployment))
         found_booted_deployment = TRUE;
 
       g_autoptr(GFile) deployment_root = ostree_sysroot_get_deployment_directory (self, deployment);
@@ -3572,6 +3821,13 @@ _ostree_sysroot_finalize_staged (OstreeSysroot *self,
         }
       g_propagate_error (error, g_steal_pointer (&finalization_error));
       return FALSE;
+    }
+  else
+    {
+      /* we may have failed in a previous invocation on this boot, but we were
+       * rerun again (likely manually) and passed this time; nuke any stamp */
+      if (!glnx_shutil_rm_rf_at (self->boot_fd, _OSTREE_FINALIZE_STAGED_FAILURE_PATH, cancellable, error))
+        return FALSE;
     }
   return TRUE;
 }

@@ -15,3 +15,7 @@ install:
 	install -D -m 0755 -t $(KOLA_TESTDIR)/nondestructive-rs ../inst/target/release/ostree-test
 	install -D -m 0644 destructive-stamp.ign $(KOLA_TESTDIR)/destructive-rs/config.ign
 	./install-wrappers.sh destructive-list.txt $(KOLA_TESTDIR)/destructive-rs
+
+localinstall:
+	rm -rf ../kola
+	make install KOLA_TESTDIR=../kola

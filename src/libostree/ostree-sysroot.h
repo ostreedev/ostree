@@ -193,6 +193,7 @@ gboolean ostree_sysroot_write_deployments (OstreeSysroot     *self,
 
 typedef struct {
   gboolean do_postclean;
+  gboolean disable_auto_early_prune;
   gboolean unused_bools[7];
   int unused_ints[7];
   gpointer unused_ptrs[7];
