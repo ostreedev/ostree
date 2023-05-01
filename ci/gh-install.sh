@@ -71,6 +71,7 @@ case "$ID" in
             build-essential
             bubblewrap
             ca-certificates
+            clang-format
             cpio
             debhelper
             dh-exec
