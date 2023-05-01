@@ -24,8 +24,7 @@
 
 G_BEGIN_DECLS
 
-#define OSTREE_TYPE_GPG_VERIFY_RESULT \
-  (ostree_gpg_verify_result_get_type ())
+#define OSTREE_TYPE_GPG_VERIFY_RESULT (ostree_gpg_verify_result_get_type ())
 #define OSTREE_GPG_VERIFY_RESULT(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST ((obj), OSTREE_TYPE_GPG_VERIFY_RESULT, OstreeGpgVerifyResult))
 #define OSTREE_IS_GPG_VERIFY_RESULT(obj) \
@@ -80,7 +79,8 @@ typedef struct OstreeGpgVerifyResult OstreeGpgVerifyResult;
  * Signature attributes available from an #OstreeGpgVerifyResult.
  * The attribute's #GVariantType is shown in brackets.
  **/
-typedef enum {
+typedef enum
+{
   OSTREE_GPG_SIGNATURE_ATTR_VALID,
   OSTREE_GPG_SIGNATURE_ATTR_SIG_EXPIRED,
   OSTREE_GPG_SIGNATURE_ATTR_KEY_EXPIRED,
@@ -108,19 +108,15 @@ _OSTREE_PUBLIC
 guint ostree_gpg_verify_result_count_valid (OstreeGpgVerifyResult *result);
 
 _OSTREE_PUBLIC
-gboolean ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result,
-                                          const gchar *key_id,
+gboolean ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result, const gchar *key_id,
                                           guint *out_signature_index);
 
 _OSTREE_PUBLIC
-GVariant * ostree_gpg_verify_result_get (OstreeGpgVerifyResult *result,
-                                         guint signature_index,
-                                         OstreeGpgSignatureAttr *attrs,
-                                         guint n_attrs);
+GVariant *ostree_gpg_verify_result_get (OstreeGpgVerifyResult *result, guint signature_index,
+                                        OstreeGpgSignatureAttr *attrs, guint n_attrs);
 
 _OSTREE_PUBLIC
-GVariant * ostree_gpg_verify_result_get_all (OstreeGpgVerifyResult *result,
-                                             guint signature_index);
+GVariant *ostree_gpg_verify_result_get_all (OstreeGpgVerifyResult *result, guint signature_index);
 
 /**
  * OstreeGpgSignatureFormatFlags:
@@ -131,20 +127,18 @@ GVariant * ostree_gpg_verify_result_get_all (OstreeGpgVerifyResult *result,
  * there's only one possible output format, but this enumeration allows
  * for future variations.
  **/
-typedef enum {
+typedef enum
+{
   OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT = (0 << 0),
 } OstreeGpgSignatureFormatFlags;
 
 _OSTREE_PUBLIC
-void ostree_gpg_verify_result_describe (OstreeGpgVerifyResult *result,
-                                        guint signature_index,
-                                        GString *output_buffer,
-                                        const gchar *line_prefix,
+void ostree_gpg_verify_result_describe (OstreeGpgVerifyResult *result, guint signature_index,
+                                        GString *output_buffer, const gchar *line_prefix,
                                         OstreeGpgSignatureFormatFlags flags);
 
 _OSTREE_PUBLIC
-void ostree_gpg_verify_result_describe_variant (GVariant *variant,
-                                                GString *output_buffer,
+void ostree_gpg_verify_result_describe_variant (GVariant *variant, GString *output_buffer,
                                                 const gchar *line_prefix,
                                                 OstreeGpgSignatureFormatFlags flags);
 
@@ -156,7 +150,8 @@ gboolean ostree_gpg_verify_result_require_valid_signature (OstreeGpgVerifyResult
  * OstreeGpgError:
  * @OSTREE_GPG_ERROR_NO_SIGNATURE: A signature was expected, but not found.
  * @OSTREE_GPG_ERROR_INVALID_SIGNATURE: A signature was malformed.
- * @OSTREE_GPG_ERROR_MISSING_KEY: A signature was found, but was created with a key not in the configured keyrings.
+ * @OSTREE_GPG_ERROR_MISSING_KEY: A signature was found, but was created with a key not in the
+ * configured keyrings.
  * @OSTREE_GPG_ERROR_EXPIRED_SIGNATURE: A signature was expired. Since: 2020.1.
  * @OSTREE_GPG_ERROR_EXPIRED_KEY: A signature was found, but the key used to
  *   sign it has expired. Since: 2020.1.
@@ -168,7 +163,8 @@ gboolean ostree_gpg_verify_result_require_valid_signature (OstreeGpgVerifyResult
  *
  * Since: 2017.10
  */
-typedef enum {
+typedef enum
+{
   OSTREE_GPG_ERROR_NO_SIGNATURE = 0,
   OSTREE_GPG_ERROR_INVALID_SIGNATURE,
   OSTREE_GPG_ERROR_MISSING_KEY,

@@ -22,10 +22,10 @@
 
 #include "config.h"
 
-#include "ot-main.h"
-#include "ot-builtins.h"
-#include "ostree.h"
 #include "ostree-cmd-private.h"
+#include "ostree.h"
+#include "ot-builtins.h"
+#include "ot-main.h"
 #include "otutil.h"
 
 static gboolean opt_quiet;
@@ -40,31 +40,28 @@ static gboolean opt_verify_back_refs;
  * man page (man/ostree-fsck.xml) when changing the option list.
  */
 
-static GOptionEntry options[] = {
-  { "add-tombstones", 0, 0, G_OPTION_ARG_NONE, &opt_add_tombstones, "Add tombstones for missing commits", NULL },
-  { "quiet", 'q', 0, G_OPTION_ARG_NONE, &opt_quiet, "Only print error messages", NULL },
-  { "all", 'a', 0, G_OPTION_ARG_NONE, &opt_all, "Don't stop on first error", NULL },
-  { "delete", 0, 0, G_OPTION_ARG_NONE, &opt_delete, "Remove corrupted objects", NULL },
-  { "verify-bindings", 0, 0, G_OPTION_ARG_NONE, &opt_verify_bindings, "Verify ref bindings", NULL },
-  { "verify-back-refs", 0, 0, G_OPTION_ARG_NONE, &opt_verify_back_refs, "Verify back-references (implies --verify-bindings)", NULL },
-  { NULL }
-};
+static GOptionEntry options[]
+    = { { "add-tombstones", 0, 0, G_OPTION_ARG_NONE, &opt_add_tombstones,
+          "Add tombstones for missing commits", NULL },
+        { "quiet", 'q', 0, G_OPTION_ARG_NONE, &opt_quiet, "Only print error messages", NULL },
+        { "all", 'a', 0, G_OPTION_ARG_NONE, &opt_all, "Don't stop on first error", NULL },
+        { "delete", 0, 0, G_OPTION_ARG_NONE, &opt_delete, "Remove corrupted objects", NULL },
+        { "verify-bindings", 0, 0, G_OPTION_ARG_NONE, &opt_verify_bindings, "Verify ref bindings",
+          NULL },
+        { "verify-back-refs", 0, 0, G_OPTION_ARG_NONE, &opt_verify_back_refs,
+          "Verify back-references (implies --verify-bindings)", NULL },
+        { NULL } };
 
 static gboolean
-fsck_one_object (OstreeRepo            *repo,
-                 const char            *checksum,
-                 OstreeObjectType       objtype,
-                 GHashTable            *object_parents,
-                 GVariant              *key,
-                 gboolean              *out_found_corruption,
-                 GCancellable          *cancellable,
-                 GError               **error)
+fsck_one_object (OstreeRepo *repo, const char *checksum, OstreeObjectType objtype,
+                 GHashTable *object_parents, GVariant *key, gboolean *out_found_corruption,
+                 GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GError) temp_error = NULL;
+  g_autoptr (GError) temp_error = NULL;
   if (!ostree_repo_fsck_object (repo, objtype, checksum, cancellable, &temp_error))
     {
       gboolean object_missing = FALSE;
-      g_auto(GStrv) parent_commits = NULL;
+      g_auto (GStrv) parent_commits = NULL;
       g_autofree char *parent_commits_str = NULL;
 
       if (object_parents)
@@ -92,7 +89,7 @@ fsck_one_object (OstreeRepo            *repo,
           if (opt_delete)
             {
               g_printerr ("%s\n", temp_error->message);
-              (void) ostree_repo_delete_object (repo, objtype, checksum, cancellable, NULL);
+              (void)ostree_repo_delete_object (repo, objtype, checksum, cancellable, NULL);
               object_missing = TRUE;
             }
           else if (opt_all)
@@ -120,13 +117,14 @@ fsck_one_object (OstreeRepo            *repo,
                 {
                   const char *parent_commit = parent_commits[i];
                   OstreeRepoCommitState state;
-                  if (!ostree_repo_load_commit (repo, parent_commit, NULL,
-                                                &state, error))
+                  if (!ostree_repo_load_commit (repo, parent_commit, NULL, &state, error))
                     return FALSE;
                   if ((state & OSTREE_REPO_COMMIT_STATE_PARTIAL) == 0)
                     {
                       g_printerr ("Marking commit as partial: %s\n", parent_commit);
-                      if (!ostree_repo_mark_commit_partial_reason (repo, parent_commit, TRUE, OSTREE_REPO_COMMIT_STATE_FSCK_PARTIAL, error))
+                      if (!ostree_repo_mark_commit_partial_reason (
+                              repo, parent_commit, TRUE, OSTREE_REPO_COMMIT_STATE_FSCK_PARTIAL,
+                              error))
                         return FALSE;
                     }
                 }
@@ -138,14 +136,12 @@ fsck_one_object (OstreeRepo            *repo,
 }
 
 static gboolean
-fsck_reachable_objects_from_commits (OstreeRepo            *repo,
-                                     GHashTable            *commits,
-                                     gboolean              *out_found_corruption,
-                                     GCancellable          *cancellable,
-                                     GError               **error)
+fsck_reachable_objects_from_commits (OstreeRepo *repo, GHashTable *commits,
+                                     gboolean *out_found_corruption, GCancellable *cancellable,
+                                     GError **error)
 {
-  g_autoptr(GHashTable) reachable_objects = ostree_repo_traverse_new_reachable ();
-  g_autoptr(GHashTable) object_parents = ostree_repo_traverse_new_parents ();
+  g_autoptr (GHashTable) reachable_objects = ostree_repo_traverse_new_reachable ();
+  g_autoptr (GHashTable) object_parents = ostree_repo_traverse_new_parents ();
 
   GHashTableIter hash_iter;
   gpointer key, value;
@@ -160,12 +156,14 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
 
       g_assert (objtype == OSTREE_OBJECT_TYPE_COMMIT);
 
-      if (!ostree_repo_traverse_commit_union_with_parents (repo, checksum, 0, reachable_objects, object_parents,
-                                                           cancellable, error))
+      if (!ostree_repo_traverse_commit_union_with_parents (repo, checksum, 0, reachable_objects,
+                                                           object_parents, cancellable, error))
         return FALSE;
     }
 
-  g_auto(GLnxConsoleRef) console = { 0, };
+  g_auto (GLnxConsoleRef) console = {
+    0,
+  };
   glnx_console_lock (&console);
 
   const guint count = g_hash_table_size (reachable_objects);
@@ -179,8 +177,7 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
 
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
 
-      if (!fsck_one_object (repo, checksum, objtype,
-                            object_parents, serialized_key,
+      if (!fsck_one_object (repo, checksum, objtype, object_parents, serialized_key,
                             out_found_corruption, cancellable, error))
         return FALSE;
 
@@ -194,27 +191,21 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
 /* Check that a given commit object is valid for the ref it was looked up via.
  * @collection_id will be %NULL for normal refs, and non-%NULL for collection–refs. */
 static gboolean
-fsck_commit_for_ref (OstreeRepo    *repo,
-                     const char    *checksum,
-                     const char    *collection_id,
-                     const char    *ref_name,
-                     gboolean      *found_corruption,
-                     GCancellable  *cancellable,
-                     GError       **error)
+fsck_commit_for_ref (OstreeRepo *repo, const char *checksum, const char *collection_id,
+                     const char *ref_name, gboolean *found_corruption, GCancellable *cancellable,
+                     GError **error)
 {
-  if (!fsck_one_object (repo, checksum, OSTREE_OBJECT_TYPE_COMMIT,
-                        NULL, NULL, found_corruption,
+  if (!fsck_one_object (repo, checksum, OSTREE_OBJECT_TYPE_COMMIT, NULL, NULL, found_corruption,
                         cancellable, error))
     return FALSE;
 
   /* Check the commit exists. */
-  g_autoptr(GVariant) commit = NULL;
-  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
-                                 checksum, &commit, error))
+  g_autoptr (GVariant) commit = NULL;
+  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, checksum, &commit, error))
     {
       if (collection_id != NULL)
-        return glnx_prefix_error (error, "Loading commit for ref (%s, %s)",
-                                  collection_id, ref_name);
+        return glnx_prefix_error (error, "Loading commit for ref (%s, %s)", collection_id,
+                                  ref_name);
       else
         return glnx_prefix_error (error, "Loading commit for ref %s", ref_name);
     }
@@ -222,7 +213,8 @@ fsck_commit_for_ref (OstreeRepo    *repo,
   /* Check its bindings. */
   if (opt_verify_bindings)
     {
-      if (!ostree_cmd__private__ ()->ostree_repo_verify_bindings (collection_id, ref_name, commit, error))
+      if (!ostree_cmd__private__ ()->ostree_repo_verify_bindings (collection_id, ref_name, commit,
+                                                                  error))
         return glnx_prefix_error (error, "Commit %s", checksum);
     }
 
@@ -237,60 +229,52 @@ fsck_one_commit (OstreeRepo *repo, const char *checksum, GVariant *commit, GPtrA
    * for this commit resolve back to this commit. */
   if (opt_verify_back_refs)
     {
-      g_autoptr(GVariant) metadata = g_variant_get_child_value (commit, 0);
+      g_autoptr (GVariant) metadata = g_variant_get_child_value (commit, 0);
       const char *collection_id = NULL;
-      if (!g_variant_lookup (metadata,
-                             OSTREE_COMMIT_META_KEY_COLLECTION_BINDING,
-                             "&s",
+      if (!g_variant_lookup (metadata, OSTREE_COMMIT_META_KEY_COLLECTION_BINDING, "&s",
                              &collection_id))
         collection_id = NULL;
       g_autofree const char **refs = NULL;
-      if (g_variant_lookup (metadata,
-                            OSTREE_COMMIT_META_KEY_REF_BINDING,
-                            "^a&s",
-                            &refs))
+      if (g_variant_lookup (metadata, OSTREE_COMMIT_META_KEY_REF_BINDING, "^a&s", &refs))
         {
           for (const char **iter = refs; *iter != NULL; ++iter)
             {
               g_autofree char *checksum_for_ref = NULL;
               if (collection_id != NULL)
                 {
-                  const OstreeCollectionRef collection_ref = { (char *) collection_id, (char *) *iter };
-                  if (!ostree_repo_resolve_collection_ref (repo, &collection_ref,
-                                                           TRUE,
+                  const OstreeCollectionRef collection_ref
+                      = { (char *)collection_id, (char *)*iter };
+                  if (!ostree_repo_resolve_collection_ref (repo, &collection_ref, TRUE,
                                                            OSTREE_REPO_RESOLVE_REV_EXT_NONE,
-                                                           &checksum_for_ref,
-                                                           cancellable,
-                                                           error))
+                                                           &checksum_for_ref, cancellable, error))
                     return FALSE;
                 }
               else
                 {
-                  if (!ostree_repo_resolve_rev (repo, *iter, TRUE,
-                                                &checksum_for_ref, error))
+                  if (!ostree_repo_resolve_rev (repo, *iter, TRUE, &checksum_for_ref, error))
                     return FALSE;
                 }
               if (checksum_for_ref == NULL)
                 {
                   if (collection_id != NULL)
-                    return glnx_throw (error,
-                                       "Collection–ref (%s, %s) in bindings for commit %s does not exist",
-                                       collection_id, *iter, checksum);
+                    return glnx_throw (
+                        error, "Collection–ref (%s, %s) in bindings for commit %s does not exist",
+                        collection_id, *iter, checksum);
                   else
-                    return glnx_throw (error,
-                                       "Ref ‘%s’ in bindings for commit %s does not exist",
+                    return glnx_throw (error, "Ref ‘%s’ in bindings for commit %s does not exist",
                                        *iter, checksum);
                 }
               else if (g_strcmp0 (checksum_for_ref, checksum) != 0)
                 {
                   if (collection_id != NULL)
                     return glnx_throw (error,
-                                       "Collection–ref (%s, %s) in bindings for commit %s does not resolve to that commit",
+                                       "Collection–ref (%s, %s) in bindings for commit %s does "
+                                       "not resolve to that commit",
                                        collection_id, *iter, checksum);
                   else
-                    return glnx_throw (error,
-                                       "Ref ‘%s’ in bindings for commit %s does not resolve to that commit",
-                                       *iter, checksum);
+                    return glnx_throw (
+                        error, "Ref ‘%s’ in bindings for commit %s does not resolve to that commit",
+                        *iter, checksum);
                 }
             }
         }
@@ -301,7 +285,7 @@ fsck_one_commit (OstreeRepo *repo, const char *checksum, GVariant *commit, GPtrA
       g_autofree char *parent = ostree_commit_get_parent (commit);
       if (parent)
         {
-          g_autoptr(GVariant) parent_commit = NULL;
+          g_autoptr (GVariant) parent_commit = NULL;
           if (!ostree_repo_load_variant_if_exists (repo, OSTREE_OBJECT_TYPE_COMMIT, parent,
                                                    &parent_commit, error))
             return FALSE;
@@ -314,22 +298,23 @@ fsck_one_commit (OstreeRepo *repo, const char *checksum, GVariant *commit, GPtrA
 }
 
 gboolean
-ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
+                     GCancellable *cancellable, GError **error)
 {
-  g_autoptr(OstreeRepo) repo = NULL;
+  g_autoptr (OstreeRepo) repo = NULL;
   gboolean found_corruption = FALSE;
 
-  g_autoptr(GOptionContext) context = g_option_context_new ("");
-  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
+  g_autoptr (GOptionContext) context = g_option_context_new ("");
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable,
+                                    error))
     return FALSE;
 
   if (!opt_quiet)
     g_print ("Validating refs...\n");
 
   /* Validate that the commit for each ref is available */
-  g_autoptr(GHashTable) all_refs = NULL;
-  if (!ostree_repo_list_refs (repo, NULL, &all_refs,
-                              cancellable, error))
+  g_autoptr (GHashTable) all_refs = NULL;
+  if (!ostree_repo_list_refs (repo, NULL, &all_refs, cancellable, error))
     return FALSE;
 
   GHashTableIter hash_iter;
@@ -342,26 +327,26 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
       g_autofree char *ref_name = NULL;
       if (!ostree_parse_refspec (refspec, NULL, &ref_name, error))
         return FALSE;
-      if (!fsck_commit_for_ref (repo, checksum, NULL, ref_name,
-                                &found_corruption, cancellable, error))
+      if (!fsck_commit_for_ref (repo, checksum, NULL, ref_name, &found_corruption, cancellable,
+                                error))
         return FALSE;
     }
 
   if (!opt_quiet)
     g_print ("Validating refs in collections...\n");
 
-  g_autoptr(GHashTable) all_collection_refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
+  g_autoptr (GHashTable) all_collection_refs = NULL; /* (element-type OstreeCollectionRef utf8) */
   if (!ostree_repo_list_collection_refs (repo, NULL, &all_collection_refs,
-                                         OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES,
-                                         cancellable, error))
+                                         OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES, cancellable,
+                                         error))
     return FALSE;
 
   g_hash_table_iter_init (&hash_iter, all_collection_refs);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const OstreeCollectionRef *ref = key;
-      if (!fsck_commit_for_ref (repo, value, ref->collection_id, ref->ref_name,
-                                &found_corruption, cancellable, error))
+      if (!fsck_commit_for_ref (repo, value, ref->collection_id, ref->ref_name, &found_corruption,
+                                cancellable, error))
         return FALSE;
     }
 
@@ -369,14 +354,14 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
     g_print ("Enumerating commits...\n");
 
   // Find all commit objects, including partial ones
-  g_autoptr(GHashTable) all_commits = NULL;
+  g_autoptr (GHashTable) all_commits = NULL;
   if (!ostree_repo_list_commit_objects_starting_with (repo, "", &all_commits, cancellable, error))
     return FALSE;
   // And gather a set of non-partial commits for further analysis
-  g_autoptr(GHashTable) commits = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
-                                                         (GDestroyNotify)g_variant_unref, NULL);
+  g_autoptr (GHashTable) commits = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
+                                                          (GDestroyNotify)g_variant_unref, NULL);
 
-  g_autoptr(GPtrArray) tombstones = NULL;
+  g_autoptr (GPtrArray) tombstones = NULL;
   if (opt_add_tombstones)
     tombstones = g_ptr_array_new_with_free_func (g_free);
 
@@ -392,7 +377,7 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
       const char *checksum;
       OstreeObjectType objtype;
       OstreeRepoCommitState commitstate = 0;
-      g_autoptr(GVariant) commit = NULL;
+      g_autoptr (GVariant) commit = NULL;
 
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
 
@@ -412,7 +397,7 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
         }
       else
         g_hash_table_add (commits, g_variant_ref (serialized_key));
-  }
+    }
 
   g_clear_pointer (&all_commits, g_hash_table_unref);
 
@@ -420,8 +405,7 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
     g_print ("Verifying content integrity of %u commit objects...\n",
              (guint)g_hash_table_size (commits));
 
-  if (!fsck_reachable_objects_from_commits (repo, commits, &found_corruption,
-                                            cancellable, error))
+  if (!fsck_reachable_objects_from_commits (repo, commits, &found_corruption, cancellable, error))
     return FALSE;
 
   if (opt_add_tombstones)
@@ -437,7 +421,8 @@ ostree_builtin_fsck (int argc, char **argv, OstreeCommandInvocation *invocation,
         {
           const char *checksum = tombstones->pdata[i];
           g_print ("Adding tombstone for commit %s\n", checksum);
-          if (!ostree_repo_delete_object (repo, OSTREE_OBJECT_TYPE_COMMIT, checksum, cancellable, error))
+          if (!ostree_repo_delete_object (repo, OSTREE_OBJECT_TYPE_COMMIT, checksum, cancellable,
+                                          error))
             return FALSE;
         }
     }

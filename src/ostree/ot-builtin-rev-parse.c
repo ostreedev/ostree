@@ -21,9 +21,9 @@
 
 #include "config.h"
 
-#include "ot-main.h"
-#include "ot-builtins.h"
 #include "ostree.h"
+#include "ot-builtins.h"
+#include "ot-main.h"
 #include "otutil.h"
 #include <stdbool.h>
 
@@ -34,17 +34,20 @@
 
 static gboolean opt_single;
 
-static GOptionEntry options[] = {
-  { "single", 'S', 0, G_OPTION_ARG_NONE, &opt_single, "If the repository has exactly one commit, then print it; any other case will result in an error", NULL },
-  { NULL }
-};
+static GOptionEntry options[] = { { "single", 'S', 0, G_OPTION_ARG_NONE, &opt_single,
+                                    "If the repository has exactly one commit, then print it; any "
+                                    "other case will result in an error",
+                                    NULL },
+                                  { NULL } };
 
 gboolean
-ostree_builtin_rev_parse (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ostree_builtin_rev_parse (int argc, char **argv, OstreeCommandInvocation *invocation,
+                          GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = g_option_context_new ("REV");
-  g_autoptr(OstreeRepo) repo = NULL;
-  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
+  g_autoptr (GOptionContext) context = g_option_context_new ("REV");
+  g_autoptr (OstreeRepo) repo = NULL;
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable,
+                                    error))
     return FALSE;
 
   if (opt_single)
@@ -55,12 +58,12 @@ ostree_builtin_rev_parse (int argc, char **argv, OstreeCommandInvocation *invoca
           return FALSE;
         }
 
-      g_autoptr(GHashTable) objects = NULL;
+      g_autoptr (GHashTable) objects = NULL;
       if (!ostree_repo_list_commit_objects_starting_with (repo, "", &objects, cancellable, error))
         return FALSE;
 
       GVariant *found = NULL;
-      GLNX_HASH_TABLE_FOREACH (objects, GVariant*, key)
+      GLNX_HASH_TABLE_FOREACH (objects, GVariant *, key)
         {
           if (found)
             return glnx_throw (error, "Multiple commit objects found");

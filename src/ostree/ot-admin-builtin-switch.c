@@ -19,34 +19,34 @@
 
 #include "config.h"
 
-#include "ot-main.h"
+#include "ostree.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
-#include "ostree.h"
+#include "ot-main.h"
 #include "otutil.h"
 
-#include <unistd.h>
-#include <stdlib.h>
 #include <glib/gi18n.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 static gboolean opt_reboot;
 static char *opt_osname;
 
-static GOptionEntry options[] = {
-  { "reboot", 'r', 0, G_OPTION_ARG_NONE, &opt_reboot, "Reboot after switching trees", NULL },
-  { "os", 0, 0, G_OPTION_ARG_STRING, &opt_osname, "Use a different operating system root than the current one", "OSNAME" },
-  { NULL }
-};
+static GOptionEntry options[]
+    = { { "reboot", 'r', 0, G_OPTION_ARG_NONE, &opt_reboot, "Reboot after switching trees", NULL },
+        { "os", 0, 0, G_OPTION_ARG_STRING, &opt_osname,
+          "Use a different operating system root than the current one", "OSNAME" },
+        { NULL } };
 
 gboolean
-ot_admin_builtin_switch (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_admin_builtin_switch (int argc, char **argv, OstreeCommandInvocation *invocation,
+                         GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context =
-    g_option_context_new ("REFSPEC");
-  g_autoptr(OstreeSysroot) sysroot = NULL;
+  g_autoptr (GOptionContext) context = g_option_context_new ("REFSPEC");
+  g_autoptr (OstreeSysroot) sysroot = NULL;
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
-                                          invocation, &sysroot, cancellable, error))
+                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER, invocation, &sysroot,
+                                          cancellable, error))
     return FALSE;
 
   if (argc < 2)
@@ -57,10 +57,8 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeCommandInvocation *invocat
 
   const char *new_provided_refspec = argv[1];
 
-  g_autoptr(OstreeSysrootUpgrader) upgrader =
-    ostree_sysroot_upgrader_new_for_os_with_flags (sysroot, opt_osname,
-                                                   OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED,
-                                                   cancellable, error);
+  g_autoptr (OstreeSysrootUpgrader) upgrader = ostree_sysroot_upgrader_new_for_os_with_flags (
+      sysroot, opt_osname, OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED, cancellable, error);
   if (!upgrader)
     return FALSE;
 
@@ -77,7 +75,7 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeCommandInvocation *invocat
   if (g_str_has_suffix (new_provided_refspec, ":"))
     {
       new_remote = g_strdup (new_provided_refspec);
-      new_remote[strlen(new_remote)-1] = '\0';
+      new_remote[strlen (new_remote) - 1] = '\0';
       new_ref = g_strdup (origin_ref);
     }
   else
@@ -86,7 +84,7 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeCommandInvocation *invocat
         return FALSE;
     }
 
-  const char* remote = new_remote ?: origin_remote;
+  const char *remote = new_remote ?: origin_remote;
   g_autofree char *new_refspec = NULL;
   if (remote)
     new_refspec = g_strconcat (remote, ":", new_ref, NULL);
@@ -95,30 +93,32 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeCommandInvocation *invocat
 
   if (strcmp (origin_refspec, new_refspec) == 0)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Old and new refs are equal: %s", new_refspec);
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Old and new refs are equal: %s",
+                   new_refspec);
       return FALSE;
     }
 
-  g_autoptr(GKeyFile) new_origin = ostree_sysroot_origin_new_from_refspec (sysroot, new_refspec);
+  g_autoptr (GKeyFile) new_origin = ostree_sysroot_origin_new_from_refspec (sysroot, new_refspec);
   if (!ostree_sysroot_upgrader_set_origin (upgrader, new_origin, cancellable, error))
     return FALSE;
 
-  { g_auto(GLnxConsoleRef) console = { 0, };
+  {
+    g_auto (GLnxConsoleRef) console = {
+      0,
+    };
     glnx_console_lock (&console);
 
-    g_autoptr(OstreeAsyncProgress) progress = NULL;
+    g_autoptr (OstreeAsyncProgress) progress = NULL;
     if (console.is_tty)
-      progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, &console);
+      progress = ostree_async_progress_new_and_connect (
+          ostree_repo_pull_default_console_progress_changed, &console);
 
     /* Always allow older...there's not going to be a chronological
      * relationship necessarily.
      */
     gboolean changed;
-    if (!ostree_sysroot_upgrader_pull (upgrader, 0,
-                                       OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER,
-                                       progress, &changed,
-                                       cancellable, error))
+    if (!ostree_sysroot_upgrader_pull (upgrader, 0, OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER,
+                                       progress, &changed, cancellable, error))
       return FALSE;
 
     if (progress)

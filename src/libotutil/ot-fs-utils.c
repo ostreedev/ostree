@@ -19,12 +19,12 @@
 
 #include "config.h"
 
-#include "ot-fs-utils.h"
 #include "libglnx.h"
-#include <sys/xattr.h>
-#include <sys/mman.h>
+#include "ot-fs-utils.h"
 #include <gio/gunixinputstream.h>
 #include <gio/gunixoutputstream.h>
+#include <sys/mman.h>
+#include <sys/xattr.h>
 
 /* Convert a fd-relative path to a GFile* - use
  * for legacy code.
@@ -40,13 +40,10 @@ ot_fdrel_to_gfile (int dfd, const char *path)
  * of @target_info.
  */
 gboolean
-ot_readlinkat_gfile_info (int             dfd,
-                          const char     *path,
-                          GFileInfo      *target_info,
-                          GCancellable   *cancellable,
-                          GError        **error)
+ot_readlinkat_gfile_info (int dfd, const char *path, GFileInfo *target_info,
+                          GCancellable *cancellable, GError **error)
 {
-  char targetbuf[PATH_MAX+1];
+  char targetbuf[PATH_MAX + 1];
   ssize_t len;
 
   if (TEMP_FAILURE_RETRY (len = readlinkat (dfd, path, targetbuf, sizeof (targetbuf) - 1)) < 0)
@@ -72,12 +69,8 @@ ot_readlinkat_gfile_info (int             dfd,
  * symlink path components are always followed.
  */
 gboolean
-ot_openat_read_stream (int             dfd,
-                       const char     *path,
-                       gboolean        follow,
-                       GInputStream  **out_istream,
-                       GCancellable   *cancellable,
-                       GError        **error)
+ot_openat_read_stream (int dfd, const char *path, gboolean follow, GInputStream **out_istream,
+                       GCancellable *cancellable, GError **error)
 {
   glnx_autofd int fd = -1;
   if (!glnx_openat_rdonly (dfd, path, follow, &fd, error))
@@ -88,9 +81,7 @@ ot_openat_read_stream (int             dfd,
 
 /* Like unlinkat() but ignore ENOENT */
 gboolean
-ot_ensure_unlinked_at (int dfd,
-                       const char *path,
-                       GError **error)
+ot_ensure_unlinked_at (int dfd, const char *path, GError **error)
 {
   if (unlinkat (dfd, path, 0) != 0)
     {
@@ -101,10 +92,7 @@ ot_ensure_unlinked_at (int dfd,
 }
 
 gboolean
-ot_openat_ignore_enoent (int dfd,
-                         const char *path,
-                         int *out_fd,
-                         GError **error)
+ot_openat_ignore_enoent (int dfd, const char *path, int *out_fd, GError **error)
 {
   int target_fd = openat (dfd, path, O_CLOEXEC | O_RDONLY);
   if (target_fd < 0)
@@ -121,11 +109,8 @@ ot_openat_ignore_enoent (int dfd,
  * @out_exists to %FALSE, and return successfully.
  */
 gboolean
-ot_dfd_iter_init_allow_noent (int dfd,
-                              const char *path,
-                              GLnxDirFdIterator *dfd_iter,
-                              gboolean *out_exists,
-                              GError **error)
+ot_dfd_iter_init_allow_noent (int dfd, const char *path, GLnxDirFdIterator *dfd_iter,
+                              gboolean *out_exists, GError **error)
 {
   glnx_autofd int fd = glnx_opendirat_with_errno (dfd, path, TRUE);
   if (fd < 0)
@@ -141,7 +126,8 @@ ot_dfd_iter_init_allow_noent (int dfd,
   return TRUE;
 }
 
-typedef struct {
+typedef struct
+{
   gpointer addr;
   gsize len;
 } MapData;
@@ -150,7 +136,7 @@ static void
 map_data_destroy (gpointer data)
 {
   MapData *mdata = data;
-  (void) munmap (mdata->addr, mdata->len);
+  (void)munmap (mdata->addr, mdata->len);
   g_free (mdata);
 }
 
@@ -158,9 +144,7 @@ map_data_destroy (gpointer data)
  * starting at offset @start. If the file is large enough, mmap() may be used.
  */
 GBytes *
-ot_fd_readall_or_mmap (int           fd,
-                       goffset       start,
-                       GError      **error)
+ot_fd_readall_or_mmap (int fd, goffset start, GError **error)
 {
   struct stat stbuf;
   if (!glnx_fstat (fd, &stbuf, error))
@@ -170,14 +154,14 @@ ot_fd_readall_or_mmap (int           fd,
   if (start > stbuf.st_size)
     return g_bytes_new_static (NULL, 0);
   const gsize len = stbuf.st_size - start;
-  if (len > 16*1024)
+  if (len > 16 * 1024)
     {
       /* The reason we don't use g_mapped_file_new_from_fd() here
        * is it doesn't support passing an offset, which is actually
        * used by the static delta code.
        */
       gpointer map = mmap (NULL, len, PROT_READ, MAP_PRIVATE, fd, start);
-      if (map == (void*)-1)
+      if (map == (void *)-1)
         return glnx_null_throw_errno_prefix (error, "mmap");
 
       MapData *mdata = g_new (MapData, 1);
@@ -198,41 +182,38 @@ ot_fd_readall_or_mmap (int           fd,
  * Useful for potentially large but transient files.
  */
 GBytes *
-ot_map_anonymous_tmpfile_from_content (GInputStream *instream,
-                                       GCancellable *cancellable,
-                                       GError      **error)
+ot_map_anonymous_tmpfile_from_content (GInputStream *instream, GCancellable *cancellable,
+                                       GError **error)
 {
-  g_auto(GLnxTmpfile) tmpf = { 0, };
+  g_auto (GLnxTmpfile) tmpf = {
+    0,
+  };
   if (!glnx_open_anonymous_tmpfile (O_RDWR | O_CLOEXEC, &tmpf, error))
     return NULL;
 
-  g_autoptr(GOutputStream) out = g_unix_output_stream_new (tmpf.fd, FALSE);
-  gssize n_bytes_written = g_output_stream_splice (out, instream,
-                                                   G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE |
-                                                   G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
-                                                   cancellable, error);
+  g_autoptr (GOutputStream) out = g_unix_output_stream_new (tmpf.fd, FALSE);
+  gssize n_bytes_written = g_output_stream_splice (
+      out, instream, G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE | G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+      cancellable, error);
   if (n_bytes_written < 0)
     return NULL;
 
-  g_autoptr(GMappedFile) mfile = g_mapped_file_new_from_fd (tmpf.fd, FALSE, error);
+  g_autoptr (GMappedFile) mfile = g_mapped_file_new_from_fd (tmpf.fd, FALSE, error);
   if (!mfile)
     return NULL;
   return g_mapped_file_get_bytes (mfile);
 }
 
 gboolean
-ot_parse_file_by_line (const char    *path,
-                       gboolean     (*cb)(const char*, void*, GError**),
-                       void          *cbdata,
-                       GCancellable  *cancellable,
-                       GError       **error)
+ot_parse_file_by_line (const char *path, gboolean (*cb) (const char *, void *, GError **),
+                       void *cbdata, GCancellable *cancellable, GError **error)
 {
-  g_autofree char *contents =
-    glnx_file_get_contents_utf8_at (AT_FDCWD, path, NULL, cancellable, error);
+  g_autofree char *contents
+      = glnx_file_get_contents_utf8_at (AT_FDCWD, path, NULL, cancellable, error);
   if (!contents)
     return FALSE;
 
-  g_auto(GStrv) lines = g_strsplit (contents, "\n", -1);
+  g_auto (GStrv) lines = g_strsplit (contents, "\n", -1);
   for (char **iter = lines; iter && *iter; iter++)
     {
       /* skip empty lines at least */
@@ -249,13 +230,12 @@ ot_parse_file_by_line (const char    *path,
 /* Calculate the size of the files contained in a directory. Symlinks are not
  * followed. */
 gboolean
-ot_get_dir_size (int            dfd,
-                 const char    *path,
-                 guint64       *out_size,
-                 GCancellable  *cancellable,
-                 GError       **error)
+ot_get_dir_size (int dfd, const char *path, guint64 *out_size, GCancellable *cancellable,
+                 GError **error)
 {
-  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  g_auto (GLnxDirFdIterator) dfd_iter = {
+    0,
+  };
   if (!glnx_dirfd_iterator_init_at (dfd, path, FALSE, &dfd_iter, error))
     return FALSE;
 

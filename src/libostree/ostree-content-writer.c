@@ -17,9 +17,9 @@
 
 #include "config.h"
 
+#include "ostree-autocleanups.h"
 #include "ostree-content-writer.h"
 #include "ostree-repo-private.h"
-#include "ostree-autocleanups.h"
 
 struct _OstreeContentWriter
 {
@@ -31,15 +31,11 @@ struct _OstreeContentWriter
 
 G_DEFINE_TYPE (OstreeContentWriter, ostree_content_writer, G_TYPE_OUTPUT_STREAM)
 
-static void     ostree_content_writer_finalize     (GObject *object);
-static gssize   ostree_content_writer_write         (GOutputStream         *stream,
-                                                     const void                 *buffer,
-                                                     gsize                 count,
-                                                     GCancellable         *cancellable,
-                                                     GError              **error);
-static gboolean ostree_content_writer_close        (GOutputStream         *stream,
-                                                    GCancellable         *cancellable,
-                                                    GError              **error);
+static void ostree_content_writer_finalize (GObject *object);
+static gssize ostree_content_writer_write (GOutputStream *stream, const void *buffer, gsize count,
+                                           GCancellable *cancellable, GError **error);
+static gboolean ostree_content_writer_close (GOutputStream *stream, GCancellable *cancellable,
+                                             GError **error);
 
 static void
 ostree_content_writer_class_init (OstreeContentWriterClass *klass)
@@ -47,7 +43,7 @@ ostree_content_writer_class_init (OstreeContentWriterClass *klass)
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GOutputStreamClass *stream_class = G_OUTPUT_STREAM_CLASS (klass);
 
-  gobject_class->finalize     = ostree_content_writer_finalize;
+  gobject_class->finalize = ostree_content_writer_finalize;
 
   stream_class->write_fn = ostree_content_writer_write;
   stream_class->close_fn = ostree_content_writer_close;
@@ -58,7 +54,7 @@ ostree_content_writer_finalize (GObject *object)
 {
   OstreeContentWriter *stream;
 
-  stream = (OstreeContentWriter*)(object);
+  stream = (OstreeContentWriter *)(object);
 
   g_clear_object (&stream->repo);
   _ostree_repo_bare_content_cleanup (&stream->output);
@@ -70,19 +66,13 @@ static void
 ostree_content_writer_init (OstreeContentWriter *self)
 {
   self->output.initialized = FALSE;
- }
+}
 
 OstreeContentWriter *
-_ostree_content_writer_new (OstreeRepo           *repo,
-                           const char            *checksum,
-                           guint                  uid,
-                           guint                  gid,
-                           guint                  mode,
-                           guint64                content_len,
-                           GVariant              *xattrs,
-                           GError               **error)
+_ostree_content_writer_new (OstreeRepo *repo, const char *checksum, guint uid, guint gid,
+                            guint mode, guint64 content_len, GVariant *xattrs, GError **error)
 {
-  g_autoptr(OstreeContentWriter) stream = g_object_new (OSTREE_TYPE_CONTENT_WRITER, NULL);
+  g_autoptr (OstreeContentWriter) stream = g_object_new (OSTREE_TYPE_CONTENT_WRITER, NULL);
   stream->repo = g_object_ref (repo);
   if (!_ostree_repo_bare_content_open (stream->repo, checksum, content_len, uid, gid, mode, xattrs,
                                        &stream->output, NULL, error))
@@ -91,27 +81,22 @@ _ostree_content_writer_new (OstreeRepo           *repo,
 }
 
 static gssize
-ostree_content_writer_write (GOutputStream  *stream,
-                             const void    *buffer,
-                             gsize          count,
-                             GCancellable  *cancellable,
-                             GError       **error)
+ostree_content_writer_write (GOutputStream *stream, const void *buffer, gsize count,
+                             GCancellable *cancellable, GError **error)
 {
-  OstreeContentWriter *self = (OstreeContentWriter*) stream;
+  OstreeContentWriter *self = (OstreeContentWriter *)stream;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return -1;
 
-  if (!_ostree_repo_bare_content_write (self->repo, &self->output,
-                                        buffer, count, cancellable, error))
+  if (!_ostree_repo_bare_content_write (self->repo, &self->output, buffer, count, cancellable,
+                                        error))
     return -1;
   return count;
 }
 
 static gboolean
-ostree_content_writer_close (GOutputStream        *stream,
-                             GCancellable         *cancellable,
-                             GError              **error)
+ostree_content_writer_close (GOutputStream *stream, GCancellable *cancellable, GError **error)
 {
   /* We don't expect people to invoke close() - they need to call finish()
    * to get the checksum.  We'll clean up in finalize anyways if need be.
@@ -129,11 +114,9 @@ ostree_content_writer_close (GOutputStream        *stream,
  * Returns: (transfer full): Checksum, or %NULL on error
  */
 char *
-ostree_content_writer_finish (OstreeContentWriter  *self,
-                              GCancellable         *cancellable,
-                              GError              **error)
+ostree_content_writer_finish (OstreeContentWriter *self, GCancellable *cancellable, GError **error)
 {
-  char actual_checksum[OSTREE_SHA256_STRING_LEN+1];
+  char actual_checksum[OSTREE_SHA256_STRING_LEN + 1];
   if (!_ostree_repo_bare_content_commit (self->repo, &self->output, actual_checksum,
                                          sizeof (actual_checksum), cancellable, error))
     return NULL;

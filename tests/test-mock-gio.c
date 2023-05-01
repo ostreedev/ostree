@@ -24,8 +24,8 @@
 #include "config.h"
 
 #include <gio/gio.h>
-#include <glib.h>
 #include <glib-object.h>
+#include <glib.h>
 #include <libglnx.h>
 
 #include "test-mock-gio.h"
@@ -60,7 +60,7 @@ struct _OstreeMockVolumeMonitor
   GVolumeMonitor parent_instance;
 
   GList *mounts;  /* (element-type OstreeMockMount) */
-  GList *volumes;  /* (element-type OstreeMockVolume) */
+  GList *volumes; /* (element-type OstreeMockVolume) */
 };
 
 G_DEFINE_TYPE (OstreeMockVolumeMonitor, ostree_mock_volume_monitor, G_TYPE_VOLUME_MONITOR)
@@ -69,14 +69,14 @@ static GList *
 ostree_mock_volume_monitor_get_mounts (GVolumeMonitor *monitor)
 {
   OstreeMockVolumeMonitor *self = OSTREE_MOCK_VOLUME_MONITOR (monitor);
-  return g_list_copy_deep (self->mounts, (GCopyFunc) g_object_ref, NULL);
+  return g_list_copy_deep (self->mounts, (GCopyFunc)g_object_ref, NULL);
 }
 
 static GList *
 ostree_mock_volume_monitor_get_volumes (GVolumeMonitor *monitor)
 {
   OstreeMockVolumeMonitor *self = OSTREE_MOCK_VOLUME_MONITOR (monitor);
-  return g_list_copy_deep (self->volumes, (GCopyFunc) g_object_ref, NULL);
+  return g_list_copy_deep (self->volumes, (GCopyFunc)g_object_ref, NULL);
 }
 
 static void
@@ -128,14 +128,13 @@ ostree_mock_volume_monitor_class_init (OstreeMockVolumeMonitorClass *klass)
  * Since: 2017.8
  */
 GVolumeMonitor *
-ostree_mock_volume_monitor_new (GList *mounts,
-                                GList *volumes)
+ostree_mock_volume_monitor_new (GList *mounts, GList *volumes)
 {
-  g_autoptr(OstreeMockVolumeMonitor) monitor = NULL;
+  g_autoptr (OstreeMockVolumeMonitor) monitor = NULL;
 
   monitor = g_object_new (OSTREE_TYPE_MOCK_VOLUME_MONITOR, NULL);
-  monitor->mounts = g_list_copy_deep (mounts, (GCopyFunc) g_object_ref, NULL);
-  monitor->volumes = g_list_copy_deep (volumes, (GCopyFunc) g_object_ref, NULL);
+  monitor->mounts = g_list_copy_deep (mounts, (GCopyFunc)g_object_ref, NULL);
+  monitor->volumes = g_list_copy_deep (volumes, (GCopyFunc)g_object_ref, NULL);
 
   return (GVolumeMonitor *)g_steal_pointer (&monitor);
 }
@@ -147,8 +146,8 @@ struct _OstreeMockVolume
   GObject parent_instance;
 
   gchar *name;
-  GDrive *drive;  /* (owned) (nullable) */
-  GMount *mount;  /* (owned) (nullable) */
+  GDrive *drive; /* (owned) (nullable) */
+  GMount *mount; /* (owned) (nullable) */
 };
 
 static void ostree_mock_volume_iface_init (GVolumeIface *iface);
@@ -231,11 +230,9 @@ ostree_mock_volume_iface_init (GVolumeIface *iface)
  * Since: 2017.8
  */
 OstreeMockVolume *
-ostree_mock_volume_new (const gchar *name,
-                        GDrive      *drive,
-                        GMount      *mount)
+ostree_mock_volume_new (const gchar *name, GDrive *drive, GMount *mount)
 {
-  g_autoptr(OstreeMockVolume) volume = NULL;
+  g_autoptr (OstreeMockVolume) volume = NULL;
 
   volume = g_object_new (OSTREE_TYPE_MOCK_VOLUME, NULL);
   volume->name = g_strdup (name);
@@ -302,7 +299,7 @@ ostree_mock_drive_iface_init (GDriveIface *iface)
 OstreeMockDrive *
 ostree_mock_drive_new (gboolean is_removable)
 {
-  g_autoptr(OstreeMockDrive) drive = NULL;
+  g_autoptr (OstreeMockDrive) drive = NULL;
 
   drive = g_object_new (OSTREE_TYPE_MOCK_DRIVE, NULL);
   drive->is_removable = is_removable;
@@ -316,8 +313,8 @@ struct _OstreeMockMount
 {
   GObject parent_instance;
 
-  gchar *name;  /* (owned) */
-  GFile *root;  /* (owned) */
+  gchar *name; /* (owned) */
+  GFile *root; /* (owned) */
 };
 
 static void ostree_mock_mount_iface_init (GMountIface *iface);
@@ -387,10 +384,9 @@ ostree_mock_mount_iface_init (GMountIface *iface)
  * Since: 2017.8
  */
 OstreeMockMount *
-ostree_mock_mount_new (const gchar *name,
-                       GFile       *root)
+ostree_mock_mount_new (const gchar *name, GFile *root)
 {
-  g_autoptr(OstreeMockMount) mount = NULL;
+  g_autoptr (OstreeMockMount) mount = NULL;
 
   mount = g_object_new (OSTREE_TYPE_MOCK_MOUNT, NULL);
   mount->name = g_strdup (name);

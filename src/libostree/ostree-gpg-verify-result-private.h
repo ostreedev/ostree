@@ -28,7 +28,8 @@
  *
  * Private instance structure.
  */
-struct OstreeGpgVerifyResult {
+struct OstreeGpgVerifyResult
+{
   GObject parent;
 
   gpgme_ctx_t context;

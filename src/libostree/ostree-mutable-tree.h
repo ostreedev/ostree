@@ -25,18 +25,22 @@
 
 G_BEGIN_DECLS
 
-#define OSTREE_TYPE_MUTABLE_TREE         (ostree_mutable_tree_get_type ())
-#define OSTREE_MUTABLE_TREE(o)           (G_TYPE_CHECK_INSTANCE_CAST ((o), OSTREE_TYPE_MUTABLE_TREE, OstreeMutableTree))
-#define OSTREE_MUTABLE_TREE_CLASS(k)     (G_TYPE_CHECK_CLASS_CAST((k), OSTREE_TYPE_MUTABLE_TREE, OstreeMutableTreeClass))
-#define OSTREE_IS_MUTABLE_TREE(o)        (G_TYPE_CHECK_INSTANCE_TYPE ((o), OSTREE_TYPE_MUTABLE_TREE))
-#define OSTREE_IS_MUTABLE_TREE_CLASS(k)  (G_TYPE_CHECK_CLASS_TYPE ((k), OSTREE_TYPE_MUTABLE_TREE))
-#define OSTREE_MUTABLE_TREE_GET_CLASS(o) (G_TYPE_INSTANCE_GET_CLASS ((o), OSTREE_TYPE_MUTABLE_TREE, OstreeMutableTreeClass))
+#define OSTREE_TYPE_MUTABLE_TREE (ostree_mutable_tree_get_type ())
+#define OSTREE_MUTABLE_TREE(o) \
+  (G_TYPE_CHECK_INSTANCE_CAST ((o), OSTREE_TYPE_MUTABLE_TREE, OstreeMutableTree))
+#define OSTREE_MUTABLE_TREE_CLASS(k) \
+  (G_TYPE_CHECK_CLASS_CAST ((k), OSTREE_TYPE_MUTABLE_TREE, OstreeMutableTreeClass))
+#define OSTREE_IS_MUTABLE_TREE(o) (G_TYPE_CHECK_INSTANCE_TYPE ((o), OSTREE_TYPE_MUTABLE_TREE))
+#define OSTREE_IS_MUTABLE_TREE_CLASS(k) (G_TYPE_CHECK_CLASS_TYPE ((k), OSTREE_TYPE_MUTABLE_TREE))
+#define OSTREE_MUTABLE_TREE_GET_CLASS(o) \
+  (G_TYPE_INSTANCE_GET_CLASS ((o), OSTREE_TYPE_MUTABLE_TREE, OstreeMutableTreeClass))
 
-typedef struct OstreeMutableTreeClass   OstreeMutableTreeClass;
+typedef struct OstreeMutableTreeClass OstreeMutableTreeClass;
 
-typedef struct {
-  gboolean        in_files;
-  GHashTableIter  iter;
+typedef struct
+{
+  gboolean in_files;
+  GHashTableIter iter;
 } OstreeMutableTreeIter;
 
 struct OstreeMutableTreeClass
@@ -45,90 +49,69 @@ struct OstreeMutableTreeClass
 };
 
 _OSTREE_PUBLIC
-GType   ostree_mutable_tree_get_type (void) G_GNUC_CONST;
+GType ostree_mutable_tree_get_type (void) G_GNUC_CONST;
 
 _OSTREE_PUBLIC
 OstreeMutableTree *ostree_mutable_tree_new (void);
 
 _OSTREE_PUBLIC
-OstreeMutableTree *
-ostree_mutable_tree_new_from_commit (OstreeRepo *repo,
-                                     const char *rev,
-                                     GError    **error);
+OstreeMutableTree *ostree_mutable_tree_new_from_commit (OstreeRepo *repo, const char *rev,
+                                                        GError **error);
 
 _OSTREE_PUBLIC
-OstreeMutableTree * ostree_mutable_tree_new_from_checksum (OstreeRepo *repo,
-                                                           const char *contents_checksum,
-                                                           const char *metadata_checksum);
+OstreeMutableTree *ostree_mutable_tree_new_from_checksum (OstreeRepo *repo,
+                                                          const char *contents_checksum,
+                                                          const char *metadata_checksum);
 
 _OSTREE_PUBLIC
-void ostree_mutable_tree_set_metadata_checksum (OstreeMutableTree *self,
-                                                const char        *checksum);
+void ostree_mutable_tree_set_metadata_checksum (OstreeMutableTree *self, const char *checksum);
 
 _OSTREE_PUBLIC
 const char *ostree_mutable_tree_get_metadata_checksum (OstreeMutableTree *self);
 
 _OSTREE_PUBLIC
-void ostree_mutable_tree_set_contents_checksum (OstreeMutableTree *self,
-                                                const char        *checksum);
+void ostree_mutable_tree_set_contents_checksum (OstreeMutableTree *self, const char *checksum);
 
 _OSTREE_PUBLIC
 const char *ostree_mutable_tree_get_contents_checksum (OstreeMutableTree *self);
 
 _OSTREE_PUBLIC
-gboolean ostree_mutable_tree_replace_file (OstreeMutableTree *self,
-                                           const char        *name,
-                                           const char        *checksum,
-                                           GError           **error);
+gboolean ostree_mutable_tree_replace_file (OstreeMutableTree *self, const char *name,
+                                           const char *checksum, GError **error);
 
 _OSTREE_PUBLIC
-gboolean ostree_mutable_tree_remove (OstreeMutableTree *self,
-                                     const char        *name,
-                                     gboolean           allow_noent,
-                                     GError           **error);
+gboolean ostree_mutable_tree_remove (OstreeMutableTree *self, const char *name,
+                                     gboolean allow_noent, GError **error);
 
 _OSTREE_PUBLIC
-gboolean ostree_mutable_tree_ensure_dir (OstreeMutableTree *self,
-                                         const char        *name,
-                                         OstreeMutableTree **out_subdir,
-                                         GError           **error);
+gboolean ostree_mutable_tree_ensure_dir (OstreeMutableTree *self, const char *name,
+                                         OstreeMutableTree **out_subdir, GError **error);
 
 _OSTREE_PUBLIC
-gboolean ostree_mutable_tree_lookup (OstreeMutableTree   *self,
-                                     const char          *name,
-                                     char               **out_file_checksum,
-                                     OstreeMutableTree  **out_subdir,
-                                     GError             **error);
+gboolean ostree_mutable_tree_lookup (OstreeMutableTree *self, const char *name,
+                                     char **out_file_checksum, OstreeMutableTree **out_subdir,
+                                     GError **error);
 
 _OSTREE_PUBLIC
-gboolean
-ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree  *self,
-                                        GPtrArray          *split_path,
-                                        const char         *metadata_checksum,
-                                        OstreeMutableTree **out_parent,
-                                        GError            **error);
+gboolean ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree *self, GPtrArray *split_path,
+                                                 const char *metadata_checksum,
+                                                 OstreeMutableTree **out_parent, GError **error);
 
 _OSTREE_PUBLIC
-gboolean ostree_mutable_tree_walk (OstreeMutableTree   *self,
-                                   GPtrArray           *split_path,
-                                   guint                start,
-                                   OstreeMutableTree  **out_subdir,
-                                   GError             **error);
+gboolean ostree_mutable_tree_walk (OstreeMutableTree *self, GPtrArray *split_path, guint start,
+                                   OstreeMutableTree **out_subdir, GError **error);
 
 _OSTREE_PUBLIC
-gboolean ostree_mutable_tree_fill_empty_from_dirtree (OstreeMutableTree *self,
-                                                      OstreeRepo        *repo,
-                                                      const char        *contents_checksum,
-                                                      const char        *metadata_checksum);
+gboolean ostree_mutable_tree_fill_empty_from_dirtree (OstreeMutableTree *self, OstreeRepo *repo,
+                                                      const char *contents_checksum,
+                                                      const char *metadata_checksum);
 
 _OSTREE_PUBLIC
-gboolean
-ostree_mutable_tree_check_error (OstreeMutableTree     *self,
-                                 GError               **error);
+gboolean ostree_mutable_tree_check_error (OstreeMutableTree *self, GError **error);
 
 _OSTREE_PUBLIC
-GHashTable * ostree_mutable_tree_get_subdirs (OstreeMutableTree *self);
+GHashTable *ostree_mutable_tree_get_subdirs (OstreeMutableTree *self);
 _OSTREE_PUBLIC
-GHashTable * ostree_mutable_tree_get_files (OstreeMutableTree *self);
+GHashTable *ostree_mutable_tree_get_files (OstreeMutableTree *self);
 
 G_END_DECLS

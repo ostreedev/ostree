@@ -21,9 +21,9 @@
 
 #include "otutil.h"
 
-#include "ostree.h"
-#include "ostree-sysroot-upgrader.h"
 #include "ostree-core-private.h"
+#include "ostree-sysroot-upgrader.h"
+#include "ostree.h"
 
 /**
  * SECTION:ostree-sysroot-upgrader
@@ -33,11 +33,13 @@
  * The #OstreeSysrootUpgrader class allows performing simple upgrade
  * operations.
  */
-typedef struct {
+typedef struct
+{
   GObjectClass parent_class;
 } OstreeSysrootUpgraderClass;
 
-struct OstreeSysrootUpgrader {
+struct OstreeSysrootUpgrader
+{
   GObject parent;
 
   OstreeSysroot *sysroot;
@@ -53,7 +55,8 @@ struct OstreeSysrootUpgrader {
   char *new_revision;
 };
 
-enum {
+enum
+{
   PROP_0,
 
   PROP_SYSROOT,
@@ -64,12 +67,11 @@ enum {
 static void ostree_sysroot_upgrader_initable_iface_init (GInitableIface *iface);
 
 G_DEFINE_TYPE_WITH_CODE (OstreeSysrootUpgrader, ostree_sysroot_upgrader, G_TYPE_OBJECT,
-                         G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE, ostree_sysroot_upgrader_initable_iface_init))
+                         G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE,
+                                                ostree_sysroot_upgrader_initable_iface_init))
 
 static gboolean
-parse_refspec (OstreeSysrootUpgrader  *self,
-               GCancellable           *cancellable,
-               GError                **error)
+parse_refspec (OstreeSysrootUpgrader *self, GCancellable *cancellable, GError **error)
 {
   g_autofree char *origin_refspec = NULL;
   g_autofree char *unconfigured_state = NULL;
@@ -80,21 +82,20 @@ parse_refspec (OstreeSysrootUpgrader  *self,
       /* If explicit action by the OS creator is requried to upgrade, print their text as an error.
        * NOTE: If changing this, see the matching implementation in ostree-repo-pull.c.
        */
-      unconfigured_state = g_key_file_get_string (self->origin, "origin", "unconfigured-state", NULL);
+      unconfigured_state
+          = g_key_file_get_string (self->origin, "origin", "unconfigured-state", NULL);
       if (unconfigured_state)
         return glnx_throw (error, "origin unconfigured-state: %s", unconfigured_state);
     }
 
   origin_refspec = g_key_file_get_string (self->origin, "origin", "refspec", NULL);
   if (!origin_refspec)
-    return glnx_throw (error, "No origin/refspec in current deployment origin; cannot upgrade via ostree");
+    return glnx_throw (error,
+                       "No origin/refspec in current deployment origin; cannot upgrade via ostree");
 
   g_clear_pointer (&self->origin_remote, g_free);
   g_clear_pointer (&self->origin_ref, g_free);
-  if (!ostree_parse_refspec (origin_refspec,
-                             &self->origin_remote,
-                             &self->origin_ref,
-                             error))
+  if (!ostree_parse_refspec (origin_refspec, &self->origin_remote, &self->origin_ref, error))
     return FALSE;
 
   csum = g_key_file_get_string (self->origin, "origin", "override-commit", NULL);
@@ -107,13 +108,11 @@ parse_refspec (OstreeSysrootUpgrader  *self,
 }
 
 static gboolean
-ostree_sysroot_upgrader_initable_init (GInitable        *initable,
-                                       GCancellable     *cancellable,
-                                       GError          **error)
+ostree_sysroot_upgrader_initable_init (GInitable *initable, GCancellable *cancellable,
+                                       GError **error)
 {
-  OstreeSysrootUpgrader *self = (OstreeSysrootUpgrader*)initable;
-  OstreeDeployment *booted_deployment =
-    ostree_sysroot_get_booted_deployment (self->sysroot);
+  OstreeSysrootUpgrader *self = (OstreeSysrootUpgrader *)initable;
+  OstreeDeployment *booted_deployment = ostree_sysroot_get_booted_deployment (self->sysroot);
 
   if (booted_deployment == NULL && self->osname == NULL)
     return glnx_throw (error, "Not currently booted into an OSTree system and no OS specified");
@@ -169,10 +168,8 @@ ostree_sysroot_upgrader_finalize (GObject *object)
 }
 
 static void
-ostree_sysroot_upgrader_set_property (GObject         *object,
-                                      guint            prop_id,
-                                      const GValue    *value,
-                                      GParamSpec      *pspec)
+ostree_sysroot_upgrader_set_property (GObject *object, guint prop_id, const GValue *value,
+                                      GParamSpec *pspec)
 {
   OstreeSysrootUpgrader *self = OSTREE_SYSROOT_UPGRADER (object);
 
@@ -194,10 +191,8 @@ ostree_sysroot_upgrader_set_property (GObject         *object,
 }
 
 static void
-ostree_sysroot_upgrader_get_property (GObject         *object,
-                                      guint            prop_id,
-                                      GValue          *value,
-                                      GParamSpec      *pspec)
+ostree_sysroot_upgrader_get_property (GObject *object, guint prop_id, GValue *value,
+                                      GParamSpec *pspec)
 {
   OstreeSysrootUpgrader *self = OSTREE_SYSROOT_UPGRADER (object);
 
@@ -238,22 +233,18 @@ ostree_sysroot_upgrader_class_init (OstreeSysrootUpgraderClass *klass)
   object_class->set_property = ostree_sysroot_upgrader_set_property;
   object_class->finalize = ostree_sysroot_upgrader_finalize;
 
-  g_object_class_install_property (object_class,
-                                   PROP_SYSROOT,
-                                   g_param_spec_object ("sysroot", "", "",
-                                                        OSTREE_TYPE_SYSROOT,
-                                                        G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+  g_object_class_install_property (
+      object_class, PROP_SYSROOT,
+      g_param_spec_object ("sysroot", "", "", OSTREE_TYPE_SYSROOT,
+                           G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
-  g_object_class_install_property (object_class,
-                                   PROP_OSNAME,
-                                   g_param_spec_string ("osname", "", "", NULL,
-                                                        G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+  g_object_class_install_property (
+      object_class, PROP_OSNAME,
+      g_param_spec_string ("osname", "", "", NULL, G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
-  g_object_class_install_property (object_class,
-                                   PROP_FLAGS,
+  g_object_class_install_property (object_class, PROP_FLAGS,
                                    g_param_spec_flags ("flags", "", "",
-                                                       ostree_sysroot_upgrader_flags_get_type (),
-                                                       0,
+                                                       ostree_sysroot_upgrader_flags_get_type (), 0,
                                                        G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 }
 
@@ -270,13 +261,11 @@ ostree_sysroot_upgrader_init (OstreeSysrootUpgrader *self)
  *
  * Returns: (transfer full): An upgrader
  */
-OstreeSysrootUpgrader*
-ostree_sysroot_upgrader_new (OstreeSysroot *sysroot,
-                             GCancellable  *cancellable,
-                             GError       **error)
+OstreeSysrootUpgrader *
+ostree_sysroot_upgrader_new (OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
 {
-  return g_initable_new (OSTREE_TYPE_SYSROOT_UPGRADER, cancellable, error,
-                         "sysroot", sysroot, NULL);
+  return g_initable_new (OSTREE_TYPE_SYSROOT_UPGRADER, cancellable, error, "sysroot", sysroot,
+                         NULL);
 }
 
 /**
@@ -288,14 +277,12 @@ ostree_sysroot_upgrader_new (OstreeSysroot *sysroot,
  *
  * Returns: (transfer full): An upgrader
  */
-OstreeSysrootUpgrader*
-ostree_sysroot_upgrader_new_for_os (OstreeSysroot *sysroot,
-                                    const char    *osname,
-                                    GCancellable  *cancellable,
-                                    GError       **error)
+OstreeSysrootUpgrader *
+ostree_sysroot_upgrader_new_for_os (OstreeSysroot *sysroot, const char *osname,
+                                    GCancellable *cancellable, GError **error)
 {
-  return g_initable_new (OSTREE_TYPE_SYSROOT_UPGRADER, cancellable, error,
-                       "sysroot", sysroot, "osname", osname, NULL);
+  return g_initable_new (OSTREE_TYPE_SYSROOT_UPGRADER, cancellable, error, "sysroot", sysroot,
+                         "osname", osname, NULL);
 }
 
 /**
@@ -309,14 +296,12 @@ ostree_sysroot_upgrader_new_for_os (OstreeSysroot *sysroot,
  * Returns: (transfer full): An upgrader
  */
 OstreeSysrootUpgrader *
-ostree_sysroot_upgrader_new_for_os_with_flags (OstreeSysroot              *sysroot,
-                                               const char                 *osname,
-                                               OstreeSysrootUpgraderFlags  flags,
-                                               GCancellable               *cancellable,
-                                               GError                    **error)
+ostree_sysroot_upgrader_new_for_os_with_flags (OstreeSysroot *sysroot, const char *osname,
+                                               OstreeSysrootUpgraderFlags flags,
+                                               GCancellable *cancellable, GError **error)
 {
-  return g_initable_new (OSTREE_TYPE_SYSROOT_UPGRADER, cancellable, error,
-                         "sysroot", sysroot, "osname", osname, "flags", flags, NULL);
+  return g_initable_new (OSTREE_TYPE_SYSROOT_UPGRADER, cancellable, error, "sysroot", sysroot,
+                         "osname", osname, "flags", flags, NULL);
 }
 
 /**
@@ -351,8 +336,7 @@ ostree_sysroot_upgrader_dup_origin (OstreeSysrootUpgrader *self)
 
       copy = g_key_file_new ();
       data = g_key_file_to_data (self->origin, &length, NULL);
-      g_key_file_load_from_data (copy, data, length,
-                                 G_KEY_FILE_KEEP_COMMENTS, NULL);
+      g_key_file_load_from_data (copy, data, length, G_KEY_FILE_KEEP_COMMENTS, NULL);
     }
 
   return copy;
@@ -368,10 +352,8 @@ ostree_sysroot_upgrader_dup_origin (OstreeSysrootUpgrader *self)
  * Replace the origin with @origin.
  */
 gboolean
-ostree_sysroot_upgrader_set_origin (OstreeSysrootUpgrader *self,
-                                    GKeyFile              *origin,
-                                    GCancellable          *cancellable,
-                                    GError               **error)
+ostree_sysroot_upgrader_set_origin (OstreeSysrootUpgrader *self, GKeyFile *origin,
+                                    GCancellable *cancellable, GError **error)
 {
   g_clear_pointer (&self->origin, g_key_file_unref);
   if (origin)
@@ -388,7 +370,8 @@ ostree_sysroot_upgrader_set_origin (OstreeSysrootUpgrader *self,
  * ostree_sysroot_upgrader_get_origin_description:
  * @self: Upgrader
  *
- * Returns: (transfer full) (nullable): A one-line descriptive summary of the origin, or %NULL if unknown.
+ * Returns: (transfer full) (nullable): A one-line descriptive summary of the origin, or %NULL if
+ * unknown.
  */
 char *
 ostree_sysroot_upgrader_get_origin_description (OstreeSysrootUpgrader *self)
@@ -410,28 +393,19 @@ ostree_sysroot_upgrader_get_origin_description (OstreeSysrootUpgrader *self)
  * attackers which provide a client with an older commit.
  */
 gboolean
-ostree_sysroot_upgrader_check_timestamps (OstreeRepo     *repo,
-                                          const char     *from_rev,
-                                          const char     *to_rev,
-                                          GError        **error)
+ostree_sysroot_upgrader_check_timestamps (OstreeRepo *repo, const char *from_rev,
+                                          const char *to_rev, GError **error)
 {
-  g_autoptr(GVariant) old_commit = NULL;
-  if (!ostree_repo_load_variant (repo,
-                                 OSTREE_OBJECT_TYPE_COMMIT,
-                                 from_rev,
-                                 &old_commit,
-                                 error))
+  g_autoptr (GVariant) old_commit = NULL;
+  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, from_rev, &old_commit, error))
     return FALSE;
 
-  g_autoptr(GVariant) new_commit = NULL;
-  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
-                                 to_rev, &new_commit,
-                                 error))
+  g_autoptr (GVariant) new_commit = NULL;
+  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, to_rev, &new_commit, error))
     return FALSE;
 
-  if (!_ostree_compare_timestamps (from_rev, ostree_commit_get_timestamp (old_commit),
-                                   to_rev, ostree_commit_get_timestamp (new_commit),
-                                   error))
+  if (!_ostree_compare_timestamps (from_rev, ostree_commit_get_timestamp (old_commit), to_rev,
+                                   ostree_commit_get_timestamp (new_commit), error))
     return FALSE;
 
   return TRUE;
@@ -455,15 +429,13 @@ ostree_sysroot_upgrader_check_timestamps (OstreeRepo     *repo,
  * %FALSE.
  */
 gboolean
-ostree_sysroot_upgrader_pull (OstreeSysrootUpgrader  *self,
-                              OstreeRepoPullFlags     flags,
-                              OstreeSysrootUpgraderPullFlags     upgrader_flags,
-                              OstreeAsyncProgress    *progress,
-                              gboolean               *out_changed,
-                              GCancellable           *cancellable,
-                              GError                **error)
+ostree_sysroot_upgrader_pull (OstreeSysrootUpgrader *self, OstreeRepoPullFlags flags,
+                              OstreeSysrootUpgraderPullFlags upgrader_flags,
+                              OstreeAsyncProgress *progress, gboolean *out_changed,
+                              GCancellable *cancellable, GError **error)
 {
-  return ostree_sysroot_upgrader_pull_one_dir (self, NULL, flags, upgrader_flags, progress, out_changed, cancellable, error);
+  return ostree_sysroot_upgrader_pull_one_dir (self, NULL, flags, upgrader_flags, progress,
+                                               out_changed, cancellable, error);
 }
 
 /**
@@ -483,22 +455,19 @@ ostree_sysroot_upgrader_pull (OstreeSysrootUpgrader  *self,
  *
  */
 gboolean
-ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
-                                      const char             *dir_to_pull,
-                                      OstreeRepoPullFlags     flags,
-                                      OstreeSysrootUpgraderPullFlags     upgrader_flags,
-                                      OstreeAsyncProgress    *progress,
-                                      gboolean               *out_changed,
-                                      GCancellable           *cancellable,
-                                      GError                **error)
+ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader *self, const char *dir_to_pull,
+                                      OstreeRepoPullFlags flags,
+                                      OstreeSysrootUpgraderPullFlags upgrader_flags,
+                                      OstreeAsyncProgress *progress, gboolean *out_changed,
+                                      GCancellable *cancellable, GError **error)
 {
   char *refs_to_fetch[] = { NULL, NULL };
   const char *from_revision = NULL;
   g_autofree char *origin_refspec = NULL;
   g_autofree char *new_revision = NULL;
-  g_autoptr(GVariant) new_variant = NULL;
-  g_autoptr(GVariant) new_metadata = NULL;
-  g_autoptr(GVariant) rebase = NULL;
+  g_autoptr (GVariant) new_variant = NULL;
+  g_autoptr (GVariant) new_metadata = NULL;
+  g_autoptr (GVariant) rebase = NULL;
 
   if (self->override_csum != NULL)
     refs_to_fetch[0] = self->override_csum;
@@ -515,10 +484,9 @@ ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
   g_assert (self->merge_deployment);
   from_revision = ostree_deployment_get_csum (self->merge_deployment);
 
-  if (self->origin_remote &&
-      (upgrader_flags & OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_SYNTHETIC) == 0)
+  if (self->origin_remote && (upgrader_flags & OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_SYNTHETIC) == 0)
     {
-      g_autoptr(GVariantBuilder) optbuilder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+      g_autoptr (GVariantBuilder) optbuilder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
       if (dir_to_pull && *dir_to_pull)
         g_variant_builder_add (optbuilder, "{s@v}", "subdir",
                                g_variant_new_variant (g_variant_new_string (dir_to_pull)));
@@ -529,12 +497,12 @@ ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
         g_variant_builder_add (optbuilder, "{s@v}", "timestamp-check-from-rev",
                                g_variant_new_variant (g_variant_new_string (from_revision)));
 
-      g_variant_builder_add (optbuilder, "{s@v}", "refs",
-                             g_variant_new_variant (g_variant_new_strv ((const char *const*) refs_to_fetch, -1)));
-      g_autoptr(GVariant) opts = g_variant_ref_sink (g_variant_builder_end (optbuilder));
-      if (!ostree_repo_pull_with_options (repo, self->origin_remote,
-                                          opts, progress,
-                                          cancellable, error))
+      g_variant_builder_add (
+          optbuilder, "{s@v}", "refs",
+          g_variant_new_variant (g_variant_new_strv ((const char *const *)refs_to_fetch, -1)));
+      g_autoptr (GVariant) opts = g_variant_ref_sink (g_variant_builder_end (optbuilder));
+      if (!ostree_repo_pull_with_options (repo, self->origin_remote, opts, progress, cancellable,
+                                          error))
         return FALSE;
 
       if (progress)
@@ -543,64 +511,55 @@ ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
 
   /* Check to see if the commit marks the ref as EOL, redirecting to
    * another. */
-  if (!ostree_repo_resolve_rev (repo, origin_refspec, FALSE,
-                                &new_revision, error))
+  if (!ostree_repo_resolve_rev (repo, origin_refspec, FALSE, &new_revision, error))
     return FALSE;
 
-  if (!ostree_repo_load_variant (repo,
-                                 OSTREE_OBJECT_TYPE_COMMIT,
-                                 new_revision,
-                                 &new_variant,
+  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, new_revision, &new_variant,
                                  error))
     return FALSE;
 
   g_variant_get_child (new_variant, 0, "@a{sv}", &new_metadata);
-  rebase = g_variant_lookup_value (new_metadata, OSTREE_COMMIT_META_KEY_ENDOFLIFE_REBASE, G_VARIANT_TYPE_STRING);
+  rebase = g_variant_lookup_value (new_metadata, OSTREE_COMMIT_META_KEY_ENDOFLIFE_REBASE,
+                                   G_VARIANT_TYPE_STRING);
   if (rebase)
     {
       const char *new_ref = g_variant_get_string (rebase, 0);
 
       /* Pull the new ref */
-      if (self->origin_remote &&
-          (upgrader_flags & OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_SYNTHETIC) == 0)
+      if (self->origin_remote
+          && (upgrader_flags & OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_SYNTHETIC) == 0)
         {
-          refs_to_fetch[0] = (char *) new_ref;
+          refs_to_fetch[0] = (char *)new_ref;
           if (!ostree_repo_pull_one_dir (repo, self->origin_remote, dir_to_pull, refs_to_fetch,
                                          flags, progress, cancellable, error))
             return FALSE;
         }
 
-        /* Use the new ref for the rest of the update process */
-        g_free (self->origin_ref);
-        self->origin_ref = g_strdup(new_ref);
-        g_free (origin_refspec);
+      /* Use the new ref for the rest of the update process */
+      g_free (self->origin_ref);
+      self->origin_ref = g_strdup (new_ref);
+      g_free (origin_refspec);
 
-        if (self->origin_remote)
-          origin_refspec = g_strconcat (self->origin_remote, ":", new_ref, NULL);
-        else
-          origin_refspec = g_strdup (new_ref);
+      if (self->origin_remote)
+        origin_refspec = g_strconcat (self->origin_remote, ":", new_ref, NULL);
+      else
+        origin_refspec = g_strdup (new_ref);
 
-        g_key_file_set_string (self->origin, "origin", "refspec", origin_refspec);
+      g_key_file_set_string (self->origin, "origin", "refspec", origin_refspec);
     }
 
   if (self->override_csum != NULL)
     {
-      if (!ostree_repo_set_ref_immediate (repo,
-                                          self->origin_remote,
-                                          self->origin_ref,
-                                          self->override_csum,
-                                          cancellable,
-                                          error))
+      if (!ostree_repo_set_ref_immediate (repo, self->origin_remote, self->origin_ref,
+                                          self->override_csum, cancellable, error))
         return FALSE;
 
       self->new_revision = g_strdup (self->override_csum);
     }
   else
     {
-      if (!ostree_repo_resolve_rev (repo, origin_refspec, FALSE,
-                                    &self->new_revision, error))
+      if (!ostree_repo_resolve_rev (repo, origin_refspec, FALSE, &self->new_revision, error))
         return FALSE;
-
     }
 
   if (g_strcmp0 (from_revision, self->new_revision) == 0)
@@ -615,8 +574,7 @@ ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
 
       if (from_revision && !allow_older)
         {
-          if (!ostree_sysroot_upgrader_check_timestamps (repo, from_revision,
-                                                         self->new_revision,
+          if (!ostree_sysroot_upgrader_check_timestamps (repo, from_revision, self->new_revision,
                                                          error))
             return FALSE;
         }
@@ -635,41 +593,30 @@ ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
  * with /etc, and update the bootloader configuration.
  */
 gboolean
-ostree_sysroot_upgrader_deploy (OstreeSysrootUpgrader  *self,
-                                GCancellable           *cancellable,
-                                GError                **error)
+ostree_sysroot_upgrader_deploy (OstreeSysrootUpgrader *self, GCancellable *cancellable,
+                                GError **error)
 {
-  g_autoptr(OstreeDeployment) new_deployment = NULL;
+  g_autoptr (OstreeDeployment) new_deployment = NULL;
 
   /* Experimental flag to enable staging */
-  gboolean stage = (self->flags & OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE) > 0 || getenv ("OSTREE_EX_STAGE_DEPLOYMENTS") != NULL;
+  gboolean stage = (self->flags & OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE) > 0
+                   || getenv ("OSTREE_EX_STAGE_DEPLOYMENTS") != NULL;
   if (stage)
     {
-      if (!ostree_sysroot_stage_tree (self->sysroot, self->osname,
-                                      self->new_revision,
-                                      self->origin,
-                                      self->merge_deployment,
-                                      NULL,
-                                      &new_deployment,
-                                      cancellable, error))
+      if (!ostree_sysroot_stage_tree (self->sysroot, self->osname, self->new_revision, self->origin,
+                                      self->merge_deployment, NULL, &new_deployment, cancellable,
+                                      error))
         return FALSE;
     }
   else
     {
-      if (!ostree_sysroot_deploy_tree (self->sysroot, self->osname,
-                                       self->new_revision,
-                                       self->origin,
-                                       self->merge_deployment,
-                                       NULL,
-                                       &new_deployment,
+      if (!ostree_sysroot_deploy_tree (self->sysroot, self->osname, self->new_revision,
+                                       self->origin, self->merge_deployment, NULL, &new_deployment,
                                        cancellable, error))
         return FALSE;
 
-      if (!ostree_sysroot_simple_write_deployment (self->sysroot, self->osname,
-                                                   new_deployment,
-                                                   self->merge_deployment,
-                                                   0,
-                                                   cancellable, error))
+      if (!ostree_sysroot_simple_write_deployment (self->sysroot, self->osname, new_deployment,
+                                                   self->merge_deployment, 0, cancellable, error))
         return FALSE;
     }
 
@@ -683,13 +630,14 @@ ostree_sysroot_upgrader_flags_get_type (void)
 
   if (g_once_init_enter (&static_g_define_type_id))
     {
-      static const GFlagsValue values[] = {
-        { OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED, "OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED", "ignore-unconfigured" },
-        { OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE, "OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE", "stage" },
-        { 0, NULL, NULL }
-      };
-      GType g_define_type_id =
-        g_flags_register_static (g_intern_static_string ("OstreeSysrootUpgraderFlags"), values);
+      static const GFlagsValue values[]
+          = { { OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED,
+                "OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED", "ignore-unconfigured" },
+              { OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE, "OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE",
+                "stage" },
+              { 0, NULL, NULL } };
+      GType g_define_type_id
+          = g_flags_register_static (g_intern_static_string ("OstreeSysrootUpgraderFlags"), values);
       g_once_init_leave (&static_g_define_type_id, g_define_type_id);
     }
 

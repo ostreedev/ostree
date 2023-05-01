@@ -21,20 +21,15 @@
 
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
-#include "otutil.h"
 #include "ot-fs-utils.h"
+#include "otutil.h"
 
 /* This is polymorphic in @collection_id: if non-%NULL, @refs will be treated as of
  * type OstreeCollectionRef ↦ checksum. Otherwise, it will be treated as of type
  * refspec ↦ checksum. */
 static gboolean
-add_ref_to_set (const char       *remote,
-                const char       *collection_id,
-                int               base_fd,
-                const char       *path,
-                GHashTable       *refs,
-                GCancellable     *cancellable,
-                GError          **error)
+add_ref_to_set (const char *remote, const char *collection_id, int base_fd, const char *path,
+                GHashTable *refs, GCancellable *cancellable, GError **error)
 {
   if (remote != NULL && collection_id != NULL)
     return glnx_throw (error, "Cannot process both a remote and a collection ID");
@@ -48,7 +43,7 @@ add_ref_to_set (const char       *remote,
 
   if (collection_id == NULL)
     {
-      g_autoptr(GString) refname = g_string_new ("");
+      g_autoptr (GString) refname = g_string_new ("");
       if (remote)
         {
           g_string_append (refname, remote);
@@ -66,12 +61,8 @@ add_ref_to_set (const char       *remote,
 }
 
 static gboolean
-write_checksum_file_at (OstreeRepo   *self,
-                        int dfd,
-                        const char *name,
-                        const char *sha256,
-                        GCancellable *cancellable,
-                        GError **error)
+write_checksum_file_at (OstreeRepo *self, int dfd, const char *name, const char *sha256,
+                        GCancellable *cancellable, GError **error)
 {
   if (!ostree_validate_checksum_string (sha256, error))
     return FALSE;
@@ -96,18 +87,18 @@ write_checksum_file_at (OstreeRepo   *self,
   {
     size_t l = strlen (sha256);
     char *bufnl = alloca (l + 2);
-    g_autoptr(GError) temp_error = NULL;
+    g_autoptr (GError) temp_error = NULL;
 
     memcpy (bufnl, sha256, l);
     bufnl[l] = '\n';
-    bufnl[l+1] = '\0';
+    bufnl[l + 1] = '\0';
 
-    if (!_ostree_repo_file_replace_contents (self, dfd, name, (guint8*)bufnl, l + 1,
-                                             cancellable, &temp_error))
+    if (!_ostree_repo_file_replace_contents (self, dfd, name, (guint8 *)bufnl, l + 1, cancellable,
+                                             &temp_error))
       {
         if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_IS_DIRECTORY))
           {
-            g_autoptr(GHashTable) refs = NULL;
+            g_autoptr (GHashTable) refs = NULL;
             GHashTableIter hashiter;
             gpointer hashkey, hashvalue;
 
@@ -123,13 +114,14 @@ write_checksum_file_at (OstreeRepo   *self,
             while ((g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue)))
               {
                 if (strcmp (name, (char *)hashkey) != 0)
-                  return glnx_throw (error, "Conflict: %s exists under %s when attempting write", (char*)hashkey, name);
+                  return glnx_throw (error, "Conflict: %s exists under %s when attempting write",
+                                     (char *)hashkey, name);
               }
 
             if (!glnx_shutil_rm_rf_at (dfd, name, cancellable, error))
               return FALSE;
 
-            if (!_ostree_repo_file_replace_contents (self, dfd, name, (guint8*)bufnl, l + 1,
+            if (!_ostree_repo_file_replace_contents (self, dfd, name, (guint8 *)bufnl, l + 1,
                                                      cancellable, error))
               return FALSE;
           }
@@ -145,12 +137,11 @@ write_checksum_file_at (OstreeRepo   *self,
 }
 
 static gboolean
-find_ref_in_remotes (OstreeRepo         *self,
-                     const char         *rev,
-                     int                *out_fd,
-                     GError            **error)
+find_ref_in_remotes (OstreeRepo *self, const char *rev, int *out_fd, GError **error)
 {
-  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  g_auto (GLnxDirFdIterator) dfd_iter = {
+    0,
+  };
   glnx_autofd int ret_fd = -1;
 
   if (!glnx_dirfd_iterator_init_at (self->repo_dir_fd, "refs/remotes", TRUE, &dfd_iter, error))
@@ -179,44 +170,32 @@ find_ref_in_remotes (OstreeRepo         *self,
         break;
     }
 
-  *out_fd = ret_fd; ret_fd = -1;
+  *out_fd = ret_fd;
+  ret_fd = -1;
   return TRUE;
 }
 
-static gboolean
-resolve_refspec (OstreeRepo     *self,
-                 const char     *remote,
-                 const char     *ref,
-                 gboolean        allow_noent,
-                 gboolean        fallback_remote,
-                 char          **out_rev,
-                 GError        **error);
+static gboolean resolve_refspec (OstreeRepo *self, const char *remote, const char *ref,
+                                 gboolean allow_noent, gboolean fallback_remote, char **out_rev,
+                                 GError **error);
 
 static gboolean
-resolve_refspec_fallback (OstreeRepo     *self,
-                          const char     *remote,
-                          const char     *ref,
-                          gboolean        allow_noent,
-                          gboolean        fallback_remote,
-                          char          **out_rev,
-                          GCancellable   *cancellable,
-                          GError        **error)
+resolve_refspec_fallback (OstreeRepo *self, const char *remote, const char *ref,
+                          gboolean allow_noent, gboolean fallback_remote, char **out_rev,
+                          GCancellable *cancellable, GError **error)
 {
   g_autofree char *ret_rev = NULL;
 
   if (self->parent_repo)
     {
-      if (!resolve_refspec (self->parent_repo, remote, ref, allow_noent,
-                            fallback_remote, &ret_rev, error))
+      if (!resolve_refspec (self->parent_repo, remote, ref, allow_noent, fallback_remote, &ret_rev,
+                            error))
         return FALSE;
     }
   else if (!allow_noent)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "Refspec '%s%s%s' not found",
-                   remote ? remote : "",
-                   remote ? ":" : "",
-                   ref);
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND, "Refspec '%s%s%s' not found",
+                   remote ? remote : "", remote ? ":" : "", ref);
       return FALSE;
     }
 
@@ -225,15 +204,10 @@ resolve_refspec_fallback (OstreeRepo     *self,
 }
 
 static gboolean
-resolve_refspec (OstreeRepo     *self,
-                 const char     *remote,
-                 const char     *ref,
-                 gboolean        allow_noent,
-                 gboolean        fallback_remote,
-                 char          **out_rev,
-                 GError        **error)
+resolve_refspec (OstreeRepo *self, const char *remote, const char *ref, gboolean allow_noent,
+                 gboolean fallback_remote, char **out_rev, GError **error)
 {
-  __attribute__((unused)) GCancellable *cancellable = NULL;
+  __attribute__ ((unused)) GCancellable *cancellable = NULL;
   g_autofree char *ret_rev = NULL;
   glnx_autofd int target_fd = -1;
 
@@ -309,8 +283,8 @@ resolve_refspec (OstreeRepo     *self,
     }
   else
     {
-      if (!resolve_refspec_fallback (self, remote, ref, allow_noent, fallback_remote,
-                                     &ret_rev, cancellable, error))
+      if (!resolve_refspec_fallback (self, remote, ref, allow_noent, fallback_remote, &ret_rev,
+                                     cancellable, error))
         return FALSE;
     }
 
@@ -329,10 +303,8 @@ resolve_refspec (OstreeRepo     *self,
  * of a valid checksum it will return that checksum in the parameter @full_checksum
  */
 static gboolean
-ostree_repo_resolve_partial_checksum (OstreeRepo   *self,
-                                      const char   *refspec,
-                                      char        **full_checksum,
-                                      GError      **error)
+ostree_repo_resolve_partial_checksum (OstreeRepo *self, const char *refspec, char **full_checksum,
+                                      GError **error)
 {
   static const char hexchars[] = "0123456789abcdef";
   g_autofree char *ret_rev = NULL;
@@ -348,7 +320,7 @@ ostree_repo_resolve_partial_checksum (OstreeRepo   *self,
   /* this looks through all objects and adds them to the ref_list if:
      a) they are a commit object AND
      b) the obj checksum starts with the partual checksum defined by "refspec" */
-  g_autoptr(GHashTable) ref_list = NULL;
+  g_autoptr (GHashTable) ref_list = NULL;
   if (!ostree_repo_list_commit_objects_starting_with (self, refspec, &ref_list, NULL, error))
     return FALSE;
 
@@ -359,7 +331,7 @@ ostree_repo_resolve_partial_checksum (OstreeRepo   *self,
   GVariant *first_commit = NULL;
   g_hash_table_iter_init (&hashiter, ref_list);
   if (g_hash_table_iter_next (&hashiter, &key, &value))
-    first_commit = (GVariant*) key;
+    first_commit = (GVariant *)key;
 
   OstreeObjectType objtype;
   const char *checksum = NULL;
@@ -382,12 +354,8 @@ ostree_repo_resolve_partial_checksum (OstreeRepo   *self,
 }
 
 static gboolean
-_ostree_repo_resolve_rev_internal (OstreeRepo     *self,
-                                   const char     *refspec,
-                                   gboolean        allow_noent,
-                                   gboolean        fallback_remote,
-                                   char          **out_rev,
-                                   GError        **error)
+_ostree_repo_resolve_rev_internal (OstreeRepo *self, const char *refspec, gboolean allow_noent,
+                                   gboolean fallback_remote, char **out_rev, GError **error)
 {
   g_autofree char *ret_rev = NULL;
 
@@ -409,16 +377,16 @@ _ostree_repo_resolve_rev_internal (OstreeRepo     *self,
         {
           g_autofree char *parent_refspec = NULL;
           g_autofree char *parent_rev = NULL;
-          g_autoptr(GVariant) commit = NULL;
+          g_autoptr (GVariant) commit = NULL;
 
           parent_refspec = g_strdup (refspec);
-          parent_refspec[strlen(parent_refspec) - 1] = '\0';
+          parent_refspec[strlen (parent_refspec) - 1] = '\0';
 
           if (!ostree_repo_resolve_rev (self, parent_refspec, allow_noent, &parent_rev, error))
             return FALSE;
 
-          if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, parent_rev,
-                                         &commit, error))
+          if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, parent_rev, &commit,
+                                         error))
             return FALSE;
 
           if (!(ret_rev = ostree_commit_get_parent (commit)))
@@ -432,8 +400,7 @@ _ostree_repo_resolve_rev_internal (OstreeRepo     *self,
           if (!ostree_parse_refspec (refspec, &remote, &ref, error))
             return FALSE;
 
-          if (!resolve_refspec (self, remote, ref, allow_noent,
-                                fallback_remote, &ret_rev, error))
+          if (!resolve_refspec (self, remote, ref, allow_noent, fallback_remote, &ret_rev, error))
             return FALSE;
         }
     }
@@ -447,7 +414,8 @@ _ostree_repo_resolve_rev_internal (OstreeRepo     *self,
  * @self: Repo
  * @refspec: A refspec
  * @allow_noent: Do not throw an error if refspec does not exist
- * @out_rev: (out) (nullable) (transfer full): A checksum,or %NULL if @allow_noent is true and it does not exist
+ * @out_rev: (out) (nullable) (transfer full): A checksum,or %NULL if @allow_noent is true and it
+ * does not exist
  * @error: Error
  *
  * Look up the given refspec, returning the checksum it references in
@@ -455,11 +423,8 @@ _ostree_repo_resolve_rev_internal (OstreeRepo     *self,
  * find the given refspec in local.
  */
 gboolean
-ostree_repo_resolve_rev (OstreeRepo     *self,
-                         const char     *refspec,
-                         gboolean        allow_noent,
-                         char          **out_rev,
-                         GError        **error)
+ostree_repo_resolve_rev (OstreeRepo *self, const char *refspec, gboolean allow_noent,
+                         char **out_rev, GError **error)
 {
   return _ostree_repo_resolve_rev_internal (self, refspec, allow_noent, TRUE, out_rev, error);
 }
@@ -470,7 +435,8 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
  * @refspec: A refspec
  * @allow_noent: Do not throw an error if refspec does not exist
  * @flags: Options controlling behavior
- * @out_rev: (out) (nullable) (transfer full): A checksum,or %NULL if @allow_noent is true and it does not exist
+ * @out_rev: (out) (nullable) (transfer full): A checksum,or %NULL if @allow_noent is true and it
+ * does not exist
  * @error: Error
  *
  * Look up the given refspec, returning the checksum it references in
@@ -484,12 +450,8 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
  * Since: 2016.7
  */
 gboolean
-ostree_repo_resolve_rev_ext (OstreeRepo                    *self,
-                             const char                    *refspec,
-                             gboolean                       allow_noent,
-                             OstreeRepoResolveRevExtFlags   flags,
-                             char                         **out_rev,
-                             GError                       **error)
+ostree_repo_resolve_rev_ext (OstreeRepo *self, const char *refspec, gboolean allow_noent,
+                             OstreeRepoResolveRevExtFlags flags, char **out_rev, GError **error)
 {
   return _ostree_repo_resolve_rev_internal (self, refspec, allow_noent, FALSE, out_rev, error);
 }
@@ -522,13 +484,9 @@ ostree_repo_resolve_rev_ext (OstreeRepo                    *self,
  * Since: 2018.6
  */
 gboolean
-ostree_repo_resolve_collection_ref (OstreeRepo                    *self,
-                                    const OstreeCollectionRef     *ref,
-                                    gboolean                       allow_noent,
-                                    OstreeRepoResolveRevExtFlags   flags,
-                                    char                         **out_rev,
-                                    GCancellable                  *cancellable,
-                                    GError                       **error)
+ostree_repo_resolve_collection_ref (OstreeRepo *self, const OstreeCollectionRef *ref,
+                                    gboolean allow_noent, OstreeRepoResolveRevExtFlags flags,
+                                    char **out_rev, GCancellable *cancellable, GError **error)
 {
   g_autofree char *ret_contents = NULL;
 
@@ -547,29 +505,29 @@ ostree_repo_resolve_collection_ref (OstreeRepo                    *self,
         {
           const char *repo_collection_id = ostree_repo_get_collection_id (self);
           /* If the collection ID doesn't match it's a remote ref */
-          if (!(flags & OSTREE_REPO_RESOLVE_REV_EXT_LOCAL_ONLY) ||
-              repo_collection_id == NULL ||
-              g_strcmp0 (repo_collection_id, ref->collection_id) == 0)
+          if (!(flags & OSTREE_REPO_RESOLVE_REV_EXT_LOCAL_ONLY) || repo_collection_id == NULL
+              || g_strcmp0 (repo_collection_id, ref->collection_id) == 0)
             {
               ret_contents = g_strdup (g_hash_table_lookup (self->txn.collection_refs, ref));
             }
-         }
+        }
       g_mutex_unlock (&self->txn_lock);
     }
 
   /* Check for the ref on disk in the repo */
   if (ret_contents == NULL)
     {
-      g_autoptr(GHashTable) refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
+      g_autoptr (GHashTable) refs = NULL; /* (element-type OstreeCollectionRef utf8) */
       OstreeRepoListRefsExtFlags list_refs_flags;
 
       if (flags & OSTREE_REPO_RESOLVE_REV_EXT_LOCAL_ONLY)
-        list_refs_flags = OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES | OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_MIRRORS;
+        list_refs_flags
+            = OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES | OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_MIRRORS;
       else
         list_refs_flags = OSTREE_REPO_LIST_REFS_EXT_NONE;
 
-      if (!ostree_repo_list_collection_refs (self, ref->collection_id, &refs,
-                                             list_refs_flags, cancellable, error))
+      if (!ostree_repo_list_collection_refs (self, ref->collection_id, &refs, list_refs_flags,
+                                             cancellable, error))
         return FALSE;
 
       ret_contents = g_strdup (g_hash_table_lookup (refs, ref));
@@ -578,20 +536,14 @@ ostree_repo_resolve_collection_ref (OstreeRepo                    *self,
   /* Check for the ref in the parent repo */
   if (ret_contents == NULL && self->parent_repo != NULL)
     {
-      if (!ostree_repo_resolve_collection_ref (self->parent_repo,
-                                               ref,
-                                               TRUE,
-                                               flags,
-                                               &ret_contents,
-                                               cancellable,
-                                               error))
+      if (!ostree_repo_resolve_collection_ref (self->parent_repo, ref, TRUE, flags, &ret_contents,
+                                               cancellable, error))
         return FALSE;
     }
 
   if (ret_contents == NULL && !allow_noent)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "Collection–ref (%s, %s) not found",
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND, "Collection–ref (%s, %s) not found",
                    ref->collection_id, ref->ref_name);
       return FALSE;
     }
@@ -602,19 +554,14 @@ ostree_repo_resolve_collection_ref (OstreeRepo                    *self,
 }
 
 static gboolean
-enumerate_refs_recurse (OstreeRepo    *repo,
-                        const char    *remote,
-                        OstreeRepoListRefsExtFlags flags,
-                        const char    *collection_id,
-                        int            base_dfd,
-                        GString       *base_path,
-                        int            child_dfd,
-                        const char    *path,
-                        GHashTable    *refs,
-                        GCancellable  *cancellable,
-                        GError       **error)
+enumerate_refs_recurse (OstreeRepo *repo, const char *remote, OstreeRepoListRefsExtFlags flags,
+                        const char *collection_id, int base_dfd, GString *base_path, int child_dfd,
+                        const char *path, GHashTable *refs, GCancellable *cancellable,
+                        GError **error)
 {
-  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  g_auto (GLnxDirFdIterator) dfd_iter = {
+    0,
+  };
   const gboolean aliases_only = (flags & OSTREE_REPO_LIST_REFS_EXT_ALIASES) > 0;
 
   if (!glnx_dirfd_iterator_init_at (child_dfd, path, FALSE, &dfd_iter, error))
@@ -645,16 +592,15 @@ enumerate_refs_recurse (OstreeRepo    *repo,
           g_string_append_c (base_path, '/');
 
           if (!enumerate_refs_recurse (repo, remote, flags, collection_id, base_dfd, base_path,
-                                       dfd_iter.fd, dent->d_name,
-                                       refs, cancellable, error))
+                                       dfd_iter.fd, dent->d_name, refs, cancellable, error))
             return FALSE;
         }
       else
         {
           if (aliases_only && dent->d_type == DT_LNK)
             {
-              g_autofree char *target = glnx_readlinkat_malloc (base_dfd, base_path->str,
-                                                                cancellable, error);
+              g_autofree char *target
+                  = glnx_readlinkat_malloc (base_dfd, base_path->str, cancellable, error);
               const char *resolved_target = target;
               if (!target)
                 return FALSE;
@@ -677,20 +623,18 @@ enumerate_refs_recurse (OstreeRepo    *repo,
 }
 
 static gboolean
-_ostree_repo_list_refs_internal (OstreeRepo       *self,
-                                 gboolean         cut_prefix,
-                                 OstreeRepoListRefsExtFlags flags,
-                                 const char       *refspec_prefix,
-                                 GHashTable      **out_all_refs,
-                                 GCancellable     *cancellable,
-                                 GError          **error)
+_ostree_repo_list_refs_internal (OstreeRepo *self, gboolean cut_prefix,
+                                 OstreeRepoListRefsExtFlags flags, const char *refspec_prefix,
+                                 GHashTable **out_all_refs, GCancellable *cancellable,
+                                 GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("Listing refs", error);
 
   g_autofree char *remote = NULL;
   g_autofree char *ref_prefix = NULL;
 
-  g_autoptr(GHashTable) ret_all_refs = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  g_autoptr (GHashTable) ret_all_refs
+      = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
   if (refspec_prefix)
     {
       struct stat stbuf;
@@ -698,8 +642,7 @@ _ostree_repo_list_refs_internal (OstreeRepo       *self,
       const char *path;
 
       /* special-case "<remote>:" and "<remote>:.", which ostree_parse_refspec won't like */
-      if (g_str_has_suffix (refspec_prefix, ":") ||
-          g_str_has_suffix (refspec_prefix, ":."))
+      if (g_str_has_suffix (refspec_prefix, ":") || g_str_has_suffix (refspec_prefix, ":."))
         {
           const char *colon = strrchr (refspec_prefix, ':');
           g_autofree char *r = g_strndup (refspec_prefix, colon - refspec_prefix);
@@ -734,16 +677,17 @@ _ostree_repo_list_refs_internal (OstreeRepo       *self,
           if (S_ISDIR (stbuf.st_mode))
             {
               glnx_autofd int base_fd = -1;
-              g_autoptr(GString) base_path = g_string_new ("");
+              g_autoptr (GString) base_path = g_string_new ("");
               if (!cut_prefix)
                 g_string_printf (base_path, "%s/", ref_prefix);
 
-              if (!glnx_opendirat (self->repo_dir_fd, cut_prefix ? path : prefix_path, TRUE, &base_fd, error))
+              if (!glnx_opendirat (self->repo_dir_fd, cut_prefix ? path : prefix_path, TRUE,
+                                   &base_fd, error))
                 return FALSE;
 
-              if (!enumerate_refs_recurse (self, remote, flags, NULL, base_fd, base_path,
-                                           base_fd, cut_prefix ? "." : ref_prefix,
-                                           ret_all_refs, cancellable, error))
+              if (!enumerate_refs_recurse (self, remote, flags, NULL, base_fd, base_path, base_fd,
+                                           cut_prefix ? "." : ref_prefix, ret_all_refs, cancellable,
+                                           error))
                 return FALSE;
             }
           else
@@ -753,31 +697,33 @@ _ostree_repo_list_refs_internal (OstreeRepo       *self,
               if (!glnx_opendirat (self->repo_dir_fd, prefix_path, TRUE, &prefix_dfd, error))
                 return FALSE;
 
-              if (!add_ref_to_set (remote, NULL, prefix_dfd, ref_prefix, ret_all_refs,
-                                   cancellable, error))
+              if (!add_ref_to_set (remote, NULL, prefix_dfd, ref_prefix, ret_all_refs, cancellable,
+                                   error))
                 return FALSE;
             }
         }
     }
   else
     {
-      g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
-      g_autoptr(GString) base_path = g_string_new ("");
+      g_auto (GLnxDirFdIterator) dfd_iter = {
+        0,
+      };
+      g_autoptr (GString) base_path = g_string_new ("");
       glnx_autofd int refs_heads_dfd = -1;
 
       if (!glnx_opendirat (self->repo_dir_fd, "refs/heads", TRUE, &refs_heads_dfd, error))
         return FALSE;
 
       if (!enumerate_refs_recurse (self, NULL, flags, NULL, refs_heads_dfd, base_path,
-                                   refs_heads_dfd, ".",
-                                   ret_all_refs, cancellable, error))
+                                   refs_heads_dfd, ".", ret_all_refs, cancellable, error))
         return FALSE;
 
       if (!(flags & OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES))
         {
           g_string_truncate (base_path, 0);
 
-          if (!glnx_dirfd_iterator_init_at (self->repo_dir_fd, "refs/remotes", TRUE, &dfd_iter, error))
+          if (!glnx_dirfd_iterator_init_at (self->repo_dir_fd, "refs/remotes", TRUE, &dfd_iter,
+                                            error))
             return FALSE;
 
           while (TRUE)
@@ -785,7 +731,8 @@ _ostree_repo_list_refs_internal (OstreeRepo       *self,
               struct dirent *dent;
               glnx_autofd int remote_dfd = -1;
 
-              if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
+              if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable,
+                                                               error))
                 return FALSE;
               if (!dent)
                 break;
@@ -797,9 +744,7 @@ _ostree_repo_list_refs_internal (OstreeRepo       *self,
                 return FALSE;
 
               if (!enumerate_refs_recurse (self, dent->d_name, flags, NULL, remote_dfd, base_path,
-                                           remote_dfd, ".",
-                                           ret_all_refs,
-                                           cancellable, error))
+                                           remote_dfd, ".", ret_all_refs, cancellable, error))
                 return FALSE;
             }
         }
@@ -827,16 +772,11 @@ _ostree_repo_list_refs_internal (OstreeRepo       *self,
  * removed as a prefix from the hash table keys.
  */
 gboolean
-ostree_repo_list_refs (OstreeRepo       *self,
-                       const char       *refspec_prefix,
-                       GHashTable      **out_all_refs,
-                       GCancellable     *cancellable,
-                       GError          **error)
+ostree_repo_list_refs (OstreeRepo *self, const char *refspec_prefix, GHashTable **out_all_refs,
+                       GCancellable *cancellable, GError **error)
 {
-  return _ostree_repo_list_refs_internal (self, TRUE,
-                                          OSTREE_REPO_LIST_REFS_EXT_NONE,
-                                          refspec_prefix, out_all_refs,
-                                          cancellable, error);
+  return _ostree_repo_list_refs_internal (self, TRUE, OSTREE_REPO_LIST_REFS_EXT_NONE,
+                                          refspec_prefix, out_all_refs, cancellable, error);
 }
 
 /**
@@ -860,15 +800,11 @@ ostree_repo_list_refs (OstreeRepo       *self,
  * Since: 2016.4
  */
 gboolean
-ostree_repo_list_refs_ext (OstreeRepo                 *self,
-                           const char                 *refspec_prefix,
-                           GHashTable                 **out_all_refs,
-                           OstreeRepoListRefsExtFlags flags,
-                           GCancellable               *cancellable,
-                           GError                     **error)
+ostree_repo_list_refs_ext (OstreeRepo *self, const char *refspec_prefix, GHashTable **out_all_refs,
+                           OstreeRepoListRefsExtFlags flags, GCancellable *cancellable,
+                           GError **error)
 {
-  return _ostree_repo_list_refs_internal (self, FALSE, flags,
-                                          refspec_prefix, out_all_refs,
+  return _ostree_repo_list_refs_internal (self, FALSE, flags, refspec_prefix, out_all_refs,
                                           cancellable, error);
 }
 
@@ -883,18 +819,14 @@ ostree_repo_list_refs_ext (OstreeRepo                 *self,
  *
  */
 gboolean
-ostree_repo_remote_list_refs (OstreeRepo       *self,
-                              const char       *remote_name,
-                              GHashTable      **out_all_refs,
-                              GCancellable     *cancellable,
-                              GError          **error)
+ostree_repo_remote_list_refs (OstreeRepo *self, const char *remote_name, GHashTable **out_all_refs,
+                              GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GBytes) summary_bytes = NULL;
-  g_autoptr(GHashTable) ret_all_refs = NULL;
+  g_autoptr (GBytes) summary_bytes = NULL;
+  g_autoptr (GHashTable) ret_all_refs = NULL;
 
-  if (!ostree_repo_remote_fetch_summary (self, remote_name,
-                                         &summary_bytes, NULL,
-                                         cancellable, error))
+  if (!ostree_repo_remote_fetch_summary (self, remote_name, &summary_bytes, NULL, cancellable,
+                                         error))
     return FALSE;
 
   if (summary_bytes == NULL)
@@ -903,14 +835,13 @@ ostree_repo_remote_list_refs (OstreeRepo       *self,
     }
   else
     {
-      g_autoptr(GVariant) summary = NULL;
-      g_autoptr(GVariant) ref_map = NULL;
+      g_autoptr (GVariant) summary = NULL;
+      g_autoptr (GVariant) ref_map = NULL;
       GVariantIter iter;
       GVariant *child;
       ret_all_refs = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 
-      summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT,
-                                          summary_bytes, FALSE);
+      summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, summary_bytes, FALSE);
 
       ref_map = g_variant_get_child_value (summary, 0);
 
@@ -918,8 +849,8 @@ ostree_repo_remote_list_refs (OstreeRepo       *self,
       while ((child = g_variant_iter_next_value (&iter)) != NULL)
         {
           const char *ref_name = NULL;
-          g_autoptr(GVariant) csum_v = NULL;
-          char tmp_checksum[OSTREE_SHA256_STRING_LEN+1];
+          g_autoptr (GVariant) csum_v = NULL;
+          char tmp_checksum[OSTREE_SHA256_STRING_LEN + 1];
 
           g_variant_get_child (child, 0, "&s", &ref_name);
 
@@ -933,9 +864,7 @@ ostree_repo_remote_list_refs (OstreeRepo       *self,
 
               ostree_checksum_inplace_from_bytes (csum_bytes, tmp_checksum);
 
-              g_hash_table_insert (ret_all_refs,
-                                   g_strdup (ref_name),
-                                   g_strdup (tmp_checksum));
+              g_hash_table_insert (ret_all_refs, g_strdup (ref_name), g_strdup (tmp_checksum));
             }
 
           g_variant_unref (child);
@@ -947,19 +876,17 @@ ostree_repo_remote_list_refs (OstreeRepo       *self,
 }
 
 static gboolean
-remote_list_collection_refs_process_refs (OstreeRepo   *self,
-                                          const gchar  *remote_name,
-                                          const gchar  *summary_collection_id,
-                                          GVariant     *summary_refs,
-                                          GHashTable   *ret_all_refs,
-                                          GError      **error)
+remote_list_collection_refs_process_refs (OstreeRepo *self, const gchar *remote_name,
+                                          const gchar *summary_collection_id,
+                                          GVariant *summary_refs, GHashTable *ret_all_refs,
+                                          GError **error)
 {
   gsize j, n;
 
   for (j = 0, n = g_variant_n_children (summary_refs); j < n; j++)
     {
       const guchar *csum_bytes;
-      g_autoptr(GVariant) ref_v = NULL, csum_v = NULL;
+      g_autoptr (GVariant) ref_v = NULL, csum_v = NULL;
       gchar tmp_checksum[OSTREE_SHA256_STRING_LEN + 1];
       const gchar *ref_name;
 
@@ -1006,58 +933,53 @@ remote_list_collection_refs_process_refs (OstreeRepo   *self,
  * Since: 2018.6
  */
 gboolean
-ostree_repo_remote_list_collection_refs (OstreeRepo    *self,
-                                         const char    *remote_name,
-                                         GHashTable   **out_all_refs,
-                                         GCancellable  *cancellable,
-                                         GError       **error)
+ostree_repo_remote_list_collection_refs (OstreeRepo *self, const char *remote_name,
+                                         GHashTable **out_all_refs, GCancellable *cancellable,
+                                         GError **error)
 {
-  g_autoptr(GBytes) summary_bytes = NULL;
-  g_autoptr(GHashTable) ret_all_refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
-  g_autoptr(GVariant) summary_v = NULL;
-  g_autoptr(GVariant) additional_metadata_v = NULL;
-  g_autoptr(GVariant) summary_refs = NULL;
+  g_autoptr (GBytes) summary_bytes = NULL;
+  g_autoptr (GHashTable) ret_all_refs = NULL; /* (element-type OstreeCollectionRef utf8) */
+  g_autoptr (GVariant) summary_v = NULL;
+  g_autoptr (GVariant) additional_metadata_v = NULL;
+  g_autoptr (GVariant) summary_refs = NULL;
   const char *summary_collection_id;
-  g_autoptr(GVariantIter) summary_collection_map = NULL;
+  g_autoptr (GVariantIter) summary_collection_map = NULL;
 
-  if (!ostree_repo_remote_fetch_summary (self, remote_name,
-                                         &summary_bytes, NULL,
-                                         cancellable, error))
+  if (!ostree_repo_remote_fetch_summary (self, remote_name, &summary_bytes, NULL, cancellable,
+                                         error))
     return FALSE;
 
   if (summary_bytes == NULL)
     return glnx_throw (error, "Remote refs not available; server has no summary file");
 
-  ret_all_refs = g_hash_table_new_full (ostree_collection_ref_hash,
-                                        ostree_collection_ref_equal,
-                                        (GDestroyNotify) ostree_collection_ref_free,
-                                        g_free);
+  ret_all_refs = g_hash_table_new_full (ostree_collection_ref_hash, ostree_collection_ref_equal,
+                                        (GDestroyNotify)ostree_collection_ref_free, g_free);
 
-  summary_v = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT,
-                                        summary_bytes, FALSE);
+  summary_v = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, summary_bytes, FALSE);
   additional_metadata_v = g_variant_get_child_value (summary_v, 1);
 
   /* List the refs in the main map. */
-  if (!g_variant_lookup (additional_metadata_v, OSTREE_SUMMARY_COLLECTION_ID, "&s", &summary_collection_id))
+  if (!g_variant_lookup (additional_metadata_v, OSTREE_SUMMARY_COLLECTION_ID, "&s",
+                         &summary_collection_id))
     summary_collection_id = NULL;
 
   summary_refs = g_variant_get_child_value (summary_v, 0);
 
-  if (!remote_list_collection_refs_process_refs (self, remote_name,
-                                                summary_collection_id, summary_refs,
-                                                ret_all_refs, error))
+  if (!remote_list_collection_refs_process_refs (self, remote_name, summary_collection_id,
+                                                 summary_refs, ret_all_refs, error))
     return FALSE;
 
   /* List the refs in the collection map. */
-  if (!g_variant_lookup (additional_metadata_v, OSTREE_SUMMARY_COLLECTION_MAP, "a{sa(s(taya{sv}))}", &summary_collection_map))
+  if (!g_variant_lookup (additional_metadata_v, OSTREE_SUMMARY_COLLECTION_MAP, "a{sa(s(taya{sv}))}",
+                         &summary_collection_map))
     summary_collection_map = NULL;
 
-  while (summary_collection_map != NULL &&
-         g_variant_iter_loop (summary_collection_map, "{&s@a(s(taya{sv}))}", &summary_collection_id, &summary_refs))
+  while (summary_collection_map != NULL
+         && g_variant_iter_loop (summary_collection_map, "{&s@a(s(taya{sv}))}",
+                                 &summary_collection_id, &summary_refs))
     {
-      if (!remote_list_collection_refs_process_refs (self, remote_name,
-                                                     summary_collection_id, summary_refs,
-                                                     ret_all_refs, error))
+      if (!remote_list_collection_refs_process_refs (self, remote_name, summary_collection_id,
+                                                     summary_refs, ret_all_refs, error))
         return FALSE;
     }
 
@@ -1066,13 +988,12 @@ ostree_repo_remote_list_collection_refs (OstreeRepo    *self,
 }
 
 static char *
-relative_symlink_to (const char *relpath,
-                     const char *target)
+relative_symlink_to (const char *relpath, const char *target)
 {
   g_assert (*relpath);
   g_assert (*target && *target != '/');
 
-  g_autoptr(GString) buf = g_string_new ("");
+  g_autoptr (GString) buf = g_string_new ("");
 
   while (TRUE)
     {
@@ -1090,13 +1011,9 @@ relative_symlink_to (const char *relpath,
 
 /* May specify @rev or @alias */
 gboolean
-_ostree_repo_write_ref (OstreeRepo                 *self,
-                        const char                 *remote,
-                        const OstreeCollectionRef  *ref,
-                        const char                 *rev,
-                        const char                 *alias,
-                        GCancellable               *cancellable,
-                        GError                    **error)
+_ostree_repo_write_ref (OstreeRepo *self, const char *remote, const OstreeCollectionRef *ref,
+                        const char *rev, const char *alias, GCancellable *cancellable,
+                        GError **error)
 {
   glnx_autofd int dfd = -1;
 
@@ -1110,11 +1027,11 @@ _ostree_repo_write_ref (OstreeRepo                 *self,
   if (!ostree_validate_rev (ref->ref_name, error))
     return FALSE;
 
-  if (remote == NULL &&
-      (ref->collection_id == NULL || g_strcmp0 (ref->collection_id, ostree_repo_get_collection_id (self)) == 0))
+  if (remote == NULL
+      && (ref->collection_id == NULL
+          || g_strcmp0 (ref->collection_id, ostree_repo_get_collection_id (self)) == 0))
     {
-      if (!glnx_opendirat (self->repo_dir_fd, "refs/heads", TRUE,
-                           &dfd, error))
+      if (!glnx_opendirat (self->repo_dir_fd, "refs/heads", TRUE, &dfd, error))
         return FALSE;
     }
   else if (remote == NULL && ref->collection_id != NULL)
@@ -1122,14 +1039,15 @@ _ostree_repo_write_ref (OstreeRepo                 *self,
       glnx_autofd int refs_mirrors_dfd = -1;
 
       /* refs/mirrors might not exist in older repositories, so create it. */
-      if (!glnx_shutil_mkdir_p_at_open (self->repo_dir_fd, "refs/mirrors", 0777,
-                                        &refs_mirrors_dfd, cancellable, error))
+      if (!glnx_shutil_mkdir_p_at_open (self->repo_dir_fd, "refs/mirrors", 0777, &refs_mirrors_dfd,
+                                        cancellable, error))
         return FALSE;
 
       if (rev != NULL)
         {
           /* Ensure we have a dir for the collection */
-          if (!glnx_shutil_mkdir_p_at (refs_mirrors_dfd, ref->collection_id, 0777, cancellable, error))
+          if (!glnx_shutil_mkdir_p_at (refs_mirrors_dfd, ref->collection_id, 0777, cancellable,
+                                       error))
             return FALSE;
         }
 
@@ -1141,8 +1059,7 @@ _ostree_repo_write_ref (OstreeRepo                 *self,
     {
       glnx_autofd int refs_remotes_dfd = -1;
 
-      if (!glnx_opendirat (self->repo_dir_fd, "refs/remotes", TRUE,
-                           &refs_remotes_dfd, error))
+      if (!glnx_opendirat (self->repo_dir_fd, "refs/remotes", TRUE, &refs_remotes_dfd, error))
         return FALSE;
 
       if (rev != NULL)
@@ -1185,8 +1102,8 @@ _ostree_repo_write_ref (OstreeRepo                 *self,
 
       g_autofree char *reltarget = relative_symlink_to (ref->ref_name, alias);
       g_autofree char *tmplink = NULL;
-      if (!_ostree_make_temporary_symlink_at (self->tmp_dir_fd, reltarget,
-                                              &tmplink, cancellable, error))
+      if (!_ostree_make_temporary_symlink_at (self->tmp_dir_fd, reltarget, &tmplink, cancellable,
+                                              error))
         return FALSE;
       if (!glnx_renameat (self->tmp_dir_fd, tmplink, dfd, ref->ref_name, error))
         return FALSE;
@@ -1204,12 +1121,10 @@ _ostree_repo_write_ref (OstreeRepo                 *self,
 }
 
 gboolean
-_ostree_repo_update_refs (OstreeRepo        *self,
-                          GHashTable        *refs,  /* (element-type utf8 utf8) */
-                          GCancellable      *cancellable,
-                          GError           **error)
+_ostree_repo_update_refs (OstreeRepo *self, GHashTable *refs, /* (element-type utf8 utf8) */
+                          GCancellable *cancellable, GError **error)
 {
-  GLNX_HASH_TABLE_FOREACH_KV (refs, const char*, refspec, const char*, rev)
+  GLNX_HASH_TABLE_FOREACH_KV (refs, const char *, refspec, const char *, rev)
     {
       g_autofree char *remote = NULL;
       g_autofree char *ref_name = NULL;
@@ -1217,8 +1132,7 @@ _ostree_repo_update_refs (OstreeRepo        *self,
         return FALSE;
 
       const OstreeCollectionRef ref = { NULL, ref_name };
-      if (!_ostree_repo_write_ref (self, remote, &ref, rev, NULL,
-                                   cancellable, error))
+      if (!_ostree_repo_write_ref (self, remote, &ref, rev, NULL, cancellable, error))
         return FALSE;
     }
 
@@ -1226,10 +1140,9 @@ _ostree_repo_update_refs (OstreeRepo        *self,
 }
 
 gboolean
-_ostree_repo_update_collection_refs (OstreeRepo        *self,
-                                     GHashTable        *refs,  /* (element-type OstreeCollectionRef utf8) */
-                                     GCancellable      *cancellable,
-                                     GError           **error)
+_ostree_repo_update_collection_refs (OstreeRepo *self,
+                                     GHashTable *refs, /* (element-type OstreeCollectionRef utf8) */
+                                     GCancellable *cancellable, GError **error)
 {
   GHashTableIter hash_iter;
   gpointer key, value;
@@ -1240,8 +1153,7 @@ _ostree_repo_update_collection_refs (OstreeRepo        *self,
       const OstreeCollectionRef *ref = key;
       const char *rev = value;
 
-      if (!_ostree_repo_write_ref (self, NULL, ref, rev, NULL,
-                                   cancellable, error))
+      if (!_ostree_repo_write_ref (self, NULL, ref, rev, NULL, cancellable, error))
         return FALSE;
     }
 
@@ -1277,12 +1189,9 @@ _ostree_repo_update_collection_refs (OstreeRepo        *self,
  * Since: 2018.6
  */
 gboolean
-ostree_repo_list_collection_refs (OstreeRepo                 *self,
-                                  const char                 *match_collection_id,
-                                  GHashTable                 **out_all_refs,
-                                  OstreeRepoListRefsExtFlags flags,
-                                  GCancellable               *cancellable,
-                                  GError                     **error)
+ostree_repo_list_collection_refs (OstreeRepo *self, const char *match_collection_id,
+                                  GHashTable **out_all_refs, OstreeRepoListRefsExtFlags flags,
+                                  GCancellable *cancellable, GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("Listing refs", error);
 
@@ -1293,36 +1202,32 @@ ostree_repo_list_collection_refs (OstreeRepo                 *self,
   if (match_collection_id != NULL && !ostree_validate_collection_id (match_collection_id, error))
     return FALSE;
 
-  g_autoptr(GPtrArray) refs_dirs = g_ptr_array_new ();
+  g_autoptr (GPtrArray) refs_dirs = g_ptr_array_new ();
   if (!(flags & OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_MIRRORS))
     g_ptr_array_add (refs_dirs, "refs/mirrors");
   if (!(flags & OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES))
     g_ptr_array_add (refs_dirs, "refs/remotes");
   g_ptr_array_add (refs_dirs, NULL);
 
-  g_autoptr(GHashTable) ret_all_refs = NULL;
+  g_autoptr (GHashTable) ret_all_refs = NULL;
 
-  ret_all_refs = g_hash_table_new_full (ostree_collection_ref_hash,
-                                        ostree_collection_ref_equal,
-                                        (GDestroyNotify) ostree_collection_ref_free,
-                                        g_free);
+  ret_all_refs = g_hash_table_new_full (ostree_collection_ref_hash, ostree_collection_ref_equal,
+                                        (GDestroyNotify)ostree_collection_ref_free, g_free);
 
-  g_autoptr(GString) base_path = g_string_new ("");
+  g_autoptr (GString) base_path = g_string_new ("");
 
   const gchar *main_collection_id = ostree_repo_get_collection_id (self);
 
-  if (main_collection_id != NULL &&
-      (match_collection_id == NULL || g_strcmp0 (match_collection_id, main_collection_id) == 0))
+  if (main_collection_id != NULL
+      && (match_collection_id == NULL || g_strcmp0 (match_collection_id, main_collection_id) == 0))
     {
       glnx_autofd int refs_heads_dfd = -1;
 
       if (!glnx_opendirat (self->repo_dir_fd, "refs/heads", TRUE, &refs_heads_dfd, error))
         return FALSE;
 
-      if (!enumerate_refs_recurse (self, NULL, flags,
-                                   main_collection_id, refs_heads_dfd, base_path,
-                                   refs_heads_dfd, ".",
-                                   ret_all_refs, cancellable, error))
+      if (!enumerate_refs_recurse (self, NULL, flags, main_collection_id, refs_heads_dfd, base_path,
+                                   refs_heads_dfd, ".", ret_all_refs, cancellable, error))
         return FALSE;
     }
 
@@ -1332,10 +1237,12 @@ ostree_repo_list_collection_refs (OstreeRepo                 *self,
     {
       const char *refs_dir = *iter;
       gboolean refs_dir_exists = FALSE;
-      g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+      g_auto (GLnxDirFdIterator) dfd_iter = {
+        0,
+      };
 
-      if (!ot_dfd_iter_init_allow_noent (self->repo_dir_fd, refs_dir,
-                                         &dfd_iter, &refs_dir_exists, error))
+      if (!ot_dfd_iter_init_allow_noent (self->repo_dir_fd, refs_dir, &dfd_iter, &refs_dir_exists,
+                                         error))
         return FALSE;
 
       while (refs_dir_exists)
@@ -1362,18 +1269,20 @@ ostree_repo_list_collection_refs (OstreeRepo                 *self,
             }
           else /* refs_dir = "refs/remotes" */
             {
-              g_autoptr(GError) local_error = NULL;
-              if (!ostree_repo_get_remote_option (self, dent->d_name, "collection-id",
-                                                  NULL, &remote_collection_id, &local_error) ||
-                  !ostree_validate_collection_id (remote_collection_id, &local_error))
+              g_autoptr (GError) local_error = NULL;
+              if (!ostree_repo_get_remote_option (self, dent->d_name, "collection-id", NULL,
+                                                  &remote_collection_id, &local_error)
+                  || !ostree_validate_collection_id (remote_collection_id, &local_error))
                 {
-                  g_debug ("Ignoring remote ‘%s’ due to no valid collection ID being configured for it: %s",
+                  g_debug ("Ignoring remote ‘%s’ due to no valid collection ID being configured "
+                           "for it: %s",
                            dent->d_name, local_error->message);
                   g_clear_error (&local_error);
                   continue;
                 }
 
-              if (match_collection_id != NULL && g_strcmp0 (match_collection_id, remote_collection_id) != 0)
+              if (match_collection_id != NULL
+                  && g_strcmp0 (match_collection_id, remote_collection_id) != 0)
                 continue;
               else
                 current_collection_id = remote_collection_id;
@@ -1382,11 +1291,8 @@ ostree_repo_list_collection_refs (OstreeRepo                 *self,
           if (!glnx_opendirat (dfd_iter.fd, dent->d_name, TRUE, &subdir_fd, error))
             return FALSE;
 
-          if (!enumerate_refs_recurse (self, NULL, flags,
-                                       current_collection_id, subdir_fd, base_path,
-                                       subdir_fd, ".",
-                                       ret_all_refs,
-                                       cancellable, error))
+          if (!enumerate_refs_recurse (self, NULL, flags, current_collection_id, subdir_fd,
+                                       base_path, subdir_fd, ".", ret_all_refs, cancellable, error))
             return FALSE;
         }
     }

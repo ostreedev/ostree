@@ -21,9 +21,9 @@
 
 #include "config.h"
 
-#include "ot-main.h"
-#include "ot-builtins.h"
 #include "ostree.h"
+#include "ot-builtins.h"
+#include "ot-main.h"
 #include "otutil.h"
 
 /* ATTENTION:
@@ -31,20 +31,15 @@
  * man page (man/ostree-reset.xml) when changing the option list.
  */
 
-static GOptionEntry options[] = {
-  { NULL }
-};
+static GOptionEntry options[] = { { NULL } };
 
 gboolean
-ostree_builtin_reset (int           argc,
-                      char        **argv,
-                      OstreeCommandInvocation *invocation,
-                      GCancellable *cancellable,
-                      GError      **error)
+ostree_builtin_reset (int argc, char **argv, OstreeCommandInvocation *invocation,
+                      GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
-  g_autoptr(OstreeRepo) repo = NULL;
-  g_autoptr(GHashTable) known_refs = NULL;
+  g_autoptr (GOptionContext) context = NULL;
+  g_autoptr (OstreeRepo) repo = NULL;
+  g_autoptr (GHashTable) known_refs = NULL;
   gboolean ret = FALSE;
   const char *ref;
   const char *target = NULL;
@@ -53,7 +48,8 @@ ostree_builtin_reset (int           argc,
   /* FIXME: Add support for collection–refs. */
   context = g_option_context_new ("REF COMMIT");
 
-  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable,
+                                    error))
     goto out;
 
   if (!ostree_ensure_repo_writable (repo, error))
@@ -88,7 +84,7 @@ ostree_builtin_reset (int           argc,
     goto out;
 
   ret = TRUE;
- out:
+out:
   if (repo)
     ostree_repo_abort_transaction (repo, cancellable, NULL);
   return ret;

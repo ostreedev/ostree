@@ -21,25 +21,24 @@
 
 #include <stdlib.h>
 
-#include "ot-main.h"
+#include "ostree.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
-#include "ostree.h"
+#include "ot-main.h"
 #include "otutil.h"
 
-static GOptionEntry options[] = {
-  { NULL }
-};
+static GOptionEntry options[] = { { NULL } };
 
 gboolean
-ot_admin_builtin_undeploy (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_admin_builtin_undeploy (int argc, char **argv, OstreeCommandInvocation *invocation,
+                           GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = g_option_context_new ("INDEX");
+  g_autoptr (GOptionContext) context = g_option_context_new ("INDEX");
 
-  g_autoptr(OstreeSysroot) sysroot = NULL;
+  g_autoptr (OstreeSysroot) sysroot = NULL;
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
-                                          invocation, &sysroot, cancellable, error))
+                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER, invocation, &sysroot,
+                                          cancellable, error))
     return FALSE;
 
   if (argc < 2)
@@ -48,13 +47,13 @@ ot_admin_builtin_undeploy (int argc, char **argv, OstreeCommandInvocation *invoc
       return FALSE;
     }
 
-  g_autoptr(GPtrArray) current_deployments = ostree_sysroot_get_deployments (sysroot);
+  g_autoptr (GPtrArray) current_deployments = ostree_sysroot_get_deployments (sysroot);
 
   const char *deploy_index_str = argv[1];
   int deploy_index = atoi (deploy_index_str);
 
-  g_autoptr(OstreeDeployment) target_deployment =
-    ot_admin_get_indexed_deployment (sysroot, deploy_index, error);
+  g_autoptr (OstreeDeployment) target_deployment
+      = ot_admin_get_indexed_deployment (sysroot, deploy_index, error);
   if (!target_deployment)
     return FALSE;
 
@@ -67,8 +66,7 @@ ot_admin_builtin_undeploy (int argc, char **argv, OstreeCommandInvocation *invoc
 
   g_ptr_array_remove_index (current_deployments, deploy_index);
 
-  if (!ostree_sysroot_write_deployments (sysroot, current_deployments,
-                                         cancellable, error))
+  if (!ostree_sysroot_write_deployments (sysroot, current_deployments, cancellable, error))
     return FALSE;
 
   g_print ("Deleted deployment %s.%d\n", ostree_deployment_get_csum (target_deployment),

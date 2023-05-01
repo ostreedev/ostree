@@ -19,14 +19,15 @@
 
 #include "config.h"
 
-#include "ostree-lzma-decompressor.h"
 #include "ostree-lzma-common.h"
+#include "ostree-lzma-decompressor.h"
 
 #include <errno.h>
 #include <lzma.h>
 #include <string.h>
 
-enum {
+enum
+{
   PROP_0,
 };
 
@@ -38,7 +39,7 @@ enum {
  * LZMA.
  */
 
-static void _ostree_lzma_decompressor_iface_init          (GConverterIface *iface);
+static void _ostree_lzma_decompressor_iface_init (GConverterIface *iface);
 
 struct _OstreeLzmaDecompressor
 {
@@ -48,10 +49,9 @@ struct _OstreeLzmaDecompressor
   gboolean initialized;
 };
 
-G_DEFINE_TYPE_WITH_CODE (OstreeLzmaDecompressor, _ostree_lzma_decompressor,
-			 G_TYPE_OBJECT,
-			 G_IMPLEMENT_INTERFACE (G_TYPE_CONVERTER,
-						_ostree_lzma_decompressor_iface_init))
+G_DEFINE_TYPE_WITH_CODE (OstreeLzmaDecompressor, _ostree_lzma_decompressor, G_TYPE_OBJECT,
+                         G_IMPLEMENT_INTERFACE (G_TYPE_CONVERTER,
+                                                _ostree_lzma_decompressor_iface_init))
 
 static void
 _ostree_lzma_decompressor_finalize (GObject *object)
@@ -100,23 +100,16 @@ _ostree_lzma_decompressor_reset (GConverter *converter)
 }
 
 static GConverterResult
-_ostree_lzma_decompressor_convert (GConverter *converter,
-                                   const void *inbuf,
-                                   gsize       inbuf_size,
-                                   void       *outbuf,
-                                   gsize       outbuf_size,
-                                   GConverterFlags flags,
-                                   gsize      *bytes_read,
-                                   gsize      *bytes_written,
-                                   GError    **error)
+_ostree_lzma_decompressor_convert (GConverter *converter, const void *inbuf, gsize inbuf_size,
+                                   void *outbuf, gsize outbuf_size, GConverterFlags flags,
+                                   gsize *bytes_read, gsize *bytes_written, GError **error)
 {
   OstreeLzmaDecompressor *self = OSTREE_LZMA_DECOMPRESSOR (converter);
   int res;
 
   if (inbuf_size != 0 && outbuf_size == 0)
     {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NO_SPACE,
-         "Output buffer too small");
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NO_SPACE, "Output buffer too small");
       return G_CONVERTER_ERROR;
     }
 
@@ -141,7 +134,7 @@ _ostree_lzma_decompressor_convert (GConverter *converter,
   *bytes_read = inbuf_size - self->lstream.avail_in;
   *bytes_written = outbuf_size - self->lstream.avail_out;
 
- out:
+out:
   return _ostree_lzma_return (res, error);
 }
 

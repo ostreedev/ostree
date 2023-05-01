@@ -26,8 +26,8 @@
 #pragma once
 
 #include <gio/gio.h>
-#include <glib.h>
 #include <glib-object.h>
+#include <glib.h>
 
 #include "ostree-types.h"
 

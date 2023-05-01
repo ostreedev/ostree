@@ -22,62 +22,55 @@
 #include "config.h"
 
 #include "libglnx.h"
-#include "ostree.h"
 #include "ostree-repo-private.h"
+#include "ostree.h"
 #include "otutil.h"
 
 /* See ostree-repo.c for a bit more info about these ABI checks */
 #if __SIZEOF_POINTER__ == 8 && __SIZEOF_LONG__ == 8 && __SIZEOF_INT__ == 4
-G_STATIC_ASSERT(sizeof(OstreeDiffDirsOptions) ==
-                sizeof(int) * 2 +
-                sizeof(gpointer) +
-                sizeof(int) * (7+6) +
-                sizeof(int) +  /* hole */
-                sizeof(gpointer) * 7);
+G_STATIC_ASSERT (sizeof (OstreeDiffDirsOptions)
+                 == sizeof (int) * 2 + sizeof (gpointer) + sizeof (int) * (7 + 6) + sizeof (int)
+                        + /* hole */
+                        sizeof (gpointer) * 7);
 #endif
 
 static gboolean
-get_file_checksum (OstreeDiffFlags  flags,
-                   GFile *f,
-                   GFileInfo *f_info,
-                   char  **out_checksum,
-                   GCancellable *cancellable,
-                   GError   **error)
+get_file_checksum (OstreeDiffFlags flags, GFile *f, GFileInfo *f_info, char **out_checksum,
+                   GCancellable *cancellable, GError **error)
 {
   g_autofree char *ret_checksum = NULL;
 
   if (OSTREE_IS_REPO_FILE (f))
     {
-      ret_checksum = g_strdup (ostree_repo_file_get_checksum ((OstreeRepoFile*)f));
+      ret_checksum = g_strdup (ostree_repo_file_get_checksum ((OstreeRepoFile *)f));
     }
   else
     {
-      g_autoptr(GVariant) xattrs = NULL;
-      g_autoptr(GInputStream) in = NULL;
+      g_autoptr (GVariant) xattrs = NULL;
+      g_autoptr (GInputStream) in = NULL;
 
       if (!(flags & OSTREE_DIFF_FLAGS_IGNORE_XATTRS))
         {
-          if (!glnx_dfd_name_get_all_xattrs (AT_FDCWD, gs_file_get_path_cached (f),
-                                             &xattrs, cancellable, error))
+          if (!glnx_dfd_name_get_all_xattrs (AT_FDCWD, gs_file_get_path_cached (f), &xattrs,
+                                             cancellable, error))
             return FALSE;
         }
 
       if (g_file_info_get_file_type (f_info) == G_FILE_TYPE_REGULAR)
         {
-          in = (GInputStream*)g_file_read (f, cancellable, error);
+          in = (GInputStream *)g_file_read (f, cancellable, error);
           if (!in)
             return FALSE;
         }
 
       g_autofree guchar *csum = NULL;
-      if (!ostree_checksum_file_from_input (f_info, xattrs, in,
-                                            OSTREE_OBJECT_TYPE_FILE,
-                                            &csum, cancellable, error))
+      if (!ostree_checksum_file_from_input (f_info, xattrs, in, OSTREE_OBJECT_TYPE_FILE, &csum,
+                                            cancellable, error))
         return FALSE;
       ret_checksum = ostree_checksum_from_bytes (csum);
     }
 
-  ot_transfer_out_value(out_checksum, &ret_checksum);
+  ot_transfer_out_value (out_checksum, &ret_checksum);
   return TRUE;
 }
 
@@ -103,17 +96,12 @@ ostree_diff_item_unref (OstreeDiffItem *diffitem)
   g_free (diffitem);
 }
 
-G_DEFINE_BOXED_TYPE(OstreeDiffItem, ostree_diff_item,
-                    ostree_diff_item_ref,
-                    ostree_diff_item_unref);
+G_DEFINE_BOXED_TYPE (OstreeDiffItem, ostree_diff_item, ostree_diff_item_ref,
+                     ostree_diff_item_unref);
 
 static OstreeDiffItem *
-diff_item_new (GFile          *a,
-               GFileInfo      *a_info,
-               GFile          *b,
-               GFileInfo      *b_info,
-               char           *checksum_a,
-               char           *checksum_b)
+diff_item_new (GFile *a, GFileInfo *a_info, GFile *b, GFileInfo *b_info, char *checksum_a,
+               char *checksum_b)
 {
   OstreeDiffItem *ret = g_new0 (OstreeDiffItem, 1);
   ret->refcount = 1;
@@ -127,14 +115,8 @@ diff_item_new (GFile          *a,
 }
 
 static gboolean
-diff_files (OstreeDiffFlags  flags,
-            GFile           *a,
-            GFileInfo       *a_info,
-            GFile           *b,
-            GFileInfo       *b_info,
-            OstreeDiffItem **out_item,
-            GCancellable    *cancellable,
-            GError         **error)
+diff_files (OstreeDiffFlags flags, GFile *a, GFileInfo *a_info, GFile *b, GFileInfo *b_info,
+            OstreeDiffItem **out_item, GCancellable *cancellable, GError **error)
 {
   g_autofree char *checksum_a = NULL;
   g_autofree char *checksum_b = NULL;
@@ -143,28 +125,21 @@ diff_files (OstreeDiffFlags  flags,
   if (!get_file_checksum (flags, b, b_info, &checksum_b, cancellable, error))
     return FALSE;
 
-  g_autoptr(OstreeDiffItem) ret_item = NULL;
+  g_autoptr (OstreeDiffItem) ret_item = NULL;
   if (strcmp (checksum_a, checksum_b) != 0)
     {
-      ret_item = diff_item_new (a, a_info, b, b_info,
-                                checksum_a, checksum_b);
+      ret_item = diff_item_new (a, a_info, b, b_info, checksum_a, checksum_b);
     }
 
-  ot_transfer_out_value(out_item, &ret_item);
+  ot_transfer_out_value (out_item, &ret_item);
   return TRUE;
 }
 
 static gboolean
-diff_add_dir_recurse (GFile          *d,
-                      GPtrArray      *added,
-                      GCancellable   *cancellable,
-                      GError        **error)
+diff_add_dir_recurse (GFile *d, GPtrArray *added, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GFileEnumerator) dir_enum =
-    g_file_enumerate_children (d, OSTREE_GIO_FAST_QUERYINFO,
-                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                               cancellable,
-                               error);
+  g_autoptr (GFileEnumerator) dir_enum = g_file_enumerate_children (
+      d, OSTREE_GIO_FAST_QUERYINFO, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable, error);
   if (!dir_enum)
     return FALSE;
 
@@ -173,15 +148,14 @@ diff_add_dir_recurse (GFile          *d,
       GFileInfo *child_info;
       const char *name;
 
-      if (!g_file_enumerator_iterate (dir_enum, &child_info, NULL,
-                                      cancellable, error))
+      if (!g_file_enumerator_iterate (dir_enum, &child_info, NULL, cancellable, error))
         return FALSE;
       if (child_info == NULL)
         break;
 
       name = g_file_info_get_name (child_info);
 
-      g_autoptr(GFile) child = g_file_get_child (d, name);
+      g_autoptr (GFile) child = g_file_get_child (d, name);
       g_ptr_array_add (added, g_object_ref (child));
 
       if (g_file_info_get_file_type (child_info) == G_FILE_TYPE_DIRECTORY)
@@ -209,18 +183,11 @@ diff_add_dir_recurse (GFile          *d,
  * sets of #OstreeDiffItem in @modified, @removed, and @added.
  */
 gboolean
-ostree_diff_dirs (OstreeDiffFlags flags,
-                  GFile          *a,
-                  GFile          *b,
-                  GPtrArray      *modified,
-                  GPtrArray      *removed,
-                  GPtrArray      *added,
-                  GCancellable   *cancellable,
-                  GError        **error)
+ostree_diff_dirs (OstreeDiffFlags flags, GFile *a, GFile *b, GPtrArray *modified,
+                  GPtrArray *removed, GPtrArray *added, GCancellable *cancellable, GError **error)
 {
-  return ostree_diff_dirs_with_options (flags, a, b, modified,
-                                        removed, added, NULL,
-                                        cancellable, error);
+  return ostree_diff_dirs_with_options (flags, a, b, modified, removed, added, NULL, cancellable,
+                                        error);
 }
 
 /**
@@ -241,23 +208,17 @@ ostree_diff_dirs (OstreeDiffFlags flags,
  * Since: 2017.4
  */
 gboolean
-ostree_diff_dirs_with_options (OstreeDiffFlags        flags,
-                               GFile                 *a,
-                               GFile                 *b,
-                               GPtrArray             *modified,
-                               GPtrArray             *removed,
-                               GPtrArray             *added,
-                               OstreeDiffDirsOptions *options,
-                               GCancellable          *cancellable,
-                               GError               **error)
+ostree_diff_dirs_with_options (OstreeDiffFlags flags, GFile *a, GFile *b, GPtrArray *modified,
+                               GPtrArray *removed, GPtrArray *added, OstreeDiffDirsOptions *options,
+                               GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   GError *temp_error = NULL;
-  g_autoptr(GFileEnumerator) dir_enum = NULL;
-  g_autoptr(GFile) child_a = NULL;
-  g_autoptr(GFile) child_b = NULL;
-  g_autoptr(GFileInfo) child_a_info = NULL;
-  g_autoptr(GFileInfo) child_b_info = NULL;
+  g_autoptr (GFileEnumerator) dir_enum = NULL;
+  g_autoptr (GFile) child_a = NULL;
+  g_autoptr (GFile) child_b = NULL;
+  g_autoptr (GFileInfo) child_a_info = NULL;
+  g_autoptr (GFileInfo) child_b_info = NULL;
   OstreeDiffDirsOptions default_opts = OSTREE_DIFF_DIRS_OPTIONS_INIT;
 
   if (!options)
@@ -268,13 +229,13 @@ ostree_diff_dirs_with_options (OstreeDiffFlags        flags,
    */
   if (OSTREE_IS_REPO_FILE (a))
     {
-      OstreeRepo *repo = ostree_repo_file_get_repo ((OstreeRepoFile*)a);
+      OstreeRepo *repo = ostree_repo_file_get_repo ((OstreeRepoFile *)a);
       if (repo->disable_xattrs || repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
         flags |= OSTREE_DIFF_FLAGS_IGNORE_XATTRS;
     }
   if (OSTREE_IS_REPO_FILE (b))
     {
-      OstreeRepo *repo = ostree_repo_file_get_repo ((OstreeRepoFile*)b);
+      OstreeRepo *repo = ostree_repo_file_get_repo ((OstreeRepoFile *)b);
       if (repo->disable_xattrs || repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
         flags |= OSTREE_DIFF_FLAGS_IGNORE_XATTRS;
     }
@@ -289,28 +250,26 @@ ostree_diff_dirs_with_options (OstreeDiffFlags        flags,
     }
 
   child_a_info = g_file_query_info (a, OSTREE_GIO_FAST_QUERYINFO,
-                                    G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                    cancellable, error);
+                                    G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable, error);
   if (!child_a_info)
     goto out;
 
   child_b_info = g_file_query_info (b, OSTREE_GIO_FAST_QUERYINFO,
-                                    G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                    cancellable, error);
+                                    G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable, error);
   if (!child_b_info)
     goto out;
 
   /* Fast path test for unmodified directories */
   if (g_file_info_get_file_type (child_a_info) == G_FILE_TYPE_DIRECTORY
       && g_file_info_get_file_type (child_b_info) == G_FILE_TYPE_DIRECTORY
-      && OSTREE_IS_REPO_FILE (a)
-      && OSTREE_IS_REPO_FILE (b))
+      && OSTREE_IS_REPO_FILE (a) && OSTREE_IS_REPO_FILE (b))
     {
-      OstreeRepoFile *a_repof = (OstreeRepoFile*) a;
-      OstreeRepoFile *b_repof = (OstreeRepoFile*) b;
+      OstreeRepoFile *a_repof = (OstreeRepoFile *)a;
+      OstreeRepoFile *b_repof = (OstreeRepoFile *)b;
 
       if (strcmp (ostree_repo_file_tree_get_contents_checksum (a_repof),
-                  ostree_repo_file_tree_get_contents_checksum (b_repof)) == 0)
+                  ostree_repo_file_tree_get_contents_checksum (b_repof))
+          == 0)
         {
           ret = TRUE;
           goto out;
@@ -321,8 +280,7 @@ ostree_diff_dirs_with_options (OstreeDiffFlags        flags,
   g_clear_object (&child_b_info);
 
   dir_enum = g_file_enumerate_children (a, OSTREE_GIO_FAST_QUERYINFO,
-                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        cancellable, error);
+                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable, error);
   if (!dir_enum)
     goto out;
 
@@ -342,10 +300,9 @@ ostree_diff_dirs_with_options (OstreeDiffFlags        flags,
       child_b = g_file_get_child (b, name);
 
       g_clear_object (&child_b_info);
-      child_b_info = g_file_query_info (child_b, OSTREE_GIO_FAST_QUERYINFO,
-                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        cancellable,
-                                        &temp_error);
+      child_b_info
+          = g_file_query_info (child_b, OSTREE_GIO_FAST_QUERYINFO,
+                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable, &temp_error);
       if (!child_b_info)
         {
           if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
@@ -369,8 +326,8 @@ ostree_diff_dirs_with_options (OstreeDiffFlags        flags,
           child_b_type = g_file_info_get_file_type (child_b_info);
           if (child_a_type != child_b_type)
             {
-              OstreeDiffItem *diff_item = diff_item_new (child_a, child_a_info,
-                                                   child_b, child_b_info, NULL, NULL);
+              OstreeDiffItem *diff_item
+                  = diff_item_new (child_a, child_a_info, child_b, child_b_info, NULL, NULL);
 
               g_ptr_array_add (modified, diff_item);
             }
@@ -387,9 +344,8 @@ ostree_diff_dirs_with_options (OstreeDiffFlags        flags,
 
               if (child_a_type == G_FILE_TYPE_DIRECTORY)
                 {
-                  if (!ostree_diff_dirs_with_options (flags, child_a, child_b, modified,
-                                                      removed, added, options,
-                                                      cancellable, error))
+                  if (!ostree_diff_dirs_with_options (flags, child_a, child_b, modified, removed,
+                                                      added, options, cancellable, error))
                     goto out;
                 }
             }
@@ -405,8 +361,7 @@ ostree_diff_dirs_with_options (OstreeDiffFlags        flags,
 
   g_clear_object (&dir_enum);
   dir_enum = g_file_enumerate_children (b, OSTREE_GIO_FAST_QUERYINFO,
-                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        cancellable, error);
+                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable, error);
   if (!dir_enum)
     goto out;
 
@@ -424,10 +379,9 @@ ostree_diff_dirs_with_options (OstreeDiffFlags        flags,
       child_b = g_file_get_child (b, name);
 
       g_clear_object (&child_a_info);
-      child_a_info = g_file_query_info (child_a, OSTREE_GIO_FAST_QUERYINFO,
-                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        cancellable,
-                                        &temp_error);
+      child_a_info
+          = g_file_query_info (child_a, OSTREE_GIO_FAST_QUERYINFO,
+                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable, &temp_error);
       if (!child_a_info)
         {
           if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
@@ -455,14 +409,12 @@ ostree_diff_dirs_with_options (OstreeDiffFlags        flags,
     }
 
   ret = TRUE;
- out:
+out:
   return ret;
 }
 
 static void
-print_diff_item (char        prefix,
-                 GFile      *base,
-                 GFile      *file)
+print_diff_item (char prefix, GFile *base, GFile *file)
 {
   if (g_file_is_native (file))
     {
@@ -486,11 +438,7 @@ print_diff_item (char        prefix,
  * Print the contents of a diff to stdout.
  */
 void
-ostree_diff_print (GFile          *a,
-                   GFile          *b,
-                   GPtrArray      *modified,
-                   GPtrArray      *removed,
-                   GPtrArray      *added)
+ostree_diff_print (GFile *a, GFile *b, GPtrArray *modified, GPtrArray *removed, GPtrArray *added)
 {
   guint i;
 

@@ -40,13 +40,10 @@ struct _OstreeTlsCertInteractionClass
 G_DEFINE_TYPE (OstreeTlsCertInteraction, _ostree_tls_cert_interaction, G_TYPE_TLS_INTERACTION);
 
 static GTlsInteractionResult
-request_certificate (GTlsInteraction              *interaction,
-                     GTlsConnection               *connection,
-                     GTlsCertificateRequestFlags   flags,
-                     GCancellable                 *cancellable,
-                     GError                      **error)
+request_certificate (GTlsInteraction *interaction, GTlsConnection *connection,
+                     GTlsCertificateRequestFlags flags, GCancellable *cancellable, GError **error)
 {
-  OstreeTlsCertInteraction *self = (OstreeTlsCertInteraction*)interaction;
+  OstreeTlsCertInteraction *self = (OstreeTlsCertInteraction *)interaction;
 
   if (!self->cert)
     {
@@ -72,8 +69,7 @@ _ostree_tls_cert_interaction_class_init (OstreeTlsCertInteractionClass *klass)
 }
 
 OstreeTlsCertInteraction *
-_ostree_tls_cert_interaction_new (const char *cert_path,
-                                  const char *key_path)
+_ostree_tls_cert_interaction_new (const char *cert_path, const char *key_path)
 {
   OstreeTlsCertInteraction *self = g_object_new (OSTREE_TYPE_TLS_CERT_INTERACTION, NULL);
   self->cert_path = g_strdup (cert_path);

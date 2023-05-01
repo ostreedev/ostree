@@ -21,10 +21,10 @@
 
 #include "config.h"
 
-#include "ot-main.h"
+#include "ostree.h"
 #include "ot-builtins.h"
 #include "ot-dump.h"
-#include "ostree.h"
+#include "ot-main.h"
 #include "otutil.h"
 
 static gboolean opt_raw;
@@ -34,25 +34,19 @@ static gboolean opt_raw;
  * man page (man/ostree-log.xml) when changing the option list.
  */
 
-static GOptionEntry options[] = {
-  { "raw", 0, 0, G_OPTION_ARG_NONE, &opt_raw, "Show raw variant data" },
-  { NULL }
-};
+static GOptionEntry options[]
+    = { { "raw", 0, 0, G_OPTION_ARG_NONE, &opt_raw, "Show raw variant data" }, { NULL } };
 
 static gboolean
-log_commit (OstreeRepo     *repo,
-            const gchar    *checksum,
-            gboolean        is_recurse,
-            OstreeDumpFlags flags,
-            GError        **error)
+log_commit (OstreeRepo *repo, const gchar *checksum, gboolean is_recurse, OstreeDumpFlags flags,
+            GError **error)
 {
-  g_autoptr(GVariant) variant = NULL;
+  g_autoptr (GVariant) variant = NULL;
   g_autofree char *parent = NULL;
   gboolean ret = FALSE;
   GError *local_error = NULL;
 
-  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, checksum,
-                                 &variant, &local_error))
+  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, checksum, &variant, &local_error))
     {
       if (is_recurse && g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {
@@ -80,14 +74,11 @@ out:
 }
 
 gboolean
-ostree_builtin_log (int           argc,
-                    char        **argv,
-                    OstreeCommandInvocation *invocation,
-                    GCancellable *cancellable,
-                    GError      **error)
+ostree_builtin_log (int argc, char **argv, OstreeCommandInvocation *invocation,
+                    GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
-  g_autoptr(OstreeRepo) repo = NULL;
+  g_autoptr (GOptionContext) context = NULL;
+  g_autoptr (OstreeRepo) repo = NULL;
   gboolean ret = FALSE;
   const char *rev;
   g_autofree char *checksum = NULL;
@@ -95,7 +86,8 @@ ostree_builtin_log (int           argc,
 
   context = g_option_context_new ("REV");
 
-  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable,
+                                    error))
     goto out;
 
   if (opt_raw)
@@ -115,6 +107,6 @@ ostree_builtin_log (int           argc,
     goto out;
 
   ret = TRUE;
- out:
+out:
   return ret;
 }

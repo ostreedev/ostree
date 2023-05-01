@@ -21,25 +21,25 @@
 
 #include "config.h"
 
-#include "ot-main.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
+#include "ot-main.h"
 #include "otutil.h"
 
 #include <glib/gi18n.h>
 
-static GOptionEntry options[] = {
-  { NULL }
-};
+static GOptionEntry options[] = { { NULL } };
 
 gboolean
-ot_admin_builtin_os_init (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_admin_builtin_os_init (int argc, char **argv, OstreeCommandInvocation *invocation,
+                          GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = g_option_context_new ("OSNAME");
+  g_autoptr (GOptionContext) context = g_option_context_new ("OSNAME");
 
-  g_autoptr(OstreeSysroot) sysroot = NULL;
+  g_autoptr (OstreeSysroot) sysroot = NULL;
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER | OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
+                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER
+                                              | OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
                                           invocation, &sysroot, cancellable, error))
     return FALSE;
 

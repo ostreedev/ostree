@@ -23,8 +23,8 @@
 
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
-#include "otutil.h"
 #include "ot-fs-utils.h"
+#include "otutil.h"
 #ifdef HAVE_LINUX_FSVERITY_H
 #include <linux/fsverity.h>
 #endif
@@ -41,8 +41,8 @@ _ostree_repo_parse_fsverity_config (OstreeRepo *self, GError **error)
   self->fs_verity_supported = _OSTREE_FEATURE_NO;
 #endif
   gboolean fsverity_required = FALSE;
-  if (!ot_keyfile_get_boolean_with_default (self->config, fsverity_key, "required",
-                                            FALSE, &fsverity_required, error))
+  if (!ot_keyfile_get_boolean_with_default (self->config, fsverity_key, "required", FALSE,
+                                            &fsverity_required, error))
     return FALSE;
   if (fsverity_required)
     {
@@ -53,8 +53,8 @@ _ostree_repo_parse_fsverity_config (OstreeRepo *self, GError **error)
   else
     {
       gboolean fsverity_opportunistic = FALSE;
-      if (!ot_keyfile_get_boolean_with_default (self->config, fsverity_key, "opportunistic",
-                                                FALSE, &fsverity_opportunistic, error))
+      if (!ot_keyfile_get_boolean_with_default (self->config, fsverity_key, "opportunistic", FALSE,
+                                                &fsverity_opportunistic, error))
         return FALSE;
       if (fsverity_opportunistic)
         self->fs_verity_wanted = _OSTREE_FEATURE_MAYBE;
@@ -63,16 +63,13 @@ _ostree_repo_parse_fsverity_config (OstreeRepo *self, GError **error)
   return TRUE;
 }
 
-
 /* Wrapper around the fsverity ioctl, compressing the result to
  * "success, unsupported or error".  This is used for /boot where
  * we enable verity if supported.
  * */
 gboolean
-_ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf,
-                            _OstreeFeatureSupport fsverity_requested,
-                            gboolean    *supported,
-                            GError     **error)
+_ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf, _OstreeFeatureSupport fsverity_requested,
+                            gboolean *supported, GError **error)
 {
   /* Set this by default to simplify the code below */
   if (supported)
@@ -88,11 +85,13 @@ _ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf,
   if (!glnx_tmpfile_reopen_rdonly (tmpf, error))
     return FALSE;
 
-  struct fsverity_enable_arg arg = { 0, };
+  struct fsverity_enable_arg arg = {
+    0,
+  };
   arg.version = 1;
-  arg.hash_algorithm =  FS_VERITY_HASH_ALG_SHA256;  /* TODO configurable? */
-  arg.block_size = 4096; /* FIXME query */
-  arg.salt_size = 0; /* TODO store salt in ostree repo config */
+  arg.hash_algorithm = FS_VERITY_HASH_ALG_SHA256; /* TODO configurable? */
+  arg.block_size = 4096;                          /* FIXME query */
+  arg.salt_size = 0;                              /* TODO store salt in ostree repo config */
   arg.salt_ptr = 0;
   arg.sig_size = 0; /* We don't currently expect use of in-kernel signature verification */
   arg.sig_ptr = 0;
@@ -101,11 +100,11 @@ _ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf,
     {
       switch (errno)
         {
-          case ENOTTY:
-          case EOPNOTSUPP:
-            return TRUE;
-          default:
-            return glnx_throw_errno_prefix (error, "ioctl(FS_IOC_ENABLE_VERITY)");
+        case ENOTTY:
+        case EOPNOTSUPP:
+          return TRUE;
+        default:
+          return glnx_throw_errno_prefix (error, "ioctl(FS_IOC_ENABLE_VERITY)");
         }
     }
 
@@ -121,9 +120,7 @@ _ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf,
  * as well as to support "opportunistic" use (requested and if filesystem supports).
  * */
 gboolean
-_ostree_tmpf_fsverity (OstreeRepo  *self,
-                       GLnxTmpfile *tmpf,
-                       GError    **error)
+_ostree_tmpf_fsverity (OstreeRepo *self, GLnxTmpfile *tmpf, GError **error)
 {
 #ifdef HAVE_LINUX_FSVERITY_H
   g_mutex_lock (&self->txn_lock);
@@ -133,16 +130,16 @@ _ostree_tmpf_fsverity (OstreeRepo  *self,
 
   switch (fsverity_wanted)
     {
-      case _OSTREE_FEATURE_YES:
-        {
-          if (fsverity_supported == _OSTREE_FEATURE_NO)
-            return glnx_throw (error, "fsverity required but filesystem does not support it");
-        }
-        break;
-      case _OSTREE_FEATURE_MAYBE:
-        break;
-      case _OSTREE_FEATURE_NO:
-        return TRUE;
+    case _OSTREE_FEATURE_YES:
+      {
+        if (fsverity_supported == _OSTREE_FEATURE_NO)
+          return glnx_throw (error, "fsverity required but filesystem does not support it");
+      }
+      break;
+    case _OSTREE_FEATURE_MAYBE:
+      break;
+    case _OSTREE_FEATURE_NO:
+      return TRUE;
     }
 
   gboolean supported = FALSE;

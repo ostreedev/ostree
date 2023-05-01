@@ -36,7 +36,7 @@ G_BEGIN_DECLS
 
 /* This exists in glibc's sys/stat.h, but not on musl */
 #ifndef ALLPERMS
-#define ALLPERMS (S_ISUID|S_ISGID|S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO)
+#define ALLPERMS (S_ISUID | S_ISGID | S_ISVTX | S_IRWXU | S_IRWXG | S_IRWXO)
 #endif
 
 /* This file contains private implementation data format definitions
@@ -78,30 +78,23 @@ G_BEGIN_DECLS
  */
 #define _OSTREE_ZLIB_FILE_HEADER_GVARIANT_FORMAT G_VARIANT_TYPE ("(tuuuusa(ayay))")
 
+GBytes *_ostree_file_header_new (GFileInfo *file_info, GVariant *xattrs);
 
-GBytes *_ostree_file_header_new (GFileInfo         *file_info,
-                                 GVariant          *xattrs);
+GBytes *_ostree_zlib_file_header_new (GFileInfo *file_info, GVariant *xattrs);
 
-GBytes *_ostree_zlib_file_header_new (GFileInfo         *file_info,
-                                      GVariant          *xattrs);
+gboolean _ostree_make_temporary_symlink_at (int tmp_dirfd, const char *target, char **out_name,
+                                            GCancellable *cancellable, GError **error);
 
-gboolean
-_ostree_make_temporary_symlink_at (int             tmp_dirfd,
-                                   const char     *target,
-                                   char          **out_name,
-                                   GCancellable   *cancellable,
-                                   GError        **error);
-
-GFileInfo * _ostree_stbuf_to_gfileinfo (const struct stat *stbuf);
-void _ostree_gfileinfo_to_stbuf (GFileInfo    *file_info, struct stat  *out_stbuf);
+GFileInfo *_ostree_stbuf_to_gfileinfo (const struct stat *stbuf);
+void _ostree_gfileinfo_to_stbuf (GFileInfo *file_info, struct stat *out_stbuf);
 gboolean _ostree_gfileinfo_equal (GFileInfo *a, GFileInfo *b);
 gboolean _ostree_stbuf_equal (struct stat *stbuf_a, struct stat *stbuf_b);
-GFileInfo * _ostree_mode_uidgid_to_gfileinfo (mode_t mode, uid_t uid, gid_t gid);
+GFileInfo *_ostree_mode_uidgid_to_gfileinfo (mode_t mode, uid_t uid, gid_t gid);
 
 static inline void
 _ostree_checksum_inplace_from_bytes_v (GVariant *csum_v, char *buf)
 {
-  const guint8*csum = ostree_checksum_bytes_peek (csum_v);
+  const guint8 *csum = ostree_checksum_bytes_peek (csum_v);
   g_assert (csum);
   ostree_checksum_inplace_from_bytes (csum, buf);
 }
@@ -114,84 +107,49 @@ _ostree_checksum_inplace_from_bytes_v (GVariant *csum_v, char *buf)
 /* GVariant format for ostree.sizes metadata entries. */
 #define _OSTREE_OBJECT_SIZES_ENTRY_SIGNATURE "ay"
 
-char *
-_ostree_get_relative_object_path (const char        *checksum,
-                                  OstreeObjectType   type,
-                                  gboolean           compressed);
+char *_ostree_get_relative_object_path (const char *checksum, OstreeObjectType type,
+                                        gboolean compressed);
 
+char *_ostree_get_relative_static_delta_path (const char *from, const char *to, const char *target);
 
-char *
-_ostree_get_relative_static_delta_path (const char        *from,
-                                        const char        *to,
-                                        const char        *target);
+char *_ostree_get_relative_static_delta_superblock_path (const char *from, const char *to);
 
-char *
-_ostree_get_relative_static_delta_superblock_path (const char        *from,
-                                                   const char        *to);
+char *_ostree_get_relative_static_delta_detachedmeta_path (const char *from, const char *to);
 
-char *
-_ostree_get_relative_static_delta_detachedmeta_path (const char        *from,
-                                                     const char        *to);
+char *_ostree_get_relative_static_delta_part_path (const char *from, const char *to, guint i);
 
-char *
-_ostree_get_relative_static_delta_part_path (const char        *from,
-                                             const char        *to,
-                                             guint              i);
+char *_ostree_get_relative_static_delta_index_path (const char *to);
 
-char *
-_ostree_get_relative_static_delta_index_path (const char        *to);
-
-static inline char * _ostree_get_commitpartial_path (const char *checksum)
+static inline char *
+_ostree_get_commitpartial_path (const char *checksum)
 {
   return g_strconcat ("state/", checksum, ".commitpartial", NULL);
 }
 
-gboolean
-_ostree_validate_ref_fragment (const char *fragment,
-                               GError    **error);
+gboolean _ostree_validate_ref_fragment (const char *fragment, GError **error);
 
-
-gboolean
-_ostree_validate_bareuseronly_mode (guint32     mode,
-                                    const char *checksum,
-                                    GError    **error);
+gboolean _ostree_validate_bareuseronly_mode (guint32 mode, const char *checksum, GError **error);
 static inline gboolean
-_ostree_validate_bareuseronly_mode_finfo (GFileInfo  *finfo,
-                                          const char *checksum,
-                                          GError    **error)
+_ostree_validate_bareuseronly_mode_finfo (GFileInfo *finfo, const char *checksum, GError **error)
 {
   const guint32 content_mode = g_file_info_get_attribute_uint32 (finfo, "unix::mode");
   return _ostree_validate_bareuseronly_mode (content_mode, checksum, error);
 }
 
-gboolean
-_ostree_compare_object_checksum (OstreeObjectType objtype,
-                                 const char      *expected,
-                                 const char      *actual,
-                                 GError         **error);
+gboolean _ostree_compare_object_checksum (OstreeObjectType objtype, const char *expected,
+                                          const char *actual, GError **error);
 
-gboolean
-_ostree_parse_delta_name (const char  *delta_name,
-                          char        **out_from,
-                          char        **out_to,
-                          GError      **error);
+gboolean _ostree_parse_delta_name (const char *delta_name, char **out_from, char **out_to,
+                                   GError **error);
 
-void
-_ostree_loose_path (char              *buf,
-                    const char        *checksum,
-                    OstreeObjectType   objtype,
-                    OstreeRepoMode     repo_mode);
+void _ostree_loose_path (char *buf, const char *checksum, OstreeObjectType objtype,
+                         OstreeRepoMode repo_mode);
 
-gboolean _ostree_validate_structureof_metadata (OstreeObjectType objtype,
-                                                GVariant      *commit,
-                                                GError       **error);
+gboolean _ostree_validate_structureof_metadata (OstreeObjectType objtype, GVariant *commit,
+                                                GError **error);
 
-gboolean
-_ostree_verify_metadata_object (OstreeObjectType objtype,
-                                const char      *expected_checksum,
-                                GVariant        *metadata,
-                                GError         **error);
-
+gboolean _ostree_verify_metadata_object (OstreeObjectType objtype, const char *expected_checksum,
+                                         GVariant *metadata, GError **error);
 
 #define _OSTREE_METADATA_GPGSIGS_NAME "ostree.gpgsigs"
 #define _OSTREE_METADATA_GPGSIGS_TYPE G_VARIANT_TYPE ("aay")
@@ -199,37 +157,24 @@ _ostree_verify_metadata_object (OstreeObjectType objtype,
 static inline gboolean
 _ostree_repo_mode_is_bare (OstreeRepoMode mode)
 {
-  return
-    mode == OSTREE_REPO_MODE_BARE ||
-    mode == OSTREE_REPO_MODE_BARE_USER ||
-    mode == OSTREE_REPO_MODE_BARE_USER_ONLY ||
-    mode == OSTREE_REPO_MODE_BARE_SPLIT_XATTRS;
+  return mode == OSTREE_REPO_MODE_BARE || mode == OSTREE_REPO_MODE_BARE_USER
+         || mode == OSTREE_REPO_MODE_BARE_USER_ONLY || mode == OSTREE_REPO_MODE_BARE_SPLIT_XATTRS;
 }
 
 #ifndef OSTREE_DISABLE_GPGME
-GVariant *
-_ostree_detached_metadata_append_gpg_sig (GVariant   *existing_metadata,
-                                          GBytes     *signature_bytes);
+GVariant *_ostree_detached_metadata_append_gpg_sig (GVariant *existing_metadata,
+                                                    GBytes *signature_bytes);
 #endif
 
-GFile *
-_ostree_get_default_sysroot_path (void);
+GFile *_ostree_get_default_sysroot_path (void);
 
 _OSTREE_PUBLIC
-gboolean
-_ostree_raw_file_to_archive_stream (GInputStream       *input,
-                                    GFileInfo          *file_info,
-                                    GVariant           *xattrs,
-                                    guint               compression_level,
-                                    GInputStream      **out_input,
-                                    GCancellable       *cancellable,
-                                    GError            **error);
+gboolean _ostree_raw_file_to_archive_stream (GInputStream *input, GFileInfo *file_info,
+                                             GVariant *xattrs, guint compression_level,
+                                             GInputStream **out_input, GCancellable *cancellable,
+                                             GError **error);
 
-gboolean
-_ostree_compare_timestamps (const char   *current_rev,
-                            guint64       current_ts,
-                            const char   *new_rev,
-                            guint64       new_ts,
-                            GError      **error);
+gboolean _ostree_compare_timestamps (const char *current_rev, guint64 current_ts,
+                                     const char *new_rev, guint64 new_ts, GError **error);
 
 G_END_DECLS

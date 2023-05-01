@@ -26,12 +26,12 @@
 #include <locale.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/statvfs.h>
 #include <sys/mount.h>
+#include <sys/statvfs.h>
 
-#include "ot-main.h"
 #include "ostree.h"
 #include "ot-admin-functions.h"
+#include "ot-main.h"
 #include "otutil.h"
 
 static char *opt_repo;
@@ -44,21 +44,25 @@ static gboolean opt_print_current_dir;
 // to find where to put files.  Maybe we can make it printed by the CLI?
 #define _OSTREE_EXT_DIR PKGLIBEXECDIR "/ext"
 
-static GOptionEntry global_entries[] = {
-  { "verbose", 'v', 0, G_OPTION_ARG_NONE, &opt_verbose, "Print debug information during command processing", NULL },
-  { "version", 0, 0, G_OPTION_ARG_NONE, &opt_version, "Print version information and exit", NULL },
-  { NULL }
-};
+static GOptionEntry global_entries[]
+    = { { "verbose", 'v', 0, G_OPTION_ARG_NONE, &opt_verbose,
+          "Print debug information during command processing", NULL },
+        { "version", 0, 0, G_OPTION_ARG_NONE, &opt_version, "Print version information and exit",
+          NULL },
+        { NULL } };
 
-static GOptionEntry repo_entry[] = {
-  { "repo", 0, 0, G_OPTION_ARG_FILENAME, &opt_repo, "Path to OSTree repository (defaults to current directory or /sysroot/ostree/repo)", "PATH" },
-  { NULL }
-};
+static GOptionEntry repo_entry[]
+    = { { "repo", 0, 0, G_OPTION_ARG_FILENAME, &opt_repo,
+          "Path to OSTree repository (defaults to current directory or /sysroot/ostree/repo)",
+          "PATH" },
+        { NULL } };
 
 static GOptionEntry global_admin_entries[] = {
   /* No description since it's hidden from --help output. */
-  { "print-current-dir", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &opt_print_current_dir, NULL, NULL },
-  { "sysroot", 0, 0, G_OPTION_ARG_FILENAME, &opt_sysroot, "Create a new OSTree sysroot at PATH", "PATH" },
+  { "print-current-dir", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &opt_print_current_dir, NULL,
+    NULL },
+  { "sysroot", 0, 0, G_OPTION_ARG_FILENAME, &opt_sysroot, "Create a new OSTree sysroot at PATH",
+    "PATH" },
   { NULL }
 };
 
@@ -67,7 +71,7 @@ ostree_option_context_new_with_commands (OstreeCommand *commands)
 {
   GOptionContext *context = g_option_context_new ("COMMAND");
 
-  g_autoptr(GString) summary = g_string_new ("Builtin Commands:");
+  g_autoptr (GString) summary = g_string_new ("Builtin Commands:");
 
   while (commands->name != NULL)
     {
@@ -75,7 +79,7 @@ ostree_option_context_new_with_commands (OstreeCommand *commands)
         {
           g_string_append_printf (summary, "\n  %-18s", commands->name);
 
-          if (commands->description != NULL )
+          if (commands->description != NULL)
             g_string_append_printf (summary, "%s", commands->description);
         }
 
@@ -88,11 +92,9 @@ ostree_option_context_new_with_commands (OstreeCommand *commands)
 }
 
 int
-ostree_usage (OstreeCommand *commands,
-              gboolean is_error)
+ostree_usage (OstreeCommand *commands, gboolean is_error)
 {
-  g_autoptr(GOptionContext) context =
-    ostree_option_context_new_with_commands (commands);
+  g_autoptr (GOptionContext) context = ostree_option_context_new_with_commands (commands);
   g_option_context_add_main_entries (context, global_entries, NULL);
 
   g_autofree char *help = g_option_context_get_help (context, FALSE, NULL);
@@ -109,8 +111,7 @@ ostree_usage (OstreeCommand *commands,
  * if so, and return *out_ns = TRUE.  Otherwise, *out_ns = FALSE.
  */
 static gboolean
-maybe_setup_mount_namespace (gboolean    *out_ns,
-                             GError     **error)
+maybe_setup_mount_namespace (gboolean *out_ns, GError **error)
 {
   *out_ns = FALSE;
 
@@ -132,9 +133,7 @@ maybe_setup_mount_namespace (gboolean    *out_ns,
 }
 
 static void
-message_handler (const gchar *log_domain,
-                 GLogLevelFlags log_level,
-                 const gchar *message,
+message_handler (const gchar *log_domain, GLogLevelFlags log_level, const gchar *message,
                  gpointer user_data)
 {
   /* Make this look like normal console output */
@@ -145,11 +144,9 @@ message_handler (const gchar *log_domain,
 }
 
 int
-ostree_main (int    argc,
-             char **argv,
-             OstreeCommand *commands)
+ostree_main (int argc, char **argv, OstreeCommand *commands)
 {
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GError) error = NULL;
 
   setlocale (LC_ALL, "");
 
@@ -159,15 +156,12 @@ ostree_main (int    argc,
 
   if (error != NULL)
     {
-      g_printerr ("%s%serror:%s%s %s\n",
-                  ot_get_red_start (), ot_get_bold_start (),
-                  ot_get_bold_end (), ot_get_red_end (),
-                  error->message);
+      g_printerr ("%s%serror:%s%s %s\n", ot_get_red_start (), ot_get_bold_start (),
+                  ot_get_bold_end (), ot_get_red_end (), error->message);
     }
 
   return ret;
 }
-
 
 /**
  * ostree_command_lookup_external:
@@ -183,9 +177,7 @@ ostree_main (int    argc,
  * external command if found, or %NULL otherwise.
  */
 gchar *
-ostree_command_lookup_external (int argc,
-                                char **argv,
-                                OstreeCommand *commands)
+ostree_command_lookup_external (int argc, char **argv, OstreeCommand *commands)
 {
   g_assert (commands != NULL);
 
@@ -196,17 +188,15 @@ ostree_command_lookup_external (int argc,
   for (guint arg_index = 1; arg_index < argc; arg_index++)
     {
       char *current_arg = argv[arg_index];
-      if (current_arg == NULL ||
-          g_str_has_prefix (current_arg, "-") ||
-          g_strcmp0 (current_arg, "") == 0)
-          continue;
+      if (current_arg == NULL || g_str_has_prefix (current_arg, "-")
+          || g_strcmp0 (current_arg, "") == 0)
+        continue;
 
       for (guint cmd_index = 0; commands[cmd_index].name != NULL; cmd_index++)
         {
           if (g_strcmp0 (current_arg, (commands[cmd_index]).name) == 0)
             return NULL;
         }
-
 
       g_autofree gchar *ext_command = g_strdup_printf ("ostree-%s", current_arg);
 
@@ -218,7 +208,7 @@ ostree_command_lookup_external (int argc,
 
       /* Otherwise, look in $PATH */
       if (g_find_program_in_path (ext_command) == NULL)
-          return NULL;
+        return NULL;
       return g_steal_pointer (&ext_command);
     }
 
@@ -236,23 +226,17 @@ ostree_command_lookup_external (int argc,
 int
 ostree_command_exec_external (char **argv)
 {
-  int r = execvp(argv[0], argv);
+  int r = execvp (argv[0], argv);
   g_assert (r == -1);
 
   setlocale (LC_ALL, "");
-  g_printerr ("%s%serror:%s%s: Executing %s: %s\n",
-              ot_get_red_start (), ot_get_bold_start (),
-              ot_get_bold_end (), ot_get_red_end (),
-              argv[0],
-              g_strerror (errno));
+  g_printerr ("%s%serror:%s%s: Executing %s: %s\n", ot_get_red_start (), ot_get_bold_start (),
+              ot_get_bold_end (), ot_get_red_end (), argv[0], g_strerror (errno));
   return 1;
 }
 
 int
-ostree_run (int    argc,
-            char **argv,
-            OstreeCommand *commands,
-            GError **res_error)
+ostree_run (int argc, char **argv, OstreeCommand *commands, GError **res_error)
 {
   GError *error = NULL;
   GCancellable *cancellable = NULL;
@@ -266,7 +250,7 @@ ostree_run (int    argc,
   /* avoid gvfs (http://bugzilla.gnome.org/show_bug.cgi?id=526454) */
   if (!g_setenv ("GIO_USE_VFS", "local", TRUE))
     {
-      (void) glnx_throw (res_error, "Failed to set environment variable GIO_USE_FVS");
+      (void)glnx_throw (res_error, "Failed to set environment variable GIO_USE_FVS");
       return 1;
     }
 
@@ -306,21 +290,20 @@ ostree_run (int    argc,
 
   if (!command->fn)
     {
-      g_autoptr(GOptionContext) context =
-        ostree_option_context_new_with_commands (commands);
+      g_autoptr (GOptionContext) context = ostree_option_context_new_with_commands (commands);
 
       /* This will not return for some options (e.g. --version). */
-      if (ostree_option_context_parse (context, NULL, &argc, &argv, NULL, NULL, cancellable, &error))
+      if (ostree_option_context_parse (context, NULL, &argc, &argv, NULL, NULL, cancellable,
+                                       &error))
         {
           if (command_name == NULL)
             {
-              g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                                   "No command specified");
+              g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED, "No command specified");
             }
           else
             {
-              g_set_error (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Unknown command '%s'", command_name);
+              g_set_error (&error, G_IO_ERROR, G_IO_ERROR_FAILED, "Unknown command '%s'",
+                           command_name);
             }
         }
 
@@ -337,7 +320,7 @@ ostree_run (int    argc,
     goto out;
 
   success = TRUE;
- out:
+out:
   g_assert (success || error);
 
   if (error)
@@ -350,17 +333,14 @@ ostree_run (int    argc,
 
 /* Process a --repo arg. */
 static OstreeRepo *
-parse_repo_option (GOptionContext *context,
-                   const char     *repo_path,
-                   gboolean        skip_repo_open,
-                   GCancellable   *cancellable,
-                   GError        **error)
+parse_repo_option (GOptionContext *context, const char *repo_path, gboolean skip_repo_open,
+                   GCancellable *cancellable, GError **error)
 {
-  g_autoptr(OstreeRepo) repo = NULL;
+  g_autoptr (OstreeRepo) repo = NULL;
 
   if (repo_path == NULL)
     {
-      g_autoptr(GError) local_error = NULL;
+      g_autoptr (GError) local_error = NULL;
 
       repo = ostree_repo_new_default ();
       if (!ostree_repo_open (repo, cancellable, &local_error))
@@ -384,7 +364,7 @@ parse_repo_option (GOptionContext *context,
     }
   else
     {
-      g_autoptr(GFile) repo_file = g_file_new_for_path (repo_path);
+      g_autoptr (GFile) repo_file = g_file_new_for_path (repo_path);
 
       repo = ostree_repo_new (repo_file);
       if (!skip_repo_open)
@@ -397,15 +377,15 @@ parse_repo_option (GOptionContext *context,
   return g_steal_pointer (&repo);
 }
 
-/* Process a --repo arg, determining if we should remount /sysroot; used below, and for the remote builtins */
+/* Process a --repo arg, determining if we should remount /sysroot; used below, and for the remote
+ * builtins */
 static OstreeRepo *
-parse_repo_option_and_maybe_remount (GOptionContext *context,
-                                     const char     *repo_path,
-                                     gboolean        skip_repo_open,
-                                     GCancellable   *cancellable,
-                                     GError        **error)
+parse_repo_option_and_maybe_remount (GOptionContext *context, const char *repo_path,
+                                     gboolean skip_repo_open, GCancellable *cancellable,
+                                     GError **error)
 {
-  g_autoptr(OstreeRepo) repo = parse_repo_option (context, repo_path, skip_repo_open, cancellable, error);
+  g_autoptr (OstreeRepo) repo
+      = parse_repo_option (context, repo_path, skip_repo_open, cancellable, error);
   if (!repo)
     return NULL;
 
@@ -436,19 +416,16 @@ parse_repo_option_and_maybe_remount (GOptionContext *context,
 
 /* Used by the remote builtins which are special in taking --sysroot or --repo */
 gboolean
-ostree_parse_sysroot_or_repo_option (GOptionContext *context,
-                                     const char *sysroot_path,
-                                     const char *repo_path,
-                                     OstreeSysroot **out_sysroot,
-                                     OstreeRepo **out_repo,
-                                     GCancellable *cancellable,
+ostree_parse_sysroot_or_repo_option (GOptionContext *context, const char *sysroot_path,
+                                     const char *repo_path, OstreeSysroot **out_sysroot,
+                                     OstreeRepo **out_repo, GCancellable *cancellable,
                                      GError **error)
 {
-  g_autoptr(OstreeSysroot) sysroot = NULL;
-  g_autoptr(OstreeRepo) repo = NULL;
+  g_autoptr (OstreeSysroot) sysroot = NULL;
+  g_autoptr (OstreeRepo) repo = NULL;
   if (sysroot_path)
     {
-      g_autoptr(GFile) sysroot_file = g_file_new_for_path (sysroot_path);
+      g_autoptr (GFile) sysroot_file = g_file_new_for_path (sysroot_path);
       sysroot = ostree_sysroot_new (sysroot_file);
       if (!ostree_sysroot_load (sysroot, cancellable, error))
         return FALSE;
@@ -468,18 +445,14 @@ ostree_parse_sysroot_or_repo_option (GOptionContext *context,
 }
 
 gboolean
-ostree_option_context_parse (GOptionContext *context,
-                             const GOptionEntry *main_entries,
-                             int *argc,
-                             char ***argv,
-                             OstreeCommandInvocation *invocation,
-                             OstreeRepo **out_repo,
-                             GCancellable *cancellable,
-                             GError **error)
+ostree_option_context_parse (GOptionContext *context, const GOptionEntry *main_entries, int *argc,
+                             char ***argv, OstreeCommandInvocation *invocation,
+                             OstreeRepo **out_repo, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(OstreeRepo) repo = NULL;
+  g_autoptr (OstreeRepo) repo = NULL;
   /* When invocation is NULL,  do not fetch repo */
-  const OstreeBuiltinFlags flags = invocation ? invocation->command->flags : OSTREE_BUILTIN_FLAG_NO_REPO;
+  const OstreeBuiltinFlags flags
+      = invocation ? invocation->command->flags : OSTREE_BUILTIN_FLAG_NO_REPO;
 
   if (invocation && invocation->command->description != NULL)
     {
@@ -495,9 +468,10 @@ ostree_option_context_parse (GOptionContext *context,
         {
           /* TODO: remove this part once we deduplicate the ostree_option_context_new_with_commands
            * function from other root commands( command with subcommands). Because
-           * we can directly add the summary inside the ostree_option_context_new_with_commands function.
+           * we can directly add the summary inside the ostree_option_context_new_with_commands
+           * function.
            */
-          g_autoptr(GString) new_summary_string = g_string_new (context_summary);
+          g_autoptr (GString) new_summary_string = g_string_new (context_summary);
 
           g_string_prepend (new_summary_string, "\n\n");
           g_string_prepend (new_summary_string, invocation->command->description);
@@ -539,7 +513,7 @@ ostree_option_context_parse (GOptionContext *context,
     {
       /* This should now be YAML, like `docker version`, so it's both nice to read
        * possible to parse */
-      g_auto(GStrv) features = g_strsplit (OSTREE_FEATURES, " ", -1);
+      g_auto (GStrv) features = g_strsplit (OSTREE_FEATURES, " ", -1);
       g_print ("%s:\n", PACKAGE_NAME);
       g_print (" Version: '%s'\n", PACKAGE_VERSION);
       if (strlen (OSTREE_GITREV) > 0)
@@ -558,8 +532,8 @@ ostree_option_context_parse (GOptionContext *context,
 
   if (!(flags & OSTREE_BUILTIN_FLAG_NO_REPO))
     {
-      repo = parse_repo_option_and_maybe_remount (context, opt_repo, (flags & OSTREE_BUILTIN_FLAG_NO_CHECK) > 0,
-                                                  cancellable, error);
+      repo = parse_repo_option_and_maybe_remount (
+          context, opt_repo, (flags & OSTREE_BUILTIN_FLAG_NO_CHECK) > 0, cancellable, error);
       if (!repo)
         return FALSE;
     }
@@ -571,18 +545,14 @@ ostree_option_context_parse (GOptionContext *context,
 }
 
 static void
-on_sysroot_journal_msg (OstreeSysroot *sysroot,
-                        const char    *msg,
-                        void          *dummy)
+on_sysroot_journal_msg (OstreeSysroot *sysroot, const char *msg, void *dummy)
 {
   g_print ("%s\n", msg);
 }
 
 gboolean
-ostree_admin_sysroot_load (OstreeSysroot            *sysroot,
-                           OstreeAdminBuiltinFlags   flags,
-                           GCancellable             *cancellable,
-                           GError                  **error)
+ostree_admin_sysroot_load (OstreeSysroot *sysroot, OstreeAdminBuiltinFlags flags,
+                           GCancellable *cancellable, GError **error)
 {
   if ((flags & OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED) == 0)
     {
@@ -617,23 +587,18 @@ ostree_admin_sysroot_load (OstreeSysroot            *sysroot,
 }
 
 gboolean
-ostree_admin_option_context_parse (GOptionContext *context,
-                                   const GOptionEntry *main_entries,
-                                   int *argc,
-                                   char ***argv,
-                                   OstreeAdminBuiltinFlags flags,
-                                   OstreeCommandInvocation *invocation,
-                                   OstreeSysroot **out_sysroot,
-                                   GCancellable *cancellable,
-                                   GError **error)
+ostree_admin_option_context_parse (GOptionContext *context, const GOptionEntry *main_entries,
+                                   int *argc, char ***argv, OstreeAdminBuiltinFlags flags,
+                                   OstreeCommandInvocation *invocation, OstreeSysroot **out_sysroot,
+                                   GCancellable *cancellable, GError **error)
 {
   /* Entries are listed in --help output in the order added.  We add the
    * main entries ourselves so that we can add the --sysroot entry first. */
 
   g_option_context_add_main_entries (context, global_admin_entries, NULL);
 
-  if (!ostree_option_context_parse (context, main_entries, argc, argv,
-                                    invocation, NULL, cancellable, error))
+  if (!ostree_option_context_parse (context, main_entries, argc, argv, invocation, NULL,
+                                    cancellable, error))
     return FALSE;
 
   if (!opt_print_current_dir && (flags & OSTREE_ADMIN_BUILTIN_FLAG_NO_SYSROOT))
@@ -643,11 +608,11 @@ ostree_admin_option_context_parse (GOptionContext *context,
       return TRUE;
     }
 
-  g_autoptr(GFile) sysroot_path = NULL;
+  g_autoptr (GFile) sysroot_path = NULL;
   if (opt_sysroot != NULL)
     sysroot_path = g_file_new_for_path (opt_sysroot);
 
-  g_autoptr(OstreeSysroot) sysroot = ostree_sysroot_new (sysroot_path);
+  g_autoptr (OstreeSysroot) sysroot = ostree_sysroot_new (sysroot_path);
   if (!ostree_sysroot_initialize (sysroot, error))
     return FALSE;
   g_signal_connect (sysroot, "journal-msg", G_CALLBACK (on_sysroot_journal_msg), NULL);
@@ -660,9 +625,9 @@ ostree_admin_option_context_parse (GOptionContext *context,
 
   if (opt_print_current_dir)
     {
-      g_autoptr(GPtrArray) deployments = NULL;
+      g_autoptr (GPtrArray) deployments = NULL;
       OstreeDeployment *first_deployment;
-      g_autoptr(GFile) deployment_file = NULL;
+      g_autoptr (GFile) deployment_file = NULL;
       g_autofree char *deployment_path = NULL;
 
       deployments = ostree_sysroot_get_deployments (sysroot);
@@ -691,8 +656,7 @@ ostree_admin_option_context_parse (GOptionContext *context,
 }
 
 gboolean
-ostree_ensure_repo_writable (OstreeRepo *repo,
-                             GError **error)
+ostree_ensure_repo_writable (OstreeRepo *repo, GError **error)
 {
   if (!ostree_repo_is_writable (repo, error))
     return glnx_prefix_error (error, "Cannot write to repository");
@@ -706,10 +670,9 @@ ostree_print_gpg_verify_result (OstreeGpgVerifyResult *result)
   guint n_sigs = ostree_gpg_verify_result_count_all (result);
 
   /* XXX If we ever add internationalization, use ngettext() here. */
-  g_print ("GPG: Verification enabled, found %u signature%s:\n",
-           n_sigs, n_sigs == 1 ? "" : "s");
+  g_print ("GPG: Verification enabled, found %u signature%s:\n", n_sigs, n_sigs == 1 ? "" : "s");
 
-  g_autoptr(GString) buffer = g_string_sized_new (256);
+  g_autoptr (GString) buffer = g_string_sized_new (256);
 
   for (guint ii = 0; ii < n_sigs; ii++)
     {
@@ -729,7 +692,8 @@ ot_enable_tombstone_commits (OstreeRepo *repo, GError **error)
   GKeyFile *config = ostree_repo_get_config (repo);
 
   tombstone_commits = g_key_file_get_boolean (config, "core", "tombstone-commits", NULL);
-  /* tombstone_commits is FALSE either if it is not found or it is really set to FALSE in the config file.  */
+  /* tombstone_commits is FALSE either if it is not found or it is really set to FALSE in the
+   * config file.  */
   if (!tombstone_commits)
     {
       g_key_file_set_boolean (config, "core", "tombstone-commits", TRUE);

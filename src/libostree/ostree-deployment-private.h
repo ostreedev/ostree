@@ -21,7 +21,6 @@
 
 G_BEGIN_DECLS
 
-
 /**
  * OstreeDeployment:
  * @parent_instance:
@@ -40,7 +39,7 @@ G_BEGIN_DECLS
  */
 struct _OstreeDeployment
 {
-  GObject       parent_instance;
+  GObject parent_instance;
 
   int index;
   char *osname;
@@ -58,9 +57,8 @@ struct _OstreeDeployment
 
 void _ostree_deployment_set_bootcsum (OstreeDeployment *self, const char *bootcsum);
 
-void _ostree_deployment_set_overlay_initrds (OstreeDeployment *self,
-                                             char **overlay_initrds);
+void _ostree_deployment_set_overlay_initrds (OstreeDeployment *self, char **overlay_initrds);
 
-char** _ostree_deployment_get_overlay_initrds (OstreeDeployment *self);
+char **_ostree_deployment_get_overlay_initrds (OstreeDeployment *self);
 
 G_END_DECLS

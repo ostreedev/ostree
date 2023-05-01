@@ -28,38 +28,40 @@
 
 G_BEGIN_DECLS
 
-#define BUILTINPROTO(name) gboolean ostree_builtin_ ## name (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+#define BUILTINPROTO(name) \
+  gboolean ostree_builtin_##name (int argc, char **argv, OstreeCommandInvocation *invocation, \
+                                  GCancellable *cancellable, GError **error)
 
-BUILTINPROTO(admin);
-BUILTINPROTO(cat);
-BUILTINPROTO(config);
-BUILTINPROTO(checkout);
-BUILTINPROTO(checksum);
-BUILTINPROTO(commit);
-BUILTINPROTO(diff);
-BUILTINPROTO(export);
-BUILTINPROTO(find_remotes);
-BUILTINPROTO(create_usb);
+BUILTINPROTO (admin);
+BUILTINPROTO (cat);
+BUILTINPROTO (config);
+BUILTINPROTO (checkout);
+BUILTINPROTO (checksum);
+BUILTINPROTO (commit);
+BUILTINPROTO (diff);
+BUILTINPROTO (export);
+BUILTINPROTO (find_remotes);
+BUILTINPROTO (create_usb);
 #ifndef OSTREE_DISABLE_GPGME
-BUILTINPROTO(gpg_sign);
+BUILTINPROTO (gpg_sign);
 #endif
-BUILTINPROTO(init);
-BUILTINPROTO(log);
-BUILTINPROTO(pull);
-BUILTINPROTO(pull_local);
-BUILTINPROTO(ls);
-BUILTINPROTO(prune);
-BUILTINPROTO(refs);
-BUILTINPROTO(reset);
-BUILTINPROTO(fsck);
-BUILTINPROTO(sign);
-BUILTINPROTO(show);
-BUILTINPROTO(static_delta);
-BUILTINPROTO(summary);
-BUILTINPROTO(rev_parse);
-BUILTINPROTO(remote);
-BUILTINPROTO(write_refs);
-BUILTINPROTO(trivial_httpd);
+BUILTINPROTO (init);
+BUILTINPROTO (log);
+BUILTINPROTO (pull);
+BUILTINPROTO (pull_local);
+BUILTINPROTO (ls);
+BUILTINPROTO (prune);
+BUILTINPROTO (refs);
+BUILTINPROTO (reset);
+BUILTINPROTO (fsck);
+BUILTINPROTO (sign);
+BUILTINPROTO (show);
+BUILTINPROTO (static_delta);
+BUILTINPROTO (summary);
+BUILTINPROTO (rev_parse);
+BUILTINPROTO (remote);
+BUILTINPROTO (write_refs);
+BUILTINPROTO (trivial_httpd);
 
 #undef BUILTINPROTO
 

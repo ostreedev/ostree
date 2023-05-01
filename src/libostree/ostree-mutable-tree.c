@@ -21,8 +21,8 @@
 
 #include "config.h"
 
-#include "otutil.h"
 #include "ostree.h"
+#include "otutil.h"
 
 #include "ostree-core-private.h"
 
@@ -38,13 +38,14 @@
  * programmatically.
  */
 
-typedef enum {
-    MTREE_STATE_WHOLE,
+typedef enum
+{
+  MTREE_STATE_WHOLE,
 
-    /* MTREE_STATE_LAZY allows us to not read files and subdirs from the objects
-     * on disk until they're actually needed - often they won't be needed at
-     * all. */
-    MTREE_STATE_LAZY
+  /* MTREE_STATE_LAZY allows us to not read files and subdirs from the objects
+   * on disk until they're actually needed - often they won't be needed at
+   * all. */
+  MTREE_STATE_LAZY
 } OstreeMutableTreeState;
 
 /**
@@ -132,8 +133,7 @@ ostree_mutable_tree_class_init (OstreeMutableTreeClass *klass)
  *
  * Ownership of @child is transferred from the caller to @self */
 static void
-insert_child_mtree (OstreeMutableTree *self, const gchar* name,
-                    OstreeMutableTree *child)
+insert_child_mtree (OstreeMutableTree *self, const gchar *name, OstreeMutableTree *child)
 {
   g_assert_null (child->parent);
   g_hash_table_insert (self->subdirs, g_strdup (name), child);
@@ -147,7 +147,7 @@ remove_child_mtree (gpointer data)
    * non-owning reference back to parent.  If the parent goes out of scope the
    * children may still be alive because they're reference counted. This
    * removes the reference to the parent before it goes stale. */
-  OstreeMutableTree *child = (OstreeMutableTree*) data;
+  OstreeMutableTree *child = (OstreeMutableTree *)data;
   child->parent = NULL;
   g_object_unref (child);
 }
@@ -155,30 +155,27 @@ remove_child_mtree (gpointer data)
 static void
 ostree_mutable_tree_init (OstreeMutableTree *self)
 {
-  self->files = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                       g_free, g_free);
-  self->subdirs = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                         g_free, remove_child_mtree);
+  self->files = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  self->subdirs = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, remove_child_mtree);
   self->state = MTREE_STATE_WHOLE;
 }
 
 static void
 invalidate_contents_checksum (OstreeMutableTree *self)
 {
-  while (self) {
-    if (!self->contents_checksum)
-      break;
+  while (self)
+    {
+      if (!self->contents_checksum)
+        break;
 
-    g_clear_pointer (&self->contents_checksum, g_free);
-    self = self->parent;
-  }
+      g_clear_pointer (&self->contents_checksum, g_free);
+      self = self->parent;
+    }
 }
 
 /* Go from state LAZY to state WHOLE by reading the tree from disk */
 static gboolean
-_ostree_mutable_tree_make_whole (OstreeMutableTree           *self,
-                                 GCancellable                *cancellable,
-                                 GError                     **error)
+_ostree_mutable_tree_make_whole (OstreeMutableTree *self, GCancellable *cancellable, GError **error)
 {
   if (self->state == MTREE_STATE_WHOLE)
     return TRUE;
@@ -190,13 +187,13 @@ _ostree_mutable_tree_make_whole (OstreeMutableTree           *self,
   g_assert_cmpuint (g_hash_table_size (self->files), ==, 0);
   g_assert_cmpuint (g_hash_table_size (self->subdirs), ==, 0);
 
-  g_autoptr(GVariant) dirtree = NULL;
-  if (!ostree_repo_load_variant (self->repo, OSTREE_OBJECT_TYPE_DIR_TREE,
-                                 self->contents_checksum, &dirtree, error))
+  g_autoptr (GVariant) dirtree = NULL;
+  if (!ostree_repo_load_variant (self->repo, OSTREE_OBJECT_TYPE_DIR_TREE, self->contents_checksum,
+                                 &dirtree, error))
     return FALSE;
 
   {
-    g_autoptr(GVariant) dir_file_contents = g_variant_get_child_value (dirtree, 0);
+    g_autoptr (GVariant) dir_file_contents = g_variant_get_child_value (dirtree, 0);
     GVariantIter viter;
     g_variant_iter_init (&viter, dir_file_contents);
     const char *fname;
@@ -205,28 +202,28 @@ _ostree_mutable_tree_make_whole (OstreeMutableTree           *self,
       {
         char tmp_checksum[OSTREE_SHA256_STRING_LEN + 1];
         _ostree_checksum_inplace_from_bytes_v (contents_csum_v, tmp_checksum);
-        g_hash_table_insert (self->files, g_strdup (fname),
-            g_strdup (tmp_checksum));
+        g_hash_table_insert (self->files, g_strdup (fname), g_strdup (tmp_checksum));
       }
   }
 
   /* Process subdirectories */
   {
-    g_autoptr(GVariant) dir_subdirs = g_variant_get_child_value (dirtree, 1);
+    g_autoptr (GVariant) dir_subdirs = g_variant_get_child_value (dirtree, 1);
     const char *dname;
     GVariant *subdirtree_csum_v = NULL;
     GVariant *subdirmeta_csum_v = NULL;
     GVariantIter viter;
     g_variant_iter_init (&viter, dir_subdirs);
-    while (g_variant_iter_loop (&viter, "(&s@ay@ay)", &dname,
-                                &subdirtree_csum_v, &subdirmeta_csum_v))
+    while (
+        g_variant_iter_loop (&viter, "(&s@ay@ay)", &dname, &subdirtree_csum_v, &subdirmeta_csum_v))
       {
-        char subdirtree_checksum[OSTREE_SHA256_STRING_LEN+1];
+        char subdirtree_checksum[OSTREE_SHA256_STRING_LEN + 1];
         _ostree_checksum_inplace_from_bytes_v (subdirtree_csum_v, subdirtree_checksum);
-        char subdirmeta_checksum[OSTREE_SHA256_STRING_LEN+1];
+        char subdirmeta_checksum[OSTREE_SHA256_STRING_LEN + 1];
         _ostree_checksum_inplace_from_bytes_v (subdirmeta_csum_v, subdirmeta_checksum);
-        insert_child_mtree (self, dname, ostree_mutable_tree_new_from_checksum (
-            self->repo, subdirtree_checksum, subdirmeta_checksum));
+        insert_child_mtree (self, dname,
+                            ostree_mutable_tree_new_from_checksum (self->repo, subdirtree_checksum,
+                                                                   subdirmeta_checksum));
       }
   }
 
@@ -247,8 +244,7 @@ _assert_ostree_mutable_tree_make_whole (OstreeMutableTree *self)
 }
 
 void
-ostree_mutable_tree_set_metadata_checksum (OstreeMutableTree *self,
-                                           const char        *checksum)
+ostree_mutable_tree_set_metadata_checksum (OstreeMutableTree *self, const char *checksum)
 {
   if (g_strcmp0 (checksum, self->metadata_checksum) == 0)
     return;
@@ -265,16 +261,15 @@ ostree_mutable_tree_get_metadata_checksum (OstreeMutableTree *self)
 }
 
 void
-ostree_mutable_tree_set_contents_checksum (OstreeMutableTree *self,
-                                           const char        *checksum)
+ostree_mutable_tree_set_contents_checksum (OstreeMutableTree *self, const char *checksum)
 {
   if (g_strcmp0 (checksum, self->contents_checksum) == 0)
     return;
 
   if (checksum && self->contents_checksum)
     g_warning ("Setting a contents checksum on an OstreeMutableTree that "
-        "already has a checksum set.  Old checksum %s, new checksum %s",
-        self->contents_checksum, checksum);
+               "already has a checksum set.  Old checksum %s, new checksum %s",
+               self->contents_checksum, checksum);
 
   _assert_ostree_mutable_tree_make_whole (self);
 
@@ -291,17 +286,13 @@ ostree_mutable_tree_get_contents_checksum (OstreeMutableTree *self)
 static gboolean
 set_error_noent (GError **error, const char *path)
 {
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-               "No such file or directory: %s",
-               path);
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND, "No such file or directory: %s", path);
   return FALSE;
 }
 
 gboolean
-ostree_mutable_tree_replace_file (OstreeMutableTree *self,
-                                  const char        *name,
-                                  const char        *checksum,
-                                  GError           **error)
+ostree_mutable_tree_replace_file (OstreeMutableTree *self, const char *name, const char *checksum,
+                                  GError **error)
 {
   if (!ot_util_filename_validate (name, error))
     return FALSE;
@@ -313,9 +304,7 @@ ostree_mutable_tree_replace_file (OstreeMutableTree *self,
     return glnx_throw (error, "Can't replace directory with file: %s", name);
 
   invalidate_contents_checksum (self);
-  g_hash_table_replace (self->files,
-                        g_strdup (name),
-                        g_strdup (checksum));
+  g_hash_table_replace (self->files, g_strdup (name), g_strdup (checksum));
   return TRUE;
 }
 
@@ -331,10 +320,8 @@ ostree_mutable_tree_replace_file (OstreeMutableTree *self,
  * Since: 2018.9
  */
 gboolean
-ostree_mutable_tree_remove (OstreeMutableTree *self,
-                            const char        *name,
-                            gboolean           allow_noent,
-                            GError           **error)
+ostree_mutable_tree_remove (OstreeMutableTree *self, const char *name, gboolean allow_noent,
+                            GError **error)
 {
   if (!ot_util_filename_validate (name, error))
     return FALSE;
@@ -342,8 +329,7 @@ ostree_mutable_tree_remove (OstreeMutableTree *self,
   if (!_ostree_mutable_tree_make_whole (self, NULL, error))
     return FALSE;
 
-  if (!g_hash_table_remove (self->files, name) &&
-      !g_hash_table_remove (self->subdirs, name))
+  if (!g_hash_table_remove (self->files, name) && !g_hash_table_remove (self->subdirs, name))
     {
       if (allow_noent)
         return TRUE; /* NB: early return */
@@ -365,10 +351,8 @@ ostree_mutable_tree_remove (OstreeMutableTree *self,
  * it if it doesn't exist.
  */
 gboolean
-ostree_mutable_tree_ensure_dir (OstreeMutableTree *self,
-                                const char        *name,
-                                OstreeMutableTree **out_subdir,
-                                GError           **error)
+ostree_mutable_tree_ensure_dir (OstreeMutableTree *self, const char *name,
+                                OstreeMutableTree **out_subdir, GError **error)
 {
   if (!ot_util_filename_validate (name, error))
     return FALSE;
@@ -379,8 +363,8 @@ ostree_mutable_tree_ensure_dir (OstreeMutableTree *self,
   if (g_hash_table_lookup (self->files, name))
     return glnx_throw (error, "Can't replace file with directory: %s", name);
 
-  g_autoptr(OstreeMutableTree) ret_dir =
-    ot_gobject_refz (g_hash_table_lookup (self->subdirs, name));
+  g_autoptr (OstreeMutableTree) ret_dir
+      = ot_gobject_refz (g_hash_table_lookup (self->subdirs, name));
   if (!ret_dir)
     {
       ret_dir = ostree_mutable_tree_new ();
@@ -408,18 +392,15 @@ ostree_mutable_tree_ensure_dir (OstreeMutableTree *self,
  * filled, %FALSE otherwise.
  */
 gboolean
-ostree_mutable_tree_lookup (OstreeMutableTree   *self,
-                            const char          *name,
-                            char               **out_file_checksum,
-                            OstreeMutableTree  **out_subdir,
-                            GError             **error)
+ostree_mutable_tree_lookup (OstreeMutableTree *self, const char *name, char **out_file_checksum,
+                            OstreeMutableTree **out_subdir, GError **error)
 {
   if (!_ostree_mutable_tree_make_whole (self, NULL, error))
     return FALSE;
 
   g_autofree char *ret_file_checksum = NULL;
-  g_autoptr(OstreeMutableTree) ret_subdir =
-    ot_gobject_refz (g_hash_table_lookup (self->subdirs, name));
+  g_autoptr (OstreeMutableTree) ret_subdir
+      = ot_gobject_refz (g_hash_table_lookup (self->subdirs, name));
   if (!ret_subdir)
     {
       ret_file_checksum = g_strdup (g_hash_table_lookup (self->files, name));
@@ -446,11 +427,9 @@ ostree_mutable_tree_lookup (OstreeMutableTree   *self,
  * exist.
  */
 gboolean
-ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree  *self,
-                                        GPtrArray          *split_path,
-                                        const char         *metadata_checksum,
-                                        OstreeMutableTree **out_parent,
-                                        GError            **error)
+ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree *self, GPtrArray *split_path,
+                                        const char *metadata_checksum,
+                                        OstreeMutableTree **out_parent, GError **error)
 {
   g_assert (metadata_checksum != NULL);
 
@@ -461,7 +440,7 @@ ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree  *self,
     ostree_mutable_tree_set_metadata_checksum (self, metadata_checksum);
 
   OstreeMutableTree *subdir = self; /* nofree */
-  for (guint i = 0; i+1 < split_path->len; i++)
+  for (guint i = 0; i + 1 < split_path->len; i++)
     {
       const char *name = split_path->pdata[i];
       if (g_hash_table_lookup (subdir->files, name))
@@ -507,10 +486,9 @@ const char empty_tree_csum[] = "6e340b9cffb37a989ca544e6bb780a2c78901d3fb3373876
  * Since: 2018.7
  */
 gboolean
-ostree_mutable_tree_fill_empty_from_dirtree (OstreeMutableTree *self,
-                                             OstreeRepo        *repo,
-                                             const char        *contents_checksum,
-                                             const char        *metadata_checksum)
+ostree_mutable_tree_fill_empty_from_dirtree (OstreeMutableTree *self, OstreeRepo *repo,
+                                             const char *contents_checksum,
+                                             const char *metadata_checksum)
 {
   g_return_val_if_fail (repo, FALSE);
   g_return_val_if_fail (contents_checksum, FALSE);
@@ -520,8 +498,8 @@ ostree_mutable_tree_fill_empty_from_dirtree (OstreeMutableTree *self,
     {
     case MTREE_STATE_LAZY:
       {
-        if (g_strcmp0 (contents_checksum, self->contents_checksum) == 0 ||
-            g_strcmp0 (empty_tree_csum, self->contents_checksum) == 0)
+        if (g_strcmp0 (contents_checksum, self->contents_checksum) == 0
+            || g_strcmp0 (empty_tree_csum, self->contents_checksum) == 0)
           break;
 
         if (g_strcmp0 (empty_tree_csum, contents_checksum) == 0)
@@ -534,8 +512,7 @@ ostree_mutable_tree_fill_empty_from_dirtree (OstreeMutableTree *self,
           return FALSE;
       }
     case MTREE_STATE_WHOLE:
-      if (g_hash_table_size (self->files) == 0 &&
-          g_hash_table_size (self->subdirs) == 0)
+      if (g_hash_table_size (self->files) == 0 && g_hash_table_size (self->subdirs) == 0)
         break;
       /* We're not empty - can't convert to a LAZY tree */
       return FALSE;
@@ -566,11 +543,8 @@ ostree_mutable_tree_fill_empty_from_dirtree (OstreeMutableTree *self,
  * child will be returned in @out_subdir.
  */
 gboolean
-ostree_mutable_tree_walk (OstreeMutableTree     *self,
-                          GPtrArray             *split_path,
-                          guint                  start,
-                          OstreeMutableTree    **out_subdir,
-                          GError               **error)
+ostree_mutable_tree_walk (OstreeMutableTree *self, GPtrArray *split_path, guint start,
+                          OstreeMutableTree **out_subdir, GError **error)
 {
   g_return_val_if_fail (start < split_path->len, FALSE);
 
@@ -585,7 +559,7 @@ ostree_mutable_tree_walk (OstreeMutableTree     *self,
         return FALSE;
       OstreeMutableTree *subdir = g_hash_table_lookup (self->subdirs, split_path->pdata[start]);
       if (!subdir)
-        return set_error_noent (error, (char*)split_path->pdata[start]);
+        return set_error_noent (error, (char *)split_path->pdata[start]);
 
       return ostree_mutable_tree_walk (subdir, split_path, start + 1, out_subdir, error);
     }
@@ -630,8 +604,7 @@ ostree_mutable_tree_get_files (OstreeMutableTree *self)
  * Returns: `TRUE` on success
  */
 gboolean
-ostree_mutable_tree_check_error (OstreeMutableTree     *self,
-                                 GError               **error)
+ostree_mutable_tree_check_error (OstreeMutableTree *self, GError **error)
 {
   if (self->cached_error)
     {
@@ -650,7 +623,7 @@ ostree_mutable_tree_check_error (OstreeMutableTree     *self,
 OstreeMutableTree *
 ostree_mutable_tree_new (void)
 {
-  return (OstreeMutableTree*)g_object_new (OSTREE_TYPE_MUTABLE_TREE, NULL);
+  return (OstreeMutableTree *)g_object_new (OSTREE_TYPE_MUTABLE_TREE, NULL);
 }
 
 /**
@@ -667,11 +640,10 @@ ostree_mutable_tree_new (void)
  * Since: 2018.7
  */
 OstreeMutableTree *
-ostree_mutable_tree_new_from_checksum (OstreeRepo *repo,
-                                       const char *contents_checksum,
+ostree_mutable_tree_new_from_checksum (OstreeRepo *repo, const char *contents_checksum,
                                        const char *metadata_checksum)
 {
-  OstreeMutableTree* out = (OstreeMutableTree*)g_object_new (OSTREE_TYPE_MUTABLE_TREE, NULL);
+  OstreeMutableTree *out = (OstreeMutableTree *)g_object_new (OSTREE_TYPE_MUTABLE_TREE, NULL);
   out->state = MTREE_STATE_LAZY;
   out->repo = g_object_ref (repo);
   out->contents_checksum = g_strdup (contents_checksum);
@@ -691,26 +663,22 @@ ostree_mutable_tree_new_from_checksum (OstreeRepo *repo,
  * Since: 2021.5
  */
 OstreeMutableTree *
-ostree_mutable_tree_new_from_commit (OstreeRepo *repo,
-                                     const char *rev,
-                                     GError    **error)
+ostree_mutable_tree_new_from_commit (OstreeRepo *repo, const char *rev, GError **error)
 {
   g_autofree char *commit = NULL;
   if (!ostree_repo_resolve_rev (repo, rev, FALSE, &commit, error))
     return NULL;
-  g_autoptr(GVariant) commit_v = NULL;
+  g_autoptr (GVariant) commit_v = NULL;
   if (!ostree_repo_load_commit (repo, commit, &commit_v, NULL, error))
     return NULL;
 
-  g_autoptr(GVariant) contents_checksum_v = NULL;
-  g_autoptr(GVariant) metadata_checksum_v = NULL;
+  g_autoptr (GVariant) contents_checksum_v = NULL;
+  g_autoptr (GVariant) metadata_checksum_v = NULL;
   char contents_checksum[OSTREE_SHA256_STRING_LEN + 1];
   char metadata_checksum[OSTREE_SHA256_STRING_LEN + 1];
   g_variant_get_child (commit_v, 6, "@ay", &contents_checksum_v);
-  ostree_checksum_inplace_from_bytes (g_variant_get_data (contents_checksum_v),
-                                      contents_checksum);
+  ostree_checksum_inplace_from_bytes (g_variant_get_data (contents_checksum_v), contents_checksum);
   g_variant_get_child (commit_v, 7, "@ay", &metadata_checksum_v);
-  ostree_checksum_inplace_from_bytes (g_variant_get_data (metadata_checksum_v),
-                                      metadata_checksum);
+  ostree_checksum_inplace_from_bytes (g_variant_get_data (metadata_checksum_v), metadata_checksum);
   return ostree_mutable_tree_new_from_checksum (repo, contents_checksum, metadata_checksum);
 }

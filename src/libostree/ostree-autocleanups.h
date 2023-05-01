@@ -58,7 +58,8 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeSePolicy, g_object_unref)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeSysroot, g_object_unref)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeSysrootUpgrader, g_object_unref)
 
-G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC (OstreeRepoCommitTraverseIter, ostree_repo_commit_traverse_iter_clear)
+G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC (OstreeRepoCommitTraverseIter,
+                                  ostree_repo_commit_traverse_iter_clear)
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeCollectionRef, ostree_collection_ref_free)
 G_DEFINE_AUTO_CLEANUP_FREE_FUNC (OstreeCollectionRefv, ostree_collection_ref_freev, NULL)

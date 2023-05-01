@@ -23,8 +23,8 @@
 #include "config.h"
 
 #include <gio/gio.h>
-#include <glib.h>
 #include <glib-object.h>
+#include <glib.h>
 #include <libglnx.h>
 
 #include "ostree-autocleanups.h"
@@ -48,15 +48,14 @@ ostree_repo_finder_default_init (OstreeRepoFinderInterface *iface)
 static gboolean
 is_valid_collection_ref (const OstreeCollectionRef *ref)
 {
-  return (ref != NULL &&
-          ostree_validate_rev (ref->ref_name, NULL) &&
-          ostree_validate_collection_id (ref->collection_id, NULL));
+  return (ref != NULL && ostree_validate_rev (ref->ref_name, NULL)
+          && ostree_validate_collection_id (ref->collection_id, NULL));
 }
 
 /* Validate @refs is non-%NULL, non-empty, and contains only valid collection
  * and ref names. */
 static gboolean
-is_valid_collection_ref_array (const OstreeCollectionRef * const *refs)
+is_valid_collection_ref_array (const OstreeCollectionRef *const *refs)
 {
   gsize i;
 
@@ -86,7 +85,7 @@ is_valid_collection_ref_map (GHashTable *ref_to_checksum)
 
   g_hash_table_iter_init (&iter, ref_to_checksum);
 
-  while (g_hash_table_iter_next (&iter, (gpointer *) &ref, (gpointer *) &checksum))
+  while (g_hash_table_iter_next (&iter, (gpointer *)&ref, (gpointer *)&checksum))
     {
       g_assert (ref != NULL);
       g_assert (checksum != NULL);
@@ -100,9 +99,7 @@ is_valid_collection_ref_map (GHashTable *ref_to_checksum)
   return TRUE;
 }
 
-static void resolve_cb (GObject      *obj,
-                        GAsyncResult *result,
-                        gpointer      user_data);
+static void resolve_cb (GObject *obj, GAsyncResult *result, gpointer user_data);
 
 /**
  * ostree_repo_finder_resolve_async:
@@ -140,15 +137,14 @@ static void resolve_cb (GObject      *obj,
  * Since: 2018.6
  */
 void
-ostree_repo_finder_resolve_async (OstreeRepoFinder                  *self,
-                                  const OstreeCollectionRef * const *refs,
-                                  OstreeRepo                        *parent_repo,
-                                  GCancellable                      *cancellable,
-                                  GAsyncReadyCallback                callback,
-                                  gpointer                           user_data)
+ostree_repo_finder_resolve_async (OstreeRepoFinder *self, const OstreeCollectionRef *const *refs,
+                                  OstreeRepo *parent_repo, GCancellable *cancellable,
+                                  GAsyncReadyCallback callback, gpointer user_data)
 {
-  g_autoptr(GTask) task = NULL;
-  OstreeRepoFinder *finders[2] = { NULL, };
+  g_autoptr (GTask) task = NULL;
+  OstreeRepoFinder *finders[2] = {
+    NULL,
+  };
 
   g_return_if_fail (OSTREE_IS_REPO_FINDER (self));
   g_return_if_fail (is_valid_collection_ref_array (refs));
@@ -160,18 +156,16 @@ ostree_repo_finder_resolve_async (OstreeRepoFinder                  *self,
 
   finders[0] = self;
 
-  ostree_repo_finder_resolve_all_async (finders, refs, parent_repo, cancellable,
-                                        resolve_cb, g_steal_pointer (&task));
+  ostree_repo_finder_resolve_all_async (finders, refs, parent_repo, cancellable, resolve_cb,
+                                        g_steal_pointer (&task));
 }
 
 static void
-resolve_cb (GObject      *obj,
-            GAsyncResult *result,
-            gpointer      user_data)
+resolve_cb (GObject *obj, GAsyncResult *result, gpointer user_data)
 {
-  g_autoptr(GTask) task = NULL;
-  g_autoptr(GPtrArray) results = NULL;
-  g_autoptr(GError) local_error = NULL;
+  g_autoptr (GTask) task = NULL;
+  g_autoptr (GPtrArray) results = NULL;
+  g_autoptr (GError) local_error = NULL;
 
   task = G_TASK (user_data);
 
@@ -182,7 +176,7 @@ resolve_cb (GObject      *obj,
   if (local_error != NULL)
     g_task_return_error (task, g_steal_pointer (&local_error));
   else
-    g_task_return_pointer (task, g_steal_pointer (&results), (GDestroyNotify) g_ptr_array_unref);
+    g_task_return_pointer (task, g_steal_pointer (&results), (GDestroyNotify)g_ptr_array_unref);
 }
 
 /**
@@ -198,9 +192,7 @@ resolve_cb (GObject      *obj,
  * Since: 2018.6
  */
 GPtrArray *
-ostree_repo_finder_resolve_finish (OstreeRepoFinder  *self,
-                                   GAsyncResult      *result,
-                                   GError           **error)
+ostree_repo_finder_resolve_finish (OstreeRepoFinder *self, GAsyncResult *result, GError **error)
 {
   g_return_val_if_fail (OSTREE_IS_REPO_FINDER (self), NULL);
   g_return_val_if_fail (g_task_is_valid (result, self), NULL);
@@ -210,11 +202,10 @@ ostree_repo_finder_resolve_finish (OstreeRepoFinder  *self,
 }
 
 static gint
-sort_results_cb (gconstpointer a,
-                 gconstpointer b)
+sort_results_cb (gconstpointer a, gconstpointer b)
 {
-  const OstreeRepoFinderResult *result_a = *((const OstreeRepoFinderResult **) a);
-  const OstreeRepoFinderResult *result_b = *((const OstreeRepoFinderResult **) b);
+  const OstreeRepoFinderResult *result_a = *((const OstreeRepoFinderResult **)a);
+  const OstreeRepoFinderResult *result_b = *((const OstreeRepoFinderResult **)b);
 
   return ostree_repo_finder_result_compare (result_a, result_b);
 }
@@ -235,9 +226,7 @@ resolve_all_data_free (ResolveAllData *data)
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (ResolveAllData, resolve_all_data_free)
 
-static void resolve_all_cb (GObject      *obj,
-                            GAsyncResult *result,
-                            gpointer      user_data);
+static void resolve_all_cb (GObject *obj, GAsyncResult *result, gpointer user_data);
 static void resolve_all_finished_one (GTask *task);
 
 /**
@@ -256,18 +245,16 @@ static void resolve_all_finished_one (GTask *task);
  * Since: 2018.6
  */
 void
-ostree_repo_finder_resolve_all_async (OstreeRepoFinder * const          *finders,
-                                      const OstreeCollectionRef * const *refs,
-                                      OstreeRepo                        *parent_repo,
-                                      GCancellable                      *cancellable,
-                                      GAsyncReadyCallback                callback,
-                                      gpointer                           user_data)
+ostree_repo_finder_resolve_all_async (OstreeRepoFinder *const *finders,
+                                      const OstreeCollectionRef *const *refs,
+                                      OstreeRepo *parent_repo, GCancellable *cancellable,
+                                      GAsyncReadyCallback callback, gpointer user_data)
 {
-  g_autoptr(GTask) task = NULL;
-  g_autoptr(ResolveAllData) data = NULL;
+  g_autoptr (GTask) task = NULL;
+  g_autoptr (ResolveAllData) data = NULL;
   gsize i;
-  g_autoptr(GString) refs_str = NULL;
-  g_autoptr(GString) finders_str = NULL;
+  g_autoptr (GString) refs_str = NULL;
+  g_autoptr (GString) finders_str = NULL;
 
   g_return_if_fail (finders != NULL && finders[0] != NULL);
   g_return_if_fail (is_valid_collection_ref_array (refs));
@@ -279,8 +266,7 @@ ostree_repo_finder_resolve_all_async (OstreeRepoFinder * const          *finders
     {
       if (i != 0)
         g_string_append (refs_str, ", ");
-      g_string_append_printf (refs_str, "(%s, %s)",
-                              refs[i]->collection_id, refs[i]->ref_name);
+      g_string_append_printf (refs_str, "(%s, %s)", refs[i]->collection_id, refs[i]->ref_name);
     }
 
   finders_str = g_string_new ("");
@@ -291,16 +277,15 @@ ostree_repo_finder_resolve_all_async (OstreeRepoFinder * const          *finders
       g_string_append (finders_str, g_type_name (G_TYPE_FROM_INSTANCE (finders[i])));
     }
 
-  g_debug ("%s: Resolving refs [%s] with finders [%s]", G_STRFUNC,
-           refs_str->str, finders_str->str);
+  g_debug ("%s: Resolving refs [%s] with finders [%s]", G_STRFUNC, refs_str->str, finders_str->str);
 
   task = g_task_new (NULL, cancellable, callback, user_data);
   g_task_set_source_tag (task, ostree_repo_finder_resolve_all_async);
 
   data = g_new0 (ResolveAllData, 1);
-  data->n_finders_pending = 1;  /* while setting up the loop */
-  data->results = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_repo_finder_result_free);
-  g_task_set_task_data (task, data, (GDestroyNotify) resolve_all_data_free);
+  data->n_finders_pending = 1; /* while setting up the loop */
+  data->results = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_repo_finder_result_free);
+  g_task_set_task_data (task, data, (GDestroyNotify)resolve_all_data_free);
 
   /* Start all the asynchronous queries in parallel. */
   for (i = 0; finders[i] != NULL; i++)
@@ -310,20 +295,20 @@ ostree_repo_finder_resolve_all_async (OstreeRepoFinder * const          *finders
 
       iface = OSTREE_REPO_FINDER_GET_IFACE (finder);
       g_assert (iface->resolve_async != NULL);
-      iface->resolve_async (finder, refs, parent_repo, cancellable, resolve_all_cb, g_object_ref (task));
+      iface->resolve_async (finder, refs, parent_repo, cancellable, resolve_all_cb,
+                            g_object_ref (task));
       data->n_finders_pending++;
     }
 
   resolve_all_finished_one (task);
-  data = NULL;  /* passed to the GTask above */
+  data = NULL; /* passed to the GTask above */
 }
 
 /* Modifies both arrays in place. */
 static void
-array_concatenate_steal (GPtrArray *array,
-                         GPtrArray *to_concatenate)  /* (transfer full) */
+array_concatenate_steal (GPtrArray *array, GPtrArray *to_concatenate) /* (transfer full) */
 {
-  g_autoptr(GPtrArray) array_to_concatenate = to_concatenate;
+  g_autoptr (GPtrArray) array_to_concatenate = to_concatenate;
   gsize i;
 
   for (i = 0; i < array_to_concatenate->len; i++)
@@ -339,15 +324,13 @@ array_concatenate_steal (GPtrArray *array,
 }
 
 static void
-resolve_all_cb (GObject      *obj,
-                GAsyncResult *result,
-                gpointer      user_data)
+resolve_all_cb (GObject *obj, GAsyncResult *result, gpointer user_data)
 {
   OstreeRepoFinder *finder;
   OstreeRepoFinderInterface *iface;
-  g_autoptr(GTask) task = NULL;
-  g_autoptr(GPtrArray) results = NULL;
-  g_autoptr(GError) local_error = NULL;
+  g_autoptr (GTask) task = NULL;
+  g_autoptr (GPtrArray) results = NULL;
+  g_autoptr (GError) local_error = NULL;
   ResolveAllData *data;
 
   finder = OSTREE_REPO_FINDER (obj);
@@ -379,7 +362,7 @@ resolve_all_finished_one (GTask *task)
   if (data->n_finders_pending == 0)
     {
       gsize i;
-      g_autoptr(GString) results_str = NULL;
+      g_autoptr (GString) results_str = NULL;
 
       g_ptr_array_sort (data->results, sort_results_cb);
 
@@ -397,7 +380,8 @@ resolve_all_finished_one (GTask *task)
 
       g_debug ("%s: Finished, results: %s", G_STRFUNC, results_str->str);
 
-      g_task_return_pointer (task, g_steal_pointer (&data->results), (GDestroyNotify) g_ptr_array_unref);
+      g_task_return_pointer (task, g_steal_pointer (&data->results),
+                             (GDestroyNotify)g_ptr_array_unref);
     }
 }
 
@@ -413,8 +397,7 @@ resolve_all_finished_one (GTask *task)
  * Since: 2018.6
  */
 GPtrArray *
-ostree_repo_finder_resolve_all_finish (GAsyncResult  *result,
-                                       GError       **error)
+ostree_repo_finder_resolve_all_finish (GAsyncResult *result, GError **error)
 {
   g_return_val_if_fail (g_task_is_valid (result, NULL), NULL);
   g_return_val_if_fail (error == NULL || *error == NULL, NULL);
@@ -448,14 +431,11 @@ G_DEFINE_BOXED_TYPE (OstreeRepoFinderResult, ostree_repo_finder_result,
  * Since: 2018.6
  */
 OstreeRepoFinderResult *
-ostree_repo_finder_result_new (OstreeRemote     *remote,
-                               OstreeRepoFinder *finder,
-                               gint              priority,
-                               GHashTable       *ref_to_checksum,
-                               GHashTable       *ref_to_timestamp,
-                               guint64           summary_last_modified)
+ostree_repo_finder_result_new (OstreeRemote *remote, OstreeRepoFinder *finder, gint priority,
+                               GHashTable *ref_to_checksum, GHashTable *ref_to_timestamp,
+                               guint64 summary_last_modified)
 {
-  g_autoptr(OstreeRepoFinderResult) result = NULL;
+  g_autoptr (OstreeRepoFinderResult) result = NULL;
 
   g_return_val_if_fail (remote != NULL, NULL);
   g_return_val_if_fail (OSTREE_IS_REPO_FINDER (finder), NULL);
@@ -486,9 +466,9 @@ ostree_repo_finder_result_dup (OstreeRepoFinderResult *result)
 {
   g_return_val_if_fail (result != NULL, NULL);
 
-  return ostree_repo_finder_result_new (result->remote, result->finder,
-                                        result->priority, result->ref_to_checksum,
-                                        result->ref_to_timestamp, result->summary_last_modified);
+  return ostree_repo_finder_result_new (result->remote, result->finder, result->priority,
+                                        result->ref_to_checksum, result->ref_to_timestamp,
+                                        result->summary_last_modified);
 }
 
 /**
@@ -504,8 +484,7 @@ ostree_repo_finder_result_dup (OstreeRepoFinderResult *result)
  * Since: 2018.6
  */
 gint
-ostree_repo_finder_result_compare (const OstreeRepoFinderResult *a,
-                                   const OstreeRepoFinderResult *b)
+ostree_repo_finder_result_compare (const OstreeRepoFinderResult *a, const OstreeRepoFinderResult *b)
 {
   guint a_n_refs, b_n_refs;
 
@@ -518,8 +497,8 @@ ostree_repo_finder_result_compare (const OstreeRepoFinderResult *a,
   if (a->priority != b->priority)
     return a->priority - b->priority;
 
-  if (a->summary_last_modified != 0 && b->summary_last_modified != 0 &&
-      a->summary_last_modified != b->summary_last_modified)
+  if (a->summary_last_modified != 0 && b->summary_last_modified != 0
+      && a->summary_last_modified != b->summary_last_modified)
     return a->summary_last_modified - b->summary_last_modified;
 
   gpointer value;
@@ -537,7 +516,7 @@ ostree_repo_finder_result_compare (const OstreeRepoFinderResult *a,
       b_n_refs++;
 
   if (a_n_refs != b_n_refs)
-    return (gint) a_n_refs - (gint) b_n_refs;
+    return (gint)a_n_refs - (gint)b_n_refs;
 
   return g_strcmp0 (a->remote->name, b->remote->name);
 }

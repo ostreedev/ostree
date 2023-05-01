@@ -28,8 +28,7 @@
 
 G_BEGIN_DECLS
 
-GDateTime *_ostree_parse_rfc2616_date_time (const char *buf,
-                                            size_t      len);
+GDateTime *_ostree_parse_rfc2616_date_time (const char *buf, size_t len);
 
 G_END_DECLS
 

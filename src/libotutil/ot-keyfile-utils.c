@@ -29,16 +29,12 @@ static gboolean
 is_notfound (GError *error)
 {
   return g_error_matches (error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND)
-          || g_error_matches (error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_GROUP_NOT_FOUND);
+         || g_error_matches (error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_GROUP_NOT_FOUND);
 }
 
 gboolean
-ot_keyfile_get_boolean_with_default (GKeyFile      *keyfile,
-                                     const char    *section,
-                                     const char    *value,
-                                     gboolean       default_value,
-                                     gboolean      *out_bool,
-                                     GError       **error)
+ot_keyfile_get_boolean_with_default (GKeyFile *keyfile, const char *section, const char *value,
+                                     gboolean default_value, gboolean *out_bool, GError **error)
 {
   g_return_val_if_fail (keyfile != NULL, FALSE);
   g_return_val_if_fail (section != NULL, FALSE);
@@ -65,12 +61,8 @@ ot_keyfile_get_boolean_with_default (GKeyFile      *keyfile,
 }
 
 gboolean
-ot_keyfile_get_value_with_default (GKeyFile      *keyfile,
-                                   const char    *section,
-                                   const char    *value,
-                                   const char    *default_value,
-                                   char         **out_value,
-                                   GError       **error)
+ot_keyfile_get_value_with_default (GKeyFile *keyfile, const char *section, const char *value,
+                                   const char *default_value, char **out_value, GError **error)
 {
   g_return_val_if_fail (keyfile != NULL, FALSE);
   g_return_val_if_fail (section != NULL, FALSE);
@@ -93,17 +85,14 @@ ot_keyfile_get_value_with_default (GKeyFile      *keyfile,
         }
     }
 
-  ot_transfer_out_value(out_value, &ret_value);
+  ot_transfer_out_value (out_value, &ret_value);
   return TRUE;
 }
 
 gboolean
-ot_keyfile_get_value_with_default_group_optional (GKeyFile      *keyfile,
-                                                  const char    *section,
-                                                  const char    *value,
-                                                  const char    *default_value,
-                                                  char         **out_value,
-                                                  GError       **error)
+ot_keyfile_get_value_with_default_group_optional (GKeyFile *keyfile, const char *section,
+                                                  const char *value, const char *default_value,
+                                                  char **out_value, GError **error)
 {
   g_return_val_if_fail (keyfile != NULL, FALSE);
   g_return_val_if_fail (section != NULL, FALSE);
@@ -111,7 +100,8 @@ ot_keyfile_get_value_with_default_group_optional (GKeyFile      *keyfile,
 
   GError *local_error = NULL;
   g_autofree char *ret_value = NULL;
-  if (!ot_keyfile_get_value_with_default (keyfile, section, value, default_value, &ret_value, &local_error))
+  if (!ot_keyfile_get_value_with_default (keyfile, section, value, default_value, &ret_value,
+                                          &local_error))
     {
       if (g_error_matches (local_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_GROUP_NOT_FOUND))
         {
@@ -125,7 +115,7 @@ ot_keyfile_get_value_with_default_group_optional (GKeyFile      *keyfile,
         }
     }
 
-  ot_transfer_out_value(out_value, &ret_value);
+  ot_transfer_out_value (out_value, &ret_value);
   return TRUE;
 }
 
@@ -136,24 +126,20 @@ ot_keyfile_get_value_with_default_group_optional (GKeyFile      *keyfile,
  *
  * Returns TRUE on success, FALSE on error. */
 gboolean
-ot_keyfile_get_string_list_with_separator_choice (GKeyFile      *keyfile,
-                                                  const char    *section,
-                                                  const char    *key,
-                                                  const char    *separators,
-                                                  char        ***out_value,
-                                                  GError       **error)
+ot_keyfile_get_string_list_with_separator_choice (GKeyFile *keyfile, const char *section,
+                                                  const char *key, const char *separators,
+                                                  char ***out_value, GError **error)
 {
   g_return_val_if_fail (keyfile != NULL, FALSE);
   g_return_val_if_fail (section != NULL, FALSE);
   g_return_val_if_fail (key != NULL, FALSE);
   g_return_val_if_fail (separators != NULL, FALSE);
 
-  g_autofree char  *value_str = NULL;
-  if (!ot_keyfile_get_value_with_default (keyfile, section, key, NULL,
-                                          &value_str, error))
+  g_autofree char *value_str = NULL;
+  if (!ot_keyfile_get_value_with_default (keyfile, section, key, NULL, &value_str, error))
     return FALSE;
 
-  g_auto(GStrv) value_list = NULL;
+  g_auto (GStrv) value_list = NULL;
   if (value_str)
     {
       gchar sep = '\0';
@@ -175,8 +161,8 @@ ot_keyfile_get_string_list_with_separator_choice (GKeyFile      *keyfile,
         }
       else if (sep_count == 1)
         {
-          if (!ot_keyfile_get_string_list_with_default (keyfile, section, key,
-                                                        sep, NULL, &value_list, error))
+          if (!ot_keyfile_get_string_list_with_default (keyfile, section, key, sep, NULL,
+                                                        &value_list, error))
             return FALSE;
         }
       else
@@ -190,15 +176,11 @@ ot_keyfile_get_string_list_with_separator_choice (GKeyFile      *keyfile,
 }
 
 gboolean
-ot_keyfile_get_string_list_with_default (GKeyFile      *keyfile,
-                                         const char    *section,
-                                         const char    *key,
-                                         char           separator,
-                                         char         **default_value,
-                                         char        ***out_value,
-                                         GError       **error)
+ot_keyfile_get_string_list_with_default (GKeyFile *keyfile, const char *section, const char *key,
+                                         char separator, char **default_value, char ***out_value,
+                                         GError **error)
 {
-  g_autoptr(GError) temp_error = NULL;
+  g_autoptr (GError) temp_error = NULL;
 
   g_return_val_if_fail (keyfile != NULL, FALSE);
   g_return_val_if_fail (section != NULL, FALSE);
@@ -206,8 +188,7 @@ ot_keyfile_get_string_list_with_default (GKeyFile      *keyfile,
 
   g_key_file_set_list_separator (keyfile, separator);
 
-  g_auto(GStrv) ret_value = g_key_file_get_string_list (keyfile, section,
-                                                        key, NULL, &temp_error);
+  g_auto (GStrv) ret_value = g_key_file_get_string_list (keyfile, section, key, NULL, &temp_error);
 
   if (temp_error)
     {
@@ -228,11 +209,9 @@ ot_keyfile_get_string_list_with_default (GKeyFile      *keyfile,
 }
 
 gboolean
-ot_keyfile_copy_group (GKeyFile   *source_keyfile,
-                       GKeyFile   *target_keyfile,
-                       const char *group_name)
+ot_keyfile_copy_group (GKeyFile *source_keyfile, GKeyFile *target_keyfile, const char *group_name)
 {
-  g_auto(GStrv) keys = NULL;
+  g_auto (GStrv) keys = NULL;
   gsize length, ii;
   gboolean ret = FALSE;
 
@@ -255,6 +234,6 @@ ot_keyfile_copy_group (GKeyFile   *source_keyfile,
 
   ret = TRUE;
 
- out:
+out:
   return ret;
 }

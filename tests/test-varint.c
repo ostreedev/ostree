@@ -24,20 +24,21 @@
 #include "ostree-varint.h"
 
 static void
-check_one_roundtrip (guint64    val)
+check_one_roundtrip (guint64 val)
 {
-  g_autoptr(GString) buf = g_string_new (NULL);
+  g_autoptr (GString) buf = g_string_new (NULL);
   guint64 newval;
   gsize bytes_read;
 
   _ostree_write_varuint64 (buf, val);
   if (g_test_verbose ())
     {
-      g_autoptr(GVariant) v = g_variant_new_from_data (G_VARIANT_TYPE ("ay"), buf->str, buf->len, TRUE, NULL, NULL);
+      g_autoptr (GVariant) v
+          = g_variant_new_from_data (G_VARIANT_TYPE ("ay"), buf->str, buf->len, TRUE, NULL, NULL);
       g_autofree char *data = g_variant_print (v, FALSE);
       g_test_message ("%" G_GUINT64_FORMAT " -> %s", val, data);
     }
-  g_assert (_ostree_read_varuint64 ((guint8*)buf->str, buf->len, &newval, &bytes_read));
+  g_assert (_ostree_read_varuint64 ((guint8 *)buf->str, buf->len, &newval, &bytes_read));
   g_assert_cmpint (bytes_read, <=, 10);
   g_assert_cmpint (val, ==, newval);
 }
@@ -45,9 +46,17 @@ check_one_roundtrip (guint64    val)
 static void
 test_roundtrips (void)
 {
-  const guint64 test_inputs[] = { 0, 1, 0x6F, 0xA0, 0xFF, 0xF0F0, 0xCAFE,
-                                  0xCAFEBABE, G_MAXUINT64, G_MAXUINT64-1,
-                                  G_MAXUINT64 / 2};
+  const guint64 test_inputs[] = { 0,
+                                  1,
+                                  0x6F,
+                                  0xA0,
+                                  0xFF,
+                                  0xF0F0,
+                                  0xCAFE,
+                                  0xCAFEBABE,
+                                  G_MAXUINT64,
+                                  G_MAXUINT64 - 1,
+                                  G_MAXUINT64 / 2 };
   guint i;
 
   for (i = 0; i < G_N_ELEMENTS (test_inputs); i++)

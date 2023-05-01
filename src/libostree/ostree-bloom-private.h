@@ -23,8 +23,8 @@
 #pragma once
 
 #include <gio/gio.h>
-#include <glib.h>
 #include <glib-object.h>
+#include <glib.h>
 
 #include "libglnx.h"
 
@@ -55,8 +55,7 @@ typedef struct _OstreeBloom OstreeBloom;
  *
  * Since: 2017.8
  */
-typedef guint64 (*OstreeBloomHashFunc) (gconstpointer element,
-                                        guint8        k);
+typedef guint64 (*OstreeBloomHashFunc) (gconstpointer element, guint8 k);
 
 #define OSTREE_TYPE_BLOOM (ostree_bloom_get_type ())
 
@@ -64,14 +63,10 @@ G_GNUC_INTERNAL
 GType ostree_bloom_get_type (void);
 
 G_GNUC_INTERNAL
-OstreeBloom *ostree_bloom_new (gsize               n_bytes,
-                               guint8              k,
-                               OstreeBloomHashFunc hash_func);
+OstreeBloom *ostree_bloom_new (gsize n_bytes, guint8 k, OstreeBloomHashFunc hash_func);
 
 G_GNUC_INTERNAL
-OstreeBloom *ostree_bloom_new_from_bytes (GBytes              *bytes,
-                                          guint8               k,
-                                          OstreeBloomHashFunc  hash_func);
+OstreeBloom *ostree_bloom_new_from_bytes (GBytes *bytes, guint8 k, OstreeBloomHashFunc hash_func);
 
 G_GNUC_INTERNAL
 OstreeBloom *ostree_bloom_ref (OstreeBloom *bloom);
@@ -81,15 +76,13 @@ void ostree_bloom_unref (OstreeBloom *bloom);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeBloom, ostree_bloom_unref)
 
 G_GNUC_INTERNAL
-gboolean ostree_bloom_maybe_contains (OstreeBloom   *bloom,
-                                      gconstpointer  element);
+gboolean ostree_bloom_maybe_contains (OstreeBloom *bloom, gconstpointer element);
 
 G_GNUC_INTERNAL
 GBytes *ostree_bloom_seal (OstreeBloom *bloom);
 
 G_GNUC_INTERNAL
-void ostree_bloom_add_element (OstreeBloom   *bloom,
-                               gconstpointer  element);
+void ostree_bloom_add_element (OstreeBloom *bloom, gconstpointer element);
 
 G_GNUC_INTERNAL
 gsize ostree_bloom_get_size (OstreeBloom *bloom);
@@ -99,7 +92,6 @@ G_GNUC_INTERNAL
 OstreeBloomHashFunc ostree_bloom_get_hash_func (OstreeBloom *bloom);
 
 G_GNUC_INTERNAL
-guint64 ostree_str_bloom_hash (gconstpointer element,
-                               guint8        k);
+guint64 ostree_str_bloom_hash (gconstpointer element, guint8 k);
 
 G_END_DECLS

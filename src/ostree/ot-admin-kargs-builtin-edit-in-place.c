@@ -18,36 +18,36 @@
 
 #include "config.h"
 
-#include "ot-main.h"
 #include "ot-admin-kargs-builtins.h"
+#include "ot-main.h"
 
 #include "ostree.h"
 #include "otutil.h"
 
 static char **opt_kargs_edit_in_place_append;
 
-static GOptionEntry options[] = {
-  { "append-if-missing", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_kargs_edit_in_place_append, "Append kernel arguments if they do not exist", "NAME=VALUE" },
-  { NULL }
-};
+static GOptionEntry options[]
+    = { { "append-if-missing", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_kargs_edit_in_place_append,
+          "Append kernel arguments if they do not exist", "NAME=VALUE" },
+        { NULL } };
 
 gboolean
-ot_admin_kargs_builtin_edit_in_place (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_admin_kargs_builtin_edit_in_place (int argc, char **argv, OstreeCommandInvocation *invocation,
+                                      GCancellable *cancellable, GError **error)
 {
-  g_autoptr(OstreeSysroot) sysroot = NULL;
+  g_autoptr (OstreeSysroot) sysroot = NULL;
 
-  g_autoptr(GOptionContext) context = g_option_context_new ("ARGS");
+  g_autoptr (GOptionContext) context = g_option_context_new ("ARGS");
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
-                                          invocation, &sysroot, cancellable, error))
+                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER, invocation, &sysroot,
+                                          cancellable, error))
     return FALSE;
 
-  g_autoptr(GPtrArray) deployments = ostree_sysroot_get_deployments (sysroot);
+  g_autoptr (GPtrArray) deployments = ostree_sysroot_get_deployments (sysroot);
   if (deployments->len == 0)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Unable to find a deployment in sysroot");
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Unable to find a deployment in sysroot");
       return FALSE;
     }
 
@@ -56,7 +56,8 @@ ot_admin_kargs_builtin_edit_in_place (int argc, char **argv, OstreeCommandInvoca
     {
       OstreeDeployment *deployment = deployments->pdata[i];
       OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
-      g_autoptr(OstreeKernelArgs) kargs = ostree_kernel_args_from_string (ostree_bootconfig_parser_get (bootconfig, "options"));
+      g_autoptr (OstreeKernelArgs) kargs
+          = ostree_kernel_args_from_string (ostree_bootconfig_parser_get (bootconfig, "options"));
 
       if (opt_kargs_edit_in_place_append)
         {
@@ -72,7 +73,6 @@ ot_admin_kargs_builtin_edit_in_place (int argc, char **argv, OstreeCommandInvoca
       if (!ostree_sysroot_deployment_set_kargs_in_place (sysroot, deployment, new_options,
                                                          cancellable, error))
         return FALSE;
-
     }
 
   return TRUE;

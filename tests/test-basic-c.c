@@ -19,11 +19,11 @@
 
 #include "config.h"
 
-#include <stdlib.h>
-#include <stdbool.h>
-#include <gio/gio.h>
-#include <string.h>
 #include <err.h>
+#include <gio/gio.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "libglnx.h"
 #include "libostreetest.h"
@@ -31,25 +31,21 @@
 static void
 test_repo_is_not_system (gconstpointer data)
 {
-  OstreeRepo *repo = (void*)data;
+  OstreeRepo *repo = (void *)data;
   g_assert (!ostree_repo_is_system (repo));
 }
 
 static GBytes *
 input_stream_to_bytes (GInputStream *input)
 {
-  g_autoptr(GOutputStream) mem_out_stream = NULL;
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GOutputStream) mem_out_stream = NULL;
+  g_autoptr (GError) error = NULL;
 
   if (input == NULL)
     return g_bytes_new (NULL, 0);
 
   mem_out_stream = g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
-  g_output_stream_splice (mem_out_stream,
-                          input,
-                          G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
-                          NULL,
-                          &error);
+  g_output_stream_splice (mem_out_stream, input, G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET, NULL, &error);
   g_assert_no_error (error);
 
   return g_memory_output_stream_steal_as_bytes (G_MEMORY_OUTPUT_STREAM (mem_out_stream));
@@ -60,56 +56,41 @@ test_raw_file_to_archive_stream (gconstpointer data)
 {
   OstreeRepo *repo = OSTREE_REPO (data);
   g_autofree gchar *commit_checksum = NULL;
-  g_autoptr(GHashTable) reachable = NULL;
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GHashTable) reachable = NULL;
+  g_autoptr (GError) error = NULL;
   /* branch name of the test repository, see setup_test_repository in libtest.sh */
   const gchar *rev = "test2";
   GHashTableIter iter;
   GVariant *serialized_object;
   guint checks = 0;
 
-  ostree_repo_resolve_rev (repo,
-                           rev,
-                           FALSE,
-                           &commit_checksum,
-                           &error);
+  ostree_repo_resolve_rev (repo, rev, FALSE, &commit_checksum, &error);
   g_assert_no_error (error);
-  ostree_repo_traverse_commit (repo,
-                               commit_checksum,
-                               -1,
-                               &reachable,
-                               NULL,
-                               &error);
+  ostree_repo_traverse_commit (repo, commit_checksum, -1, &reachable, NULL, &error);
   g_assert_no_error (error);
   g_hash_table_iter_init (&iter, reachable);
-  while (g_hash_table_iter_next (&iter, (gpointer*)&serialized_object, NULL))
+  while (g_hash_table_iter_next (&iter, (gpointer *)&serialized_object, NULL))
     {
       const gchar *object_checksum;
       OstreeObjectType object_type;
-      g_autoptr(GInputStream) input = NULL;
-      g_autoptr(GFileInfo) info = NULL;
-      g_autoptr(GVariant) xattrs = NULL;
-      g_autoptr(GBytes) input_bytes = NULL;
-      g_autoptr(GInputStream) mem_input = NULL;
-      g_autoptr(GInputStream) zlib_stream = NULL;
-      g_autoptr(GBytes) zlib_bytes = NULL;
-      g_autoptr(GInputStream) mem_zlib = NULL;
-      g_autoptr(GInputStream) input2 = NULL;
-      g_autoptr(GFileInfo) info2 = NULL;
-      g_autoptr(GVariant) xattrs2 = NULL;
-      g_autoptr(GBytes) input2_bytes = NULL;
+      g_autoptr (GInputStream) input = NULL;
+      g_autoptr (GFileInfo) info = NULL;
+      g_autoptr (GVariant) xattrs = NULL;
+      g_autoptr (GBytes) input_bytes = NULL;
+      g_autoptr (GInputStream) mem_input = NULL;
+      g_autoptr (GInputStream) zlib_stream = NULL;
+      g_autoptr (GBytes) zlib_bytes = NULL;
+      g_autoptr (GInputStream) mem_zlib = NULL;
+      g_autoptr (GInputStream) input2 = NULL;
+      g_autoptr (GFileInfo) info2 = NULL;
+      g_autoptr (GVariant) xattrs2 = NULL;
+      g_autoptr (GBytes) input2_bytes = NULL;
 
       ostree_object_name_deserialize (serialized_object, &object_checksum, &object_type);
       if (object_type != OSTREE_OBJECT_TYPE_FILE)
         continue;
 
-      ostree_repo_load_file (repo,
-                             object_checksum,
-                             &input,
-                             &info,
-                             &xattrs,
-                             NULL,
-                             &error);
+      ostree_repo_load_file (repo, object_checksum, &input, &info, &xattrs, NULL, &error);
       g_assert_no_error (error);
 
       input_bytes = input_stream_to_bytes (input);
@@ -121,44 +102,21 @@ test_raw_file_to_archive_stream (gconstpointer data)
        * GFileDescriptorBased interface. */
       if (input != NULL)
         mem_input = g_memory_input_stream_new_from_bytes (input_bytes);
-      ostree_raw_file_to_archive_z2_stream (mem_input,
-                                            info,
-                                            xattrs,
-                                            &zlib_stream,
-                                            NULL,
-                                            &error);
+      ostree_raw_file_to_archive_z2_stream (mem_input, info, xattrs, &zlib_stream, NULL, &error);
       g_assert_no_error (error);
 
       zlib_bytes = input_stream_to_bytes (zlib_stream);
       mem_zlib = g_memory_input_stream_new_from_bytes (zlib_bytes);
-      ostree_content_stream_parse (FALSE,
-                                   mem_zlib,
-                                   g_bytes_get_size (zlib_bytes),
-                                   FALSE,
-                                   &input2,
-                                   &info2,
-                                   &xattrs2,
-                                   NULL,
-                                   &error);
+      ostree_content_stream_parse (FALSE, mem_zlib, g_bytes_get_size (zlib_bytes), FALSE, &input2,
+                                   &info2, &xattrs2, NULL, &error);
       g_assert_error (error, G_IO_ERROR, G_IO_ERROR_FAILED);
       g_clear_error (&error);
 
-      g_seekable_seek (G_SEEKABLE (mem_zlib),
-                       0,
-                       G_SEEK_SET,
-                       NULL,
-                       &error);
+      g_seekable_seek (G_SEEKABLE (mem_zlib), 0, G_SEEK_SET, NULL, &error);
       g_assert_no_error (error);
 
-      ostree_content_stream_parse (TRUE,
-                                   mem_zlib,
-                                   g_bytes_get_size (zlib_bytes),
-                                   FALSE,
-                                   &input2,
-                                   &info2,
-                                   &xattrs2,
-                                   NULL,
-                                   &error);
+      ostree_content_stream_parse (TRUE, mem_zlib, g_bytes_get_size (zlib_bytes), FALSE, &input2,
+                                   &info2, &xattrs2, NULL, &error);
       g_assert_no_error (error);
 
       input2_bytes = input_stream_to_bytes (input2);
@@ -171,37 +129,38 @@ test_raw_file_to_archive_stream (gconstpointer data)
   g_assert_cmpint (checks, >, 0);
 }
 
-static gboolean hi_content_stream_new (GInputStream **out_stream,
-                                       guint64       *out_length,
-                                       GError **error)
+static gboolean
+hi_content_stream_new (GInputStream **out_stream, guint64 *out_length, GError **error)
 {
   static const char hi[] = "hi";
-  const size_t len = sizeof(hi)-1;
-  g_autoptr(GMemoryInputStream) hi_memstream = (GMemoryInputStream*)g_memory_input_stream_new_from_data (hi, len, NULL);
-  g_autoptr(GFileInfo) finfo = g_file_info_new ();
+  const size_t len = sizeof (hi) - 1;
+  g_autoptr (GMemoryInputStream) hi_memstream
+      = (GMemoryInputStream *)g_memory_input_stream_new_from_data (hi, len, NULL);
+  g_autoptr (GFileInfo) finfo = g_file_info_new ();
   g_file_info_set_attribute_uint32 (finfo, "standard::type", G_FILE_TYPE_REGULAR);
   g_file_info_set_attribute_boolean (finfo, "standard::is-symlink", FALSE);
   g_file_info_set_size (finfo, len);
   g_file_info_set_attribute_uint32 (finfo, "unix::uid", 0);
   g_file_info_set_attribute_uint32 (finfo, "unix::gid", 0);
-  g_file_info_set_attribute_uint32 (finfo, "unix::mode", S_IFREG|0644);
-  return ostree_raw_file_to_content_stream ((GInputStream*)hi_memstream, finfo, NULL, out_stream, out_length, NULL, error);
+  g_file_info_set_attribute_uint32 (finfo, "unix::mode", S_IFREG | 0644);
+  return ostree_raw_file_to_content_stream ((GInputStream *)hi_memstream, finfo, NULL, out_stream,
+                                            out_length, NULL, error);
 }
 
 static void
 test_validate_remotename (void)
 {
-  const char *valid[] = {"foo", "hello-world"};
-  const char *invalid[] = {"foo/bar", ""};
-  for (guint i = 0; i < G_N_ELEMENTS(valid); i++)
+  const char *valid[] = { "foo", "hello-world" };
+  const char *invalid[] = { "foo/bar", "" };
+  for (guint i = 0; i < G_N_ELEMENTS (valid); i++)
     {
-      g_autoptr(GError) error = NULL;
+      g_autoptr (GError) error = NULL;
       g_assert (ostree_validate_remote_name (valid[i], &error));
       g_assert_no_error (error);
     }
-  for (guint i = 0; i < G_N_ELEMENTS(invalid); i++)
+  for (guint i = 0; i < G_N_ELEMENTS (invalid); i++)
     {
-      g_autoptr(GError) error = NULL;
+      g_autoptr (GError) error = NULL;
       g_assert (!ostree_validate_remote_name (invalid[i], &error));
       g_assert (error != NULL);
     }
@@ -211,39 +170,40 @@ static void
 test_object_writes (gconstpointer data)
 {
   OstreeRepo *repo = OSTREE_REPO (data);
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GError) error = NULL;
 
-  static const char hi_sha256[] = "2301b5923720c3edc1f0467addb5c287fd5559e3e0cd1396e7f1edb6b01be9f0";
+  static const char hi_sha256[]
+      = "2301b5923720c3edc1f0467addb5c287fd5559e3e0cd1396e7f1edb6b01be9f0";
 
   /* Successful content write */
-  { g_autoptr(GInputStream) hi_memstream = NULL;
+  {
+    g_autoptr (GInputStream) hi_memstream = NULL;
     guint64 len;
     hi_content_stream_new (&hi_memstream, &len, &error);
     g_assert_no_error (error);
     g_autofree guchar *csum = NULL;
-    (void)ostree_repo_write_content (repo, hi_sha256, hi_memstream, len, &csum,
-                                     NULL, &error);
+    (void)ostree_repo_write_content (repo, hi_sha256, hi_memstream, len, &csum, NULL, &error);
     g_assert_no_error (error);
   }
 
   /* Invalid content write */
-  { g_autoptr(GInputStream) hi_memstream = NULL;
+  {
+    g_autoptr (GInputStream) hi_memstream = NULL;
     guint64 len;
     hi_content_stream_new (&hi_memstream, &len, &error);
     g_assert_no_error (error);
     g_autofree guchar *csum = NULL;
-    static const char invalid_hi_sha256[] = "cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe";
-    g_assert (!ostree_repo_write_content (repo, invalid_hi_sha256, hi_memstream, len, &csum,
-                                          NULL, &error));
+    static const char invalid_hi_sha256[]
+        = "cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe";
+    g_assert (!ostree_repo_write_content (repo, invalid_hi_sha256, hi_memstream, len, &csum, NULL,
+                                          &error));
     g_assert (error);
     g_assert (strstr (error->message, "Corrupted file object"));
   }
 }
 
 static gboolean
-impl_test_break_hardlink (int tmp_dfd,
-                          const char *path,
-                          GError **error)
+impl_test_break_hardlink (int tmp_dfd, const char *path, GError **error)
 {
   const char *linkedpath = glnx_strjoina (path, ".link");
   struct stat orig_stbuf;
@@ -276,8 +236,8 @@ impl_test_break_hardlink (int tmp_dfd,
   g_assert_cmpint (orig_stbuf.st_dev, ==, stbuf.st_dev);
   g_assert_cmpint (orig_stbuf.st_ino, ==, stbuf.st_ino);
 
-  (void) unlinkat (tmp_dfd, path, 0);
-  (void) unlinkat (tmp_dfd, linkedpath, 0);
+  (void)unlinkat (tmp_dfd, path, 0);
+  (void)unlinkat (tmp_dfd, linkedpath, 0);
 
   return TRUE;
 }
@@ -286,14 +246,12 @@ static void
 test_break_hardlink (void)
 {
   int tmp_dfd = AT_FDCWD;
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GError) error = NULL;
 
   /* Regular file */
   const char hello_hardlinked_content[] = "hello hardlinked content";
-  glnx_file_replace_contents_at (tmp_dfd, "test-hardlink",
-                                 (guint8*)hello_hardlinked_content,
-                                 strlen (hello_hardlinked_content),
-                                 GLNX_FILE_REPLACE_NODATASYNC,
+  glnx_file_replace_contents_at (tmp_dfd, "test-hardlink", (guint8 *)hello_hardlinked_content,
+                                 strlen (hello_hardlinked_content), GLNX_FILE_REPLACE_NODATASYNC,
                                  NULL, &error);
   g_assert_no_error (error);
   (void)impl_test_break_hardlink (tmp_dfd, "test-hardlink", &error);
@@ -306,11 +264,8 @@ test_break_hardlink (void)
   g_assert_no_error (error);
 }
 
-static GVariant*
-xattr_cb (OstreeRepo  *repo,
-          const char  *path,
-          GFileInfo   *file_info,
-          gpointer     user_data)
+static GVariant *
+xattr_cb (OstreeRepo *repo, const char *path, GFileInfo *file_info, gpointer user_data)
 {
   GVariant *xattr = user_data;
   if (g_str_equal (path, "/baz/cow"))
@@ -322,10 +277,10 @@ xattr_cb (OstreeRepo  *repo,
 static void
 test_devino_cache_xattrs (void)
 {
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GError) error = NULL;
   gboolean ret = FALSE;
 
-  g_autoptr(GFile) repo_path = g_file_new_for_path ("repo");
+  g_autoptr (GFile) repo_path = g_file_new_for_path ("repo");
 
   /* re-initialize as bare */
   ret = ot_test_run_libtest ("setup_test_repository bare", &error);
@@ -349,7 +304,7 @@ test_devino_cache_xattrs (void)
       return;
     }
 
-  g_autoptr(OstreeRepo) repo = ostree_repo_new (repo_path);
+  g_autoptr (OstreeRepo) repo = ostree_repo_new (repo_path);
   ret = ostree_repo_open (repo, NULL, &error);
   g_assert_no_error (error);
   g_assert (ret);
@@ -359,47 +314,47 @@ test_devino_cache_xattrs (void)
   g_assert_no_error (error);
   g_assert (ret);
 
-  g_autoptr(OstreeRepoDevInoCache) cache = ostree_repo_devino_cache_new ();
+  g_autoptr (OstreeRepoDevInoCache) cache = ostree_repo_devino_cache_new ();
 
-  OstreeRepoCheckoutAtOptions options = {0,};
+  OstreeRepoCheckoutAtOptions options = {
+    0,
+  };
   options.no_copy_fallback = TRUE;
   options.devino_to_csum_cache = cache;
   ret = ostree_repo_checkout_at (repo, &options, AT_FDCWD, "checkout", csum, NULL, &error);
   g_assert_no_error (error);
   g_assert (ret);
 
-  g_autoptr(OstreeMutableTree) mtree = ostree_mutable_tree_new ();
-  g_autoptr(OstreeRepoCommitModifier) modifier =
-    ostree_repo_commit_modifier_new (0, NULL, NULL, NULL);
+  g_autoptr (OstreeMutableTree) mtree = ostree_mutable_tree_new ();
+  g_autoptr (OstreeRepoCommitModifier) modifier
+      = ostree_repo_commit_modifier_new (0, NULL, NULL, NULL);
   ostree_repo_commit_modifier_set_devino_cache (modifier, cache);
 
-  g_auto(GVariantBuilder) builder;
-  g_variant_builder_init (&builder, (GVariantType*)"a(ayay)");
-  g_variant_builder_add (&builder, "(@ay@ay)",
-                         g_variant_new_bytestring ("user.myattr"),
+  g_auto (GVariantBuilder) builder;
+  g_variant_builder_init (&builder, (GVariantType *)"a(ayay)");
+  g_variant_builder_add (&builder, "(@ay@ay)", g_variant_new_bytestring ("user.myattr"),
                          g_variant_new_bytestring ("data"));
-  g_autoptr(GVariant) orig_xattrs = g_variant_ref_sink (g_variant_builder_end (&builder));
+  g_autoptr (GVariant) orig_xattrs = g_variant_ref_sink (g_variant_builder_end (&builder));
 
   ret = ostree_repo_prepare_transaction (repo, NULL, NULL, &error);
   g_assert_no_error (error);
   g_assert (ret);
 
   ostree_repo_commit_modifier_set_xattr_callback (modifier, xattr_cb, NULL, orig_xattrs);
-  ret = ostree_repo_write_dfd_to_mtree (repo, AT_FDCWD, "checkout",
-                                        mtree, modifier, NULL, &error);
+  ret = ostree_repo_write_dfd_to_mtree (repo, AT_FDCWD, "checkout", mtree, modifier, NULL, &error);
   g_assert_no_error (error);
   g_assert (ret);
 
-  g_autoptr(GFile) root = NULL;
+  g_autoptr (GFile) root = NULL;
   ret = ostree_repo_write_mtree (repo, mtree, &root, NULL, &error);
   g_assert_no_error (error);
   g_assert (ret);
 
   /* now check that the final xattr matches */
-  g_autoptr(GFile) baz_child = g_file_get_child (root, "baz");
-  g_autoptr(GFile) cow_child = g_file_get_child (baz_child, "cow");
+  g_autoptr (GFile) baz_child = g_file_get_child (root, "baz");
+  g_autoptr (GFile) cow_child = g_file_get_child (baz_child, "cow");
 
-  g_autoptr(GVariant) xattrs = NULL;
+  g_autoptr (GVariant) xattrs = NULL;
   ret = ostree_repo_file_get_xattrs (OSTREE_REPO_FILE (cow_child), &xattrs, NULL, &error);
   g_assert_no_error (error);
   g_assert (ret);
@@ -408,13 +363,13 @@ test_devino_cache_xattrs (void)
   gsize n = g_variant_n_children (xattrs);
   for (gsize i = 0; i < n; i++)
     {
-      const guint8* name;
-      const guint8* value;
+      const guint8 *name;
+      const guint8 *value;
       g_variant_get_child (xattrs, i, "(^&ay^&ay)", &name, &value);
 
-      if (g_str_equal ((const char*)name, "user.myattr"))
+      if (g_str_equal ((const char *)name, "user.myattr"))
         {
-          g_assert_cmpstr ((const char*)value, ==, "data");
+          g_assert_cmpstr ((const char *)value, ==, "data");
           found_xattr = TRUE;
           break;
         }
@@ -437,29 +392,28 @@ test_devino_cache_xattrs (void)
 static void
 test_big_metadata (void)
 {
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GError) error = NULL;
   gboolean ret = FALSE;
 
-  g_autoptr(GFile) repo_path = g_file_new_for_path ("repo");
+  g_autoptr (GFile) repo_path = g_file_new_for_path ("repo");
 
   /* init as bare-user-only so we run everywhere */
   ret = ot_test_run_libtest ("setup_test_repository bare-user-only", &error);
   g_assert_no_error (error);
   g_assert (ret);
 
-  g_autoptr(OstreeRepo) repo = ostree_repo_new (repo_path);
+  g_autoptr (OstreeRepo) repo = ostree_repo_new (repo_path);
   ret = ostree_repo_open (repo, NULL, &error);
   g_assert_no_error (error);
   g_assert (ret);
 
-  g_autoptr(GFile) object_to_commit = NULL;
+  g_autoptr (GFile) object_to_commit = NULL;
   ret = ostree_repo_read_commit (repo, "test2", &object_to_commit, NULL, NULL, &error);
   g_assert_no_error (error);
   g_assert (ret);
 
-  g_autoptr(OstreeMutableTree) mtree = ostree_mutable_tree_new ();
-  ret = ostree_repo_write_directory_to_mtree (repo, object_to_commit, mtree, NULL,
-                                              NULL, &error);
+  g_autoptr (OstreeMutableTree) mtree = ostree_mutable_tree_new ();
+  ret = ostree_repo_write_directory_to_mtree (repo, object_to_commit, mtree, NULL, NULL, &error);
   g_assert_no_error (error);
   g_assert (ret);
 
@@ -467,14 +421,14 @@ test_big_metadata (void)
   g_assert_cmpint (len, >, OSTREE_MAX_METADATA_SIZE);
   g_autofree char *large_buf = g_malloc (len);
   memset (large_buf, 0x42, len);
-  g_autoptr(GVariantBuilder) builder =
-    g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+  g_autoptr (GVariantBuilder) builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
   g_autofree char *commit_checksum = NULL;
-  g_variant_builder_add (builder, "{sv}", "large-value",
-                         g_variant_new_fixed_array ((GVariantType*)"y",
-                                                    large_buf, len, sizeof (char)));
+  g_variant_builder_add (
+      builder, "{sv}", "large-value",
+      g_variant_new_fixed_array ((GVariantType *)"y", large_buf, len, sizeof (char)));
   ret = ostree_repo_write_commit (repo, NULL, NULL, NULL, g_variant_builder_end (builder),
-                                  OSTREE_REPO_FILE (object_to_commit), &commit_checksum, NULL, &error);
+                                  OSTREE_REPO_FILE (object_to_commit), &commit_checksum, NULL,
+                                  &error);
   g_assert_no_error (error);
   g_assert (ret);
 }
@@ -501,10 +455,12 @@ compare_xattrs (GVariant *orig, GVariant *new)
 static void
 test_read_xattrs (void)
 {
-  g_autoptr(GError) local_error = NULL;
+  g_autoptr (GError) local_error = NULL;
   GError **error = &local_error;
 
-  g_auto(GLnxTmpDir) tmpd = { 0, };
+  g_auto (GLnxTmpDir) tmpd = {
+    0,
+  };
   // Use /var/tmp to hope we get xattr support
   glnx_mkdtempat (AT_FDCWD, "/var/tmp/ostree-xattrs-test.XXXXXX", 0700, &tmpd, error);
   g_assert_no_error (local_error);
@@ -512,20 +468,20 @@ test_read_xattrs (void)
   const char value[] = "foo";
 
   {
-    g_autoptr(GVariant) current_xattrs = ostree_fs_get_all_xattrs (tmpd.fd, NULL, error);
+    g_autoptr (GVariant) current_xattrs = ostree_fs_get_all_xattrs (tmpd.fd, NULL, error);
     g_assert_no_error (local_error);
 
     int r = fsetxattr (tmpd.fd, "user.ostreetesting", value, sizeof (value), 0);
 
     if (r != 0)
       {
-        g_autofree gchar *message = g_strdup_printf ("Unable to set extended attributes in /var/tmp: %s",
-                                                     g_strerror (errno));
+        g_autofree gchar *message = g_strdup_printf (
+            "Unable to set extended attributes in /var/tmp: %s", g_strerror (errno));
         g_test_skip (message);
         return;
       }
 
-    g_autoptr(GVariant) new_xattrs = ostree_fs_get_all_xattrs (tmpd.fd, NULL, error);
+    g_autoptr (GVariant) new_xattrs = ostree_fs_get_all_xattrs (tmpd.fd, NULL, error);
     g_assert_no_error (local_error);
 
     compare_xattrs (current_xattrs, new_xattrs);
@@ -536,9 +492,10 @@ test_read_xattrs (void)
       glnx_throw_errno_prefix (error, "symlinkat");
     g_assert_no_error (local_error);
 
-    g_autoptr(GVariant) current_xattrs = ostree_fs_get_all_xattrs_at (tmpd.fd, "somelink", NULL, error);
+    g_autoptr (GVariant) current_xattrs
+        = ostree_fs_get_all_xattrs_at (tmpd.fd, "somelink", NULL, error);
     g_assert_no_error (local_error);
-    (void) current_xattrs;
+    (void)current_xattrs;
 
     // OK, can't do user. xattrs on symlinks unfortunately.
 
@@ -549,16 +506,17 @@ test_read_xattrs (void)
     //   glnx_throw_errno_prefix (error, "lsetxattr");
     // g_assert_no_error (local_error);
 
-    // g_autoptr(GVariant) new_xattrs = ostree_fs_get_all_xattrs_at (tmpd.fd, "somelink", NULL, error);
-    // g_assert_no_error (local_error);
+    // g_autoptr(GVariant) new_xattrs = ostree_fs_get_all_xattrs_at (tmpd.fd, "somelink", NULL,
+    // error); g_assert_no_error (local_error);
 
     // compare_xattrs (current_xattrs, new_xattrs);
   }
 }
 
-int main (int argc, char **argv)
+int
+main (int argc, char **argv)
 {
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GError) error = NULL;
   glnx_unref_object OstreeRepo *repo = NULL;
 
   g_test_init (&argc, &argv, NULL);
@@ -576,8 +534,8 @@ int main (int argc, char **argv)
   g_test_add_func ("/big-metadata", test_big_metadata);
   g_test_add_func ("/read-xattrs", test_read_xattrs);
 
-  return g_test_run();
- out:
+  return g_test_run ();
+out:
   if (error)
     g_error ("%s", error->message);
   return 1;

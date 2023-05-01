@@ -19,14 +19,15 @@
 
 #include "config.h"
 #include "libglnx.h"
+#include <gio/gio.h>
 #include <glib.h>
 #include <stdlib.h>
-#include <gio/gio.h>
 #include <string.h>
 
 #include "libostreetest.h"
 
-typedef struct {
+typedef struct
+{
   OstreeRepo *repo;
 } TestData;
 
@@ -52,18 +53,20 @@ test_data_init (TestData *td)
 
   repo_url = g_strconcat (http_address, "/ostree/gnomerepo", NULL);
 
-  { g_autoptr(GVariantBuilder) builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
-    g_autoptr(GVariant) opts = NULL;
+  {
+    g_autoptr (GVariantBuilder) builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+    g_autoptr (GVariant) opts = NULL;
 
-    g_variant_builder_add (builder, "{s@v}", "gpg-verify", g_variant_new_variant (g_variant_new_boolean (FALSE)));
+    g_variant_builder_add (builder, "{s@v}", "gpg-verify",
+                           g_variant_new_variant (g_variant_new_boolean (FALSE)));
     opts = g_variant_ref_sink (g_variant_builder_end (builder));
 
-    if (!ostree_repo_remote_change (td->repo, NULL, OSTREE_REPO_REMOTE_CHANGE_ADD,
-                                    "origin", repo_url, opts, NULL, error))
+    if (!ostree_repo_remote_change (td->repo, NULL, OSTREE_REPO_REMOTE_CHANGE_ADD, "origin",
+                                    repo_url, opts, NULL, error))
       goto out;
   }
 
- out:
+out:
   g_assert_no_error (local_error);
 }
 
@@ -72,17 +75,17 @@ test_pull_multi_nochange (gconstpointer data)
 {
   GError *local_error = NULL;
   GError **error = &local_error;
-  TestData *td = (void*)data;
+  TestData *td = (void *)data;
   char *refs[] = { "main", NULL };
 
-  if (!ostree_repo_pull (td->repo, "origin", (char**)&refs, 0, NULL, NULL, error))
+  if (!ostree_repo_pull (td->repo, "origin", (char **)&refs, 0, NULL, NULL, error))
     goto out;
-  if (!ostree_repo_pull (td->repo, "origin", (char**)&refs, 0, NULL, NULL, error))
+  if (!ostree_repo_pull (td->repo, "origin", (char **)&refs, 0, NULL, NULL, error))
     goto out;
-  if (!ostree_repo_pull (td->repo, "origin", (char**)&refs, 0, NULL, NULL, error))
+  if (!ostree_repo_pull (td->repo, "origin", (char **)&refs, 0, NULL, NULL, error))
     goto out;
 
- out:
+out:
   g_assert_no_error (local_error);
 }
 
@@ -92,32 +95,35 @@ test_pull_multi_error_then_ok (gconstpointer data)
   GError *local_error = NULL;
   GError **error = &local_error;
 
-  TestData *td = (void*)data;
+  TestData *td = (void *)data;
   char *ok_refs[] = { "main", NULL };
   char *bad_refs[] = { "nosuchbranch", NULL };
 
   for (guint i = 0; i < 3; i++)
     {
-      g_autoptr(GError) tmp_error = NULL;
-      if (!ostree_repo_pull (td->repo, "origin", (char**)&ok_refs, 0, NULL, NULL, error))
+      g_autoptr (GError) tmp_error = NULL;
+      if (!ostree_repo_pull (td->repo, "origin", (char **)&ok_refs, 0, NULL, NULL, error))
         goto out;
-      if (ostree_repo_pull (td->repo, "origin", (char**)&bad_refs, 0, NULL, NULL, &tmp_error))
+      if (ostree_repo_pull (td->repo, "origin", (char **)&bad_refs, 0, NULL, NULL, &tmp_error))
         g_assert_not_reached ();
       g_clear_error (&tmp_error);
-      if (ostree_repo_pull (td->repo, "origin", (char**)&bad_refs, 0, NULL, NULL, &tmp_error))
+      if (ostree_repo_pull (td->repo, "origin", (char **)&bad_refs, 0, NULL, NULL, &tmp_error))
         g_assert_not_reached ();
       g_clear_error (&tmp_error);
-      if (!ostree_repo_pull (td->repo, "origin", (char**)&ok_refs, 0, NULL, NULL, error))
+      if (!ostree_repo_pull (td->repo, "origin", (char **)&ok_refs, 0, NULL, NULL, error))
         goto out;
     }
 
- out:
+out:
   g_assert_no_error (local_error);
 }
 
-int main (int argc, char **argv)
+int
+main (int argc, char **argv)
 {
-  TestData td = {NULL,};
+  TestData td = {
+    NULL,
+  };
   int r;
 
   test_data_init (&td);
@@ -127,7 +133,7 @@ int main (int argc, char **argv)
   g_test_add_data_func ("/test-pull-c/multi-nochange", &td, test_pull_multi_nochange);
   g_test_add_data_func ("/test-pull-c/multi-ok-error-repeat", &td, test_pull_multi_error_then_ok);
 
-  r = g_test_run();
+  r = g_test_run ();
   g_clear_object (&td.repo);
 
   return r;

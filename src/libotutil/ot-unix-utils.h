@@ -24,14 +24,14 @@
 #include <gio/gio.h>
 
 /* I just put all this shit here. Sue me. */
-#include <sys/types.h>
-#include <errno.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <dirent.h>
-#include <string.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 G_BEGIN_DECLS
 

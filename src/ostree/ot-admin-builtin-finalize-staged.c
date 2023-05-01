@@ -25,10 +25,10 @@
 #include <signal.h>
 #include <stdlib.h>
 
-#include "ot-main.h"
+#include "ostree.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
-#include "ostree.h"
+#include "ot-main.h"
 #include "otutil.h"
 
 #include "ostree-cmd-private.h"
@@ -36,16 +36,16 @@
 
 static gboolean opt_hold;
 
-static GOptionEntry options[] = {
-  { "hold", 0, 0, G_OPTION_ARG_NONE, &opt_hold, "Hold /boot open during finalization", NULL },
-  { NULL }
-};
+static GOptionEntry options[]
+    = { { "hold", 0, 0, G_OPTION_ARG_NONE, &opt_hold, "Hold /boot open during finalization", NULL },
+        { NULL } };
 
 /* Called by ostree-finalize-staged.service, and in turn
  * invokes a cmdprivate function inside the shared library.
  */
 gboolean
-ot_admin_builtin_finalize_staged (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_admin_builtin_finalize_staged (int argc, char **argv, OstreeCommandInvocation *invocation,
+                                  GCancellable *cancellable, GError **error)
 {
   /* Just a sanity check; we shouldn't be called outside of the service though.
    */
@@ -53,23 +53,23 @@ ot_admin_builtin_finalize_staged (int argc, char **argv, OstreeCommandInvocation
   if (fstatat (AT_FDCWD, OSTREE_PATH_BOOTED, &stbuf, 0) < 0)
     return TRUE;
 
-  g_autoptr(GOptionContext) context = g_option_context_new ("");
-  g_autoptr(OstreeSysroot) sysroot = NULL;
+  g_autoptr (GOptionContext) context = g_option_context_new ("");
+  g_autoptr (OstreeSysroot) sysroot = NULL;
 
   /* First parse the args without loading the sysroot to see what options are
    * set. */
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_NO_LOAD,
-                                          invocation, &sysroot, cancellable, error))
+                                          OSTREE_ADMIN_BUILTIN_FLAG_NO_LOAD, invocation, &sysroot,
+                                          cancellable, error))
     return FALSE;
 
   if (opt_hold)
     {
       /* Load the sysroot unlocked so that a separate namespace isn't
        * created. */
-      if (!ostree_admin_sysroot_load (sysroot,
-                                      OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER | OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
-                                      cancellable, error))
+      if (!ostree_admin_sysroot_load (
+              sysroot, OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER | OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
+              cancellable, error))
         return FALSE;
 
       /* In case it's an automount, open /boot so that the automount doesn't
@@ -93,12 +93,11 @@ ot_admin_builtin_finalize_staged (int argc, char **argv, OstreeCommandInvocation
     {
       /* Load the sysroot with the normal flags and actually finalize the
        * deployment. */
-      if (!ostree_admin_sysroot_load (sysroot,
-                                      OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
-                                      cancellable, error))
+      if (!ostree_admin_sysroot_load (sysroot, OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER, cancellable,
+                                      error))
         return FALSE;
 
-      if (!ostree_cmd__private__()->ostree_finalize_staged (sysroot, cancellable, error))
+      if (!ostree_cmd__private__ ()->ostree_finalize_staged (sysroot, cancellable, error))
         return FALSE;
     }
 

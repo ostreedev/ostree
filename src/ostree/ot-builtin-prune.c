@@ -22,9 +22,9 @@
 
 #include "config.h"
 
-#include "ot-main.h"
-#include "ot-builtins.h"
 #include "ostree.h"
+#include "ot-builtins.h"
+#include "ot-main.h"
 #include "otutil.h"
 #include "parse-datetime.h"
 
@@ -44,29 +44,39 @@ static gboolean opt_commit_only;
  */
 
 static GOptionEntry options[] = {
-  { "no-prune", 0, 0, G_OPTION_ARG_NONE, &opt_no_prune, "Only display unreachable objects; don't delete", NULL },
-  { "refs-only", 0, 0, G_OPTION_ARG_NONE, &opt_refs_only, "Only compute reachability via refs", NULL },
-  { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Only traverse DEPTH parents for each commit (default: -1=infinite)", "DEPTH" },
-  { "delete-commit", 0, 0, G_OPTION_ARG_STRING, &opt_delete_commit, "Specify a commit to delete", "COMMIT" },
-  { "keep-younger-than", 0, 0, G_OPTION_ARG_STRING, &opt_keep_younger_than, "Prune all commits older than the specified date", "DATE" },
-  { "static-deltas-only", 0, 0, G_OPTION_ARG_NONE, &opt_static_deltas_only, "Change the behavior of delete-commit and keep-younger-than to prune only static deltas" },
-  { "retain-branch-depth", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_retain_branch_depth, "Additionally retain BRANCH=DEPTH commits", "BRANCH=DEPTH" },
-  { "only-branch", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_only_branches, "Only prune BRANCH (may be specified multiple times)", "BRANCH" },
-  { "commit-only", 0, 0, G_OPTION_ARG_NONE, &opt_commit_only, "Only traverse and delete commit objects.", NULL },
+  { "no-prune", 0, 0, G_OPTION_ARG_NONE, &opt_no_prune,
+    "Only display unreachable objects; don't delete", NULL },
+  { "refs-only", 0, 0, G_OPTION_ARG_NONE, &opt_refs_only, "Only compute reachability via refs",
+    NULL },
+  { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth,
+    "Only traverse DEPTH parents for each commit (default: -1=infinite)", "DEPTH" },
+  { "delete-commit", 0, 0, G_OPTION_ARG_STRING, &opt_delete_commit, "Specify a commit to delete",
+    "COMMIT" },
+  { "keep-younger-than", 0, 0, G_OPTION_ARG_STRING, &opt_keep_younger_than,
+    "Prune all commits older than the specified date", "DATE" },
+  { "static-deltas-only", 0, 0, G_OPTION_ARG_NONE, &opt_static_deltas_only,
+    "Change the behavior of delete-commit and keep-younger-than to prune only static deltas" },
+  { "retain-branch-depth", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_retain_branch_depth,
+    "Additionally retain BRANCH=DEPTH commits", "BRANCH=DEPTH" },
+  { "only-branch", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_only_branches,
+    "Only prune BRANCH (may be specified multiple times)", "BRANCH" },
+  { "commit-only", 0, 0, G_OPTION_ARG_NONE, &opt_commit_only,
+    "Only traverse and delete commit objects.", NULL },
   { NULL }
 };
 
 static gboolean
-delete_commit (OstreeRepo *repo, const char *commit_to_delete, GCancellable *cancellable, GError **error)
+delete_commit (OstreeRepo *repo, const char *commit_to_delete, GCancellable *cancellable,
+               GError **error)
 {
-  g_autoptr(GHashTable) refs = NULL;  /* (element-type utf8 utf8) */
-  g_autoptr(GHashTable) collection_refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
+  g_autoptr (GHashTable) refs = NULL;            /* (element-type utf8 utf8) */
+  g_autoptr (GHashTable) collection_refs = NULL; /* (element-type OstreeCollectionRef utf8) */
 
   /* Check refs which are not in a collection. */
   if (!ostree_repo_list_refs (repo, NULL, &refs, cancellable, error))
     return FALSE;
 
-  GLNX_HASH_TABLE_FOREACH_KV(refs, const char *, ref, const char *, commit)
+  GLNX_HASH_TABLE_FOREACH_KV (refs, const char *, ref, const char *, commit)
     {
       if (g_strcmp0 (commit_to_delete, commit) == 0)
         return glnx_throw (error, "Commit '%s' is referenced by '%s'", commit_to_delete, ref);
@@ -74,32 +84,31 @@ delete_commit (OstreeRepo *repo, const char *commit_to_delete, GCancellable *can
 
   /* And check refs which *are* in a collection. */
   if (!ostree_repo_list_collection_refs (repo, NULL, &collection_refs,
-                                         OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES,
-                                         cancellable, error))
+                                         OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES, cancellable,
+                                         error))
     return FALSE;
 
-  GLNX_HASH_TABLE_FOREACH_KV (collection_refs, const OstreeCollectionRef*, ref,
-                              const char *, commit)
+  GLNX_HASH_TABLE_FOREACH_KV (collection_refs, const OstreeCollectionRef *, ref, const char *,
+                              commit)
     {
       if (g_strcmp0 (commit_to_delete, commit) == 0)
-        return glnx_throw (error, "Commit '%s' is referenced by (%s, %s)",
-                           commit_to_delete, ref->collection_id, ref->ref_name);
+        return glnx_throw (error, "Commit '%s' is referenced by (%s, %s)", commit_to_delete,
+                           ref->collection_id, ref->ref_name);
     }
 
   if (!ot_enable_tombstone_commits (repo, error))
     return FALSE;
 
-  if (!ostree_repo_delete_object (repo, OSTREE_OBJECT_TYPE_COMMIT, commit_to_delete, cancellable, error))
+  if (!ostree_repo_delete_object (repo, OSTREE_OBJECT_TYPE_COMMIT, commit_to_delete, cancellable,
+                                  error))
     return FALSE;
 
   return TRUE;
 }
 
 static gboolean
-traverse_keep_younger_than (OstreeRepo *repo, const char *checksum,
-                            struct timespec *ts,
-                            GHashTable *reachable,
-                            GCancellable *cancellable, GError **error)
+traverse_keep_younger_than (OstreeRepo *repo, const char *checksum, struct timespec *ts,
+                            GHashTable *reachable, GCancellable *cancellable, GError **error)
 {
   g_autofree char *next_checksum = g_strdup (checksum);
   OstreeRepoCommitTraverseFlags traverse_flags = OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE;
@@ -109,13 +118,13 @@ traverse_keep_younger_than (OstreeRepo *repo, const char *checksum,
   /* This is the first commit in our loop, which has a ref pointing to it. We
    * don't want to auto-prune it.
    */
-  if (!ostree_repo_traverse_commit_with_flags (repo, traverse_flags, checksum, 0, reachable,
-                                                NULL, cancellable, error))
+  if (!ostree_repo_traverse_commit_with_flags (repo, traverse_flags, checksum, 0, reachable, NULL,
+                                               cancellable, error))
     return FALSE;
 
   while (TRUE)
     {
-      g_autoptr(GVariant) commit = NULL;
+      g_autoptr (GVariant) commit = NULL;
       if (!ostree_repo_load_variant_if_exists (repo, OSTREE_OBJECT_TYPE_COMMIT, next_checksum,
                                                &commit, error))
         return FALSE;
@@ -127,8 +136,8 @@ traverse_keep_younger_than (OstreeRepo *repo, const char *checksum,
       if (commit_timestamp >= ts->tv_sec)
         {
           /* It's newer, traverse it */
-          if (!ostree_repo_traverse_commit_with_flags (repo, traverse_flags, next_checksum, 0, reachable,
-                                                        NULL, cancellable, error))
+          if (!ostree_repo_traverse_commit_with_flags (repo, traverse_flags, next_checksum, 0,
+                                                       reachable, NULL, cancellable, error))
             return FALSE;
 
           g_free (next_checksum);
@@ -146,11 +155,13 @@ traverse_keep_younger_than (OstreeRepo *repo, const char *checksum,
 }
 
 gboolean
-ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation,
+                      GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = g_option_context_new ("");
-  g_autoptr(OstreeRepo) repo = NULL;
-  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
+  g_autoptr (GOptionContext) context = g_option_context_new ("");
+  g_autoptr (OstreeRepo) repo = NULL;
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable,
+                                    error))
     return FALSE;
 
   if (!opt_no_prune && !ostree_ensure_repo_writable (repo, error))
@@ -163,16 +174,17 @@ ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation
     {
       if (opt_no_prune)
         {
-          ot_util_usage_error (context, "Cannot specify both --delete-commit and --no-prune", error);
+          ot_util_usage_error (context, "Cannot specify both --delete-commit and --no-prune",
+                               error);
           return FALSE;
         }
-        if (opt_static_deltas_only)
-          {
-            if(!ostree_repo_prune_static_deltas (repo, opt_delete_commit, cancellable, error))
-              return FALSE;
-          }
-        else if (!delete_commit (repo, opt_delete_commit, cancellable, error))
-          return FALSE;
+      if (opt_static_deltas_only)
+        {
+          if (!ostree_repo_prune_static_deltas (repo, opt_delete_commit, cancellable, error))
+            return FALSE;
+        }
+      else if (!delete_commit (repo, opt_delete_commit, cancellable, error))
+        return FALSE;
     }
   else
     {
@@ -181,7 +193,8 @@ ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation
        * https://github.com/ostreedev/ostree/issues/1479
        */
       if (opt_static_deltas_only)
-        return glnx_throw (error, "--static-deltas-only requires --delete-commit; see https://github.com/ostreedev/ostree/issues/1479");
+        return glnx_throw (error, "--static-deltas-only requires --delete-commit; see "
+                                  "https://github.com/ostreedev/ostree/issues/1479");
     }
 
   OstreeRepoPruneFlags pruneflags = 0;
@@ -201,9 +214,8 @@ ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation
   guint64 objsize_total;
   if (!(opt_retain_branch_depth || opt_keep_younger_than || opt_only_branches))
     {
-      if (!ostree_repo_prune (repo, pruneflags, opt_depth,
-                              &n_objects_total, &n_objects_pruned, &objsize_total,
-                              cancellable, error))
+      if (!ostree_repo_prune (repo, pruneflags, opt_depth, &n_objects_total, &n_objects_pruned,
+                              &objsize_total, cancellable, error))
         return FALSE;
     }
   else
@@ -212,15 +224,18 @@ ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation
        * While we do this, we can't let new content in since it'll race with
        * reachability calculations and we may immediately nuke it. So push an
        * exclusive lock now. */
-      g_autoptr(OstreeRepoAutoLock) lock =
-        ostree_repo_auto_lock_push (repo, OSTREE_REPO_LOCK_EXCLUSIVE, cancellable, error);
+      g_autoptr (OstreeRepoAutoLock) lock
+          = ostree_repo_auto_lock_push (repo, OSTREE_REPO_LOCK_EXCLUSIVE, cancellable, error);
       if (!lock)
         return FALSE;
 
-      g_autoptr(GHashTable) all_refs = NULL;
-      g_autoptr(GHashTable) reachable = ostree_repo_traverse_new_reachable ();
-      g_autoptr(GHashTable) retain_branch_depth = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-      struct timespec keep_younger_than_ts = {0, };
+      g_autoptr (GHashTable) all_refs = NULL;
+      g_autoptr (GHashTable) reachable = ostree_repo_traverse_new_reachable ();
+      g_autoptr (GHashTable) retain_branch_depth
+          = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+      struct timespec keep_younger_than_ts = {
+        0,
+      };
       GHashTableIter hash_iter;
       gpointer key, value;
 
@@ -259,8 +274,7 @@ ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation
 
       /* We start from the refs */
       /* FIXME: Do we also want to look at ostree_repo_list_collection_refs()? */
-      if (!ostree_repo_list_refs (repo, NULL, &all_refs,
-                                  cancellable, error))
+      if (!ostree_repo_list_refs (repo, NULL, &all_refs, cancellable, error))
         return FALSE;
 
       /* Process --only-branch. Note this combines with --retain-branch-depth; one
@@ -275,14 +289,14 @@ ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation
       if (opt_only_branches)
         {
           /* Turn --only-branch into a set */
-          g_autoptr(GHashTable) only_branches_set = g_hash_table_new (g_str_hash, g_str_equal);
+          g_autoptr (GHashTable) only_branches_set = g_hash_table_new (g_str_hash, g_str_equal);
           for (char **iter = opt_only_branches; iter && *iter; iter++)
             {
               const char *ref = *iter;
               /* Ensure the specified branch exists */
               if (!ostree_repo_resolve_rev (repo, ref, FALSE, NULL, error))
                 return FALSE;
-              g_hash_table_add (only_branches_set, (char*)ref);
+              g_hash_table_add (only_branches_set, (char *)ref);
             }
 
           /* Iterate over all refs, add equivalent of --retain-branch-depth=$ref=-1
@@ -291,10 +305,11 @@ ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation
            */
           GLNX_HASH_TABLE_FOREACH (all_refs, const char *, ref)
             {
-              if (!g_hash_table_contains (only_branches_set, ref) &&
-                  !g_hash_table_contains (retain_branch_depth, ref))
+              if (!g_hash_table_contains (only_branches_set, ref)
+                  && !g_hash_table_contains (retain_branch_depth, ref))
                 {
-                  g_hash_table_insert (retain_branch_depth, g_strdup (ref), GINT_TO_POINTER ((int)-1));
+                  g_hash_table_insert (retain_branch_depth, g_strdup (ref),
+                                       GINT_TO_POINTER ((int)-1));
                 }
             }
         }
@@ -318,54 +333,48 @@ ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation
            * --retain-branch-depth=myos/x86_64/dev=5
            */
           if (depthp)
-            depth = GPOINTER_TO_INT(depthp);
+            depth = GPOINTER_TO_INT (depthp);
           else if (opt_keep_younger_than)
             {
-              if (!traverse_keep_younger_than (repo, checksum,
-                                               &keep_younger_than_ts,
-                                               reachable,
+              if (!traverse_keep_younger_than (repo, checksum, &keep_younger_than_ts, reachable,
                                                cancellable, error))
                 return FALSE;
 
               /* Okay, we handled the younger-than case; the other
                * two fall through to plain depth-based handling below.
                */
-              continue;  /* Note again, we're skipping the below bit */
+              continue; /* Note again, we're skipping the below bit */
             }
           else
             depth = opt_depth; /* No --retain-branch-depth for this branch, use
                                   the global default */
 
           g_debug ("Finding objects to keep for commit %s", checksum);
-          if (!ostree_repo_traverse_commit_with_flags (repo, traverse_flags, checksum, depth, reachable,
-                                                        NULL, cancellable, error))
+          if (!ostree_repo_traverse_commit_with_flags (repo, traverse_flags, checksum, depth,
+                                                       reachable, NULL, cancellable, error))
             return FALSE;
         }
 
       /* We've gathered the reachable set; start the prune ✀ */
-      { OstreeRepoPruneOptions opts = { pruneflags, reachable };
-        if (!ostree_repo_prune_from_reachable (repo, &opts,
-                                               &n_objects_total,
-                                               &n_objects_pruned,
-                                               &objsize_total,
-                                               cancellable, error))
+      {
+        OstreeRepoPruneOptions opts = { pruneflags, reachable };
+        if (!ostree_repo_prune_from_reachable (repo, &opts, &n_objects_total, &n_objects_pruned,
+                                               &objsize_total, cancellable, error))
           return FALSE;
       }
     }
 
   g_autofree char *formatted_freed_size = g_format_size_full (objsize_total, 0);
   if (opt_commit_only)
-    g_print("Total (commit only) objects: %u\n", n_objects_total);
+    g_print ("Total (commit only) objects: %u\n", n_objects_total);
   else
     g_print ("Total objects: %u\n", n_objects_total);
   if (n_objects_pruned == 0)
     g_print ("No unreachable objects\n");
   else if (pruneflags & OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE)
-    g_print ("Would delete: %u objects, freeing %s\n",
-             n_objects_pruned, formatted_freed_size);
+    g_print ("Would delete: %u objects, freeing %s\n", n_objects_pruned, formatted_freed_size);
   else
-    g_print ("Deleted %u objects, %s freed\n",
-             n_objects_pruned, formatted_freed_size);
+    g_print ("Deleted %u objects, %s freed\n", n_objects_pruned, formatted_freed_size);
 
   return TRUE;
 }

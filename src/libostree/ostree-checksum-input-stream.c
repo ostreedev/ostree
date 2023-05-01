@@ -22,30 +22,26 @@
 
 #include "ostree-checksum-input-stream.h"
 
-enum {
+enum
+{
   PROP_0,
   PROP_CHECKSUM
 };
 
-struct _OstreeChecksumInputStreamPrivate {
+struct _OstreeChecksumInputStreamPrivate
+{
   GChecksum *checksum;
 };
 
-G_DEFINE_TYPE_WITH_PRIVATE (OstreeChecksumInputStream, ostree_checksum_input_stream, G_TYPE_FILTER_INPUT_STREAM)
+G_DEFINE_TYPE_WITH_PRIVATE (OstreeChecksumInputStream, ostree_checksum_input_stream,
+                            G_TYPE_FILTER_INPUT_STREAM)
 
-static void     ostree_checksum_input_stream_set_property (GObject              *object,
-                                                           guint                 prop_id,
-                                                           const GValue         *value,
-                                                           GParamSpec           *pspec);
-static void     ostree_checksum_input_stream_get_property (GObject              *object,
-                                                           guint                 prop_id,
-                                                           GValue               *value,
-                                                           GParamSpec           *pspec);
-static gssize   ostree_checksum_input_stream_read         (GInputStream         *stream,
-                                                           void                 *buffer,
-                                                           gsize                 count,
-                                                           GCancellable         *cancellable,
-                                                           GError              **error);
+static void ostree_checksum_input_stream_set_property (GObject *object, guint prop_id,
+                                                       const GValue *value, GParamSpec *pspec);
+static void ostree_checksum_input_stream_get_property (GObject *object, guint prop_id,
+                                                       GValue *value, GParamSpec *pspec);
+static gssize ostree_checksum_input_stream_read (GInputStream *stream, void *buffer, gsize count,
+                                                 GCancellable *cancellable, GError **error);
 
 static void
 ostree_checksum_input_stream_class_init (OstreeChecksumInputStreamClass *klass)
@@ -63,21 +59,15 @@ ostree_checksum_input_stream_class_init (OstreeChecksumInputStreamClass *klass)
    *
    * The checksum that the stream updates.
    */
-  g_object_class_install_property (gobject_class,
-				   PROP_CHECKSUM,
-				   g_param_spec_pointer ("checksum",
-							 "", "",
-							 G_PARAM_READWRITE |
-							 G_PARAM_CONSTRUCT_ONLY |
-							 G_PARAM_STATIC_STRINGS));
-
+  g_object_class_install_property (
+      gobject_class, PROP_CHECKSUM,
+      g_param_spec_pointer ("checksum", "", "",
+                            G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 
 static void
-ostree_checksum_input_stream_set_property (GObject         *object,
-					     guint            prop_id,
-					     const GValue    *value,
-					     GParamSpec      *pspec)
+ostree_checksum_input_stream_set_property (GObject *object, guint prop_id, const GValue *value,
+                                           GParamSpec *pspec)
 {
   OstreeChecksumInputStream *self;
 
@@ -95,10 +85,8 @@ ostree_checksum_input_stream_set_property (GObject         *object,
 }
 
 static void
-ostree_checksum_input_stream_get_property (GObject    *object,
-					     guint       prop_id,
-					     GValue     *value,
-					     GParamSpec *pspec)
+ostree_checksum_input_stream_get_property (GObject *object, guint prop_id, GValue *value,
+                                           GParamSpec *pspec)
 {
   OstreeChecksumInputStream *self;
 
@@ -121,39 +109,28 @@ ostree_checksum_input_stream_init (OstreeChecksumInputStream *self)
 }
 
 OstreeChecksumInputStream *
-ostree_checksum_input_stream_new (GInputStream    *base,
-                                  GChecksum       *checksum)
+ostree_checksum_input_stream_new (GInputStream *base, GChecksum *checksum)
 {
   g_assert (G_IS_INPUT_STREAM (base));
 
   OstreeChecksumInputStream *stream = g_object_new (
-      OSTREE_TYPE_CHECKSUM_INPUT_STREAM,
-      "base-stream", base,
-      "checksum", checksum,
-      NULL);
+      OSTREE_TYPE_CHECKSUM_INPUT_STREAM, "base-stream", base, "checksum", checksum, NULL);
 
   return stream;
 }
 
 static gssize
-ostree_checksum_input_stream_read (GInputStream  *stream,
-                                   void          *buffer,
-                                   gsize          count,
-                                   GCancellable  *cancellable,
-                                   GError       **error)
+ostree_checksum_input_stream_read (GInputStream *stream, void *buffer, gsize count,
+                                   GCancellable *cancellable, GError **error)
 {
-  OstreeChecksumInputStream *self = (OstreeChecksumInputStream*) stream;
-  GFilterInputStream *fself = (GFilterInputStream*) self;
+  OstreeChecksumInputStream *self = (OstreeChecksumInputStream *)stream;
+  GFilterInputStream *fself = (GFilterInputStream *)self;
   gssize res = -1;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return -1;
 
-  res = g_input_stream_read (fself->base_stream,
-                             buffer,
-                             count,
-                             cancellable,
-                             error);
+  res = g_input_stream_read (fself->base_stream, buffer, count, cancellable, error);
   if (res > 0)
     g_checksum_update (self->priv->checksum, buffer, res);
 

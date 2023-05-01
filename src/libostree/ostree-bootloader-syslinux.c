@@ -17,8 +17,8 @@
 
 #include "config.h"
 
-#include "ostree-sysroot-private.h"
 #include "ostree-bootloader-syslinux.h"
+#include "ostree-sysroot-private.h"
 #include "otutil.h"
 
 #include <string.h>
@@ -27,27 +27,27 @@ static const char syslinux_config_path[] = "boot/syslinux/syslinux.cfg";
 
 struct _OstreeBootloaderSyslinux
 {
-  GObject       parent_instance;
+  GObject parent_instance;
 
-  OstreeSysroot  *sysroot;
+  OstreeSysroot *sysroot;
 };
 
 typedef GObjectClass OstreeBootloaderSyslinuxClass;
 
 static void _ostree_bootloader_syslinux_bootloader_iface_init (OstreeBootloaderInterface *iface);
 G_DEFINE_TYPE_WITH_CODE (OstreeBootloaderSyslinux, _ostree_bootloader_syslinux, G_TYPE_OBJECT,
-                         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_BOOTLOADER, _ostree_bootloader_syslinux_bootloader_iface_init));
+                         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_BOOTLOADER,
+                                                _ostree_bootloader_syslinux_bootloader_iface_init));
 
 static gboolean
-_ostree_bootloader_syslinux_query (OstreeBootloader *bootloader,
-                                   gboolean         *out_is_active,
-                                   GCancellable     *cancellable,
-                                   GError          **error)
+_ostree_bootloader_syslinux_query (OstreeBootloader *bootloader, gboolean *out_is_active,
+                                   GCancellable *cancellable, GError **error)
 {
   OstreeBootloaderSyslinux *self = OSTREE_BOOTLOADER_SYSLINUX (bootloader);
   struct stat stbuf;
 
-  if (!glnx_fstatat_allow_noent (self->sysroot->sysroot_fd, syslinux_config_path, &stbuf, AT_SYMLINK_NOFOLLOW, error))
+  if (!glnx_fstatat_allow_noent (self->sysroot->sysroot_fd, syslinux_config_path, &stbuf,
+                                 AT_SYMLINK_NOFOLLOW, error))
     return FALSE;
   *out_is_active = (errno == 0);
   return TRUE;
@@ -60,14 +60,11 @@ _ostree_bootloader_syslinux_get_name (OstreeBootloader *bootloader)
 }
 
 static gboolean
-append_config_from_loader_entries (OstreeBootloaderSyslinux  *self,
-                                   gboolean               regenerate_default,
-                                   int                    bootversion,
-                                   GPtrArray             *new_lines,
-                                   GCancellable          *cancellable,
-                                   GError               **error)
+append_config_from_loader_entries (OstreeBootloaderSyslinux *self, gboolean regenerate_default,
+                                   int bootversion, GPtrArray *new_lines, GCancellable *cancellable,
+                                   GError **error)
 {
-  g_autoptr(GPtrArray) loader_configs = NULL;
+  g_autoptr (GPtrArray) loader_configs = NULL;
   if (!_ostree_sysroot_read_boot_loader_configs (self->sysroot, bootversion, &loader_configs,
                                                  cancellable, error))
     return FALSE;
@@ -106,27 +103,23 @@ append_config_from_loader_entries (OstreeBootloaderSyslinux  *self,
 }
 
 static gboolean
-_ostree_bootloader_syslinux_write_config (OstreeBootloader  *bootloader,
-                                          int                bootversion,
-                                          GPtrArray         *new_deployments,
-                                          GCancellable      *cancellable,
-                                          GError           **error)
+_ostree_bootloader_syslinux_write_config (OstreeBootloader *bootloader, int bootversion,
+                                          GPtrArray *new_deployments, GCancellable *cancellable,
+                                          GError **error)
 {
   OstreeBootloaderSyslinux *self = OSTREE_BOOTLOADER_SYSLINUX (bootloader);
 
-  g_autofree char *new_config_path =
-    g_strdup_printf ("boot/loader.%d/syslinux.cfg", bootversion);
+  g_autofree char *new_config_path = g_strdup_printf ("boot/loader.%d/syslinux.cfg", bootversion);
 
   /* This should follow the symbolic link to the current bootversion. */
-  g_autofree char *config_contents =
-    glnx_file_get_contents_utf8_at (self->sysroot->sysroot_fd, syslinux_config_path, NULL,
-                                    cancellable, error);
+  g_autofree char *config_contents = glnx_file_get_contents_utf8_at (
+      self->sysroot->sysroot_fd, syslinux_config_path, NULL, cancellable, error);
   if (!config_contents)
     return FALSE;
 
-  g_auto(GStrv) lines = g_strsplit (config_contents, "\n", -1);
-  g_autoptr(GPtrArray) new_lines = g_ptr_array_new_with_free_func (g_free);
-  g_autoptr(GPtrArray) tmp_lines = g_ptr_array_new_with_free_func (g_free);
+  g_auto (GStrv) lines = g_strsplit (config_contents, "\n", -1);
+  g_autoptr (GPtrArray) new_lines = g_ptr_array_new_with_free_func (g_free);
+  g_autoptr (GPtrArray) tmp_lines = g_ptr_array_new_with_free_func (g_free);
 
   g_autofree char *kernel_arg = NULL;
   gboolean saw_default = FALSE;
@@ -141,8 +134,7 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader  *bootloader,
       const char *line = *iter;
       gboolean skip = FALSE;
 
-      if (parsing_label &&
-          (line == NULL || !g_str_has_prefix (line, "\t")))
+      if (parsing_label && (line == NULL || !g_str_has_prefix (line, "\t")))
         {
           parsing_label = FALSE;
           if (kernel_arg == NULL)
@@ -153,8 +145,8 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader  *bootloader,
            * We check for /ostree (without /boot prefix) as well to support
            * upgrading ostree from <v2020.4.
            */
-          if (!g_str_has_prefix (kernel_arg, "/ostree/") &&
-              !g_str_has_prefix (kernel_arg, "/boot/ostree/"))
+          if (!g_str_has_prefix (kernel_arg, "/ostree/")
+              && !g_str_has_prefix (kernel_arg, "/boot/ostree/"))
             {
               for (guint i = 0; i < tmp_lines->len; i++)
                 {
@@ -174,8 +166,7 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader  *bootloader,
       if (line == NULL)
         break;
 
-      if (!parsing_label &&
-          (g_str_has_prefix (line, "LABEL ")))
+      if (!parsing_label && (g_str_has_prefix (line, "LABEL ")))
         {
           parsing_label = TRUE;
           g_ptr_array_set_size (tmp_lines, 0);
@@ -185,15 +176,14 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader  *bootloader,
           g_free (kernel_arg);
           kernel_arg = g_strdup (line + strlen ("\tKERNEL "));
         }
-      else if (!parsing_label &&
-               (g_str_has_prefix (line, "DEFAULT ")))
+      else if (!parsing_label && (g_str_has_prefix (line, "DEFAULT ")))
         {
           saw_default = TRUE;
           /* XXX Searching for patterns in the title is rather brittle,
            *     but this hack is at least noted in the code that builds
            *     the title to hopefully avoid regressions. */
-          if (g_str_has_prefix (line, "DEFAULT ostree:") ||  /* old format */
-              strstr (line, "(ostree") != NULL)              /* new format */
+          if (g_str_has_prefix (line, "DEFAULT ostree:") || /* old format */
+              strstr (line, "(ostree") != NULL)             /* new format */
             regenerate_default = TRUE;
           skip = TRUE;
         }
@@ -210,16 +200,14 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader  *bootloader,
   if (!saw_default)
     regenerate_default = TRUE;
 
-  if (!append_config_from_loader_entries (self, regenerate_default,
-                                          bootversion, new_lines,
+  if (!append_config_from_loader_entries (self, regenerate_default, bootversion, new_lines,
                                           cancellable, error))
     return FALSE;
 
   g_autofree char *new_config_contents = _ostree_sysroot_join_lines (new_lines);
   if (!glnx_file_replace_contents_at (self->sysroot->sysroot_fd, new_config_path,
-                                      (guint8*)new_config_contents, strlen (new_config_contents),
-                                      GLNX_FILE_REPLACE_DATASYNC_NEW,
-                                      cancellable, error))
+                                      (guint8 *)new_config_contents, strlen (new_config_contents),
+                                      GLNX_FILE_REPLACE_DATASYNC_NEW, cancellable, error))
     return FALSE;
 
   return TRUE;

@@ -25,18 +25,20 @@
 
 #include "libglnx.h"
 #include "ostree-gpg-verifier.h"
-#include "ot-gpg-utils.h"
 #include "ostree-gpg-verify-result-private.h"
+#include "ot-gpg-utils.h"
 #include "otutil.h"
 
-#include <stdlib.h>
 #include <glib/gstdio.h>
+#include <stdlib.h>
 
-typedef struct {
+typedef struct
+{
   GObjectClass parent_class;
 } OstreeGpgVerifierClass;
 
-struct OstreeGpgVerifier {
+struct OstreeGpgVerifier
+{
   GObject parent;
 
   GList *keyrings;
@@ -77,31 +79,28 @@ _ostree_gpg_verifier_init (OstreeGpgVerifier *self)
 }
 
 static void
-verify_result_finalized_cb (gpointer data,
-                            GObject *finalized_verify_result)
+verify_result_finalized_cb (gpointer data, GObject *finalized_verify_result)
 {
-  g_autofree gchar *tmp_dir = data;  /* assume ownership */
+  g_autofree gchar *tmp_dir = data; /* assume ownership */
 
   /* XXX OstreeGpgVerifyResult could do this cleanup in its own
    *     finalize() method, but I didn't want this keyring hack
    *     bleeding into multiple classes. */
 
   ot_gpgme_kill_agent (tmp_dir);
-  (void) glnx_shutil_rm_rf_at (AT_FDCWD, tmp_dir, NULL, NULL);
+  (void)glnx_shutil_rm_rf_at (AT_FDCWD, tmp_dir, NULL, NULL);
 }
 
 static gboolean
-_ostree_gpg_verifier_import_keys (OstreeGpgVerifier  *self,
-                                  gpgme_ctx_t         gpgme_ctx,
-                                  GOutputStream      *pubring_stream,
-                                  GCancellable       *cancellable,
-                                  GError            **error)
+_ostree_gpg_verifier_import_keys (OstreeGpgVerifier *self, gpgme_ctx_t gpgme_ctx,
+                                  GOutputStream *pubring_stream, GCancellable *cancellable,
+                                  GError **error)
 {
-  GLNX_AUTO_PREFIX_ERROR("GPG", error);
+  GLNX_AUTO_PREFIX_ERROR ("GPG", error);
 
   for (GList *link = self->keyrings; link != NULL; link = link->next)
     {
-      g_autoptr(GFileInputStream) source_stream = NULL;
+      g_autoptr (GFileInputStream) source_stream = NULL;
       GFile *keyring_file = link->data;
       gssize bytes_written;
       GError *local_error = NULL;
@@ -120,10 +119,9 @@ _ostree_gpg_verifier_import_keys (OstreeGpgVerifier  *self,
           return FALSE;
         }
 
-      bytes_written = g_output_stream_splice (pubring_stream,
-                                              G_INPUT_STREAM (source_stream),
-                                              G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
-                                              cancellable, error);
+      bytes_written
+          = g_output_stream_splice (pubring_stream, G_INPUT_STREAM (source_stream),
+                                    G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE, cancellable, error);
       if (bytes_written < 0)
         return FALSE;
     }
@@ -134,8 +132,7 @@ _ostree_gpg_verifier_import_keys (OstreeGpgVerifier  *self,
       gsize len;
       gsize bytes_written;
       const guint8 *buf = g_bytes_get_data (keyringd, &len);
-      if (!g_output_stream_write_all (pubring_stream, buf, len, &bytes_written,
-                                      cancellable, error))
+      if (!g_output_stream_write_all (pubring_stream, buf, len, &bytes_written, cancellable, error))
         return FALSE;
     }
 
@@ -155,7 +152,7 @@ _ostree_gpg_verifier_import_keys (OstreeGpgVerifier  *self,
           gpgme_error_t gpg_error;
           const char *path = self->key_ascii_files->pdata[i];
           glnx_autofd int fd = -1;
-          g_auto(gpgme_data_t) kdata = NULL;
+          g_auto (gpgme_data_t) kdata = NULL;
 
           if (!glnx_openat_rdonly (AT_FDCWD, path, TRUE, &fd, error))
             goto out;
@@ -178,24 +175,21 @@ _ostree_gpg_verifier_import_keys (OstreeGpgVerifier  *self,
 
   ret = TRUE;
 
- out:
+out:
   gpgme_set_armor (gpgme_ctx, armor);
 
   return ret;
 }
 
 gboolean
-_ostree_gpg_verifier_list_keys (OstreeGpgVerifier   *self,
-                                const char * const  *key_ids,
-                                GPtrArray          **out_keys,
-                                GCancellable        *cancellable,
-                                GError             **error)
+_ostree_gpg_verifier_list_keys (OstreeGpgVerifier *self, const char *const *key_ids,
+                                GPtrArray **out_keys, GCancellable *cancellable, GError **error)
 {
-  GLNX_AUTO_PREFIX_ERROR("GPG", error);
-  g_auto(gpgme_ctx_t) context = NULL;
-  g_autoptr(GOutputStream) pubring_stream = NULL;
+  GLNX_AUTO_PREFIX_ERROR ("GPG", error);
+  g_auto (gpgme_ctx_t) context = NULL;
+  g_autoptr (GOutputStream) pubring_stream = NULL;
   g_autofree char *tmp_dir = NULL;
-  g_autoptr(GPtrArray) keys = NULL;
+  g_autoptr (GPtrArray) keys = NULL;
   gpgme_error_t gpg_error = 0;
   gboolean ret = FALSE;
 
@@ -206,15 +200,13 @@ _ostree_gpg_verifier_list_keys (OstreeGpgVerifier   *self,
   if (context == NULL)
     goto out;
 
-  if (!ot_gpgme_ctx_tmp_home_dir (context, &tmp_dir, &pubring_stream,
-                                  cancellable, error))
+  if (!ot_gpgme_ctx_tmp_home_dir (context, &tmp_dir, &pubring_stream, cancellable, error))
     goto out;
 
-  if (!_ostree_gpg_verifier_import_keys (self, context, pubring_stream,
-                                         cancellable, error))
+  if (!_ostree_gpg_verifier_import_keys (self, context, pubring_stream, cancellable, error))
     goto out;
 
-  keys = g_ptr_array_new_with_free_func ((GDestroyNotify) gpgme_key_unref);
+  keys = g_ptr_array_new_with_free_func ((GDestroyNotify)gpgme_key_unref);
   if (key_ids != NULL)
     {
       for (guint i = 0; key_ids[i] != NULL; i++)
@@ -224,8 +216,7 @@ _ostree_gpg_verifier_list_keys (OstreeGpgVerifier   *self,
           gpg_error = gpgme_get_key (context, key_ids[i], &key, 0);
           if (gpg_error != GPG_ERR_NO_ERROR)
             {
-              ot_gpgme_throw (gpg_error, error, "Unable to find key \"%s\"",
-                              key_ids[i]);
+              ot_gpgme_throw (gpg_error, error, "Unable to find key \"%s\"", key_ids[i]);
               goto out;
             }
 
@@ -260,28 +251,26 @@ _ostree_gpg_verifier_list_keys (OstreeGpgVerifier   *self,
 
   ret = TRUE;
 
- out:
-  if (tmp_dir != NULL) {
-    ot_gpgme_kill_agent (tmp_dir);
-    (void) glnx_shutil_rm_rf_at (AT_FDCWD, tmp_dir, NULL, NULL);
-  }
+out:
+  if (tmp_dir != NULL)
+    {
+      ot_gpgme_kill_agent (tmp_dir);
+      (void)glnx_shutil_rm_rf_at (AT_FDCWD, tmp_dir, NULL, NULL);
+    }
 
   return ret;
 }
 
 OstreeGpgVerifyResult *
-_ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
-                                      GBytes             *signed_data,
-                                      GBytes             *signatures,
-                                      GCancellable       *cancellable,
-                                      GError            **error)
+_ostree_gpg_verifier_check_signature (OstreeGpgVerifier *self, GBytes *signed_data,
+                                      GBytes *signatures, GCancellable *cancellable, GError **error)
 {
-  GLNX_AUTO_PREFIX_ERROR("GPG", error);
+  GLNX_AUTO_PREFIX_ERROR ("GPG", error);
   gpgme_error_t gpg_error = 0;
-  g_auto(gpgme_data_t) data_buffer = NULL;
-  g_auto(gpgme_data_t) signature_buffer = NULL;
+  g_auto (gpgme_data_t) data_buffer = NULL;
+  g_auto (gpgme_data_t) signature_buffer = NULL;
   g_autofree char *tmp_dir = NULL;
-  g_autoptr(GOutputStream) target_stream = NULL;
+  g_autoptr (GOutputStream) target_stream = NULL;
   OstreeGpgVerifyResult *result = NULL;
   gboolean success = FALSE;
 
@@ -293,38 +282,30 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     goto out;
 
-  result = g_initable_new (OSTREE_TYPE_GPG_VERIFY_RESULT,
-                           cancellable, error, NULL);
+  result = g_initable_new (OSTREE_TYPE_GPG_VERIFY_RESULT, cancellable, error, NULL);
   if (result == NULL)
     goto out;
 
-  if (!ot_gpgme_ctx_tmp_home_dir (result->context,
-                                  &tmp_dir, &target_stream,
-                                  cancellable, error))
+  if (!ot_gpgme_ctx_tmp_home_dir (result->context, &tmp_dir, &target_stream, cancellable, error))
     goto out;
 
-  if (!_ostree_gpg_verifier_import_keys (self, result->context, target_stream,
-                                         cancellable, error))
+  if (!_ostree_gpg_verifier_import_keys (self, result->context, target_stream, cancellable, error))
     goto out;
 
   /* Both the signed data and signature GBytes instances will outlive the
    * gpgme_data_t structs, so we can safely reuse the GBytes memory buffer
    * directly and avoid a copy. */
 
-  gpg_error = gpgme_data_new_from_mem (&data_buffer,
-                                       g_bytes_get_data (signed_data, NULL),
-                                       g_bytes_get_size (signed_data),
-                                       0 /* do not copy */);
+  gpg_error = gpgme_data_new_from_mem (&data_buffer, g_bytes_get_data (signed_data, NULL),
+                                       g_bytes_get_size (signed_data), 0 /* do not copy */);
   if (gpg_error != GPG_ERR_NO_ERROR)
     {
       ot_gpgme_throw (gpg_error, error, "Unable to read signed data");
       goto out;
     }
 
-  gpg_error = gpgme_data_new_from_mem (&signature_buffer,
-                                       g_bytes_get_data (signatures, NULL),
-                                       g_bytes_get_size (signatures),
-                                       0 /* do not copy */);
+  gpg_error = gpgme_data_new_from_mem (&signature_buffer, g_bytes_get_data (signatures, NULL),
+                                       g_bytes_get_size (signatures), 0 /* do not copy */);
   if (gpg_error != GPG_ERR_NO_ERROR)
     {
       ot_gpgme_throw (gpg_error, error, "Unable to read signature");
@@ -352,9 +333,7 @@ out:
        * object so its GPGME context remains valid.  It may yet have to
        * extract user details from signing keys and will need to access
        * the fabricated pubring.gpg keyring. */
-      g_object_weak_ref (G_OBJECT (result),
-                         verify_result_finalized_cb,
-                         g_strdup (tmp_dir));
+      g_object_weak_ref (G_OBJECT (result), verify_result_finalized_cb, g_strdup (tmp_dir));
     }
   else
     {
@@ -363,7 +342,7 @@ out:
 
       /* Try to clean up the temporary directory. */
       if (tmp_dir != NULL)
-        (void) glnx_shutil_rm_rf_at (AT_FDCWD, tmp_dir, NULL, NULL);
+        (void)glnx_shutil_rm_rf_at (AT_FDCWD, tmp_dir, NULL, NULL);
     }
 
   return result;
@@ -373,8 +352,7 @@ out:
  * to the list of trusted keys.
  */
 void
-_ostree_gpg_verifier_add_keyring_file (OstreeGpgVerifier  *self,
-                                       GFile              *path)
+_ostree_gpg_verifier_add_keyring_file (OstreeGpgVerifier *self, GFile *path)
 {
   g_return_if_fail (G_IS_FILE (path));
 
@@ -388,9 +366,8 @@ _ostree_gpg_verifier_add_keyring_file (OstreeGpgVerifier  *self,
  * the list of trusted keys.
  */
 void
-_ostree_gpg_verifier_add_keyring_data (OstreeGpgVerifier  *self,
-                                       GBytes             *keyring,
-                                       const char         *data_source)
+_ostree_gpg_verifier_add_keyring_data (OstreeGpgVerifier *self, GBytes *keyring,
+                                       const char *data_source)
 {
   g_debug ("Adding GPG keyring data from %s to verifier", data_source);
 
@@ -398,8 +375,7 @@ _ostree_gpg_verifier_add_keyring_data (OstreeGpgVerifier  *self,
 }
 
 void
-_ostree_gpg_verifier_add_key_ascii_file (OstreeGpgVerifier *self,
-                                         const char        *path)
+_ostree_gpg_verifier_add_key_ascii_file (OstreeGpgVerifier *self, const char *path)
 {
   g_debug ("Adding GPG key ASCII file %s to verifier", path);
 
@@ -409,14 +385,11 @@ _ostree_gpg_verifier_add_key_ascii_file (OstreeGpgVerifier *self,
 }
 
 gboolean
-_ostree_gpg_verifier_add_keyfile_path (OstreeGpgVerifier   *self,
-                                       const char          *path,
-                                       GCancellable        *cancellable,
-                                       GError             **error)
+_ostree_gpg_verifier_add_keyfile_path (OstreeGpgVerifier *self, const char *path,
+                                       GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GError) temp_error = NULL;
-  if (!_ostree_gpg_verifier_add_keyfile_dir_at (self, AT_FDCWD, path,
-                                                cancellable, &temp_error))
+  g_autoptr (GError) temp_error = NULL;
+  if (!_ostree_gpg_verifier_add_keyfile_dir_at (self, AT_FDCWD, path, cancellable, &temp_error))
     {
       g_assert (temp_error);
 
@@ -442,16 +415,14 @@ _ostree_gpg_verifier_add_keyfile_path (OstreeGpgVerifier   *self,
  * an error is returned.
  */
 gboolean
-_ostree_gpg_verifier_add_keyfile_dir_at (OstreeGpgVerifier   *self,
-                                         int                  dfd,
-                                         const char          *path,
-                                         GCancellable        *cancellable,
-                                         GError             **error)
+_ostree_gpg_verifier_add_keyfile_dir_at (OstreeGpgVerifier *self, int dfd, const char *path,
+                                         GCancellable *cancellable, GError **error)
 {
-  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  g_auto (GLnxDirFdIterator) dfd_iter = {
+    0,
+  };
 
-  if (!glnx_dirfd_iterator_init_at (dfd, path, FALSE,
-                                    &dfd_iter, error))
+  if (!glnx_dirfd_iterator_init_at (dfd, path, FALSE, &dfd_iter, error))
     return FALSE;
 
   g_debug ("Adding GPG keyfile dir %s to verifier", path);
@@ -460,8 +431,7 @@ _ostree_gpg_verifier_add_keyfile_dir_at (OstreeGpgVerifier   *self,
     {
       struct dirent *dent;
 
-      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent,
-                                                       cancellable, error))
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
         return FALSE;
       if (dent == NULL)
         break;
@@ -480,26 +450,21 @@ _ostree_gpg_verifier_add_keyfile_dir_at (OstreeGpgVerifier   *self,
 }
 
 gboolean
-_ostree_gpg_verifier_add_keyring_dir (OstreeGpgVerifier   *self,
-                                      GFile               *path,
-                                      GCancellable        *cancellable,
-                                      GError             **error)
+_ostree_gpg_verifier_add_keyring_dir (OstreeGpgVerifier *self, GFile *path,
+                                      GCancellable *cancellable, GError **error)
 {
-  return _ostree_gpg_verifier_add_keyring_dir_at (self, AT_FDCWD,
-                                                  gs_file_get_path_cached (path),
+  return _ostree_gpg_verifier_add_keyring_dir_at (self, AT_FDCWD, gs_file_get_path_cached (path),
                                                   cancellable, error);
 }
 
 gboolean
-_ostree_gpg_verifier_add_keyring_dir_at (OstreeGpgVerifier   *self,
-                                         int                  dfd,
-                                         const char          *path,
-                                         GCancellable        *cancellable,
-                                         GError             **error)
+_ostree_gpg_verifier_add_keyring_dir_at (OstreeGpgVerifier *self, int dfd, const char *path,
+                                         GCancellable *cancellable, GError **error)
 {
-  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
-  if (!glnx_dirfd_iterator_init_at (dfd, path, FALSE,
-                                    &dfd_iter, error))
+  g_auto (GLnxDirFdIterator) dfd_iter = {
+    0,
+  };
+  if (!glnx_dirfd_iterator_init_at (dfd, path, FALSE, &dfd_iter, error))
     return FALSE;
 
   g_debug ("Adding GPG keyring dir %s to verifier", path);
@@ -534,7 +499,7 @@ _ostree_gpg_verifier_add_keyring_dir_at (OstreeGpgVerifier   *self,
       if (!glnx_openat_rdonly (dfd_iter.fd, dent->d_name, TRUE, &fd, error))
         return FALSE;
 
-      g_autoptr(GBytes) data = glnx_fd_readall_bytes (fd, cancellable, error);
+      g_autoptr (GBytes) data = glnx_fd_readall_bytes (fd, cancellable, error);
       if (!data)
         return FALSE;
 
@@ -545,9 +510,8 @@ _ostree_gpg_verifier_add_keyring_dir_at (OstreeGpgVerifier   *self,
 }
 
 gboolean
-_ostree_gpg_verifier_add_global_keyring_dir (OstreeGpgVerifier  *self,
-                                             GCancellable       *cancellable,
-                                             GError            **error)
+_ostree_gpg_verifier_add_global_keyring_dir (OstreeGpgVerifier *self, GCancellable *cancellable,
+                                             GError **error)
 {
   g_assert (OSTREE_IS_GPG_VERIFIER (self));
 
@@ -557,9 +521,8 @@ _ostree_gpg_verifier_add_global_keyring_dir (OstreeGpgVerifier  *self,
 
   if (g_file_test (global_keyring_path, G_FILE_TEST_IS_DIR))
     {
-      g_autoptr(GFile) global_keyring_dir = g_file_new_for_path (global_keyring_path);
-      if (!_ostree_gpg_verifier_add_keyring_dir (self, global_keyring_dir,
-                                                 cancellable, error))
+      g_autoptr (GFile) global_keyring_dir = g_file_new_for_path (global_keyring_path);
+      if (!_ostree_gpg_verifier_add_keyring_dir (self, global_keyring_dir, cancellable, error))
         return glnx_prefix_error (error, "Reading keyring directory '%s'",
                                   gs_file_get_path_cached (global_keyring_dir));
     }
@@ -567,7 +530,7 @@ _ostree_gpg_verifier_add_global_keyring_dir (OstreeGpgVerifier  *self,
   return TRUE;
 }
 
-OstreeGpgVerifier*
+OstreeGpgVerifier *
 _ostree_gpg_verifier_new (void)
 {
   return g_object_new (OSTREE_TYPE_GPG_VERIFIER, NULL);

@@ -21,11 +21,11 @@
 
 #include "config.h"
 
-#include "ot-main.h"
-#include "ot-builtins.h"
-#include "ostree.h"
-#include "otutil.h"
 #include "ostree-core-private.h"
+#include "ostree.h"
+#include "ot-builtins.h"
+#include "ot-main.h"
+#include "otutil.h"
 
 static gboolean opt_delete;
 static char *opt_gpg_homedir;
@@ -35,11 +35,11 @@ static char *opt_gpg_homedir;
  * man page (man/ostree-gpg-sign.xml) when changing the option list.
  */
 
-static GOptionEntry options[] = {
-  { "delete", 'd', 0, G_OPTION_ARG_NONE, &opt_delete, "Delete signatures having any of the GPG KEY-IDs" },
-  { "gpg-homedir", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "HOMEDIR" },
-  { NULL }
-};
+static GOptionEntry options[] = { { "delete", 'd', 0, G_OPTION_ARG_NONE, &opt_delete,
+                                    "Delete signatures having any of the GPG KEY-IDs" },
+                                  { "gpg-homedir", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_homedir,
+                                    "GPG Homedir to use when looking for keyrings", "HOMEDIR" },
+                                  { NULL } };
 
 static void
 usage_error (GOptionContext *context, const char *message, GError **error)
@@ -50,19 +50,14 @@ usage_error (GOptionContext *context, const char *message, GError **error)
 }
 
 static gboolean
-delete_signatures (OstreeRepo *repo,
-                   const char *commit_checksum,
-                   const char * const *key_ids,
-                   guint n_key_ids,
-                   guint *out_n_deleted,
-                   GCancellable *cancellable,
-                   GError **error)
+delete_signatures (OstreeRepo *repo, const char *commit_checksum, const char *const *key_ids,
+                   guint n_key_ids, guint *out_n_deleted, GCancellable *cancellable, GError **error)
 {
   GVariantDict metadata_dict;
-  g_autoptr(OstreeGpgVerifyResult) result = NULL;
-  g_autoptr(GVariant) old_metadata = NULL;
-  g_autoptr(GVariant) new_metadata = NULL;
-  g_autoptr(GVariant) signature_data = NULL;
+  g_autoptr (OstreeGpgVerifyResult) result = NULL;
+  g_autoptr (GVariant) old_metadata = NULL;
+  g_autoptr (GVariant) new_metadata = NULL;
+  g_autoptr (GVariant) signature_data = NULL;
   GVariantIter iter;
   GVariant *child;
   GQueue signatures = G_QUEUE_INIT;
@@ -80,17 +75,13 @@ delete_signatures (OstreeRepo *repo,
    *     OTOH, would this really be a useful addition to libostree?
    */
 
-  if (!ostree_repo_read_commit_detached_metadata (repo,
-                                                  commit_checksum,
-                                                  &old_metadata,
-                                                  cancellable,
+  if (!ostree_repo_read_commit_detached_metadata (repo, commit_checksum, &old_metadata, cancellable,
                                                   error))
     goto out;
 
   g_variant_dict_init (&metadata_dict, old_metadata);
 
-  signature_data = g_variant_dict_lookup_value (&metadata_dict,
-                                                _OSTREE_METADATA_GPGSIGS_NAME,
+  signature_data = g_variant_dict_lookup_value (&metadata_dict, _OSTREE_METADATA_GPGSIGS_NAME,
                                                 G_VARIANT_TYPE ("aay"));
 
   /* Taking the approach of deleting whatever matches we find for the
@@ -108,9 +99,8 @@ delete_signatures (OstreeRepo *repo,
    * XXX Reading detached metadata from disk twice here.  Another reason
    *     to move this into libostree?
    */
-  result = ostree_repo_verify_commit_ext (repo, commit_checksum,
-                                          NULL, NULL,
-                                          cancellable, &local_error);
+  result = ostree_repo_verify_commit_ext (repo, commit_checksum, NULL, NULL, cancellable,
+                                          &local_error);
   if (result == NULL)
     {
       g_variant_dict_clear (&metadata_dict);
@@ -169,21 +159,17 @@ delete_signatures (OstreeRepo *repo,
 
       while (!g_queue_is_empty (&signatures))
         {
-          g_autoptr(GVariant) sigchild = g_queue_pop_head (&signatures);
+          g_autoptr (GVariant) sigchild = g_queue_pop_head (&signatures);
           g_variant_builder_add_value (&signature_builder, sigchild);
         }
 
-      g_variant_dict_insert_value (&metadata_dict,
-                                   _OSTREE_METADATA_GPGSIGS_NAME,
+      g_variant_dict_insert_value (&metadata_dict, _OSTREE_METADATA_GPGSIGS_NAME,
                                    g_variant_builder_end (&signature_builder));
     }
 
   /* Commit the new metadata. */
   new_metadata = g_variant_dict_end (&metadata_dict);
-  if (!ostree_repo_write_commit_detached_metadata (repo,
-                                                   commit_checksum,
-                                                   new_metadata,
-                                                   cancellable,
+  if (!ostree_repo_write_commit_detached_metadata (repo, commit_checksum, new_metadata, cancellable,
                                                    error))
     goto out;
 
@@ -199,13 +185,15 @@ out:
 }
 
 gboolean
-ostree_builtin_gpg_sign (int argc, char **argv,OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ostree_builtin_gpg_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
+                         GCancellable *cancellable, GError **error)
 {
 
-  g_autoptr(GOptionContext) context = g_option_context_new ("COMMIT KEY-ID...");
+  g_autoptr (GOptionContext) context = g_option_context_new ("COMMIT KEY-ID...");
 
-  g_autoptr(OstreeRepo) repo = NULL;
-  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
+  g_autoptr (OstreeRepo) repo = NULL;
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable,
+                                    error))
     return FALSE;
 
   if (argc < 2)
@@ -232,8 +220,7 @@ ostree_builtin_gpg_sign (int argc, char **argv,OstreeCommandInvocation *invocati
     {
       guint n_deleted = 0;
 
-      if (!delete_signatures (repo, resolved_commit,
-                              (const char * const *) key_ids, n_key_ids,
+      if (!delete_signatures (repo, resolved_commit, (const char *const *)key_ids, n_key_ids,
                               &n_deleted, cancellable, error))
         return FALSE;
 
@@ -243,8 +230,8 @@ ostree_builtin_gpg_sign (int argc, char **argv,OstreeCommandInvocation *invocati
 
   for (int ii = 0; ii < n_key_ids; ii++)
     {
-      if (!ostree_repo_sign_commit (repo, resolved_commit, key_ids[ii],
-                                    opt_gpg_homedir, cancellable, error))
+      if (!ostree_repo_sign_commit (repo, resolved_commit, key_ids[ii], opt_gpg_homedir,
+                                    cancellable, error))
         return FALSE;
     }
 

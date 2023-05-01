@@ -17,9 +17,9 @@
 
 #include "config.h"
 
-#include "otutil.h"
-#include "ostree.h"
 #include "ostree-deployment-private.h"
+#include "ostree.h"
+#include "otutil.h"
 
 typedef GObjectClass OstreeDeploymentClass;
 
@@ -209,16 +209,14 @@ ostree_deployment_origin_remove_transient_state (GKeyFile *origin)
 }
 
 void
-_ostree_deployment_set_bootcsum (OstreeDeployment *self,
-                                 const char *bootcsum)
+_ostree_deployment_set_bootcsum (OstreeDeployment *self, const char *bootcsum)
 {
   g_free (self->bootcsum);
   self->bootcsum = g_strdup (bootcsum);
 }
 
 void
-_ostree_deployment_set_overlay_initrds (OstreeDeployment *self,
-                                        char            **overlay_initrds)
+_ostree_deployment_set_overlay_initrds (OstreeDeployment *self, char **overlay_initrds)
 {
   g_clear_pointer (&self->overlay_initrds, g_strfreev);
   g_clear_pointer (&self->overlay_initrds_id, g_free);
@@ -230,7 +228,7 @@ _ostree_deployment_set_overlay_initrds (OstreeDeployment *self,
    * ostree_sysroot_write_deployments_with_options() can easily compare initrds when
    * comparing deployments for whether a bootswap is necessary. We could be fancier here but
    * meh... this works. */
-  g_autoptr(GString) id = g_string_new (NULL);
+  g_autoptr (GString) id = g_string_new (NULL);
   for (char **it = overlay_initrds; it && *it; it++)
     g_string_append (id, *it);
 
@@ -238,7 +236,7 @@ _ostree_deployment_set_overlay_initrds (OstreeDeployment *self,
   self->overlay_initrds_id = g_string_free (g_steal_pointer (&id), FALSE);
 }
 
-char**
+char **
 _ostree_deployment_get_overlay_initrds (OstreeDeployment *self)
 {
   return self->overlay_initrds;
@@ -253,10 +251,9 @@ _ostree_deployment_get_overlay_initrds (OstreeDeployment *self)
 OstreeDeployment *
 ostree_deployment_clone (OstreeDeployment *self)
 {
-  g_autoptr(OstreeBootconfigParser) new_bootconfig = NULL;
-  OstreeDeployment *ret = ostree_deployment_new (self->index, self->osname, self->csum,
-                                                 self->deployserial,
-                                                 self->bootcsum, self->bootserial);
+  g_autoptr (OstreeBootconfigParser) new_bootconfig = NULL;
+  OstreeDeployment *ret = ostree_deployment_new (
+      self->index, self->osname, self->csum, self->deployserial, self->bootcsum, self->bootserial);
 
   new_bootconfig = ostree_bootconfig_parser_clone (self->bootconfig);
   ostree_deployment_set_bootconfig (ret, new_bootconfig);
@@ -265,7 +262,7 @@ ostree_deployment_clone (OstreeDeployment *self)
 
   if (self->origin)
     {
-      g_autoptr(GKeyFile) new_origin = NULL;
+      g_autoptr (GKeyFile) new_origin = NULL;
       g_autofree char *data = NULL;
       gsize len;
       gboolean success;
@@ -291,10 +288,9 @@ ostree_deployment_clone (OstreeDeployment *self)
 guint
 ostree_deployment_hash (gconstpointer v)
 {
-  OstreeDeployment *d = (OstreeDeployment*)v;
-  return g_str_hash (ostree_deployment_get_osname (d)) +
-    g_str_hash (ostree_deployment_get_csum (d)) +
-    ostree_deployment_get_deployserial (d);
+  OstreeDeployment *d = (OstreeDeployment *)v;
+  return g_str_hash (ostree_deployment_get_osname (d)) + g_str_hash (ostree_deployment_get_csum (d))
+         + ostree_deployment_get_deployserial (d);
 }
 
 /**
@@ -307,17 +303,15 @@ ostree_deployment_hash (gconstpointer v)
 gboolean
 ostree_deployment_equal (gconstpointer ap, gconstpointer bp)
 {
-  OstreeDeployment *a = (OstreeDeployment*)ap;
-  OstreeDeployment *b = (OstreeDeployment*)bp;
+  OstreeDeployment *a = (OstreeDeployment *)ap;
+  OstreeDeployment *b = (OstreeDeployment *)bp;
 
   if (a == b)
     return TRUE;
   else if (a != NULL && b != NULL)
-    return g_str_equal (ostree_deployment_get_osname (a),
-                        ostree_deployment_get_osname (b)) &&
-      g_str_equal (ostree_deployment_get_csum (a),
-                   ostree_deployment_get_csum (b)) &&
-      ostree_deployment_get_deployserial (a) == ostree_deployment_get_deployserial (b);
+    return g_str_equal (ostree_deployment_get_osname (a), ostree_deployment_get_osname (b))
+           && g_str_equal (ostree_deployment_get_csum (a), ostree_deployment_get_csum (b))
+           && ostree_deployment_get_deployserial (a) == ostree_deployment_get_deployserial (b);
   else
     return FALSE;
 }
@@ -363,12 +357,8 @@ ostree_deployment_class_init (OstreeDeploymentClass *class)
  * Returns: (transfer full) (not nullable): New deployment
  */
 OstreeDeployment *
-ostree_deployment_new (int    index,
-                   const char  *osname,
-                   const char  *csum,
-                   int    deployserial,
-                   const char  *bootcsum,
-                   int    bootserial)
+ostree_deployment_new (int index, const char *osname, const char *csum, int deployserial,
+                       const char *bootcsum, int bootserial)
 {
   OstreeDeployment *self;
 
@@ -404,8 +394,7 @@ char *
 ostree_deployment_get_origin_relpath (OstreeDeployment *self)
 {
   return g_strdup_printf ("ostree/deploy/%s/deploy/%s.%d.origin",
-                          ostree_deployment_get_osname (self),
-                          ostree_deployment_get_csum (self),
+                          ostree_deployment_get_osname (self), ostree_deployment_get_csum (self),
                           ostree_deployment_get_deployserial (self));
 }
 

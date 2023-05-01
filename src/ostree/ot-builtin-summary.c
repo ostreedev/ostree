@@ -20,12 +20,12 @@
 #include "config.h"
 
 #include "ostree-repo-private.h"
+#include "ostree-sign.h"
+#include "ostree.h"
+#include "ot-builtins.h"
 #include "ot-dump.h"
 #include "ot-main.h"
-#include "ot-builtins.h"
-#include "ostree.h"
 #include "otutil.h"
-#include "ostree-sign.h"
 
 static gboolean opt_update, opt_view, opt_raw;
 static gboolean opt_list_metadata_keys;
@@ -41,27 +41,33 @@ static char **opt_metadata;
  * man page (man/ostree-summary.xml) when changing the option list.
  */
 
-static GOptionEntry options[] = {
-  { "update", 'u', 0, G_OPTION_ARG_NONE, &opt_update, "Update the summary", NULL },
-  { "view", 'v', 0, G_OPTION_ARG_NONE, &opt_view, "View the local summary file", NULL },
-  { "raw", 0, 0, G_OPTION_ARG_NONE, &opt_raw, "View the raw bytes of the summary file", NULL },
-  { "list-metadata-keys", 0, 0, G_OPTION_ARG_NONE, &opt_list_metadata_keys, "List the available metadata keys", NULL },
-  { "print-metadata-key", 0, 0, G_OPTION_ARG_STRING, &opt_print_metadata_key, "Print string value of metadata key", "KEY" },
-  { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_gpg_key_ids, "GPG Key ID to sign the summary with", "KEY-ID"},
-  { "gpg-homedir", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "HOMEDIR"},
-  { "sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "Key ID to sign the summary with", "KEY-ID"},
-  { "sign-type", 0, 0, G_OPTION_ARG_STRING, &opt_sign_name, "Signature type to use (defaults to 'ed25519')", "NAME"},
-  { "add-metadata", 'm', 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata, "Additional metadata field to add to the summary", "KEY=VALUE" },
-  { NULL }
-};
+static GOptionEntry options[]
+    = { { "update", 'u', 0, G_OPTION_ARG_NONE, &opt_update, "Update the summary", NULL },
+        { "view", 'v', 0, G_OPTION_ARG_NONE, &opt_view, "View the local summary file", NULL },
+        { "raw", 0, 0, G_OPTION_ARG_NONE, &opt_raw, "View the raw bytes of the summary file",
+          NULL },
+        { "list-metadata-keys", 0, 0, G_OPTION_ARG_NONE, &opt_list_metadata_keys,
+          "List the available metadata keys", NULL },
+        { "print-metadata-key", 0, 0, G_OPTION_ARG_STRING, &opt_print_metadata_key,
+          "Print string value of metadata key", "KEY" },
+        { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_gpg_key_ids,
+          "GPG Key ID to sign the summary with", "KEY-ID" },
+        { "gpg-homedir", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_homedir,
+          "GPG Homedir to use when looking for keyrings", "HOMEDIR" },
+        { "sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "Key ID to sign the summary with",
+          "KEY-ID" },
+        { "sign-type", 0, 0, G_OPTION_ARG_STRING, &opt_sign_name,
+          "Signature type to use (defaults to 'ed25519')", "NAME" },
+        { "add-metadata", 'm', 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata,
+          "Additional metadata field to add to the summary", "KEY=VALUE" },
+        { NULL } };
 
 /* Take arguments of the form KEY=VALUE and put them into an a{sv} variant. The
  * value arguments must be parsable using g_variant_parse(). */
 static GVariant *
-build_additional_metadata (const char * const  *args,
-                           GError             **error)
+build_additional_metadata (const char *const *args, GError **error)
 {
-  g_autoptr(GVariantBuilder) builder = NULL;
+  g_autoptr (GVariantBuilder) builder = NULL;
 
   builder = g_variant_builder_new (G_VARIANT_TYPE_VARDICT);
 
@@ -70,11 +76,10 @@ build_additional_metadata (const char * const  *args,
       const gchar *equals = strchr (args[i], '=');
       g_autofree gchar *key = NULL;
       const gchar *value_str;
-      g_autoptr(GVariant) value = NULL;
+      g_autoptr (GVariant) value = NULL;
 
       if (equals == NULL)
-        return glnx_null_throw (error,
-                                "Missing '=' in KEY=VALUE metadata '%s'", args[i]);
+        return glnx_null_throw (error, "Missing '=' in KEY=VALUE metadata '%s'", args[i]);
 
       key = g_strndup (args[i], equals - args[i]);
       value_str = equals + 1;
@@ -90,13 +95,11 @@ build_additional_metadata (const char * const  *args,
 }
 
 static gboolean
-get_summary_data (OstreeRepo  *repo,
-                  GBytes     **out_summary_data,
-                  GError     **error)
+get_summary_data (OstreeRepo *repo, GBytes **out_summary_data, GError **error)
 {
   g_assert (out_summary_data != NULL);
 
-  g_autoptr(GBytes) summary_data = NULL;
+  g_autoptr (GBytes) summary_data = NULL;
   glnx_autofd int fd = -1;
   if (!glnx_openat_rdonly (repo->repo_dir_fd, "summary", TRUE, &fd, error))
     return FALSE;
@@ -110,16 +113,18 @@ get_summary_data (OstreeRepo  *repo,
 }
 
 gboolean
-ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocation,
+                        GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
-  g_autoptr(OstreeRepo) repo = NULL;
+  g_autoptr (GOptionContext) context = NULL;
+  g_autoptr (OstreeRepo) repo = NULL;
   g_autoptr (OstreeSign) sign = NULL;
   OstreeDumpFlags flags = OSTREE_DUMP_NONE;
 
   context = g_option_context_new ("");
 
-  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable,
+                                    error))
     return FALSE;
 
   /* Initialize crypto system */
@@ -134,34 +139,36 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
 
   if (opt_update)
     {
-      g_autoptr(GVariant) additional_metadata = NULL;
+      g_autoptr (GVariant) additional_metadata = NULL;
 
       if (!ostree_ensure_repo_writable (repo, error))
         return FALSE;
 
       if (opt_metadata != NULL)
         {
-          additional_metadata = build_additional_metadata ((const char * const *) opt_metadata, error);
+          additional_metadata
+              = build_additional_metadata ((const char *const *)opt_metadata, error);
           if (additional_metadata == NULL)
             return FALSE;
         }
 
       /* Regenerate and sign the repo metadata. */
-      g_auto(GVariantBuilder) metadata_opts_builder = G_VARIANT_BUILDER_INIT (G_VARIANT_TYPE_VARDICT);
-      g_autoptr(GVariant) metadata_opts = NULL;
+      g_auto (GVariantBuilder) metadata_opts_builder
+          = G_VARIANT_BUILDER_INIT (G_VARIANT_TYPE_VARDICT);
+      g_autoptr (GVariant) metadata_opts = NULL;
       if (opt_gpg_key_ids != NULL)
         g_variant_builder_add (&metadata_opts_builder, "{sv}", "gpg-key-ids",
-                               g_variant_new_strv ((const char * const *) opt_gpg_key_ids, -1));
+                               g_variant_new_strv ((const char *const *)opt_gpg_key_ids, -1));
       if (opt_gpg_homedir != NULL)
         g_variant_builder_add (&metadata_opts_builder, "{sv}", "gpg-homedir",
                                g_variant_new_string (opt_gpg_homedir));
       if (opt_key_ids != NULL)
         {
-          g_auto(GVariantBuilder) sk_builder = G_VARIANT_BUILDER_INIT (G_VARIANT_TYPE_ARRAY);
+          g_auto (GVariantBuilder) sk_builder = G_VARIANT_BUILDER_INIT (G_VARIANT_TYPE_ARRAY);
 
           /* Currently only strings are used as keys for supported
            * signature types. */
-          for (const char * const *iter = (const char * const *) opt_key_ids;
+          for (const char *const *iter = (const char *const *)opt_key_ids;
                iter != NULL && *iter != NULL; iter++)
             {
               const char *key_id = *iter;
@@ -176,13 +183,13 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
                                g_variant_new_string (opt_sign_name));
 
       metadata_opts = g_variant_ref_sink (g_variant_builder_end (&metadata_opts_builder));
-      if (!ostree_repo_regenerate_metadata (repo, additional_metadata, metadata_opts,
-                                            cancellable, error))
+      if (!ostree_repo_regenerate_metadata (repo, additional_metadata, metadata_opts, cancellable,
+                                            error))
         return FALSE;
     }
   else if (opt_view || opt_raw)
     {
-      g_autoptr(GBytes) summary_data = NULL;
+      g_autoptr (GBytes) summary_data = NULL;
 
       if (opt_raw)
         flags |= OSTREE_DUMP_RAW;
@@ -194,7 +201,7 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
     }
   else if (opt_list_metadata_keys)
     {
-      g_autoptr(GBytes) summary_data = NULL;
+      g_autoptr (GBytes) summary_data = NULL;
 
       if (!get_summary_data (repo, &summary_data, error))
         return FALSE;
@@ -203,7 +210,7 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
     }
   else if (opt_print_metadata_key)
     {
-      g_autoptr(GBytes) summary_data = NULL;
+      g_autoptr (GBytes) summary_data = NULL;
 
       if (!get_summary_data (repo, &summary_data, error))
         return FALSE;

@@ -22,7 +22,8 @@
 G_BEGIN_DECLS
 
 #define OSTREE_TYPE_DEPLOYMENT (ostree_deployment_get_type ())
-#define OSTREE_DEPLOYMENT(inst) (G_TYPE_CHECK_INSTANCE_CAST ((inst), OSTREE_TYPE_DEPLOYMENT, OstreeDeployment))
+#define OSTREE_DEPLOYMENT(inst) \
+  (G_TYPE_CHECK_INSTANCE_CAST ((inst), OSTREE_TYPE_DEPLOYMENT, OstreeDeployment))
 #define OSTREE_IS_DEPLOYMENT(inst) (G_TYPE_CHECK_INSTANCE_TYPE ((inst), OSTREE_TYPE_DEPLOYMENT))
 
 /**
@@ -47,12 +48,8 @@ _OSTREE_PUBLIC
 gboolean ostree_deployment_equal (gconstpointer ap, gconstpointer bp);
 
 _OSTREE_PUBLIC
-OstreeDeployment * ostree_deployment_new (int    index,
-                                  const char  *osname,
-                                  const char  *csum,
-                                  int    deployserial,
-                                  const char  *bootcsum,
-                                  int    bootserial);
+OstreeDeployment *ostree_deployment_new (int index, const char *osname, const char *csum,
+                                         int deployserial, const char *bootcsum, int bootserial);
 
 _OSTREE_PUBLIC
 int ostree_deployment_get_index (OstreeDeployment *self);
@@ -94,7 +91,8 @@ OstreeDeployment *ostree_deployment_clone (OstreeDeployment *self);
 _OSTREE_PUBLIC
 char *ostree_deployment_get_origin_relpath (OstreeDeployment *self);
 
-typedef enum {
+typedef enum
+{
   OSTREE_DEPLOYMENT_UNLOCKED_NONE,
   OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT,
   OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX,

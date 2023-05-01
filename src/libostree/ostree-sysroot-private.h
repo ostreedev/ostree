@@ -20,12 +20,13 @@
 #pragma once
 
 #include "libglnx.h"
-#include "ostree.h"
 #include "ostree-bootloader.h"
+#include "ostree.h"
 
 G_BEGIN_DECLS
 
-typedef enum {
+typedef enum
+{
 
   /* Don't flag deployments as immutable. */
   OSTREE_SYSROOT_DEBUG_MUTABLE_DEPLOYMENTS = 1 << 0,
@@ -38,24 +39,27 @@ typedef enum {
   OSTREE_SYSROOT_DEBUG_TEST_NO_DTB = 1 << 3, /* https://github.com/ostreedev/ostree/issues/2154 */
 } OstreeSysrootDebugFlags;
 
-typedef enum {
+typedef enum
+{
   /* Skip invoking `sync()` */
   OSTREE_SYSROOT_GLOBAL_OPT_SKIP_SYNC = 1 << 0,
   /* See https://github.com/ostreedev/ostree/pull/2847 */
   OSTREE_SYSROOT_GLOBAL_OPT_EARLY_PRUNE = 1 << 1,
 } OstreeSysrootGlobalOptFlags;
 
-typedef enum {
-      OSTREE_SYSROOT_LOAD_STATE_NONE, /* ostree_sysroot_new() was called */
-      OSTREE_SYSROOT_LOAD_STATE_INIT, /* We've loaded basic sysroot state and have an fd */
-      OSTREE_SYSROOT_LOAD_STATE_LOADED, /* We've loaded all of the deployments */
+typedef enum
+{
+  OSTREE_SYSROOT_LOAD_STATE_NONE,   /* ostree_sysroot_new() was called */
+  OSTREE_SYSROOT_LOAD_STATE_INIT,   /* We've loaded basic sysroot state and have an fd */
+  OSTREE_SYSROOT_LOAD_STATE_LOADED, /* We've loaded all of the deployments */
 } OstreeSysrootLoadState;
 
 /**
  * OstreeSysroot:
  * Internal struct
  */
-struct OstreeSysroot {
+struct OstreeSysroot
+{
   GObject parent;
 
   GFile *path;
@@ -65,7 +69,7 @@ struct OstreeSysroot {
 
   OstreeSysrootLoadState loadstate;
   gboolean mount_namespace_in_use; /* TRUE if caller has told us they used CLONE_NEWNS */
-  gboolean root_is_ostree_booted; /* TRUE if sysroot is / and we are booted via ostree */
+  gboolean root_is_ostree_booted;  /* TRUE if sysroot is / and we are booted via ostree */
   /* The device/inode for /, used to detect booted deployment */
   dev_t root_device;
   ino_t root_inode;
@@ -101,106 +105,64 @@ struct OstreeSysroot {
 // Relative to /boot, consumed by ostree-boot-complete.service
 #define _OSTREE_FINALIZE_STAGED_FAILURE_PATH "ostree/finalize-failure.stamp"
 
-gboolean
-_ostree_sysroot_ensure_writable (OstreeSysroot      *self,
-                                 GError            **error);
+gboolean _ostree_sysroot_ensure_writable (OstreeSysroot *self, GError **error);
 
-void
-_ostree_sysroot_emit_journal_msg (OstreeSysroot  *self,
-                                  const char     *msg);
+void _ostree_sysroot_emit_journal_msg (OstreeSysroot *self, const char *msg);
 
-gboolean
-_ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self,
-                                          int            bootversion,
-                                          GPtrArray    **out_loader_configs,
-                                          GCancellable  *cancellable,
-                                          GError       **error);
+gboolean _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self, int bootversion,
+                                                   GPtrArray **out_loader_configs,
+                                                   GCancellable *cancellable, GError **error);
 
-gboolean
-_ostree_sysroot_read_current_subbootversion (OstreeSysroot *self,
-                                             int            bootversion,
-                                             int           *out_subbootversion,
-                                             GCancellable  *cancellable,
-                                             GError       **error);
+gboolean _ostree_sysroot_read_current_subbootversion (OstreeSysroot *self, int bootversion,
+                                                      int *out_subbootversion,
+                                                      GCancellable *cancellable, GError **error);
 
-gboolean
-_ostree_sysroot_parse_deploy_path_name (const char *name,
-                                        char      **out_csum,
-                                        int        *out_serial,
-                                        GError    **error);
+gboolean _ostree_sysroot_parse_deploy_path_name (const char *name, char **out_csum, int *out_serial,
+                                                 GError **error);
 
-gboolean
-_ostree_sysroot_list_deployment_dirs_for_os (int                  deploydir_dfd,
-                                             const char          *osname,
-                                             GPtrArray           *inout_deployments,
-                                             GCancellable        *cancellable,
-                                             GError             **error);
+gboolean _ostree_sysroot_list_deployment_dirs_for_os (int deploydir_dfd, const char *osname,
+                                                      GPtrArray *inout_deployments,
+                                                      GCancellable *cancellable, GError **error);
 
-void
-_ostree_deployment_set_bootconfig_from_kargs (OstreeDeployment *deployment,
-                                              char            **override_kernel_argv);
+void _ostree_deployment_set_bootconfig_from_kargs (OstreeDeployment *deployment,
+                                                   char **override_kernel_argv);
 
-gboolean
-_ostree_sysroot_reload_staged (OstreeSysroot *self, GError       **error);
+gboolean _ostree_sysroot_reload_staged (OstreeSysroot *self, GError **error);
 
-gboolean
-_ostree_sysroot_finalize_staged (OstreeSysroot *self,
-                                 GCancellable  *cancellable,
-                                 GError       **error);
-gboolean
-_ostree_sysroot_boot_complete (OstreeSysroot *self,
-                               GCancellable  *cancellable,
-                               GError       **error);
+gboolean _ostree_sysroot_finalize_staged (OstreeSysroot *self, GCancellable *cancellable,
+                                          GError **error);
+gboolean _ostree_sysroot_boot_complete (OstreeSysroot *self, GCancellable *cancellable,
+                                        GError **error);
 
-OstreeDeployment *
-_ostree_sysroot_deserialize_deployment_from_variant (GVariant *v,
-                                                     GError  **error);
+OstreeDeployment *_ostree_sysroot_deserialize_deployment_from_variant (GVariant *v, GError **error);
 
-char *
-_ostree_sysroot_get_origin_relpath (GFile         *path,
-                                    guint32       *out_device,
-                                    guint64       *out_inode,
-                                    GCancellable  *cancellable,
-                                    GError       **error);
+char *_ostree_sysroot_get_origin_relpath (GFile *path, guint32 *out_device, guint64 *out_inode,
+                                          GCancellable *cancellable, GError **error);
 
-gboolean
-_ostree_sysroot_rmrf_deployment (OstreeSysroot *sysroot,
-                                 OstreeDeployment *deployment,
-                                 GCancellable  *cancellable,
-                                 GError       **error);
+gboolean _ostree_sysroot_rmrf_deployment (OstreeSysroot *sysroot, OstreeDeployment *deployment,
+                                          GCancellable *cancellable, GError **error);
 
-char * _ostree_sysroot_get_runstate_path (OstreeDeployment *deployment, const char *key);
+char *_ostree_sysroot_get_runstate_path (OstreeDeployment *deployment, const char *key);
 
-char *_ostree_sysroot_join_lines (GPtrArray  *lines);
+char *_ostree_sysroot_join_lines (GPtrArray *lines);
 
-gboolean
-_ostree_sysroot_ensure_boot_fd (OstreeSysroot *self, GError **error);
+gboolean _ostree_sysroot_ensure_boot_fd (OstreeSysroot *self, GError **error);
 
-gboolean _ostree_sysroot_query_bootloader (OstreeSysroot     *sysroot,
+gboolean _ostree_sysroot_query_bootloader (OstreeSysroot *sysroot,
                                            OstreeBootloader **out_bootloader,
-                                           GCancellable      *cancellable,
-                                           GError           **error);
+                                           GCancellable *cancellable, GError **error);
 
-gboolean _ostree_sysroot_bump_mtime (OstreeSysroot *sysroot,
-                                     GError       **error);
+gboolean _ostree_sysroot_bump_mtime (OstreeSysroot *sysroot, GError **error);
 
-gboolean _ostree_sysroot_cleanup_internal (OstreeSysroot *sysroot,
-                                           gboolean       prune_repo,
-                                           GCancellable  *cancellable,
-                                           GError       **error);
+gboolean _ostree_sysroot_cleanup_internal (OstreeSysroot *sysroot, gboolean prune_repo,
+                                           GCancellable *cancellable, GError **error);
 
-gboolean
-_ostree_sysroot_cleanup_bootfs (OstreeSysroot       *self,
-                                GCancellable        *cancellable,
-                                GError             **error);
+gboolean _ostree_sysroot_cleanup_bootfs (OstreeSysroot *self, GCancellable *cancellable,
+                                         GError **error);
 
-gboolean _ostree_sysroot_parse_bootdir_name (const char *name,
-                                             char      **out_osname,
-                                             char      **out_csum);
+gboolean _ostree_sysroot_parse_bootdir_name (const char *name, char **out_osname, char **out_csum);
 
-gboolean _ostree_sysroot_list_all_boot_directories (OstreeSysroot       *self,
-                                                    char              ***out_bootdirs,
-                                                    GCancellable        *cancellable,
-                                                    GError             **error);
+gboolean _ostree_sysroot_list_all_boot_directories (OstreeSysroot *self, char ***out_bootdirs,
+                                                    GCancellable *cancellable, GError **error);
 
 G_END_DECLS

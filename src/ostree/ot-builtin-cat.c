@@ -21,9 +21,9 @@
 
 #include "config.h"
 
-#include "ot-main.h"
-#include "ot-builtins.h"
 #include "ostree.h"
+#include "ot-builtins.h"
+#include "ot-main.h"
 #include "otutil.h"
 
 #include <gio/gunixoutputstream.h>
@@ -38,28 +38,28 @@ static GOptionEntry options[] = {
 };
 
 static gboolean
-cat_one_file (GFile         *f,
-              GOutputStream *stdout_stream,
-              GCancellable  *cancellable,
-              GError       **error)
+cat_one_file (GFile *f, GOutputStream *stdout_stream, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GInputStream) in = (GInputStream*)g_file_read (f, cancellable, error);
+  g_autoptr (GInputStream) in = (GInputStream *)g_file_read (f, cancellable, error);
   if (!in)
     return FALSE;
 
-  if (g_output_stream_splice (stdout_stream, in, G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
-                              cancellable, error) < 0)
+  if (g_output_stream_splice (stdout_stream, in, G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE, cancellable,
+                              error)
+      < 0)
     return FALSE;
 
   return TRUE;
 }
 
 gboolean
-ostree_builtin_cat (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ostree_builtin_cat (int argc, char **argv, OstreeCommandInvocation *invocation,
+                    GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = g_option_context_new ("COMMIT PATH...");
-  g_autoptr(OstreeRepo) repo = NULL;
-  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
+  g_autoptr (GOptionContext) context = g_option_context_new ("COMMIT PATH...");
+  g_autoptr (OstreeRepo) repo = NULL;
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable,
+                                    error))
     return FALSE;
 
   if (argc <= 2)
@@ -69,15 +69,15 @@ ostree_builtin_cat (int argc, char **argv, OstreeCommandInvocation *invocation, 
     }
   const char *rev = argv[1];
 
-  g_autoptr(GFile) root = NULL;
+  g_autoptr (GFile) root = NULL;
   if (!ostree_repo_read_commit (repo, rev, &root, NULL, NULL, error))
     return FALSE;
 
-  g_autoptr(GOutputStream) stdout_stream = g_unix_output_stream_new (1, FALSE);
+  g_autoptr (GOutputStream) stdout_stream = g_unix_output_stream_new (1, FALSE);
 
   for (int i = 2; i < argc; i++)
     {
-      g_autoptr(GFile) f = g_file_resolve_relative_path (root, argv[i]);
+      g_autoptr (GFile) f = g_file_resolve_relative_path (root, argv[i]);
 
       if (!cat_one_file (f, stdout_stream, cancellable, error))
         return FALSE;

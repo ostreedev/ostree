@@ -34,16 +34,17 @@
 #include <sys/types.h>
 
 #define BUP_BLOBBITS (13)
-#define BUP_BLOBSIZE (1<<BUP_BLOBBITS)
+#define BUP_BLOBSIZE (1 << BUP_BLOBBITS)
 #define BUP_WINDOWBITS (7)
-#define BUP_WINDOWSIZE (1<<(BUP_WINDOWBITS-1))
+#define BUP_WINDOWSIZE (1 << (BUP_WINDOWBITS - 1))
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-uint32_t bupsplit_sum(uint8_t *buf, size_t ofs, size_t len);
-int bupsplit_find_ofs(const unsigned char *buf, int len, int *bits);
+  uint32_t bupsplit_sum (uint8_t *buf, size_t ofs, size_t len);
+  int bupsplit_find_ofs (const unsigned char *buf, int len, int *bits);
 
 #ifdef __cplusplus
 }

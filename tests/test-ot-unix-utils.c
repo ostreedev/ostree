@@ -26,14 +26,14 @@
 static void
 test_ot_util_path_split_validate (void)
 {
-  const char *paths[] = {"foo/bar", "test", "foo/bar:", "a/b/c/d/e/f/g/h/i/l/m/n/o/p", NULL};
-  int n_components[] = {2, 1, 2, 14, 0};
+  const char *paths[] = { "foo/bar", "test", "foo/bar:", "a/b/c/d/e/f/g/h/i/l/m/n/o/p", NULL };
+  int n_components[] = { 2, 1, 2, 14, 0 };
   int i;
   for (i = 0; paths[i]; i++)
     {
       GError *error = NULL;
-      g_autoptr(GPtrArray) components = NULL;
-      if (! ot_util_path_split_validate (paths[i], &components, &error))
+      g_autoptr (GPtrArray) components = NULL;
+      if (!ot_util_path_split_validate (paths[i], &components, &error))
         {
           int j;
           g_assert_cmpint (components->len, ==, n_components[i]);
@@ -49,7 +49,7 @@ test_ot_util_path_split_validate (void)
 static void
 test_ot_util_filename_validate (void)
 {
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GError) error = NULL;
 
   /* Check for valid inputs.  */
   g_assert (ot_util_filename_validate ("valid", &error));
@@ -74,10 +74,11 @@ test_ot_util_filename_validate (void)
   g_clear_error (&error);
 }
 
-int main (int argc, char **argv)
+int
+main (int argc, char **argv)
 {
   g_test_init (&argc, &argv, NULL);
   g_test_add_func ("/ot_util_path_split_validate", test_ot_util_path_split_validate);
   g_test_add_func ("/ot_util_filename_validate", test_ot_util_filename_validate);
-  return g_test_run();
+  return g_test_run ();
 }

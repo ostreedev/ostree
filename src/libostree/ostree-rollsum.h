@@ -19,12 +19,13 @@
 
 #pragma once
 
-#include <gio/gio.h>
 #include "libglnx.h"
+#include <gio/gio.h>
 
 G_BEGIN_DECLS
 
-typedef struct {
+typedef struct
+{
   GHashTable *from_rollsums;
   GHashTable *to_rollsums;
   guint crcmatches;
@@ -34,11 +35,9 @@ typedef struct {
   GPtrArray *matches;
 } OstreeRollsumMatches;
 
-OstreeRollsumMatches *
-_ostree_compute_rollsum_matches (GBytes                           *from,
-                                 GBytes                           *to);
+OstreeRollsumMatches *_ostree_compute_rollsum_matches (GBytes *from, GBytes *to);
 
 void _ostree_rollsum_matches_free (OstreeRollsumMatches *rollsum);
-G_DEFINE_AUTOPTR_CLEANUP_FUNC(OstreeRollsumMatches, _ostree_rollsum_matches_free)
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRollsumMatches, _ostree_rollsum_matches_free)
 
 G_END_DECLS

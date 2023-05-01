@@ -26,7 +26,7 @@
 int
 main (int argc, char **argv)
 {
-  g_autoptr(GError) local_error = NULL;
+  g_autoptr (GError) local_error = NULL;
   GError **error = &local_error;
   GBytes *from_bytes = NULL;
   GBytes *to_bytes = NULL;
@@ -57,12 +57,10 @@ main (int argc, char **argv)
 
   matches = _ostree_compute_rollsum_matches (from_bytes, to_bytes);
 
-  g_printerr ("rollsum crcs=%u bufs=%u total=%u matchsize=%llu\n",
-              matches->crcmatches,
-              matches->bufmatches,
-              matches->total, (unsigned long long)matches->match_size);
+  g_printerr ("rollsum crcs=%u bufs=%u total=%u matchsize=%llu\n", matches->crcmatches,
+              matches->bufmatches, matches->total, (unsigned long long)matches->match_size);
 
- out:
+out:
   if (local_error)
     {
       g_printerr ("%s\n", local_error->message);

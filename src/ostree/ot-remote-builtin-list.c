@@ -29,23 +29,23 @@ static gboolean opt_show_urls;
  * man page (man/ostree-remote.xml) when changing the option list.
  */
 
-static GOptionEntry option_entries[] = {
-  { "show-urls", 'u', 0, G_OPTION_ARG_NONE, &opt_show_urls, "Show remote URLs in list", NULL },
-  { NULL }
-};
+static GOptionEntry option_entries[] = { { "show-urls", 'u', 0, G_OPTION_ARG_NONE, &opt_show_urls,
+                                           "Show remote URLs in list", NULL },
+                                         { NULL } };
 
 gboolean
-ot_remote_builtin_list (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_remote_builtin_list (int argc, char **argv, OstreeCommandInvocation *invocation,
+                        GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = g_option_context_new ("");
+  g_autoptr (GOptionContext) context = g_option_context_new ("");
 
-  g_autoptr(OstreeRepo) repo = NULL;
-  if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
-                                    invocation, &repo, cancellable, error))
+  g_autoptr (OstreeRepo) repo = NULL;
+  if (!ostree_option_context_parse (context, option_entries, &argc, &argv, invocation, &repo,
+                                    cancellable, error))
     return FALSE;
 
   guint n_remotes = 0;
-  g_auto(GStrv) remotes = ostree_repo_remote_list (repo, &n_remotes);
+  g_auto (GStrv) remotes = ostree_repo_remote_list (repo, &n_remotes);
 
   if (opt_show_urls)
     {

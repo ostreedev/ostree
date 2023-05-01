@@ -21,9 +21,9 @@
 
 #include "config.h"
 
-#include "ot-main.h"
-#include "ot-builtins.h"
 #include "ostree.h"
+#include "ot-builtins.h"
+#include "ot-main.h"
 #include "otutil.h"
 
 static gboolean opt_stats;
@@ -37,27 +37,24 @@ static gint opt_owner_gid = -1;
  * man page (man/ostree-diff.xml) when changing the option list.
  */
 
-static GOptionEntry options[] = {
-  { "stats", 0, 0, G_OPTION_ARG_NONE, &opt_stats, "Print various statistics", NULL },
-  { "fs-diff", 0, 0, G_OPTION_ARG_NONE, &opt_fs_diff, "Print filesystem diff", NULL },
-  { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_no_xattrs, "Skip output of extended attributes", NULL },
-  { "owner-uid", 0, 0, G_OPTION_ARG_INT, &opt_owner_uid, "Use file ownership user id for local files", "UID" },
-  { "owner-gid", 0, 0, G_OPTION_ARG_INT, &opt_owner_gid, "Use file ownership group id for local files", "GID" },
-  { NULL }
-};
+static GOptionEntry options[]
+    = { { "stats", 0, 0, G_OPTION_ARG_NONE, &opt_stats, "Print various statistics", NULL },
+        { "fs-diff", 0, 0, G_OPTION_ARG_NONE, &opt_fs_diff, "Print filesystem diff", NULL },
+        { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_no_xattrs,
+          "Skip output of extended attributes", NULL },
+        { "owner-uid", 0, 0, G_OPTION_ARG_INT, &opt_owner_uid,
+          "Use file ownership user id for local files", "UID" },
+        { "owner-gid", 0, 0, G_OPTION_ARG_INT, &opt_owner_gid,
+          "Use file ownership group id for local files", "GID" },
+        { NULL } };
 
 static gboolean
-parse_file_or_commit (OstreeRepo  *repo,
-                      const char  *arg,
-                      GFile      **out_file,
-                      GCancellable *cancellable,
-                      GError     **error)
+parse_file_or_commit (OstreeRepo *repo, const char *arg, GFile **out_file,
+                      GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GFile) ret_file = NULL;
+  g_autoptr (GFile) ret_file = NULL;
 
-  if (g_str_has_prefix (arg, "/")
-      || g_str_has_prefix (arg, "./")
-      )
+  if (g_str_has_prefix (arg, "/") || g_str_has_prefix (arg, "./"))
     {
       ret_file = g_file_new_for_path (arg);
     }
@@ -90,11 +87,8 @@ reachable_set_intersect (GHashTable *a, GHashTable *b)
 }
 
 static gboolean
-object_set_total_size (OstreeRepo    *repo,
-                       GHashTable    *reachable,
-                       guint64       *out_total,
-                       GCancellable  *cancellable,
-                       GError       **error)
+object_set_total_size (OstreeRepo *repo, GHashTable *reachable, guint64 *out_total,
+                       GCancellable *cancellable, GError **error)
 {
   GHashTableIter hashiter;
   gpointer key, value;
@@ -110,8 +104,7 @@ object_set_total_size (OstreeRepo    *repo,
       guint64 size;
 
       ostree_object_name_deserialize (v, &csum, &objtype);
-      if (!ostree_repo_query_object_storage_size (repo, objtype, csum, &size,
-                                                  cancellable, error))
+      if (!ostree_repo_query_object_storage_size (repo, objtype, csum, &size, cancellable, error))
         return FALSE;
       *out_total += size;
     }
@@ -120,12 +113,14 @@ object_set_total_size (OstreeRepo    *repo,
 }
 
 gboolean
-ostree_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ostree_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocation,
+                     GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = g_option_context_new ("REV_OR_DIR REV_OR_DIR");
+  g_autoptr (GOptionContext) context = g_option_context_new ("REV_OR_DIR REV_OR_DIR");
 
-  g_autoptr(OstreeRepo) repo = NULL;
-  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
+  g_autoptr (OstreeRepo) repo = NULL;
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable,
+                                    error))
     return FALSE;
 
   if (argc < 2)
@@ -133,8 +128,7 @@ ostree_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocation,
       gchar *help = g_option_context_get_help (context, TRUE, NULL);
       g_printerr ("%s\n", help);
       g_free (help);
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "REV must be specified");
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "REV must be specified");
       return FALSE;
     }
 
@@ -156,11 +150,11 @@ ostree_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocation,
   if (!opt_stats && !opt_fs_diff)
     opt_fs_diff = TRUE;
 
-  g_autoptr(GFile) srcf = NULL;
-  g_autoptr(GFile) targetf = NULL;
-  g_autoptr(GPtrArray) modified = NULL;
-  g_autoptr(GPtrArray) removed = NULL;
-  g_autoptr(GPtrArray) added = NULL;
+  g_autoptr (GFile) srcf = NULL;
+  g_autoptr (GFile) targetf = NULL;
+  g_autoptr (GPtrArray) modified = NULL;
+  g_autoptr (GPtrArray) removed = NULL;
+  g_autoptr (GPtrArray) added = NULL;
 
   if (opt_fs_diff)
     {
@@ -179,8 +173,8 @@ ostree_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocation,
       added = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 
       OstreeDiffDirsOptions diff_opts = { opt_owner_uid, opt_owner_gid };
-      if (!ostree_diff_dirs_with_options (diff_flags, srcf, targetf, modified, removed,
-                                          added, &diff_opts, cancellable, error))
+      if (!ostree_diff_dirs_with_options (diff_flags, srcf, targetf, modified, removed, added,
+                                          &diff_opts, cancellable, error))
         return FALSE;
 
       ostree_diff_print (srcf, targetf, modified, removed, added);
@@ -188,9 +182,9 @@ ostree_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocation,
 
   if (opt_stats)
     {
-      g_autoptr(GHashTable) reachable_a = NULL;
-      g_autoptr(GHashTable) reachable_b = NULL;
-      g_autoptr(GHashTable) reachable_intersection = NULL;
+      g_autoptr (GHashTable) reachable_a = NULL;
+      g_autoptr (GHashTable) reachable_b = NULL;
+      g_autoptr (GHashTable) reachable_intersection = NULL;
       g_autofree char *rev_a = NULL;
       g_autofree char *rev_b = NULL;
       g_autofree char *size = NULL;
@@ -217,8 +211,7 @@ ostree_builtin_diff (int argc, char **argv, OstreeCommandInvocation *invocation,
 
       g_print ("Common Object Count: %u\n", g_hash_table_size (reachable_intersection));
 
-      if (!object_set_total_size (repo, reachable_intersection, &total_common,
-                                  cancellable, error))
+      if (!object_set_total_size (repo, reachable_intersection, &total_common, cancellable, error))
         return FALSE;
       size = g_format_size_full (total_common, 0);
       g_print ("Common Object Size: %s\n", size);

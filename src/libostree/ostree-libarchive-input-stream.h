@@ -21,21 +21,29 @@
 
 #pragma once
 
-#include <gio/gio.h>
 #include "ostree-libarchive-private.h"
+#include <gio/gio.h>
 
 G_BEGIN_DECLS
 
-#define OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM         (_ostree_libarchive_input_stream_get_type ())
-#define OSTREE_LIBARCHIVE_INPUT_STREAM(o)           (G_TYPE_CHECK_INSTANCE_CAST ((o), OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM, OstreeLibarchiveInputStream))
-#define OSTREE_LIBARCHIVE_INPUT_STREAM_CLASS(k)     (G_TYPE_CHECK_CLASS_CAST((k), OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM, OstreeLibarchiveInputStreamClass))
-#define OSTREE_IS_LIBARCHIVE_INPUT_STREAM(o)        (G_TYPE_CHECK_INSTANCE_TYPE ((o), OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM))
-#define OSTREE_IS_LIBARCHIVE_INPUT_STREAM_CLASS(k)  (G_TYPE_CHECK_CLASS_TYPE ((k), OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM))
-#define OSTREE_LIBARCHIVE_INPUT_STREAM_GET_CLASS(o) (G_TYPE_INSTANCE_GET_CLASS ((o), OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM, OstreeLibarchiveInputStreamClass))
+#define OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM (_ostree_libarchive_input_stream_get_type ())
+#define OSTREE_LIBARCHIVE_INPUT_STREAM(o) \
+  (G_TYPE_CHECK_INSTANCE_CAST ((o), OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM, \
+                               OstreeLibarchiveInputStream))
+#define OSTREE_LIBARCHIVE_INPUT_STREAM_CLASS(k) \
+  (G_TYPE_CHECK_CLASS_CAST ((k), OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM, \
+                            OstreeLibarchiveInputStreamClass))
+#define OSTREE_IS_LIBARCHIVE_INPUT_STREAM(o) \
+  (G_TYPE_CHECK_INSTANCE_TYPE ((o), OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM))
+#define OSTREE_IS_LIBARCHIVE_INPUT_STREAM_CLASS(k) \
+  (G_TYPE_CHECK_CLASS_TYPE ((k), OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM))
+#define OSTREE_LIBARCHIVE_INPUT_STREAM_GET_CLASS(o) \
+  (G_TYPE_INSTANCE_GET_CLASS ((o), OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM, \
+                              OstreeLibarchiveInputStreamClass))
 
-typedef struct _OstreeLibarchiveInputStream         OstreeLibarchiveInputStream;
-typedef struct _OstreeLibarchiveInputStreamClass    OstreeLibarchiveInputStreamClass;
-typedef struct _OstreeLibarchiveInputStreamPrivate  OstreeLibarchiveInputStreamPrivate;
+typedef struct _OstreeLibarchiveInputStream OstreeLibarchiveInputStream;
+typedef struct _OstreeLibarchiveInputStreamClass OstreeLibarchiveInputStreamClass;
+typedef struct _OstreeLibarchiveInputStreamPrivate OstreeLibarchiveInputStreamPrivate;
 
 struct _OstreeLibarchiveInputStream
 {
@@ -58,8 +66,8 @@ struct _OstreeLibarchiveInputStreamClass
   void (*_g_reserved5) (void);
 };
 
-GType          _ostree_libarchive_input_stream_get_type     (void) G_GNUC_CONST;
+GType _ostree_libarchive_input_stream_get_type (void) G_GNUC_CONST;
 
-GInputStream * _ostree_libarchive_input_stream_new          (struct archive  *a);
+GInputStream *_ostree_libarchive_input_stream_new (struct archive *a);
 
 G_END_DECLS

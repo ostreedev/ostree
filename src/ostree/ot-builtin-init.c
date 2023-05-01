@@ -21,9 +21,9 @@
 
 #include "config.h"
 
-#include "ot-main.h"
-#include "ot-builtins.h"
 #include "ostree.h"
+#include "ot-builtins.h"
+#include "ot-main.h"
 
 static char *opt_mode = "bare";
 static char *opt_collection_id = NULL;
@@ -33,24 +33,28 @@ static char *opt_collection_id = NULL;
  * man page (man/ostree-init.xml) when changing the option list.
  */
 
-static GOptionEntry options[] = {
-  { "mode", 0, 0, G_OPTION_ARG_STRING, &opt_mode, "Initialize repository in given mode (bare, bare-user, bare-user-only, archive)", NULL },
-  { "collection-id", 0, 0, G_OPTION_ARG_STRING, &opt_collection_id,
-    "Globally unique ID for this repository as an collection of refs for redistribution to other repositories", "COLLECTION-ID" },
-  { NULL }
-};
+static GOptionEntry options[]
+    = { { "mode", 0, 0, G_OPTION_ARG_STRING, &opt_mode,
+          "Initialize repository in given mode (bare, bare-user, bare-user-only, archive)", NULL },
+        { "collection-id", 0, 0, G_OPTION_ARG_STRING, &opt_collection_id,
+          "Globally unique ID for this repository as an collection of refs for redistribution to "
+          "other repositories",
+          "COLLECTION-ID" },
+        { NULL } };
 
 gboolean
-ostree_builtin_init (int argc, char **argv,OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ostree_builtin_init (int argc, char **argv, OstreeCommandInvocation *invocation,
+                     GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
-  g_autoptr(OstreeRepo) repo = NULL;
+  g_autoptr (GOptionContext) context = NULL;
+  g_autoptr (OstreeRepo) repo = NULL;
   gboolean ret = FALSE;
   OstreeRepoMode mode;
 
   context = g_option_context_new ("");
 
-  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable,
+                                    error))
     goto out;
 
   if (!ostree_repo_mode_from_string (opt_mode, &mode, error))
@@ -62,6 +66,6 @@ ostree_builtin_init (int argc, char **argv,OstreeCommandInvocation *invocation, 
     goto out;
 
   ret = TRUE;
- out:
+out:
   return ret;
 }

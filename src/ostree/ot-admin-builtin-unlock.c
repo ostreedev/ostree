@@ -19,33 +19,34 @@
 
 #include "config.h"
 
-#include "ot-main.h"
+#include "ostree.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
-#include "ostree.h"
+#include "ot-main.h"
 #include "otutil.h"
 
-#include <glib/gi18n.h>
 #include <err.h>
+#include <glib/gi18n.h>
 
 static gboolean opt_hotfix;
 static gboolean opt_transient;
 
-static GOptionEntry options[] = {
-  { "hotfix", 0, 0, G_OPTION_ARG_NONE, &opt_hotfix, "Retain changes across reboots", NULL },
-  { "transient", 0, 0, G_OPTION_ARG_NONE, &opt_transient, "Mount overlayfs read-only by default", NULL },
-  { NULL }
-};
+static GOptionEntry options[]
+    = { { "hotfix", 0, 0, G_OPTION_ARG_NONE, &opt_hotfix, "Retain changes across reboots", NULL },
+        { "transient", 0, 0, G_OPTION_ARG_NONE, &opt_transient,
+          "Mount overlayfs read-only by default", NULL },
+        { NULL } };
 
 gboolean
-ot_admin_builtin_unlock (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_admin_builtin_unlock (int argc, char **argv, OstreeCommandInvocation *invocation,
+                         GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = g_option_context_new ("");
+  g_autoptr (GOptionContext) context = g_option_context_new ("");
 
-  g_autoptr(OstreeSysroot) sysroot = NULL;
+  g_autoptr (OstreeSysroot) sysroot = NULL;
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
-                                          invocation, &sysroot, cancellable, error))
+                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER, invocation, &sysroot,
+                                          cancellable, error))
     return FALSE;
 
   if (argc > 1)
@@ -70,8 +71,8 @@ ot_admin_builtin_unlock (int argc, char **argv, OstreeCommandInvocation *invocat
   else
     target_state = OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT;
 
-  if (!ostree_sysroot_deployment_unlock (sysroot, booted_deployment,
-                                         target_state, cancellable, error))
+  if (!ostree_sysroot_deployment_unlock (sysroot, booted_deployment, target_state, cancellable,
+                                         error))
     return FALSE;
 
   switch (target_state)

@@ -21,29 +21,28 @@
 
 #include "config.h"
 
-#include <string.h>
-#include <stdio.h>
+#include <err.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/param.h>
-#include <sys/mount.h>
-#include <sys/statvfs.h>
-#include <fcntl.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
+#include <string.h>
+#include <sys/mount.h>
+#include <sys/param.h>
 #include <sys/stat.h>
-#include <err.h>
-#include <errno.h>
+#include <sys/statvfs.h>
+#include <unistd.h>
 
 #include <glib.h>
 
-#include "ostree-mount-util.h"
 #include "glnx-backport-autocleanups.h"
+#include "ostree-mount-util.h"
 
 static void
-do_remount (const char *target,
-            bool        writable)
+do_remount (const char *target, bool writable)
 {
   struct stat stbuf;
   if (lstat (target, &stbuf) < 0)
@@ -80,7 +79,7 @@ do_remount (const char *target,
 }
 
 int
-main(int argc, char *argv[])
+main (int argc, char *argv[])
 {
   /* When systemd is in use this is normally created via the generator, but
    * we ensure it's created here as well for redundancy.
@@ -115,16 +114,15 @@ main(int argc, char *argv[])
   if (sysroot_configured_readonly)
     do_remount ("/etc", true);
 
-  /* If /var was created as as an OSTree default bind mount (instead of being a separate filesystem)
-    * then remounting the root mount read-only also remounted it.
-    * So just like /etc, we need to make it read-write by default.
-    * If it was a separate filesystem, we expect it to be writable anyways,
-    * so it doesn't hurt to remount it if so.
-    *
-    * And if we started out with a writable system root, then we need
-    * to ensure that the /var bind mount created by the systemd generator
-    * is writable too.
-    */
+  /* If /var was created as as an OSTree default bind mount (instead of being a separate
+   * filesystem) then remounting the root mount read-only also remounted it. So just like /etc, we
+   * need to make it read-write by default. If it was a separate filesystem, we expect it to be
+   * writable anyways, so it doesn't hurt to remount it if so.
+   *
+   * And if we started out with a writable system root, then we need
+   * to ensure that the /var bind mount created by the systemd generator
+   * is writable too.
+   */
   do_remount ("/var", true);
 
   exit (EXIT_SUCCESS);

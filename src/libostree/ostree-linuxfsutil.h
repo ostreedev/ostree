@@ -23,11 +23,8 @@
 
 G_BEGIN_DECLS
 
-gboolean
-_ostree_linuxfs_fd_alter_immutable_flag (int            fd,
-                                         gboolean       new_immutable_state,
-                                         GCancellable  *cancellable,
-                                         GError       **error);
+gboolean _ostree_linuxfs_fd_alter_immutable_flag (int fd, gboolean new_immutable_state,
+                                                  GCancellable *cancellable, GError **error);
 
 int _ostree_linuxfs_filesystem_freeze (int fd);
 int _ostree_linuxfs_filesystem_thaw (int fd);

@@ -51,22 +51,22 @@
 
 #include "config.h"
 
-#include <sys/mount.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/param.h>
-#include <sys/syscall.h>
-#include <fcntl.h>
-#include <stdio.h>
 #include <assert.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
+#include <ctype.h>
 #include <err.h>
 #include <errno.h>
-#include <ctype.h>
+#include <fcntl.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mount.h>
+#include <sys/param.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #if defined(HAVE_LIBSYSTEMD) && !defined(OSTREE_PREPARE_ROOT_STATIC)
 #define USE_LIBSYSTEMD
@@ -74,7 +74,8 @@
 
 #ifdef USE_LIBSYSTEMD
 #include <systemd/sd-journal.h>
-#define OSTREE_PREPARE_ROOT_DEPLOYMENT_MSG SD_ID128_MAKE(71,70,33,6a,73,ba,46,01,ba,d3,1a,f8,88,aa,0d,f7)
+#define OSTREE_PREPARE_ROOT_DEPLOYMENT_MSG \
+  SD_ID128_MAKE (71, 70, 33, 6a, 73, ba, 46, 01, ba, d3, 1a, f8, 88, aa, 0d, f7)
 #endif
 
 #include "ostree-mount-util.h"
@@ -82,9 +83,9 @@
 static inline bool
 sysroot_is_configured_ro (const char *sysroot)
 {
-  char * config_path = NULL;
+  char *config_path = NULL;
   assert (asprintf (&config_path, "%s/ostree/repo/config", sysroot) != -1);
-  FILE *f = fopen(config_path, "r");
+  FILE *f = fopen (config_path, "r");
   if (!f)
     {
       fprintf (stderr, "Missing expected repo config: %s\n", config_path);
@@ -119,8 +120,8 @@ sysroot_is_configured_ro (const char *sysroot)
   return ret;
 }
 
-static char*
-resolve_deploy_path (const char * root_mountpoint)
+static char *
+resolve_deploy_path (const char *root_mountpoint)
 {
   char destpath[PATH_MAX];
   struct stat stbuf;
@@ -130,7 +131,7 @@ resolve_deploy_path (const char * root_mountpoint)
   if (!ostree_target)
     errx (EXIT_FAILURE, "No OSTree target; expected ostree=/ostree/boot.N/...");
 
-  if (snprintf (destpath, sizeof(destpath), "%s/%s", root_mountpoint, ostree_target) < 0)
+  if (snprintf (destpath, sizeof (destpath), "%s/%s", root_mountpoint, ostree_target) < 0)
     err (EXIT_FAILURE, "failed to assemble ostree target path");
   if (lstat (destpath, &stbuf) < 0)
     err (EXIT_FAILURE, "Couldn't find specified OSTree root '%s'", destpath);
@@ -141,28 +142,26 @@ resolve_deploy_path (const char * root_mountpoint)
     err (EXIT_FAILURE, "realpath(%s) failed", destpath);
   if (stat (deploy_path, &stbuf) < 0)
     err (EXIT_FAILURE, "stat(%s) failed", deploy_path);
-  /* Quiet logs if there's no journal */
+    /* Quiet logs if there's no journal */
 #ifdef USE_LIBSYSTEMD
   const char *resolved_path = deploy_path + strlen (root_mountpoint);
   sd_journal_send ("MESSAGE=Resolved OSTree target to: %s", deploy_path,
                    "MESSAGE_ID=" SD_ID128_FORMAT_STR,
-                   SD_ID128_FORMAT_VAL(OSTREE_PREPARE_ROOT_DEPLOYMENT_MSG),
-                   "DEPLOYMENT_PATH=%s", resolved_path,
-                   "DEPLOYMENT_DEVICE=%" PRIu64, (uint64_t) stbuf.st_dev,
-                   "DEPLOYMENT_INODE=%" PRIu64, (uint64_t) stbuf.st_ino,
-                   NULL);
+                   SD_ID128_FORMAT_VAL (OSTREE_PREPARE_ROOT_DEPLOYMENT_MSG), "DEPLOYMENT_PATH=%s",
+                   resolved_path, "DEPLOYMENT_DEVICE=%" PRIu64, (uint64_t)stbuf.st_dev,
+                   "DEPLOYMENT_INODE=%" PRIu64, (uint64_t)stbuf.st_ino, NULL);
 #endif
   return deploy_path;
 }
 
 static int
-pivot_root(const char * new_root, const char * put_old)
+pivot_root (const char *new_root, const char *put_old)
 {
-  return syscall(__NR_pivot_root, new_root, put_old);
+  return syscall (__NR_pivot_root, new_root, put_old);
 }
 
 int
-main(int argc, char *argv[])
+main (int argc, char *argv[])
 {
   char srcpath[PATH_MAX];
 
@@ -188,8 +187,7 @@ main(int argc, char *argv[])
       root_arg = argv[1];
     }
 #ifdef USE_LIBSYSTEMD
-  sd_journal_send ("MESSAGE=preparing sysroot at %s", root_arg,
-                    NULL);
+  sd_journal_send ("MESSAGE=preparing sysroot at %s", root_arg, NULL);
 #endif
 
   struct stat stbuf;
@@ -223,11 +221,8 @@ main(int argc, char *argv[])
   const bool sysroot_currently_writable = !path_is_on_readonly_fs (root_arg);
 #ifdef USE_LIBSYSTEMD
   sd_journal_send ("MESSAGE=filesystem at %s currently writable: %d", root_arg,
-                   (int)sysroot_currently_writable,
-                   NULL);
-  sd_journal_send ("MESSAGE=sysroot.readonly configuration value: %d",
-                   (int)sysroot_readonly,
-                   NULL);
+                   (int)sysroot_currently_writable, NULL);
+  sd_journal_send ("MESSAGE=sysroot.readonly configuration value: %d", (int)sysroot_readonly, NULL);
 #endif
 
   /* Work-around for a kernel bug: for some reason the kernel
@@ -260,19 +255,19 @@ main(int argc, char *argv[])
       int fd = open (_OSTREE_SYSROOT_READONLY_STAMP, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
       if (fd < 0)
         err (EXIT_FAILURE, "failed to create %s", _OSTREE_SYSROOT_READONLY_STAMP);
-      (void) close (fd);
+      (void)close (fd);
     }
 
   /* Prepare /boot.
    * If /boot is on the same partition, use a bind mount to make it visible
    * at /boot inside the deployment. */
-  if (snprintf (srcpath, sizeof(srcpath), "%s/boot/loader", root_mountpoint) < 0)
+  if (snprintf (srcpath, sizeof (srcpath), "%s/boot/loader", root_mountpoint) < 0)
     err (EXIT_FAILURE, "failed to assemble /boot/loader path");
   if (lstat (srcpath, &stbuf) == 0 && S_ISLNK (stbuf.st_mode))
     {
       if (lstat ("boot", &stbuf) == 0 && S_ISDIR (stbuf.st_mode))
         {
-          if (snprintf (srcpath, sizeof(srcpath), "%s/boot", root_mountpoint) < 0)
+          if (snprintf (srcpath, sizeof (srcpath), "%s/boot", root_mountpoint) < 0)
             err (EXIT_FAILURE, "failed to assemble /boot path");
           if (mount (srcpath, "boot", NULL, MS_BIND | MS_SILENT, NULL) < 0)
             err (EXIT_FAILURE, "failed to bind mount %s to boot", srcpath);
@@ -283,13 +278,13 @@ main(int argc, char *argv[])
    * No action required if sysroot is writable. Otherwise, a bind-mount for
    * the deployment needs to be created and remounted as read/write. */
   if (sysroot_readonly)
-  {
-    /* Bind-mount /etc (at deploy path), and remount as writable. */
-    if (mount ("etc", "etc", NULL, MS_BIND | MS_SILENT, NULL) < 0)
-      err (EXIT_FAILURE, "failed to prepare /etc bind-mount at %s", srcpath);
-    if (mount ("etc", "etc", NULL, MS_BIND | MS_REMOUNT | MS_SILENT, NULL) < 0)
-      err (EXIT_FAILURE, "failed to make writable /etc bind-mount at %s", srcpath);
-  }
+    {
+      /* Bind-mount /etc (at deploy path), and remount as writable. */
+      if (mount ("etc", "etc", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to prepare /etc bind-mount at %s", srcpath);
+      if (mount ("etc", "etc", NULL, MS_BIND | MS_REMOUNT | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to make writable /etc bind-mount at %s", srcpath);
+    }
 
   /* Prepare /usr.
    * It may be either just a read-only bind-mount, or a persistent overlayfs. */
@@ -333,9 +328,9 @@ main(int argc, char *argv[])
         err (EXIT_FAILURE, "failed to make writable /var bind-mount at %s", srcpath);
     }
 
-  /* When running under systemd, /var will be handled by a 'var.mount' unit outside
-   * of initramfs.
-   * Systemd auto-detection can be overridden by a marker file under /run. */
+    /* When running under systemd, /var will be handled by a 'var.mount' unit outside
+     * of initramfs.
+     * Systemd auto-detection can be overridden by a marker file under /run. */
 #ifdef HAVE_SYSTEMD_AND_LIBMOUNT
   bool mount_var = false;
 #else
@@ -345,9 +340,9 @@ main(int argc, char *argv[])
     mount_var = true;
 
   /* If required, bind-mount `/var` in the deployment to the "stateroot", which is
-  *  the shared persistent directory for a set of deployments.  More info:
-  *  https://ostreedev.github.io/ostree/deployment/#stateroot-aka-osname-group-of-deployments-that-share-var
-  */
+   *  the shared persistent directory for a set of deployments.  More info:
+   *  https://ostreedev.github.io/ostree/deployment/#stateroot-aka-osname-group-of-deployments-that-share-var
+   */
   if (mount_var)
     {
       if (mount ("../../var", "var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
@@ -362,7 +357,7 @@ main(int argc, char *argv[])
   if (!running_as_pid1)
     touch_run_ostree ();
 
-  if (strcmp(root_mountpoint, "/") == 0)
+  if (strcmp (root_mountpoint, "/") == 0)
     {
       /* pivot_root rotates two mount points around.  In this instance . (the
        * deploy location) becomes / and the existing / becomes /sysroot.  We
@@ -405,7 +400,8 @@ main(int argc, char *argv[])
 
       if (sysroot_readonly)
         {
-          if (mount ("sysroot", "sysroot", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL) < 0)
+          if (mount ("sysroot", "sysroot", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL)
+              < 0)
             err (EXIT_FAILURE, "failed to make /sysroot read-only");
 
           /* TODO(lucab): This will make the final '/' read-only.

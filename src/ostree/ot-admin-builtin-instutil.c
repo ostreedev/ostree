@@ -19,26 +19,23 @@
 
 #include "config.h"
 
-#include "ot-main.h"
-#include "ot-builtins.h"
-#include "ot-admin-instutil-builtins.h"
+#include "ostree.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
-#include "ostree.h"
+#include "ot-admin-instutil-builtins.h"
+#include "ot-builtins.h"
+#include "ot-main.h"
 
 #include <glib/gi18n.h>
 
 static OstreeCommand admin_instutil_subcommands[] = {
 #ifdef HAVE_SELINUX
   { "selinux-ensure-labeled", OSTREE_BUILTIN_FLAG_NO_REPO,
-    ot_admin_instutil_builtin_selinux_ensure_labeled,
-    "Relabel all or part of a deployment" },
+    ot_admin_instutil_builtin_selinux_ensure_labeled, "Relabel all or part of a deployment" },
 #endif
-  { "set-kargs", OSTREE_BUILTIN_FLAG_NO_REPO,
-    ot_admin_instutil_builtin_set_kargs,
-    "Set new kernel command line arguments(Not stable)"  },
-  { "grub2-generate", OSTREE_BUILTIN_FLAG_NO_REPO,
-    ot_admin_instutil_builtin_grub2_generate,
+  { "set-kargs", OSTREE_BUILTIN_FLAG_NO_REPO, ot_admin_instutil_builtin_set_kargs,
+    "Set new kernel command line arguments(Not stable)" },
+  { "grub2-generate", OSTREE_BUILTIN_FLAG_NO_REPO, ot_admin_instutil_builtin_grub2_generate,
     "Generate GRUB2 configuration from given BLS entries" },
   { NULL, 0, NULL, NULL }
 };
@@ -49,7 +46,7 @@ ostree_admin_instutil_option_context_new_with_commands (void)
   OstreeCommand *command = admin_instutil_subcommands;
   GOptionContext *context = g_option_context_new ("COMMAND");
 
-  g_autoptr(GString) summary = g_string_new ("Builtin \"admin instutil\" Commands:");
+  g_autoptr (GString) summary = g_string_new ("Builtin \"admin instutil\" Commands:");
 
   while (command->name != NULL)
     {
@@ -69,7 +66,8 @@ ostree_admin_instutil_option_context_new_with_commands (void)
 }
 
 gboolean
-ot_admin_builtin_instutil (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_admin_builtin_instutil (int argc, char **argv, OstreeCommandInvocation *invocation,
+                           GCancellable *cancellable, GError **error)
 {
   const char *subcommand_name = NULL;
   int in, out;
@@ -107,13 +105,13 @@ ot_admin_builtin_instutil (int argc, char **argv, OstreeCommandInvocation *invoc
 
   if (!subcommand->name)
     {
-      g_autoptr(GOptionContext) context =
-        ostree_admin_instutil_option_context_new_with_commands ();
+      g_autoptr (GOptionContext) context
+          = ostree_admin_instutil_option_context_new_with_commands ();
 
       /* This will not return for some options (e.g. --version). */
       if (ostree_admin_option_context_parse (context, NULL, &argc, &argv,
-                                             OSTREE_ADMIN_BUILTIN_FLAG_NO_SYSROOT,
-                                             invocation, NULL, cancellable, error))
+                                             OSTREE_ADMIN_BUILTIN_FLAG_NO_SYSROOT, invocation, NULL,
+                                             cancellable, error))
         {
           if (subcommand_name == NULL)
             {

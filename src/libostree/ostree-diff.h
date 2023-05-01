@@ -29,7 +29,8 @@ G_BEGIN_DECLS
 /**
  * OstreeDiffFlags:
  */
-typedef enum {
+typedef enum
+{
   OSTREE_DIFF_FLAGS_NONE = 0,
   OSTREE_DIFF_FLAGS_IGNORE_XATTRS = (1 << 0)
 } OstreeDiffFlags;
@@ -40,7 +41,7 @@ typedef enum {
 typedef struct _OstreeDiffItem OstreeDiffItem;
 struct _OstreeDiffItem
 {
-  gint refcount;  /* atomic */
+  gint refcount; /* atomic */
 
   GFile *src;
   GFile *target;
@@ -61,14 +62,9 @@ _OSTREE_PUBLIC
 GType ostree_diff_item_get_type (void);
 
 _OSTREE_PUBLIC
-gboolean ostree_diff_dirs (OstreeDiffFlags flags,
-                           GFile          *a,
-                           GFile          *b,
-                           GPtrArray      *modified,
-                           GPtrArray      *removed,
-                           GPtrArray      *added,
-                           GCancellable   *cancellable,
-                           GError        **error);
+gboolean ostree_diff_dirs (OstreeDiffFlags flags, GFile *a, GFile *b, GPtrArray *modified,
+                           GPtrArray *removed, GPtrArray *added, GCancellable *cancellable,
+                           GError **error);
 
 /**
  * OstreeDiffDirsOptions:
@@ -77,7 +73,8 @@ gboolean ostree_diff_dirs (OstreeDiffFlags flags,
  * that owner_uid/gid is set to -1 when not used. This is used by
  * ostree_diff_dirs_with_options().
  */
-typedef struct {
+typedef struct
+{
   gint owner_uid;
   gint owner_gid;
 
@@ -94,24 +91,19 @@ typedef struct {
  *
  * Use this to initialize an `OstreeDiffDirsOptions` structure.
  */
-#define OSTREE_DIFF_DIRS_OPTIONS_INIT { .owner_uid = -1, .owner_gid = -1, }
+#define OSTREE_DIFF_DIRS_OPTIONS_INIT \
+  { \
+    .owner_uid = -1, .owner_gid = -1, \
+  }
 
 _OSTREE_PUBLIC
-gboolean ostree_diff_dirs_with_options (OstreeDiffFlags       flags,
-                                        GFile                 *a,
-                                        GFile                 *b,
-                                        GPtrArray             *modified,
-                                        GPtrArray             *removed,
-                                        GPtrArray             *added,
-                                        OstreeDiffDirsOptions *options,
-                                        GCancellable          *cancellable,
-                                        GError                **error);
+gboolean ostree_diff_dirs_with_options (OstreeDiffFlags flags, GFile *a, GFile *b,
+                                        GPtrArray *modified, GPtrArray *removed, GPtrArray *added,
+                                        OstreeDiffDirsOptions *options, GCancellable *cancellable,
+                                        GError **error);
 
 _OSTREE_PUBLIC
-void ostree_diff_print (GFile          *a,
-                        GFile          *b,
-                        GPtrArray      *modified,
-                        GPtrArray      *removed,
-                        GPtrArray      *added);
+void ostree_diff_print (GFile *a, GFile *b, GPtrArray *modified, GPtrArray *removed,
+                        GPtrArray *added);
 
 G_END_DECLS

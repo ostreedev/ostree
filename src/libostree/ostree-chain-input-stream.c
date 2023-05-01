@@ -22,35 +22,29 @@
 
 #include "ostree-chain-input-stream.h"
 
-enum {
+enum
+{
   PROP_0,
   PROP_STREAMS
 };
 
-struct _OstreeChainInputStreamPrivate {
+struct _OstreeChainInputStreamPrivate
+{
   GPtrArray *streams;
   guint index;
 };
 
 G_DEFINE_TYPE_WITH_PRIVATE (OstreeChainInputStream, ostree_chain_input_stream, G_TYPE_INPUT_STREAM)
 
-static void     ostree_chain_input_stream_set_property (GObject              *object,
-                                                           guint                 prop_id,
-                                                           const GValue         *value,
-                                                           GParamSpec           *pspec);
-static void     ostree_chain_input_stream_get_property (GObject              *object,
-                                                           guint                 prop_id,
-                                                           GValue               *value,
-                                                           GParamSpec           *pspec);
-static void     ostree_chain_input_stream_finalize     (GObject *object);
-static gssize   ostree_chain_input_stream_read         (GInputStream         *stream,
-                                                        void                 *buffer,
-                                                        gsize                 count,
-                                                        GCancellable         *cancellable,
-                                                        GError              **error);
-static gboolean ostree_chain_input_stream_close        (GInputStream         *stream,
-                                                        GCancellable         *cancellable,
-                                                        GError              **error);
+static void ostree_chain_input_stream_set_property (GObject *object, guint prop_id,
+                                                    const GValue *value, GParamSpec *pspec);
+static void ostree_chain_input_stream_get_property (GObject *object, guint prop_id, GValue *value,
+                                                    GParamSpec *pspec);
+static void ostree_chain_input_stream_finalize (GObject *object);
+static gssize ostree_chain_input_stream_read (GInputStream *stream, void *buffer, gsize count,
+                                              GCancellable *cancellable, GError **error);
+static gboolean ostree_chain_input_stream_close (GInputStream *stream, GCancellable *cancellable,
+                                                 GError **error);
 
 static void
 ostree_chain_input_stream_class_init (OstreeChainInputStreamClass *klass)
@@ -60,7 +54,7 @@ ostree_chain_input_stream_class_init (OstreeChainInputStreamClass *klass)
 
   gobject_class->get_property = ostree_chain_input_stream_get_property;
   gobject_class->set_property = ostree_chain_input_stream_set_property;
-  gobject_class->finalize     = ostree_chain_input_stream_finalize;
+  gobject_class->finalize = ostree_chain_input_stream_finalize;
 
   stream_class->read_fn = ostree_chain_input_stream_read;
   stream_class->close_fn = ostree_chain_input_stream_close;
@@ -70,21 +64,15 @@ ostree_chain_input_stream_class_init (OstreeChainInputStreamClass *klass)
    *
    * Chain of input streams read in order.
    */
-  g_object_class_install_property (gobject_class,
-				   PROP_STREAMS,
-				   g_param_spec_pointer ("streams",
-							 "", "",
-							 G_PARAM_READWRITE |
-							 G_PARAM_CONSTRUCT_ONLY |
-							 G_PARAM_STATIC_STRINGS));
-
+  g_object_class_install_property (
+      gobject_class, PROP_STREAMS,
+      g_param_spec_pointer ("streams", "", "",
+                            G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 
 static void
-ostree_chain_input_stream_set_property (GObject         *object,
-					     guint            prop_id,
-					     const GValue    *value,
-					     GParamSpec      *pspec)
+ostree_chain_input_stream_set_property (GObject *object, guint prop_id, const GValue *value,
+                                        GParamSpec *pspec)
 {
   OstreeChainInputStream *self;
 
@@ -102,10 +90,8 @@ ostree_chain_input_stream_set_property (GObject         *object,
 }
 
 static void
-ostree_chain_input_stream_get_property (GObject    *object,
-					     guint       prop_id,
-					     GValue     *value,
-					     GParamSpec *pspec)
+ostree_chain_input_stream_get_property (GObject *object, guint prop_id, GValue *value,
+                                        GParamSpec *pspec)
 {
   OstreeChainInputStream *self;
 
@@ -126,7 +112,7 @@ ostree_chain_input_stream_finalize (GObject *object)
 {
   OstreeChainInputStream *stream;
 
-  stream = (OstreeChainInputStream*)(object);
+  stream = (OstreeChainInputStream *)(object);
 
   g_ptr_array_unref (stream->priv->streams);
 
@@ -137,29 +123,23 @@ static void
 ostree_chain_input_stream_init (OstreeChainInputStream *self)
 {
   self->priv = ostree_chain_input_stream_get_instance_private (self);
-
 }
 
 OstreeChainInputStream *
-ostree_chain_input_stream_new (GPtrArray   *streams)
+ostree_chain_input_stream_new (GPtrArray *streams)
 {
   OstreeChainInputStream *stream;
 
-  stream = g_object_new (OSTREE_TYPE_CHAIN_INPUT_STREAM,
-			 "streams", streams,
-			 NULL);
+  stream = g_object_new (OSTREE_TYPE_CHAIN_INPUT_STREAM, "streams", streams, NULL);
 
-  return (OstreeChainInputStream*) (stream);
+  return (OstreeChainInputStream *)(stream);
 }
 
 static gssize
-ostree_chain_input_stream_read (GInputStream  *stream,
-                                void          *buffer,
-                                gsize          count,
-                                GCancellable  *cancellable,
-                                GError       **error)
+ostree_chain_input_stream_read (GInputStream *stream, void *buffer, gsize count,
+                                GCancellable *cancellable, GError **error)
 {
-  OstreeChainInputStream *self = (OstreeChainInputStream*) stream;
+  OstreeChainInputStream *self = (OstreeChainInputStream *)stream;
   GInputStream *child;
   gssize res = -1;
 
@@ -173,11 +153,7 @@ ostree_chain_input_stream_read (GInputStream  *stream,
   while (res == 0 && self->priv->index < self->priv->streams->len)
     {
       child = self->priv->streams->pdata[self->priv->index];
-      res = g_input_stream_read (child,
-                                 buffer,
-                                 count,
-                                 cancellable,
-                                 error);
+      res = g_input_stream_read (child, buffer, count, cancellable, error);
       if (res == 0)
         self->priv->index++;
     }
@@ -186,9 +162,7 @@ ostree_chain_input_stream_read (GInputStream  *stream,
 }
 
 static gboolean
-ostree_chain_input_stream_close (GInputStream         *stream,
-                                 GCancellable         *cancellable,
-                                 GError              **error)
+ostree_chain_input_stream_close (GInputStream *stream, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   OstreeChainInputStream *self = (gpointer)stream;
@@ -202,6 +176,6 @@ ostree_chain_input_stream_close (GInputStream         *stream,
     }
 
   ret = TRUE;
- out:
+out:
   return ret;
 }

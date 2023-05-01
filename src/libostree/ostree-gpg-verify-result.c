@@ -45,7 +45,8 @@
  * or get all signature details with ostree_gpg_verify_result_get_all().
  */
 
-typedef struct {
+typedef struct
+{
   GObjectClass parent_class;
 } OstreeGpgVerifyResultClass;
 
@@ -70,9 +71,7 @@ static OstreeGpgSignatureAttr all_signature_attrs[] = {
 
 static void ostree_gpg_verify_result_initable_iface_init (GInitableIface *iface);
 
-G_DEFINE_TYPE_WITH_CODE (OstreeGpgVerifyResult,
-                         ostree_gpg_verify_result,
-                         G_TYPE_OBJECT,
+G_DEFINE_TYPE_WITH_CODE (OstreeGpgVerifyResult, ostree_gpg_verify_result, G_TYPE_OBJECT,
                          G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE,
                                                 ostree_gpg_verify_result_initable_iface_init))
 
@@ -87,9 +86,8 @@ signature_is_valid (gpgme_signature_t signature)
    * - No summary but also no error means the signature is valid but
    *   the signing key is not certified with a trusted signature.
    */
-  return (signature->summary & GPGME_SIGSUM_VALID) ||
-         (signature->summary & GPGME_SIGSUM_GREEN) ||
-         (signature->summary == 0 && signature->status == GPG_ERR_NO_ERROR);
+  return (signature->summary & GPGME_SIGSUM_VALID) || (signature->summary & GPGME_SIGSUM_GREEN)
+         || (signature->summary == 0 && signature->status == GPG_ERR_NO_ERROR);
 }
 
 static gboolean
@@ -104,9 +102,9 @@ signing_key_is_revoked (gpgme_signature_t signature)
    * Reported to GPGME: https://bugs.g10code.com/gnupg/issue1929
    */
 
-  return (signature->summary & GPGME_SIGSUM_KEY_REVOKED) ||
-         ((signature->summary & GPGME_SIGSUM_SYS_ERROR) &&
-          gpgme_err_code (signature->status) == GPG_ERR_CERT_REVOKED);
+  return (signature->summary & GPGME_SIGSUM_KEY_REVOKED)
+         || ((signature->summary & GPGME_SIGSUM_SYS_ERROR)
+             && gpgme_err_code (signature->status) == GPG_ERR_CERT_REVOKED);
 }
 
 static void
@@ -124,9 +122,8 @@ ostree_gpg_verify_result_finalize (GObject *object)
 }
 
 static gboolean
-ostree_gpg_verify_result_initable_init (GInitable     *initable,
-                                        GCancellable  *cancellable,
-                                        GError       **error)
+ostree_gpg_verify_result_initable_init (GInitable *initable, GCancellable *cancellable,
+                                        GError **error)
 {
   OstreeGpgVerifyResult *result = OSTREE_GPG_VERIFY_RESULT (initable);
   gpgme_error_t gpg_error;
@@ -181,9 +178,7 @@ ostree_gpg_verify_result_count_all (OstreeGpgVerifyResult *result)
 
   g_return_val_if_fail (OSTREE_IS_GPG_VERIFY_RESULT (result), 0);
 
-  for (signature = result->details->signatures;
-       signature != NULL;
-       signature = signature->next)
+  for (signature = result->details->signatures; signature != NULL; signature = signature->next)
     {
       count++;
     }
@@ -207,9 +202,7 @@ ostree_gpg_verify_result_count_valid (OstreeGpgVerifyResult *result)
 
   g_return_val_if_fail (OSTREE_IS_GPG_VERIFY_RESULT (result), 0);
 
-  for (signature = result->details->signatures;
-       signature != NULL;
-       signature = signature->next)
+  for (signature = result->details->signatures; signature != NULL; signature = signature->next)
     {
       if (signature_is_valid (signature))
         count++;
@@ -234,11 +227,10 @@ ostree_gpg_verify_result_count_valid (OstreeGpgVerifyResult *result)
  * Returns: %TRUE on success, %FALSE on failure
  **/
 gboolean
-ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result,
-                                 const gchar *key_id,
+ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result, const gchar *key_id,
                                  guint *out_signature_index)
 {
-  g_auto(gpgme_key_t) lookup_key = NULL;
+  g_auto (gpgme_key_t) lookup_key = NULL;
   gpgme_signature_t signature;
   guint signature_index;
 
@@ -246,7 +238,7 @@ ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result,
   g_return_val_if_fail (key_id != NULL, FALSE);
 
   /* fetch requested key_id from keyring to canonicalise ID */
-  (void) gpgme_get_key (result->context, key_id, &lookup_key, 0);
+  (void)gpgme_get_key (result->context, key_id, &lookup_key, 0);
 
   if (lookup_key == NULL)
     {
@@ -254,13 +246,12 @@ ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result,
       return FALSE;
     }
 
-  for (signature = result->details->signatures, signature_index = 0;
-       signature != NULL;
+  for (signature = result->details->signatures, signature_index = 0; signature != NULL;
        signature = signature->next, signature_index++)
     {
-      g_auto(gpgme_key_t) signature_key = NULL;
+      g_auto (gpgme_key_t) signature_key = NULL;
 
-      (void) gpgme_get_key (result->context, signature->fpr, &signature_key, 0);
+      (void)gpgme_get_key (result->context, signature->fpr, &signature_key, 0);
 
       if (signature_key == NULL)
         {
@@ -269,15 +260,13 @@ ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result,
         }
 
       /* the first subkey in the list is the primary key */
-      if (!g_strcmp0 (lookup_key->subkeys->fpr,
-                      signature_key->subkeys->fpr))
+      if (!g_strcmp0 (lookup_key->subkeys->fpr, signature_key->subkeys->fpr))
         {
           if (out_signature_index != NULL)
             *out_signature_index = signature_index;
           /* Note early return */
           return TRUE;
         }
-
     }
 
   return FALSE;
@@ -301,13 +290,11 @@ ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result,
  * Returns: (transfer floating): a new, floating, #GVariant tuple
  **/
 GVariant *
-ostree_gpg_verify_result_get (OstreeGpgVerifyResult *result,
-                              guint signature_index,
-                              OstreeGpgSignatureAttr *attrs,
-                              guint n_attrs)
+ostree_gpg_verify_result_get (OstreeGpgVerifyResult *result, guint signature_index,
+                              OstreeGpgSignatureAttr *attrs, guint n_attrs)
 {
   GVariantBuilder builder;
-  g_auto(gpgme_key_t) key = NULL;
+  g_auto (gpgme_key_t) key = NULL;
   gpgme_signature_t signature;
   guint ii;
 
@@ -329,13 +316,13 @@ ostree_gpg_verify_result_get (OstreeGpgVerifyResult *result,
    * (OSTREE_GPG_SIGNATURE_ATTR_KEY_MISSING). */
   for (ii = 0; ii < n_attrs; ii++)
     {
-      if (attrs[ii] == OSTREE_GPG_SIGNATURE_ATTR_USER_NAME ||
-          attrs[ii] == OSTREE_GPG_SIGNATURE_ATTR_USER_EMAIL ||
-          attrs[ii] == OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT_PRIMARY ||
-          attrs[ii] == OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP ||
-          attrs[ii] == OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP_PRIMARY)
+      if (attrs[ii] == OSTREE_GPG_SIGNATURE_ATTR_USER_NAME
+          || attrs[ii] == OSTREE_GPG_SIGNATURE_ATTR_USER_EMAIL
+          || attrs[ii] == OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT_PRIMARY
+          || attrs[ii] == OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP
+          || attrs[ii] == OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP_PRIMARY)
         {
-          (void) gpgme_get_key (result->context, signature->fpr, &key, 0);
+          (void)gpgme_get_key (result->context, signature->fpr, &key, 0);
           break;
         }
     }
@@ -351,108 +338,108 @@ ostree_gpg_verify_result_get (OstreeGpgVerifyResult *result,
 
       switch (attrs[ii])
         {
-          case OSTREE_GPG_SIGNATURE_ATTR_VALID:
-            v_boolean = signature_is_valid (signature);
-            child = g_variant_new_boolean (v_boolean);
-            break;
+        case OSTREE_GPG_SIGNATURE_ATTR_VALID:
+          v_boolean = signature_is_valid (signature);
+          child = g_variant_new_boolean (v_boolean);
+          break;
 
-          case OSTREE_GPG_SIGNATURE_ATTR_SIG_EXPIRED:
-            v_boolean = ((signature->summary & GPGME_SIGSUM_SIG_EXPIRED) != 0);
-            child = g_variant_new_boolean (v_boolean);
-            break;
+        case OSTREE_GPG_SIGNATURE_ATTR_SIG_EXPIRED:
+          v_boolean = ((signature->summary & GPGME_SIGSUM_SIG_EXPIRED) != 0);
+          child = g_variant_new_boolean (v_boolean);
+          break;
 
-          case OSTREE_GPG_SIGNATURE_ATTR_KEY_EXPIRED:
-            v_boolean = ((signature->summary & GPGME_SIGSUM_KEY_EXPIRED) != 0);
-            child = g_variant_new_boolean (v_boolean);
-            break;
+        case OSTREE_GPG_SIGNATURE_ATTR_KEY_EXPIRED:
+          v_boolean = ((signature->summary & GPGME_SIGSUM_KEY_EXPIRED) != 0);
+          child = g_variant_new_boolean (v_boolean);
+          break;
 
-          case OSTREE_GPG_SIGNATURE_ATTR_KEY_REVOKED:
-            v_boolean = signing_key_is_revoked (signature);
-            child = g_variant_new_boolean (v_boolean);
-            break;
+        case OSTREE_GPG_SIGNATURE_ATTR_KEY_REVOKED:
+          v_boolean = signing_key_is_revoked (signature);
+          child = g_variant_new_boolean (v_boolean);
+          break;
 
-          case OSTREE_GPG_SIGNATURE_ATTR_KEY_MISSING:
-            v_boolean = ((signature->summary & GPGME_SIGSUM_KEY_MISSING) != 0);
-            child = g_variant_new_boolean (v_boolean);
-            break;
+        case OSTREE_GPG_SIGNATURE_ATTR_KEY_MISSING:
+          v_boolean = ((signature->summary & GPGME_SIGSUM_KEY_MISSING) != 0);
+          child = g_variant_new_boolean (v_boolean);
+          break;
 
-          case OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT:
-            child = g_variant_new_string (signature->fpr);
-            break;
+        case OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT:
+          child = g_variant_new_string (signature->fpr);
+          break;
 
-          case OSTREE_GPG_SIGNATURE_ATTR_TIMESTAMP:
-            child = g_variant_new_int64 ((gint64) signature->timestamp);
-            break;
+        case OSTREE_GPG_SIGNATURE_ATTR_TIMESTAMP:
+          child = g_variant_new_int64 ((gint64)signature->timestamp);
+          break;
 
-          case OSTREE_GPG_SIGNATURE_ATTR_EXP_TIMESTAMP:
-            child = g_variant_new_int64 ((gint64) signature->exp_timestamp);
-            break;
+        case OSTREE_GPG_SIGNATURE_ATTR_EXP_TIMESTAMP:
+          child = g_variant_new_int64 ((gint64)signature->exp_timestamp);
+          break;
 
-          case OSTREE_GPG_SIGNATURE_ATTR_PUBKEY_ALGO_NAME:
-            v_string = gpgme_pubkey_algo_name (signature->pubkey_algo);
-            if (v_string == NULL)
-              v_string = "[unknown name]";
-            child = g_variant_new_string (v_string);
-            break;
+        case OSTREE_GPG_SIGNATURE_ATTR_PUBKEY_ALGO_NAME:
+          v_string = gpgme_pubkey_algo_name (signature->pubkey_algo);
+          if (v_string == NULL)
+            v_string = "[unknown name]";
+          child = g_variant_new_string (v_string);
+          break;
 
-          case OSTREE_GPG_SIGNATURE_ATTR_HASH_ALGO_NAME:
-            v_string = gpgme_hash_algo_name (signature->hash_algo);
-            if (v_string == NULL)
-              v_string = "[unknown name]";
-            child = g_variant_new_string (v_string);
-            break;
+        case OSTREE_GPG_SIGNATURE_ATTR_HASH_ALGO_NAME:
+          v_string = gpgme_hash_algo_name (signature->hash_algo);
+          if (v_string == NULL)
+            v_string = "[unknown name]";
+          child = g_variant_new_string (v_string);
+          break;
 
-          case OSTREE_GPG_SIGNATURE_ATTR_USER_NAME:
-            if (key != NULL && key->uids != NULL)
-              v_string = key->uids->name;
-            if (v_string == NULL)
-              v_string = "[unknown name]";
-            child = g_variant_new_string (v_string);
-            break;
+        case OSTREE_GPG_SIGNATURE_ATTR_USER_NAME:
+          if (key != NULL && key->uids != NULL)
+            v_string = key->uids->name;
+          if (v_string == NULL)
+            v_string = "[unknown name]";
+          child = g_variant_new_string (v_string);
+          break;
 
-          case OSTREE_GPG_SIGNATURE_ATTR_USER_EMAIL:
-            if (key != NULL && key->uids != NULL)
-              v_string = key->uids->email;
-            if (v_string == NULL)
-              v_string = "[unknown email]";
-            child = g_variant_new_string (v_string);
-            break;
+        case OSTREE_GPG_SIGNATURE_ATTR_USER_EMAIL:
+          if (key != NULL && key->uids != NULL)
+            v_string = key->uids->email;
+          if (v_string == NULL)
+            v_string = "[unknown email]";
+          child = g_variant_new_string (v_string);
+          break;
 
-          case OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT_PRIMARY:
-            if (key != NULL && key->subkeys != NULL)
-              v_string = key->subkeys->fpr;
-            if (v_string == NULL)
-              v_string = "";
-            child = g_variant_new_string (v_string);
-            break;
+        case OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT_PRIMARY:
+          if (key != NULL && key->subkeys != NULL)
+            v_string = key->subkeys->fpr;
+          if (v_string == NULL)
+            v_string = "";
+          child = g_variant_new_string (v_string);
+          break;
 
-          case OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP:
+        case OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP:
+          v_int64 = 0;
+          if (key != NULL)
+            {
+              gpgme_subkey_t subkey = key->subkeys;
+
+              while (subkey != NULL && (g_strcmp0 (subkey->fpr, signature->fpr) != 0))
+                subkey = subkey->next;
+
+              if (subkey != NULL)
+                v_int64 = subkey->expires;
+            }
+          child = g_variant_new_int64 (v_int64);
+          break;
+
+        case OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP_PRIMARY:
+          if (key != NULL && key->subkeys != NULL)
+            v_int64 = key->subkeys->expires;
+          else
             v_int64 = 0;
-            if (key != NULL)
-              {
-                gpgme_subkey_t subkey = key->subkeys;
+          child = g_variant_new_int64 (v_int64);
+          break;
 
-                while (subkey != NULL && (g_strcmp0 (subkey->fpr, signature->fpr) != 0))
-                  subkey = subkey->next;
-
-                if (subkey != NULL)
-                  v_int64 = subkey->expires;
-              }
-            child = g_variant_new_int64 (v_int64);
-            break;
-
-          case OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP_PRIMARY:
-            if (key != NULL && key->subkeys != NULL)
-              v_int64 = key->subkeys->expires;
-            else
-              v_int64 = 0;
-            child = g_variant_new_int64 (v_int64);
-            break;
-
-          default:
-            g_critical ("Invalid signature attribute (%d)", attrs[ii]);
-            g_variant_builder_clear (&builder);
-            return NULL;
+        default:
+          g_critical ("Invalid signature attribute (%d)", attrs[ii]);
+          g_variant_builder_clear (&builder);
+          return NULL;
         }
 
       g_variant_builder_add_value (&builder, child);
@@ -493,13 +480,11 @@ ostree_gpg_verify_result_get (OstreeGpgVerifyResult *result,
  * Returns: (transfer floating): a new, floating, #GVariant tuple
  **/
 GVariant *
-ostree_gpg_verify_result_get_all (OstreeGpgVerifyResult *result,
-                                  guint signature_index)
+ostree_gpg_verify_result_get_all (OstreeGpgVerifyResult *result, guint signature_index)
 {
   g_return_val_if_fail (OSTREE_IS_GPG_VERIFY_RESULT (result), NULL);
 
-  return ostree_gpg_verify_result_get (result, signature_index,
-                                       all_signature_attrs,
+  return ostree_gpg_verify_result_get (result, signature_index, all_signature_attrs,
                                        G_N_ELEMENTS (all_signature_attrs));
 }
 
@@ -524,13 +509,11 @@ ostree_gpg_verify_result_get_all (OstreeGpgVerifyResult *result,
  * @result.
  */
 void
-ostree_gpg_verify_result_describe (OstreeGpgVerifyResult *result,
-                                   guint signature_index,
-                                   GString *output_buffer,
-                                   const gchar *line_prefix,
+ostree_gpg_verify_result_describe (OstreeGpgVerifyResult *result, guint signature_index,
+                                   GString *output_buffer, const gchar *line_prefix,
                                    OstreeGpgSignatureFormatFlags flags)
 {
-  g_autoptr(GVariant) variant = NULL;
+  g_autoptr (GVariant) variant = NULL;
 
   g_return_if_fail (OSTREE_IS_GPG_VERIFY_RESULT (result));
 
@@ -540,41 +523,31 @@ ostree_gpg_verify_result_describe (OstreeGpgVerifyResult *result,
 }
 
 static void
-append_expire_info (GString *output_buffer,
-                    const gchar *line_prefix,
-                    const gchar *exp_type,
-                    gint64 exp_timestamp,
-                    gboolean expired)
+append_expire_info (GString *output_buffer, const gchar *line_prefix, const gchar *exp_type,
+                    gint64 exp_timestamp, gboolean expired)
 {
   if (line_prefix != NULL)
     g_string_append (output_buffer, line_prefix);
 
-  g_autoptr(GDateTime) date_time_utc = g_date_time_new_from_unix_utc (exp_timestamp);
+  g_autoptr (GDateTime) date_time_utc = g_date_time_new_from_unix_utc (exp_timestamp);
   if (date_time_utc == NULL)
     {
       g_string_append_printf (output_buffer,
-                              "%s expiry timestamp (%" G_GINT64_FORMAT ") is invalid\n",
-                              exp_type,
+                              "%s expiry timestamp (%" G_GINT64_FORMAT ") is invalid\n", exp_type,
                               exp_timestamp);
       return;
     }
 
-  g_autoptr(GDateTime) date_time_local = g_date_time_to_local (date_time_utc);
+  g_autoptr (GDateTime) date_time_local = g_date_time_to_local (date_time_utc);
   g_autofree char *formatted_date_time = g_date_time_format (date_time_local, "%c");
 
   if (expired)
     {
-      g_string_append_printf (output_buffer,
-                              "%s expired %s\n",
-                              exp_type,
-                              formatted_date_time);
+      g_string_append_printf (output_buffer, "%s expired %s\n", exp_type, formatted_date_time);
     }
   else
     {
-      g_string_append_printf (output_buffer,
-                              "%s expires %s\n",
-                              exp_type,
-                              formatted_date_time);
+      g_string_append_printf (output_buffer, "%s expires %s\n", exp_type, formatted_date_time);
     }
 }
 
@@ -593,13 +566,12 @@ append_expire_info (GString *output_buffer,
  * ostree_gpg_verify_result_get_all().
  */
 void
-ostree_gpg_verify_result_describe_variant (GVariant *variant,
-                                           GString *output_buffer,
+ostree_gpg_verify_result_describe_variant (GVariant *variant, GString *output_buffer,
                                            const gchar *line_prefix,
                                            OstreeGpgSignatureFormatFlags flags)
 {
-  g_autoptr(GDateTime) date_time_utc = NULL;
-  g_autoptr(GDateTime) date_time_local = NULL;
+  g_autoptr (GDateTime) date_time_utc = NULL;
+  g_autoptr (GDateTime) date_time_local = NULL;
   g_autofree char *formatted_date_time = NULL;
   gint64 timestamp;
   gint64 exp_timestamp;
@@ -631,34 +603,23 @@ ostree_gpg_verify_result_describe_variant (GVariant *variant,
    * check_sig_and_print() in gnupg/g10/mainproc.c, though obviously
    * greatly simplified. */
 
-  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_VALID,
-                       "b", &valid);
-  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_SIG_EXPIRED,
-                       "b", &sig_expired);
-  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_KEY_EXPIRED,
-                       "b", &key_expired);
-  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_KEY_REVOKED,
-                       "b", &key_revoked);
-  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_KEY_MISSING,
-                       "b", &key_missing);
-  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT,
-                       "&s", &fingerprint);
-  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT_PRIMARY,
-                       "&s", &fingerprint_primary);
-  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_TIMESTAMP,
-                       "x", &timestamp);
-  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_EXP_TIMESTAMP,
-                       "x", &exp_timestamp);
-  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_PUBKEY_ALGO_NAME,
-                       "&s", &pubkey_algo);
-  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_USER_NAME,
-                       "&s", &user_name);
-  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_USER_EMAIL,
-                       "&s", &user_email);
-  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP,
-                       "x", &key_exp_timestamp);
-  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP_PRIMARY,
-                       "x", &key_exp_timestamp_primary);
+  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_VALID, "b", &valid);
+  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_SIG_EXPIRED, "b", &sig_expired);
+  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_KEY_EXPIRED, "b", &key_expired);
+  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_KEY_REVOKED, "b", &key_revoked);
+  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_KEY_MISSING, "b", &key_missing);
+  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT, "&s", &fingerprint);
+  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_FINGERPRINT_PRIMARY, "&s",
+                       &fingerprint_primary);
+  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_TIMESTAMP, "x", &timestamp);
+  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_EXP_TIMESTAMP, "x", &exp_timestamp);
+  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_PUBKEY_ALGO_NAME, "&s", &pubkey_algo);
+  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_USER_NAME, "&s", &user_name);
+  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_USER_EMAIL, "&s", &user_email);
+  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP, "x",
+                       &key_exp_timestamp);
+  g_variant_get_child (variant, OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP_PRIMARY, "x",
+                       &key_exp_timestamp_primary);
 
   len = strlen (fingerprint);
   key_id = (len > 16) ? fingerprint + len - 16 : fingerprint;
@@ -678,8 +639,7 @@ ostree_gpg_verify_result_describe_variant (GVariant *variant,
   if (line_prefix != NULL)
     g_string_append (output_buffer, line_prefix);
 
-  g_string_append_printf (output_buffer,
-                          "Signature made %s using %s key ID %s\n",
+  g_string_append_printf (output_buffer, "Signature made %s using %s key ID %s\n",
                           formatted_date_time, pubkey_algo, key_id);
 
   g_clear_pointer (&date_time_utc, g_date_time_unref);
@@ -691,14 +651,12 @@ ostree_gpg_verify_result_describe_variant (GVariant *variant,
 
   if (key_missing)
     {
-      g_string_append (output_buffer,
-                       "Can't check signature: public key not found\n");
+      g_string_append (output_buffer, "Can't check signature: public key not found\n");
     }
   else if (valid)
     {
-      g_string_append_printf (output_buffer,
-                              "Good signature from \"%s <%s>\"\n",
-                              user_name, user_email);
+      g_string_append_printf (output_buffer, "Good signature from \"%s <%s>\"\n", user_name,
+                              user_email);
     }
   else if (key_revoked)
     {
@@ -706,15 +664,13 @@ ostree_gpg_verify_result_describe_variant (GVariant *variant,
     }
   else if (sig_expired)
     {
-      g_string_append_printf (output_buffer,
-                              "Expired signature from \"%s <%s>\"\n",
-                              user_name, user_email);
+      g_string_append_printf (output_buffer, "Expired signature from \"%s <%s>\"\n", user_name,
+                              user_email);
     }
   else
     {
-      g_string_append_printf (output_buffer,
-                              "BAD signature from \"%s <%s>\"\n",
-                              user_name, user_email);
+      g_string_append_printf (output_buffer, "BAD signature from \"%s <%s>\"\n", user_name,
+                              user_email);
     }
 
   if (!key_missing && (g_strcmp0 (fingerprint, fingerprint_primary) != 0))
@@ -722,25 +678,21 @@ ostree_gpg_verify_result_describe_variant (GVariant *variant,
       const char *key_id_primary;
 
       len = strlen (fingerprint_primary);
-      key_id_primary = (len > 16) ? fingerprint_primary + len - 16 :
-                                    fingerprint_primary;
+      key_id_primary = (len > 16) ? fingerprint_primary + len - 16 : fingerprint_primary;
 
       if (line_prefix != NULL)
         g_string_append (output_buffer, line_prefix);
 
-      g_string_append_printf (output_buffer,
-                              "Primary key ID %s\n", key_id_primary);
+      g_string_append_printf (output_buffer, "Primary key ID %s\n", key_id_primary);
     }
 
   if (exp_timestamp > 0)
-    append_expire_info (output_buffer, line_prefix, "Signature", exp_timestamp,
-                        sig_expired);
+    append_expire_info (output_buffer, line_prefix, "Signature", exp_timestamp, sig_expired);
   if (key_exp_timestamp > 0)
-    append_expire_info (output_buffer, line_prefix, "Key", key_exp_timestamp,
-                        key_expired);
+    append_expire_info (output_buffer, line_prefix, "Key", key_exp_timestamp, key_expired);
   if (key_exp_timestamp_primary > 0 && (g_strcmp0 (fingerprint, fingerprint_primary) != 0))
-    append_expire_info (output_buffer, line_prefix, "Primary key",
-                        key_exp_timestamp_primary, key_expired);
+    append_expire_info (output_buffer, line_prefix, "Primary key", key_exp_timestamp_primary,
+                        key_expired);
 }
 
 /**
@@ -759,8 +711,7 @@ ostree_gpg_verify_result_describe_variant (GVariant *variant,
  * Since: 2016.6
  */
 gboolean
-ostree_gpg_verify_result_require_valid_signature (OstreeGpgVerifyResult *result,
-                                                  GError **error)
+ostree_gpg_verify_result_require_valid_signature (OstreeGpgVerifyResult *result, GError **error)
 {
   if (result == NULL)
     return FALSE;
@@ -775,7 +726,7 @@ ostree_gpg_verify_result_require_valid_signature (OstreeGpgVerifyResult *result,
        * valid key.
        */
       gint code = OSTREE_GPG_ERROR_NO_SIGNATURE;
-      g_autoptr(GString) buffer = g_string_sized_new (256);
+      g_autoptr (GString) buffer = g_string_sized_new (256);
       guint nsigs = ostree_gpg_verify_result_count_all (result);
 
       if (nsigs == 0)
@@ -785,21 +736,21 @@ ostree_gpg_verify_result_require_valid_signature (OstreeGpgVerifyResult *result,
         {
           for (int i = nsigs - 1; i >= 0; i--)
             {
-              g_autoptr(GVariant) info = ostree_gpg_verify_result_get_all (result, i);
+              g_autoptr (GVariant) info = ostree_gpg_verify_result_get_all (result, i);
               ostree_gpg_verify_result_describe_variant (info, buffer, "",
                                                          OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT);
 
               if (i == nsigs - 1)
                 {
                   gboolean key_missing, key_revoked, key_expired, sig_expired;
-                  g_variant_get_child (info, OSTREE_GPG_SIGNATURE_ATTR_KEY_MISSING,
-                                       "b", &key_missing);
-                  g_variant_get_child (info, OSTREE_GPG_SIGNATURE_ATTR_KEY_REVOKED,
-                                       "b", &key_revoked);
-                  g_variant_get_child (info, OSTREE_GPG_SIGNATURE_ATTR_KEY_EXPIRED,
-                                       "b", &key_expired);
-                  g_variant_get_child (info, OSTREE_GPG_SIGNATURE_ATTR_SIG_EXPIRED,
-                                       "b", &sig_expired);
+                  g_variant_get_child (info, OSTREE_GPG_SIGNATURE_ATTR_KEY_MISSING, "b",
+                                       &key_missing);
+                  g_variant_get_child (info, OSTREE_GPG_SIGNATURE_ATTR_KEY_REVOKED, "b",
+                                       &key_revoked);
+                  g_variant_get_child (info, OSTREE_GPG_SIGNATURE_ATTR_KEY_EXPIRED, "b",
+                                       &key_expired);
+                  g_variant_get_child (info, OSTREE_GPG_SIGNATURE_ATTR_SIG_EXPIRED, "b",
+                                       &sig_expired);
 
                   if (key_missing)
                     code = OSTREE_GPG_ERROR_MISSING_KEY;

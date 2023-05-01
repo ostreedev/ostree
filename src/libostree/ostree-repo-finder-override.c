@@ -24,16 +24,16 @@
 
 #include <fcntl.h>
 #include <gio/gio.h>
-#include <glib.h>
 #include <glib-object.h>
+#include <glib.h>
 #include <libglnx.h>
 
 #include "ostree-autocleanups.h"
 #include "ostree-remote-private.h"
-#include "ostree-repo.h"
-#include "ostree-repo-private.h"
-#include "ostree-repo-finder.h"
 #include "ostree-repo-finder-override.h"
+#include "ostree-repo-finder.h"
+#include "ostree-repo-private.h"
+#include "ostree-repo.h"
 
 /**
  * SECTION:ostree-repo-finder-override
@@ -68,26 +68,25 @@ struct _OstreeRepoFinderOverride
 {
   GObject parent_instance;
 
-  GPtrArray *override_uris;  /* (owned) (element-type utf8) */
+  GPtrArray *override_uris; /* (owned) (element-type utf8) */
 };
 
 G_DEFINE_TYPE_WITH_CODE (OstreeRepoFinderOverride, ostree_repo_finder_override, G_TYPE_OBJECT,
-                         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_REPO_FINDER, ostree_repo_finder_override_iface_init))
+                         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_REPO_FINDER,
+                                                ostree_repo_finder_override_iface_init))
 
 static gint
-results_compare_cb (gconstpointer a,
-                    gconstpointer b)
+results_compare_cb (gconstpointer a, gconstpointer b)
 {
-  const OstreeRepoFinderResult *result_a = *((const OstreeRepoFinderResult **) a);
-  const OstreeRepoFinderResult *result_b = *((const OstreeRepoFinderResult **) b);
+  const OstreeRepoFinderResult *result_a = *((const OstreeRepoFinderResult **)a);
+  const OstreeRepoFinderResult *result_b = *((const OstreeRepoFinderResult **)b);
 
   return ostree_repo_finder_result_compare (result_a, result_b);
 }
 
 /* This must return a valid remote name (suitable for use in a refspec). */
 static gchar *
-uri_and_keyring_to_name (const gchar *uri,
-                         const gchar *keyring)
+uri_and_keyring_to_name (const gchar *uri, const gchar *keyring)
 {
   g_autofree gchar *escaped_uri = g_uri_escape_string (uri, NULL, FALSE);
   g_autofree gchar *escaped_keyring = g_uri_escape_string (keyring, NULL, FALSE);
@@ -109,22 +108,17 @@ uri_and_keyring_to_name (const gchar *uri,
 /* Version of ostree_repo_remote_list_collection_refs() which takes an
  * #OstreeRemote. */
 static gboolean
-repo_remote_list_collection_refs (OstreeRepo    *repo,
-                                  const gchar   *remote_uri,
-                                  GHashTable   **out_all_refs,
-                                  GCancellable  *cancellable,
-                                  GError       **error)
+repo_remote_list_collection_refs (OstreeRepo *repo, const gchar *remote_uri,
+                                  GHashTable **out_all_refs, GCancellable *cancellable,
+                                  GError **error)
 {
   g_autofree gchar *name = uri_and_keyring_to_name (remote_uri, "");
-  g_autoptr(OstreeRemote) remote = ostree_remote_new (name);
+  g_autoptr (OstreeRemote) remote = ostree_remote_new (name);
   g_key_file_set_string (remote->options, remote->group, "url", remote_uri);
 
   gboolean remote_already_existed = _ostree_repo_add_remote (repo, remote);
-  gboolean success = ostree_repo_remote_list_collection_refs (repo,
-                                                              remote->name,
-                                                              out_all_refs,
-                                                              cancellable,
-                                                              error);
+  gboolean success = ostree_repo_remote_list_collection_refs (repo, remote->name, out_all_refs,
+                                                              cancellable, error);
 
   if (!remote_already_existed)
     _ostree_repo_remove_remote (repo, remote);
@@ -133,77 +127,73 @@ repo_remote_list_collection_refs (OstreeRepo    *repo,
 }
 
 static void
-ostree_repo_finder_override_resolve_async (OstreeRepoFinder                  *finder,
-                                           const OstreeCollectionRef * const *refs,
-                                           OstreeRepo                        *parent_repo,
-                                           GCancellable                      *cancellable,
-                                           GAsyncReadyCallback                callback,
-                                           gpointer                           user_data)
+ostree_repo_finder_override_resolve_async (OstreeRepoFinder *finder,
+                                           const OstreeCollectionRef *const *refs,
+                                           OstreeRepo *parent_repo, GCancellable *cancellable,
+                                           GAsyncReadyCallback callback, gpointer user_data)
 {
   OstreeRepoFinderOverride *self = OSTREE_REPO_FINDER_OVERRIDE (finder);
-  g_autoptr(GTask) task = NULL;
-  g_autoptr(GPtrArray) results = NULL;
-  const gint priority = 20;  /* arbitrarily chosen; higher priority than the others */
+  g_autoptr (GTask) task = NULL;
+  g_autoptr (GPtrArray) results = NULL;
+  const gint priority = 20; /* arbitrarily chosen; higher priority than the others */
   gsize i, j;
-  g_autoptr(GHashTable) repo_remote_to_refs = NULL;  /* (element-type OstreeRemote GHashTable) */
-  GHashTable *supported_ref_to_checksum;  /* (element-type OstreeCollectionRef utf8) */
+  g_autoptr (GHashTable) repo_remote_to_refs = NULL; /* (element-type OstreeRemote GHashTable) */
+  GHashTable *supported_ref_to_checksum;             /* (element-type OstreeCollectionRef utf8) */
   GHashTableIter iter;
   const gchar *remote_uri;
 
   task = g_task_new (finder, cancellable, callback, user_data);
   g_task_set_source_tag (task, ostree_repo_finder_override_resolve_async);
-  results = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_repo_finder_result_free);
-  repo_remote_to_refs = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-                                               (GDestroyNotify) ostree_remote_unref,
-                                               (GDestroyNotify) g_hash_table_unref);
+  results = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_repo_finder_result_free);
+  repo_remote_to_refs
+      = g_hash_table_new_full (g_direct_hash, g_direct_equal, (GDestroyNotify)ostree_remote_unref,
+                               (GDestroyNotify)g_hash_table_unref);
 
   g_debug ("%s: Checking %u overrides", G_STRFUNC, self->override_uris->len);
 
   for (i = 0; i < self->override_uris->len; i++)
     {
-      g_autoptr(GError) local_error = NULL;
-      g_autoptr(GHashTable) remote_refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
+      g_autoptr (GError) local_error = NULL;
+      g_autoptr (GHashTable) remote_refs = NULL; /* (element-type OstreeCollectionRef utf8) */
       const gchar *checksum;
       gboolean resolved_a_ref = FALSE;
 
       remote_uri = self->override_uris->pdata[i];
 
-      if (!repo_remote_list_collection_refs (parent_repo, remote_uri,
-                                             &remote_refs, cancellable,
+      if (!repo_remote_list_collection_refs (parent_repo, remote_uri, &remote_refs, cancellable,
                                              &local_error))
         {
-          g_debug ("Ignoring remote ‘%s’ due to error loading its refs: %s",
-                   remote_uri, local_error->message);
+          g_debug ("Ignoring remote ‘%s’ due to error loading its refs: %s", remote_uri,
+                   local_error->message);
           g_clear_error (&local_error);
           continue;
         }
 
       for (j = 0; refs[j] != NULL; j++)
         {
-          g_autoptr(OstreeRemote) keyring_remote = NULL;
+          g_autoptr (OstreeRemote) keyring_remote = NULL;
 
           /* Look up the GPG keyring for this ref. */
-          keyring_remote = ostree_repo_resolve_keyring_for_collection (parent_repo,
-                                                                       refs[j]->collection_id,
-                                                                       cancellable, &local_error);
+          keyring_remote = ostree_repo_resolve_keyring_for_collection (
+              parent_repo, refs[j]->collection_id, cancellable, &local_error);
 
           if (keyring_remote == NULL)
             {
-              g_debug ("Ignoring ref (%s, %s) due to missing keyring: %s",
-                       refs[j]->collection_id, refs[j]->ref_name, local_error->message);
+              g_debug ("Ignoring ref (%s, %s) due to missing keyring: %s", refs[j]->collection_id,
+                       refs[j]->ref_name, local_error->message);
               g_clear_error (&local_error);
               continue;
             }
 
-          if (g_hash_table_lookup_extended (remote_refs, refs[j], NULL, (gpointer *) &checksum))
+          if (g_hash_table_lookup_extended (remote_refs, refs[j], NULL, (gpointer *)&checksum))
             {
-              g_autoptr(OstreeRemote) remote = NULL;
+              g_autoptr (OstreeRemote) remote = NULL;
 
               /* The requested ref is listed in the refs for this remote. Add
                * the remote to the results, and the ref to its
                * @supported_ref_to_checksum. */
-              g_debug ("Resolved ref (%s, %s) to remote ‘%s’.",
-                       refs[j]->collection_id, refs[j]->ref_name, remote_uri);
+              g_debug ("Resolved ref (%s, %s) to remote ‘%s’.", refs[j]->collection_id,
+                       refs[j]->ref_name, remote_uri);
               resolved_a_ref = TRUE;
 
               /* Build an #OstreeRemote. Use the escaped URI, since remote->name
@@ -220,14 +210,14 @@ ostree_repo_finder_override_resolve_async (OstreeRepoFinder                  *fi
 
               if (supported_ref_to_checksum == NULL)
                 {
-                  supported_ref_to_checksum = g_hash_table_new_full (ostree_collection_ref_hash,
-                                                                     ostree_collection_ref_equal,
-                                                                     NULL, g_free);
-                  g_hash_table_insert (repo_remote_to_refs, ostree_remote_ref (remote), supported_ref_to_checksum  /* transfer */);
+                  supported_ref_to_checksum = g_hash_table_new_full (
+                      ostree_collection_ref_hash, ostree_collection_ref_equal, NULL, g_free);
+                  g_hash_table_insert (repo_remote_to_refs, ostree_remote_ref (remote),
+                                       supported_ref_to_checksum /* transfer */);
                 }
 
-              g_hash_table_insert (supported_ref_to_checksum,
-                                   (gpointer) refs[j], g_strdup (checksum));
+              g_hash_table_insert (supported_ref_to_checksum, (gpointer)refs[j],
+                                   g_strdup (checksum));
             }
         }
 
@@ -240,18 +230,19 @@ ostree_repo_finder_override_resolve_async (OstreeRepoFinder                  *fi
   g_hash_table_iter_init (&iter, repo_remote_to_refs);
 
   OstreeRemote *remote;
-  while (g_hash_table_iter_next (&iter, (gpointer *) &remote, (gpointer *) &supported_ref_to_checksum))
-    g_ptr_array_add (results, ostree_repo_finder_result_new (remote, finder, priority, supported_ref_to_checksum, NULL, 0));
+  while (
+      g_hash_table_iter_next (&iter, (gpointer *)&remote, (gpointer *)&supported_ref_to_checksum))
+    g_ptr_array_add (results, ostree_repo_finder_result_new (remote, finder, priority,
+                                                             supported_ref_to_checksum, NULL, 0));
 
   g_ptr_array_sort (results, results_compare_cb);
 
-  g_task_return_pointer (task, g_steal_pointer (&results), (GDestroyNotify) g_ptr_array_unref);
+  g_task_return_pointer (task, g_steal_pointer (&results), (GDestroyNotify)g_ptr_array_unref);
 }
 
 static GPtrArray *
-ostree_repo_finder_override_resolve_finish (OstreeRepoFinder  *finder,
-                                            GAsyncResult      *result,
-                                            GError           **error)
+ostree_repo_finder_override_resolve_finish (OstreeRepoFinder *finder, GAsyncResult *result,
+                                            GError **error)
 {
   g_return_val_if_fail (g_task_is_valid (result, finder), NULL);
   return g_task_propagate_pointer (G_TASK (result), error);
@@ -260,7 +251,7 @@ ostree_repo_finder_override_resolve_finish (OstreeRepoFinder  *finder,
 static void
 ostree_repo_finder_override_init (OstreeRepoFinderOverride *self)
 {
-  self->override_uris = g_ptr_array_new_with_free_func ((GDestroyNotify) g_free);
+  self->override_uris = g_ptr_array_new_with_free_func ((GDestroyNotify)g_free);
 }
 
 static void
@@ -312,8 +303,7 @@ ostree_repo_finder_override_new (void)
  * Since: 2018.6
  */
 void
-ostree_repo_finder_override_add_uri (OstreeRepoFinderOverride *self,
-                                     const gchar              *uri)
+ostree_repo_finder_override_add_uri (OstreeRepoFinderOverride *self, const gchar *uri)
 {
   g_return_if_fail (OSTREE_IS_REPO_FINDER_OVERRIDE (self));
   g_return_if_fail (uri != NULL);

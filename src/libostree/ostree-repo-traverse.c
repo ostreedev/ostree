@@ -25,7 +25,8 @@
 #include "ostree.h"
 #include "otutil.h"
 
-struct _OstreeRepoRealCommitTraverseIter {
+struct _OstreeRepoRealCommitTraverseIter
+{
   gboolean initialized;
   OstreeRepo *repo;
   GVariant *commit;
@@ -33,8 +34,8 @@ struct _OstreeRepoRealCommitTraverseIter {
   const char *name;
   OstreeRepoCommitIterResult state;
   guint idx;
-  char checksum_content[OSTREE_SHA256_STRING_LEN+1];
-  char checksum_meta[OSTREE_SHA256_STRING_LEN+1];
+  char checksum_content[OSTREE_SHA256_STRING_LEN + 1];
+  char checksum_meta[OSTREE_SHA256_STRING_LEN + 1];
 };
 
 /**
@@ -48,14 +49,11 @@ struct _OstreeRepoRealCommitTraverseIter {
  * Initialize (in place) an iterator over the root of a commit object.
  */
 gboolean
-ostree_repo_commit_traverse_iter_init_commit (OstreeRepoCommitTraverseIter   *iter,
-                                              OstreeRepo                     *repo,
-                                              GVariant                       *commit,
-                                              OstreeRepoCommitTraverseFlags   flags,
-                                              GError                        **error)
+ostree_repo_commit_traverse_iter_init_commit (OstreeRepoCommitTraverseIter *iter, OstreeRepo *repo,
+                                              GVariant *commit, OstreeRepoCommitTraverseFlags flags,
+                                              GError **error)
 {
-  struct _OstreeRepoRealCommitTraverseIter *real =
-    (struct _OstreeRepoRealCommitTraverseIter*)iter;
+  struct _OstreeRepoRealCommitTraverseIter *real = (struct _OstreeRepoRealCommitTraverseIter *)iter;
 
   memset (real, 0, sizeof (*real));
   real->initialized = TRUE;
@@ -64,14 +62,14 @@ ostree_repo_commit_traverse_iter_init_commit (OstreeRepoCommitTraverseIter   *it
   real->current_dir = NULL;
   real->idx = 0;
 
-  g_autoptr(GVariant) content_csum_bytes = NULL;
+  g_autoptr (GVariant) content_csum_bytes = NULL;
   g_variant_get_child (commit, 6, "@ay", &content_csum_bytes);
   const guchar *csum = ostree_checksum_bytes_peek_validate (content_csum_bytes, error);
   if (!csum)
     return FALSE;
   ostree_checksum_inplace_from_bytes (csum, real->checksum_content);
 
-  g_autoptr(GVariant) meta_csum_bytes = NULL;
+  g_autoptr (GVariant) meta_csum_bytes = NULL;
   g_variant_get_child (commit, 7, "@ay", &meta_csum_bytes);
   csum = ostree_checksum_bytes_peek_validate (meta_csum_bytes, error);
   if (!csum)
@@ -92,14 +90,11 @@ ostree_repo_commit_traverse_iter_init_commit (OstreeRepoCommitTraverseIter   *it
  * Initialize (in place) an iterator over a directory tree.
  */
 gboolean
-ostree_repo_commit_traverse_iter_init_dirtree (OstreeRepoCommitTraverseIter   *iter,
-                                               OstreeRepo                     *repo,
-                                               GVariant                       *dirtree,
-                                               OstreeRepoCommitTraverseFlags   flags,
-                                               GError                        **error)
+ostree_repo_commit_traverse_iter_init_dirtree (OstreeRepoCommitTraverseIter *iter, OstreeRepo *repo,
+                                               GVariant *dirtree,
+                                               OstreeRepoCommitTraverseFlags flags, GError **error)
 {
-  struct _OstreeRepoRealCommitTraverseIter *real =
-    (struct _OstreeRepoRealCommitTraverseIter*)iter;
+  struct _OstreeRepoRealCommitTraverseIter *real = (struct _OstreeRepoRealCommitTraverseIter *)iter;
 
   memset (real, 0, sizeof (*real));
   real->initialized = TRUE;
@@ -131,19 +126,15 @@ ostree_repo_commit_traverse_iter_init_dirtree (OstreeRepoCommitTraverseIter   *i
  */
 OstreeRepoCommitIterResult
 ostree_repo_commit_traverse_iter_next (OstreeRepoCommitTraverseIter *iter,
-                                       GCancellable                 *cancellable,
-                                       GError                      **error)
+                                       GCancellable *cancellable, GError **error)
 {
-  struct _OstreeRepoRealCommitTraverseIter *real =
-    (struct _OstreeRepoRealCommitTraverseIter*)iter;
+  struct _OstreeRepoRealCommitTraverseIter *real = (struct _OstreeRepoRealCommitTraverseIter *)iter;
   OstreeRepoCommitIterResult res = OSTREE_REPO_COMMIT_ITER_RESULT_ERROR;
 
   if (!real->current_dir)
     {
       if (!ostree_repo_load_variant (real->repo, OSTREE_OBJECT_TYPE_DIR_TREE,
-                                     real->checksum_content,
-                                     &real->current_dir,
-                                     error))
+                                     real->checksum_content, &real->current_dir, error))
         goto out;
       res = OSTREE_REPO_COMMIT_ITER_RESULT_DIR;
     }
@@ -153,10 +144,10 @@ ostree_repo_commit_traverse_iter_next (OstreeRepoCommitTraverseIter *iter,
       guint ndirs;
       guint idx;
       const guchar *csum;
-      g_autoptr(GVariant) content_csum_v = NULL;
-      g_autoptr(GVariant) meta_csum_v = NULL;
-      g_autoptr(GVariant) files_variant = NULL;
-      g_autoptr(GVariant) dirs_variant = NULL;
+      g_autoptr (GVariant) content_csum_v = NULL;
+      g_autoptr (GVariant) meta_csum_v = NULL;
+      g_autoptr (GVariant) files_variant = NULL;
+      g_autoptr (GVariant) dirs_variant = NULL;
 
       files_variant = g_variant_get_child_value (real->current_dir, 0);
       dirs_variant = g_variant_get_child_value (real->current_dir, 1);
@@ -166,9 +157,7 @@ ostree_repo_commit_traverse_iter_next (OstreeRepoCommitTraverseIter *iter,
       if (real->idx < nfiles)
         {
           idx = real->idx;
-          g_variant_get_child (files_variant, idx, "(&s@ay)",
-                               &real->name,
-                               &content_csum_v);
+          g_variant_get_child (files_variant, idx, "(&s@ay)", &real->name, &content_csum_v);
 
           csum = ostree_checksum_bytes_peek_validate (content_csum_v, error);
           if (!csum)
@@ -183,8 +172,8 @@ ostree_repo_commit_traverse_iter_next (OstreeRepoCommitTraverseIter *iter,
         {
           idx = real->idx - nfiles;
 
-          g_variant_get_child (dirs_variant, idx, "(&s@ay@ay)",
-                               &real->name, &content_csum_v, &meta_csum_v);
+          g_variant_get_child (dirs_variant, idx, "(&s@ay@ay)", &real->name, &content_csum_v,
+                               &meta_csum_v);
 
           csum = ostree_checksum_bytes_peek_validate (content_csum_v, error);
           if (!csum)
@@ -205,7 +194,7 @@ ostree_repo_commit_traverse_iter_next (OstreeRepoCommitTraverseIter *iter,
     }
 
   real->state = res;
- out:
+out:
   return res;
 }
 
@@ -220,14 +209,12 @@ ostree_repo_commit_traverse_iter_next (OstreeRepoCommitTraverseIter *iter,
  * ostree_repo_commit_traverse_iter_next().
  */
 void
-ostree_repo_commit_traverse_iter_get_file (OstreeRepoCommitTraverseIter *iter,
-                                           char                        **out_name,
-                                           char                        **out_checksum)
+ostree_repo_commit_traverse_iter_get_file (OstreeRepoCommitTraverseIter *iter, char **out_name,
+                                           char **out_checksum)
 {
-  struct _OstreeRepoRealCommitTraverseIter *real =
-    (struct _OstreeRepoRealCommitTraverseIter*)iter;
-  *out_name = (char*)real->name;
-  *out_checksum = (char*)real->checksum_content;
+  struct _OstreeRepoRealCommitTraverseIter *real = (struct _OstreeRepoRealCommitTraverseIter *)iter;
+  *out_name = (char *)real->name;
+  *out_checksum = (char *)real->checksum_content;
 }
 
 /**
@@ -242,23 +229,19 @@ ostree_repo_commit_traverse_iter_get_file (OstreeRepoCommitTraverseIter *iter,
  * from ostree_repo_commit_traverse_iter_next().
  */
 void
-ostree_repo_commit_traverse_iter_get_dir (OstreeRepoCommitTraverseIter *iter,
-                                          char                        **out_name,
-                                          char                        **out_content_checksum,
-                                          char                        **out_meta_checksum)
+ostree_repo_commit_traverse_iter_get_dir (OstreeRepoCommitTraverseIter *iter, char **out_name,
+                                          char **out_content_checksum, char **out_meta_checksum)
 {
-  struct _OstreeRepoRealCommitTraverseIter *real =
-    (struct _OstreeRepoRealCommitTraverseIter*)iter;
-  *out_name = (char*)real->name;
-  *out_content_checksum = (char*)real->checksum_content;
-  *out_meta_checksum = (char*)real->checksum_meta;
+  struct _OstreeRepoRealCommitTraverseIter *real = (struct _OstreeRepoRealCommitTraverseIter *)iter;
+  *out_name = (char *)real->name;
+  *out_content_checksum = (char *)real->checksum_content;
+  *out_meta_checksum = (char *)real->checksum_meta;
 }
 
 void
 ostree_repo_commit_traverse_iter_clear (OstreeRepoCommitTraverseIter *iter)
 {
-  struct _OstreeRepoRealCommitTraverseIter *real =
-    (struct _OstreeRepoRealCommitTraverseIter*)iter;
+  struct _OstreeRepoRealCommitTraverseIter *real = (struct _OstreeRepoRealCommitTraverseIter *)iter;
   g_clear_object (&real->repo);
   g_clear_pointer (&real->commit, g_variant_unref);
   g_clear_pointer (&real->current_dir, g_variant_unref);
@@ -268,8 +251,7 @@ void
 ostree_repo_commit_traverse_iter_cleanup (void *p)
 {
   OstreeRepoCommitTraverseIter *iter = p;
-  struct _OstreeRepoRealCommitTraverseIter *real =
-    (struct _OstreeRepoRealCommitTraverseIter*)iter;
+  struct _OstreeRepoRealCommitTraverseIter *real = (struct _OstreeRepoRealCommitTraverseIter *)iter;
   if (real->initialized)
     {
       ostree_repo_commit_traverse_iter_clear (iter);
@@ -288,8 +270,8 @@ ostree_repo_commit_traverse_iter_cleanup (void *p)
 GHashTable *
 ostree_repo_traverse_new_reachable (void)
 {
-  return g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
-                                NULL, (GDestroyNotify)g_variant_unref);
+  return g_hash_table_new_full (ostree_hash_object_name, g_variant_equal, NULL,
+                                (GDestroyNotify)g_variant_unref);
 }
 
 /**
@@ -334,7 +316,7 @@ parents_get_commits (GHashTable *parents_ht, GVariant *object, GHashTable *res)
 
           for (i = 0; i < len; i++)
             {
-              g_autoptr(GVariant) parent = g_variant_get_child_value (parents, i);
+              g_autoptr (GVariant) parent = g_variant_get_child_value (parents, i);
               parents_get_commits (parents_ht, parent, res);
             }
         }
@@ -357,27 +339,20 @@ parents_get_commits (GHashTable *parents_ht, GVariant *object, GHashTable *res)
 char **
 ostree_repo_traverse_parents_get_commits (GHashTable *parents, GVariant *object)
 {
-  g_autoptr(GHashTable) res = g_hash_table_new (g_str_hash, g_str_equal);
+  g_autoptr (GHashTable) res = g_hash_table_new (g_str_hash, g_str_equal);
 
   parents_get_commits (parents, object, res);
 
   return (char **)g_hash_table_get_keys_as_array (res, NULL);
 }
 
-static gboolean
-traverse_dirtree (OstreeRepo           *repo,
-                  const char           *checksum,
-                  GVariant             *parent_key,
-                  GHashTable           *inout_reachable,
-                  GHashTable           *inout_parents,
-                  gboolean              ignore_missing_dirs,
-                  GCancellable         *cancellable,
-                  GError              **error);
+static gboolean traverse_dirtree (OstreeRepo *repo, const char *checksum, GVariant *parent_key,
+                                  GHashTable *inout_reachable, GHashTable *inout_parents,
+                                  gboolean ignore_missing_dirs, GCancellable *cancellable,
+                                  GError **error);
 
 static void
-add_parent_ref (GHashTable  *inout_parents,
-                GVariant    *key,
-                GVariant    *parent_key)
+add_parent_ref (GHashTable *inout_parents, GVariant *key, GVariant *parent_key)
 {
   GVariant *old_parents;
 
@@ -398,10 +373,10 @@ add_parent_ref (GHashTable  *inout_parents,
       if (g_variant_is_of_type (old_parents, G_VARIANT_TYPE_ARRAY))
         {
           gsize old_parents_len = g_variant_n_children (old_parents);
-          new_parents = g_new (GVariant *,  old_parents_len + 1);
-          for (i = 0; i < old_parents_len ; i++)
+          new_parents = g_new (GVariant *, old_parents_len + 1);
+          for (i = 0; i < old_parents_len; i++)
             {
-              g_autoptr(GVariant) old_parent = g_variant_get_child_value (old_parents, i);
+              g_autoptr (GVariant) old_parent = g_variant_get_child_value (old_parents, i);
               if (!g_variant_equal (old_parent, parent_key))
                 new_parents[len++] = g_steal_pointer (&old_parent);
             }
@@ -413,41 +388,36 @@ add_parent_ref (GHashTable  *inout_parents,
             new_parents[len++] = g_variant_ref (old_parents);
         }
       new_parents[len++] = g_variant_ref (parent_key);
-      g_hash_table_insert (inout_parents, g_variant_ref (key),
-                           g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(su)"), new_parents , len)));
+      g_hash_table_insert (
+          inout_parents, g_variant_ref (key),
+          g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(su)"), new_parents, len)));
       for (i = 0; i < len; i++)
         g_variant_unref (new_parents[i]);
     }
 }
 
-
 static gboolean
-traverse_iter (OstreeRepo                          *repo,
-               OstreeRepoCommitTraverseIter        *iter,
-               GVariant                            *parent_key,
-               GHashTable                          *inout_reachable,
-               GHashTable                          *inout_parents,
-               gboolean                             ignore_missing_dirs,
-               GCancellable                        *cancellable,
-               GError                             **error)
+traverse_iter (OstreeRepo *repo, OstreeRepoCommitTraverseIter *iter, GVariant *parent_key,
+               GHashTable *inout_reachable, GHashTable *inout_parents, gboolean ignore_missing_dirs,
+               GCancellable *cancellable, GError **error)
 {
   while (TRUE)
     {
-      g_autoptr(GVariant) key = NULL;
-      g_autoptr(GError) local_error = NULL;
-      OstreeRepoCommitIterResult iterres =
-        ostree_repo_commit_traverse_iter_next (iter, cancellable, &local_error);
+      g_autoptr (GVariant) key = NULL;
+      g_autoptr (GError) local_error = NULL;
+      OstreeRepoCommitIterResult iterres
+          = ostree_repo_commit_traverse_iter_next (iter, cancellable, &local_error);
 
       if (iterres == OSTREE_REPO_COMMIT_ITER_RESULT_ERROR)
         {
           /* There is only one kind of not-found error, which is
              failing to load the dirmeta itself, if so, we ignore that
              (and the whole subtree) if told to. */
-          if (ignore_missing_dirs &&
-              g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+          if (ignore_missing_dirs
+              && g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
             {
               g_debug ("Ignoring not-found dirmeta");
-              return TRUE;  /* Note early return */
+              return TRUE; /* Note early return */
             }
 
           g_propagate_error (error, g_steal_pointer (&local_error));
@@ -463,7 +433,8 @@ traverse_iter (OstreeRepo                          *repo,
           ostree_repo_commit_traverse_iter_get_file (iter, &name, &checksum);
 
           g_debug ("Found file object %s", checksum);
-          key = g_variant_ref_sink (ostree_object_name_serialize (checksum, OSTREE_OBJECT_TYPE_FILE));
+          key = g_variant_ref_sink (
+              ostree_object_name_serialize (checksum, OSTREE_OBJECT_TYPE_FILE));
           add_parent_ref (inout_parents, key, parent_key);
           g_hash_table_add (inout_reachable, g_steal_pointer (&key));
         }
@@ -473,16 +444,17 @@ traverse_iter (OstreeRepo                          *repo,
           char *content_checksum;
           char *meta_checksum;
 
-          ostree_repo_commit_traverse_iter_get_dir (iter, &name, &content_checksum,
-                                                    &meta_checksum);
+          ostree_repo_commit_traverse_iter_get_dir (iter, &name, &content_checksum, &meta_checksum);
 
           g_debug ("Found dirtree object %s", content_checksum);
           g_debug ("Found dirmeta object %s", meta_checksum);
-          key = g_variant_ref_sink (ostree_object_name_serialize (meta_checksum, OSTREE_OBJECT_TYPE_DIR_META));
+          key = g_variant_ref_sink (
+              ostree_object_name_serialize (meta_checksum, OSTREE_OBJECT_TYPE_DIR_META));
           add_parent_ref (inout_parents, key, parent_key);
           g_hash_table_add (inout_reachable, g_steal_pointer (&key));
 
-          key = g_variant_ref_sink (ostree_object_name_serialize (content_checksum, OSTREE_OBJECT_TYPE_DIR_TREE));
+          key = g_variant_ref_sink (
+              ostree_object_name_serialize (content_checksum, OSTREE_OBJECT_TYPE_DIR_TREE));
           add_parent_ref (inout_parents, key, parent_key);
           if (!g_hash_table_lookup (inout_reachable, key))
             {
@@ -501,23 +473,17 @@ traverse_iter (OstreeRepo                          *repo,
 }
 
 static gboolean
-traverse_dirtree (OstreeRepo           *repo,
-                  const char           *checksum,
-                  GVariant             *parent_key,
-                  GHashTable           *inout_reachable,
-                  GHashTable           *inout_parents,
-                  gboolean              ignore_missing_dirs,
-                  GCancellable         *cancellable,
-                  GError              **error)
+traverse_dirtree (OstreeRepo *repo, const char *checksum, GVariant *parent_key,
+                  GHashTable *inout_reachable, GHashTable *inout_parents,
+                  gboolean ignore_missing_dirs, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GError) local_error = NULL;
+  g_autoptr (GError) local_error = NULL;
 
-  g_autoptr(GVariant) dirtree = NULL;
-  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_DIR_TREE, checksum,
-                                 &dirtree, &local_error))
+  g_autoptr (GVariant) dirtree = NULL;
+  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_DIR_TREE, checksum, &dirtree,
+                                 &local_error))
     {
-      if (ignore_missing_dirs &&
-          g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+      if (ignore_missing_dirs && g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {
           g_debug ("Ignoring not-found dirmeta %s", checksum);
           return TRUE; /* Early return */
@@ -528,14 +494,15 @@ traverse_dirtree (OstreeRepo           *repo,
     }
 
   g_debug ("Traversing dirtree %s", checksum);
-  ostree_cleanup_repo_commit_traverse_iter
-    OstreeRepoCommitTraverseIter iter = { 0, };
+  ostree_cleanup_repo_commit_traverse_iter OstreeRepoCommitTraverseIter iter = {
+    0,
+  };
   if (!ostree_repo_commit_traverse_iter_init_dirtree (&iter, repo, dirtree,
-                                                      OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE,
-                                                      error))
+                                                      OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE, error))
     return FALSE;
 
-  if (!traverse_iter (repo, &iter, parent_key, inout_reachable, inout_parents, ignore_missing_dirs, cancellable, error))
+  if (!traverse_iter (repo, &iter, parent_key, inout_reachable, inout_parents, ignore_missing_dirs,
+                      cancellable, error))
     return FALSE;
 
   return TRUE;
@@ -562,30 +529,25 @@ traverse_dirtree (OstreeRepo           *repo,
  * Since: 2018.5
  */
 gboolean
-ostree_repo_traverse_commit_with_flags (OstreeRepo                     *repo,
-                                        OstreeRepoCommitTraverseFlags   flags,
-                                        const char                     *commit_checksum,
-                                        int                             maxdepth,
-                                        GHashTable                     *inout_reachable,
-                                        GHashTable                     *inout_parents,
-                                        GCancellable                   *cancellable,
-                                        GError                        **error)
+ostree_repo_traverse_commit_with_flags (OstreeRepo *repo, OstreeRepoCommitTraverseFlags flags,
+                                        const char *commit_checksum, int maxdepth,
+                                        GHashTable *inout_reachable, GHashTable *inout_parents,
+                                        GCancellable *cancellable, GError **error)
 {
   g_autofree char *tmp_checksum = NULL;
   gboolean commit_only = flags & OSTREE_REPO_COMMIT_TRAVERSE_FLAG_COMMIT_ONLY;
 
   while (TRUE)
     {
-      g_autoptr(GVariant) key =
-        g_variant_ref_sink (ostree_object_name_serialize (commit_checksum, OSTREE_OBJECT_TYPE_COMMIT));
+      g_autoptr (GVariant) key = g_variant_ref_sink (
+          ostree_object_name_serialize (commit_checksum, OSTREE_OBJECT_TYPE_COMMIT));
 
       if (g_hash_table_contains (inout_reachable, key))
         break;
 
-      g_autoptr(GVariant) commit = NULL;
-      if (!ostree_repo_load_variant_if_exists (repo, OSTREE_OBJECT_TYPE_COMMIT,
-                                               commit_checksum, &commit,
-                                               error))
+      g_autoptr (GVariant) commit = NULL;
+      if (!ostree_repo_load_variant_if_exists (repo, OSTREE_OBJECT_TYPE_COMMIT, commit_checksum,
+                                               &commit, error))
         return FALSE;
 
       /* Just return if the parent isn't found; we do expect most
@@ -596,8 +558,7 @@ ostree_repo_traverse_commit_with_flags (OstreeRepo                     *repo,
 
       /* See if the commit is partial, if so it's not an error to lack objects */
       OstreeRepoCommitState commitstate;
-      if (!ostree_repo_load_commit (repo, commit_checksum, NULL, &commitstate,
-                                    error))
+      if (!ostree_repo_load_commit (repo, commit_checksum, NULL, &commitstate, error))
         return FALSE;
 
       gboolean ignore_missing_dirs = FALSE;
@@ -610,14 +571,15 @@ ostree_repo_traverse_commit_with_flags (OstreeRepo                     *repo,
       if (!commit_only)
         {
           g_debug ("Traversing commit %s", commit_checksum);
-          ostree_cleanup_repo_commit_traverse_iter
-            OstreeRepoCommitTraverseIter iter = { 0, };
-          if (!ostree_repo_commit_traverse_iter_init_commit (&iter, repo, commit,
-                                                            OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE,
-                                                            error))
+          ostree_cleanup_repo_commit_traverse_iter OstreeRepoCommitTraverseIter iter = {
+            0,
+          };
+          if (!ostree_repo_commit_traverse_iter_init_commit (
+                  &iter, repo, commit, OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE, error))
             return FALSE;
 
-          if (!traverse_iter (repo, &iter, key, inout_reachable, inout_parents, ignore_missing_dirs, cancellable, error))
+          if (!traverse_iter (repo, &iter, key, inout_reachable, inout_parents, ignore_missing_dirs,
+                              cancellable, error))
             return FALSE;
         }
 
@@ -661,17 +623,14 @@ ostree_repo_traverse_commit_with_flags (OstreeRepo                     *repo,
  * Since: 2018.5
  */
 gboolean
-ostree_repo_traverse_commit_union_with_parents (OstreeRepo      *repo,
-                                                const char      *commit_checksum,
-                                                int              maxdepth,
-                                                GHashTable      *inout_reachable,
-                                                GHashTable      *inout_parents,
-                                                GCancellable    *cancellable,
-                                                GError         **error)
+ostree_repo_traverse_commit_union_with_parents (OstreeRepo *repo, const char *commit_checksum,
+                                                int maxdepth, GHashTable *inout_reachable,
+                                                GHashTable *inout_parents,
+                                                GCancellable *cancellable, GError **error)
 {
-  return ostree_repo_traverse_commit_with_flags(repo, OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE,
-                                                commit_checksum, maxdepth, inout_reachable, inout_parents,
-                                                cancellable, error);
+  return ostree_repo_traverse_commit_with_flags (repo, OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE,
+                                                 commit_checksum, maxdepth, inout_reachable,
+                                                 inout_parents, cancellable, error);
 }
 
 /**
@@ -687,17 +646,12 @@ ostree_repo_traverse_commit_union_with_parents (OstreeRepo      *repo,
  * from @commit_checksum, traversing @maxdepth parent commits.
  */
 gboolean
-ostree_repo_traverse_commit_union (OstreeRepo      *repo,
-                                   const char      *commit_checksum,
-                                   int              maxdepth,
-                                   GHashTable      *inout_reachable,
-                                   GCancellable    *cancellable,
-                                   GError         **error)
+ostree_repo_traverse_commit_union (OstreeRepo *repo, const char *commit_checksum, int maxdepth,
+                                   GHashTable *inout_reachable, GCancellable *cancellable,
+                                   GError **error)
 {
-  return
-    ostree_repo_traverse_commit_union_with_parents (repo, commit_checksum, maxdepth,
-                                                    inout_reachable, NULL,
-                                                    cancellable, error);
+  return ostree_repo_traverse_commit_union_with_parents (repo, commit_checksum, maxdepth,
+                                                         inout_reachable, NULL, cancellable, error);
 }
 
 /**
@@ -705,7 +659,8 @@ ostree_repo_traverse_commit_union (OstreeRepo      *repo,
  * @repo: Repo
  * @commit_checksum: ASCII SHA256 checksum
  * @maxdepth: Traverse this many parent commits, -1 for unlimited
- * @out_reachable: (out) (transfer container) (element-type GVariant GVariant): Set of reachable objects
+ * @out_reachable: (out) (transfer container) (element-type GVariant GVariant): Set of reachable
+ * objects
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -713,16 +668,12 @@ ostree_repo_traverse_commit_union (OstreeRepo      *repo,
  * from @commit_checksum, traversing @maxdepth parent commits.
  */
 gboolean
-ostree_repo_traverse_commit (OstreeRepo      *repo,
-                             const char      *commit_checksum,
-                             int              maxdepth,
-                             GHashTable     **out_reachable,
-                             GCancellable    *cancellable,
-                             GError         **error)
+ostree_repo_traverse_commit (OstreeRepo *repo, const char *commit_checksum, int maxdepth,
+                             GHashTable **out_reachable, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GHashTable) ret_reachable = ostree_repo_traverse_new_reachable ();
-  if (!ostree_repo_traverse_commit_union (repo, commit_checksum, maxdepth,
-                                          ret_reachable, cancellable, error))
+  g_autoptr (GHashTable) ret_reachable = ostree_repo_traverse_new_reachable ();
+  if (!ostree_repo_traverse_commit_union (repo, commit_checksum, maxdepth, ret_reachable,
+                                          cancellable, error))
     return FALSE;
 
   if (out_reachable)

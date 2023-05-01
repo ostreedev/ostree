@@ -31,17 +31,17 @@
 
 #include "config.h"
 
-#include <unistd.h>
-#include <sys/types.h>
-#include <fcntl.h>
 #include "libglnx.h"
 #include "otutil.h"
+#include <fcntl.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "ostree-autocleanups.h"
 #include "ostree-core.h"
-#include "ostree-sign.h"
-#include "ostree-sign-private.h"
 #include "ostree-sign-dummy.h"
+#include "ostree-sign-private.h"
+#include "ostree-sign.h"
 #ifdef HAVE_LIBSODIUM
 #include "ostree-sign-ed25519.h"
 #endif
@@ -58,20 +58,19 @@ typedef struct
   GType type;
 } _sign_type;
 
-_sign_type sign_types[] =
-{
+_sign_type sign_types[] = {
 #if defined(HAVE_LIBSODIUM)
-    {OSTREE_SIGN_NAME_ED25519, 0},
+  { OSTREE_SIGN_NAME_ED25519, 0 },
 #endif
-    {"dummy", 0}
+  { "dummy", 0 }
 };
 
 enum
 {
 #if defined(HAVE_LIBSODIUM)
-    SIGN_ED25519,
+  SIGN_ED25519,
 #endif
-    SIGN_DUMMY
+  SIGN_DUMMY
 };
 
 G_DEFINE_INTERFACE (OstreeSign, ostree_sign, G_TYPE_OBJECT)
@@ -140,8 +139,7 @@ ostree_sign_metadata_format (OstreeSign *self)
  * Since: 2020.2
  */
 gboolean
-ostree_sign_clear_keys (OstreeSign *self,
-                        GError **error)
+ostree_sign_clear_keys (OstreeSign *self, GError **error)
 {
   g_assert (OSTREE_IS_SIGN (self));
 
@@ -167,9 +165,7 @@ ostree_sign_clear_keys (OstreeSign *self,
  * Since: 2020.2
  */
 gboolean
-ostree_sign_set_sk (OstreeSign *self,
-                    GVariant *secret_key,
-                    GError **error)
+ostree_sign_set_sk (OstreeSign *self, GVariant *secret_key, GError **error)
 {
   g_assert (OSTREE_IS_SIGN (self));
 
@@ -196,9 +192,7 @@ ostree_sign_set_sk (OstreeSign *self,
  * Since: 2020.2
  */
 gboolean
-ostree_sign_set_pk (OstreeSign *self,
-                    GVariant *public_key,
-                    GError **error)
+ostree_sign_set_pk (OstreeSign *self, GVariant *public_key, GError **error)
 {
   g_assert (OSTREE_IS_SIGN (self));
 
@@ -225,9 +219,7 @@ ostree_sign_set_pk (OstreeSign *self,
  * Since: 2020.2
  */
 gboolean
-ostree_sign_add_pk (OstreeSign *self,
-                    GVariant *public_key,
-                    GError **error)
+ostree_sign_add_pk (OstreeSign *self, GVariant *public_key, GError **error)
 {
   g_assert (OSTREE_IS_SIGN (self));
 
@@ -265,9 +257,7 @@ ostree_sign_add_pk (OstreeSign *self,
  * what the signing software will load the secret key in it's own way.
  */
 gboolean
-ostree_sign_load_pk (OstreeSign *self,
-                     GVariant *options,
-                     GError **error)
+ostree_sign_load_pk (OstreeSign *self, GVariant *options, GError **error)
 {
   g_assert (OSTREE_IS_SIGN (self));
 
@@ -296,10 +286,7 @@ ostree_sign_load_pk (OstreeSign *self,
  * Since: 2020.2
  */
 gboolean
-ostree_sign_data (OstreeSign *self,
-                  GBytes *data,
-                  GBytes **signature,
-                  GCancellable *cancellable,
+ostree_sign_data (OstreeSign *self, GBytes *data, GBytes **signature, GCancellable *cancellable,
                   GError **error)
 {
   g_assert (OSTREE_IS_SIGN (self));
@@ -315,7 +302,8 @@ ostree_sign_data (OstreeSign *self,
  * @self: an #OstreeSign object
  * @data: the raw data to check
  * @signatures: the signatures to be checked
- * @out_success_message: (out) (nullable) (optional): success message returned by the signing engine
+ * @out_success_message: (out) (nullable) (optional): success message returned by the signing
+ * engine
  * @error: a #GError
  *
  * Verify given data against signatures with pre-loaded public keys.
@@ -330,28 +318,24 @@ ostree_sign_data (OstreeSign *self,
  * Since: 2020.2
  */
 gboolean
-ostree_sign_data_verify (OstreeSign *self,
-                         GBytes     *data,
-                         GVariant   *signatures,
-                         char      **out_success_message,
-                         GError     **error)
+ostree_sign_data_verify (OstreeSign *self, GBytes *data, GVariant *signatures,
+                         char **out_success_message, GError **error)
 {
   g_assert (OSTREE_IS_SIGN (self));
 
   if (OSTREE_SIGN_GET_IFACE (self)->data_verify == NULL)
     return glnx_throw (error, "not implemented");
 
-  return OSTREE_SIGN_GET_IFACE (self)->data_verify(self, data, signatures, out_success_message, error);
+  return OSTREE_SIGN_GET_IFACE (self)->data_verify (self, data, signatures, out_success_message,
+                                                    error);
 }
 
 /*
  * Adopted version of _ostree_detached_metadata_append_gpg_sig ()
  */
 static GVariant *
-_sign_detached_metadata_append (OstreeSign *self,
-                                GVariant   *existing_metadata,
-                                GBytes     *signature_bytes,
-                                GError    **error)
+_sign_detached_metadata_append (OstreeSign *self, GVariant *existing_metadata,
+                                GBytes *signature_bytes, GError **error)
 {
   g_assert (OSTREE_IS_SIGN (self));
 
@@ -359,28 +343,26 @@ _sign_detached_metadata_append (OstreeSign *self,
     return glnx_null_throw (error, "Invalid NULL signature bytes");
 
   GVariantDict metadata_dict;
-  g_autoptr(GVariant) signature_data = NULL;
-  g_autoptr(GVariantBuilder) signature_builder = NULL;
+  g_autoptr (GVariant) signature_data = NULL;
+  g_autoptr (GVariantBuilder) signature_builder = NULL;
 
   g_variant_dict_init (&metadata_dict, existing_metadata);
 
-  const gchar *signature_key = ostree_sign_metadata_key(self);
-  GVariantType *signature_format = (GVariantType *) ostree_sign_metadata_format(self);
+  const gchar *signature_key = ostree_sign_metadata_key (self);
+  GVariantType *signature_format = (GVariantType *)ostree_sign_metadata_format (self);
 
-  signature_data = g_variant_dict_lookup_value (&metadata_dict,
-                                                signature_key,
-                                                (GVariantType*)signature_format);
+  signature_data = g_variant_dict_lookup_value (&metadata_dict, signature_key,
+                                                (GVariantType *)signature_format);
 
   /* signature_data may be NULL */
   signature_builder = ot_util_variant_builder_from_variant (signature_data, signature_format);
 
   g_variant_builder_add (signature_builder, "@ay", ot_gvariant_new_ay_bytes (signature_bytes));
 
-  g_variant_dict_insert_value (&metadata_dict,
-                               signature_key,
+  g_variant_dict_insert_value (&metadata_dict, signature_key,
                                g_variant_builder_end (signature_builder));
 
-  return  g_variant_ref_sink (g_variant_dict_end (&metadata_dict));
+  return g_variant_ref_sink (g_variant_dict_end (&metadata_dict));
 }
 
 /**
@@ -388,7 +370,8 @@ _sign_detached_metadata_append (OstreeSign *self,
  * @self: an #OstreeSign object
  * @repo: an #OsreeRepo object
  * @commit_checksum: SHA256 of given commit to verify
- * @out_success_message: (out) (nullable) (optional): success message returned by the signing engine
+ * @out_success_message: (out) (nullable) (optional): success message returned by the signing
+ * engine
  * @cancellable: A #GCancellable
  * @error: a #GError
  *
@@ -404,50 +387,35 @@ _sign_detached_metadata_append (OstreeSign *self,
  * Since: 2020.2
  */
 gboolean
-ostree_sign_commit_verify (OstreeSign     *self,
-                           OstreeRepo     *repo,
-                           const gchar    *commit_checksum,
-                           char          **out_success_message,
-                           GCancellable   *cancellable,
-                           GError         **error)
+ostree_sign_commit_verify (OstreeSign *self, OstreeRepo *repo, const gchar *commit_checksum,
+                           char **out_success_message, GCancellable *cancellable, GError **error)
 
 {
   g_assert (OSTREE_IS_SIGN (self));
 
-  g_autoptr(GVariant) commit_variant = NULL;
+  g_autoptr (GVariant) commit_variant = NULL;
   /* Load the commit */
-  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
-                                 commit_checksum, &commit_variant,
+  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, commit_checksum, &commit_variant,
                                  error))
     return glnx_prefix_error (error, "Failed to read commit");
 
   /* Load the metadata */
-  g_autoptr(GVariant) metadata = NULL;
-  if (!ostree_repo_read_commit_detached_metadata (repo,
-                                                  commit_checksum,
-                                                  &metadata,
-                                                  cancellable,
+  g_autoptr (GVariant) metadata = NULL;
+  if (!ostree_repo_read_commit_detached_metadata (repo, commit_checksum, &metadata, cancellable,
                                                   error))
     return glnx_prefix_error (error, "Failed to read detached metadata");
 
-  g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes (commit_variant);
+  g_autoptr (GBytes) signed_data = g_variant_get_data_as_bytes (commit_variant);
 
-  g_autoptr(GVariant) signatures = NULL;
+  g_autoptr (GVariant) signatures = NULL;
 
-  const gchar *signature_key = ostree_sign_metadata_key(self);
-  GVariantType *signature_format = (GVariantType *) ostree_sign_metadata_format(self);
+  const gchar *signature_key = ostree_sign_metadata_key (self);
+  GVariantType *signature_format = (GVariantType *)ostree_sign_metadata_format (self);
 
   if (metadata)
-    signatures = g_variant_lookup_value (metadata,
-                                         signature_key,
-                                         signature_format);
+    signatures = g_variant_lookup_value (metadata, signature_key, signature_format);
 
-
-  return ostree_sign_data_verify (self,
-                                  signed_data,
-                                  signatures,
-                                  out_success_message,
-                                  error);
+  return ostree_sign_data_verify (self, signed_data, signatures, out_success_message, error);
 }
 
 /**
@@ -491,45 +459,34 @@ ostree_sign_get_name (OstreeSign *self)
  * Since: 2020.2
  */
 gboolean
-ostree_sign_commit (OstreeSign     *self,
-                    OstreeRepo     *repo,
-                    const gchar    *commit_checksum,
-                    GCancellable   *cancellable,
-                    GError         **error)
+ostree_sign_commit (OstreeSign *self, OstreeRepo *repo, const gchar *commit_checksum,
+                    GCancellable *cancellable, GError **error)
 {
 
-  g_autoptr(GBytes) commit_data = NULL;
-  g_autoptr(GBytes) signature = NULL;
-  g_autoptr(GVariant) commit_variant = NULL;
-  g_autoptr(GVariant) old_metadata = NULL;
-  g_autoptr(GVariant) new_metadata = NULL;
+  g_autoptr (GBytes) commit_data = NULL;
+  g_autoptr (GBytes) signature = NULL;
+  g_autoptr (GVariant) commit_variant = NULL;
+  g_autoptr (GVariant) old_metadata = NULL;
+  g_autoptr (GVariant) new_metadata = NULL;
 
-  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
-                                 commit_checksum, &commit_variant, error))
+  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, commit_checksum, &commit_variant,
+                                 error))
     return glnx_prefix_error (error, "Failed to read commit");
 
-  if (!ostree_repo_read_commit_detached_metadata (repo,
-                                                  commit_checksum,
-                                                  &old_metadata,
-                                                  cancellable,
+  if (!ostree_repo_read_commit_detached_metadata (repo, commit_checksum, &old_metadata, cancellable,
                                                   error))
     return glnx_prefix_error (error, "Failed to read detached metadata");
 
   commit_data = g_variant_get_data_as_bytes (commit_variant);
 
-  if (!ostree_sign_data (self, commit_data, &signature,
-                         cancellable, error))
+  if (!ostree_sign_data (self, commit_data, &signature, cancellable, error))
     return glnx_prefix_error (error, "Not able to sign the cobject");
 
-  new_metadata =
-    _sign_detached_metadata_append (self, old_metadata, signature, error);
+  new_metadata = _sign_detached_metadata_append (self, old_metadata, signature, error);
   if (new_metadata == NULL)
     return FALSE;
 
-  if (!ostree_repo_write_commit_detached_metadata (repo,
-                                                   commit_checksum,
-                                                   new_metadata,
-                                                   cancellable,
+  if (!ostree_repo_write_commit_detached_metadata (repo, commit_checksum, new_metadata, cancellable,
                                                    error))
     return FALSE;
 
@@ -549,8 +506,8 @@ ostree_sign_commit (OstreeSign     *self,
 GPtrArray *
 ostree_sign_get_all (void)
 {
-  g_autoptr(GPtrArray) engines = g_ptr_array_new_with_free_func (g_object_unref);
-  for (guint i = 0; i < G_N_ELEMENTS(sign_types); i++)
+  g_autoptr (GPtrArray) engines = g_ptr_array_new_with_free_func (g_object_unref);
+  for (guint i = 0; i < G_N_ELEMENTS (sign_types); i++)
     {
       OstreeSign *engine = ostree_sign_get_by_name (sign_types[i].name, NULL);
       g_assert (engine);
@@ -585,37 +542,33 @@ ostree_sign_get_by_name (const gchar *name, GError **error)
   if (sign_types[SIGN_DUMMY].type == 0)
     sign_types[SIGN_DUMMY].type = OSTREE_TYPE_SIGN_DUMMY;
 
-  for (gint i=0; i < G_N_ELEMENTS(sign_types); i++)
-  {
-    if (g_strcmp0 (name, sign_types[i].name) == 0)
-      {
-        g_debug ("Using '%s' signing engine", sign_types[i].name);
-        sign = g_object_new (sign_types[i].type, NULL);
-        break;
-      }
-  }
+  for (gint i = 0; i < G_N_ELEMENTS (sign_types); i++)
+    {
+      if (g_strcmp0 (name, sign_types[i].name) == 0)
+        {
+          g_debug ("Using '%s' signing engine", sign_types[i].name);
+          sign = g_object_new (sign_types[i].type, NULL);
+          break;
+        }
+    }
 
   if (sign == NULL)
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Requested signature type is not implemented");
+    g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                         "Requested signature type is not implemented");
 
   return sign;
 }
 
 gboolean
-_ostree_sign_summary_at (OstreeSign    *self,
-                         OstreeRepo    *repo,
-                         int            dir_fd,
-                         GVariant      *keys,
-                         GCancellable  *cancellable,
-                         GError       **error)
+_ostree_sign_summary_at (OstreeSign *self, OstreeRepo *repo, int dir_fd, GVariant *keys,
+                         GCancellable *cancellable, GError **error)
 {
   g_assert (OSTREE_IS_SIGN (self));
   g_assert (OSTREE_IS_REPO (repo));
 
-  g_autoptr(GVariant) normalized = NULL;
-  g_autoptr(GBytes) summary_data = NULL;
-  g_autoptr(GVariant) metadata = NULL;
+  g_autoptr (GVariant) normalized = NULL;
+  g_autoptr (GBytes) summary_data = NULL;
+  g_autoptr (GVariant) metadata = NULL;
 
   glnx_autofd int fd = -1;
   if (!glnx_openat_rdonly (dir_fd, "summary", TRUE, &fd, error))
@@ -632,12 +585,11 @@ _ostree_sign_summary_at (OstreeSign    *self,
 
   if (fd >= 0)
     {
-      if (!ot_variant_read_fd (fd, 0, OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
-                               FALSE, &metadata, error))
+      if (!ot_variant_read_fd (fd, 0, OSTREE_SUMMARY_SIG_GVARIANT_FORMAT, FALSE, &metadata, error))
         return FALSE;
     }
 
-  if (g_variant_n_children(keys) == 0)
+  if (g_variant_n_children (keys) == 0)
     return glnx_throw (error, "No keys passed for signing summary");
 
   GVariantIter *iter;
@@ -651,28 +603,20 @@ _ostree_sign_summary_at (OstreeSign    *self,
       if (!ostree_sign_set_sk (self, key, error))
         return FALSE;
 
-      if (!ostree_sign_data (self,
-                             summary_data,
-                             &signature,
-                             cancellable,
-                             error))
+      if (!ostree_sign_data (self, summary_data, &signature, cancellable, error))
         return FALSE;
 
-      g_autoptr(GVariant) old_metadata = g_steal_pointer (&metadata);
-      metadata =
-        _sign_detached_metadata_append (self, old_metadata, signature, error);
+      g_autoptr (GVariant) old_metadata = g_steal_pointer (&metadata);
+      metadata = _sign_detached_metadata_append (self, old_metadata, signature, error);
       if (metadata == NULL)
         return FALSE;
     }
   g_variant_iter_free (iter);
 
   normalized = g_variant_get_normal_form (metadata);
-  if (!_ostree_repo_file_replace_contents (repo,
-                                           dir_fd,
-                                           "summary.sig",
+  if (!_ostree_repo_file_replace_contents (repo, dir_fd, "summary.sig",
                                            g_variant_get_data (normalized),
-                                           g_variant_get_size (normalized),
-                                           cancellable, error))
+                                           g_variant_get_size (normalized), cancellable, error))
     return FALSE;
 
   return TRUE;
@@ -694,12 +638,8 @@ _ostree_sign_summary_at (OstreeSign    *self,
  * Since: 2020.2
  */
 gboolean
-ostree_sign_summary (OstreeSign    *self,
-                     OstreeRepo    *repo,
-                     GVariant      *keys,
-                     GCancellable  *cancellable,
-                     GError       **error)
+ostree_sign_summary (OstreeSign *self, OstreeRepo *repo, GVariant *keys, GCancellable *cancellable,
+                     GError **error)
 {
-  return _ostree_sign_summary_at (self, repo, repo->repo_dir_fd, keys,
-                                  cancellable, error);
+  return _ostree_sign_summary_at (self, repo, repo->repo_dir_fd, keys, cancellable, error);
 }

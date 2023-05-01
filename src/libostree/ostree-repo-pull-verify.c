@@ -21,16 +21,16 @@
 #include "config.h"
 
 #include "libglnx.h"
+#include "ostree-repo-private.h"
+#include "ostree-repo-pull-private.h"
 #include "ostree.h"
 #include "otutil.h"
-#include "ostree-repo-pull-private.h"
-#include "ostree-repo-private.h"
 
 #include "ostree-core-private.h"
-#include "ostree-repo-static-delta-private.h"
-#include "ostree-metalink.h"
 #include "ostree-fetcher-util.h"
+#include "ostree-metalink.h"
 #include "ostree-remote-private.h"
+#include "ostree-repo-static-delta-private.h"
 #include "ot-fs-utils.h"
 
 #include <gio/gunixinputstream.h>
@@ -42,14 +42,11 @@
 #include "ostree-sign.h"
 
 static gboolean
-get_signapi_remote_option (OstreeRepo *repo,
-                           OstreeSign *sign,
-                           const char *remote_name,
-                           const char *keysuffix,
-                           char      **out_value,
-                           GError    **error)
+get_signapi_remote_option (OstreeRepo *repo, OstreeSign *sign, const char *remote_name,
+                           const char *keysuffix, char **out_value, GError **error)
 {
-  g_autofree char *key = g_strdup_printf ("verification-%s-%s", ostree_sign_get_name (sign), keysuffix);
+  g_autofree char *key
+      = g_strdup_printf ("verification-%s-%s", ostree_sign_get_name (sign), keysuffix);
   return ostree_repo_get_remote_option (repo, remote_name, key, NULL, out_value, error);
 }
 
@@ -66,11 +63,8 @@ get_signapi_remote_option (OstreeRepo *repo,
  * Returns: %TRUE if no configuration or any key loaded.
  * */
 static gboolean
-_signapi_load_public_keys (OstreeSign *sign,
-                           OstreeRepo *repo,
-                           const gchar *remote_name,
-                           gboolean required,
-                           GError **error)
+_signapi_load_public_keys (OstreeSign *sign, OstreeRepo *repo, const gchar *remote_name,
+                           gboolean required, GError **error)
 {
   g_autofree gchar *pk_ascii = NULL;
   g_autofree gchar *pk_file = NULL;
@@ -83,7 +77,7 @@ _signapi_load_public_keys (OstreeSign *sign,
     return FALSE;
 
   /* return TRUE if there is no configuration for remote */
-  if ((pk_file == NULL) &&(pk_ascii == NULL))
+  if ((pk_file == NULL) && (pk_ascii == NULL))
     {
       /* It is expected what remote may have verification file as
        * a part of configuration. Hence there is not a lot of sense
@@ -95,7 +89,8 @@ _signapi_load_public_keys (OstreeSign *sign,
        * specific for signature type.
        */
       if (required)
-        return glnx_throw (error, "No keys found for required signapi type %s", ostree_sign_get_name (sign));
+        return glnx_throw (error, "No keys found for required signapi type %s",
+                           ostree_sign_get_name (sign));
       return TRUE;
     }
 
@@ -121,7 +116,7 @@ _signapi_load_public_keys (OstreeSign *sign,
   if (pk_ascii != NULL)
     {
       g_autoptr (GError) local_error = NULL;
-      g_autoptr (GVariant) pk = g_variant_new_string(pk_ascii);
+      g_autoptr (GVariant) pk = g_variant_new_string (pk_ascii);
 
       /* Add inlined public key */
       if (loaded_from_file)
@@ -144,10 +139,11 @@ _signapi_load_public_keys (OstreeSign *sign,
 }
 
 static gboolean
-string_is_gkeyfile_truthy (const char *value,
-                           gboolean   *out_truth)
+string_is_gkeyfile_truthy (const char *value, gboolean *out_truth)
 {
-  /* See https://gitlab.gnome.org/GNOME/glib/-/blob/20fb5bf868added5aec53c013ae85ec78ba2eedc/glib/gkeyfile.c#L4528 */
+  /* See
+   * https://gitlab.gnome.org/GNOME/glib/-/blob/20fb5bf868added5aec53c013ae85ec78ba2eedc/glib/gkeyfile.c#L4528
+   */
   if (g_str_equal (value, "true") || g_str_equal (value, "1"))
     {
       *out_truth = TRUE;
@@ -162,18 +158,13 @@ string_is_gkeyfile_truthy (const char *value,
 }
 
 static gboolean
-verifiers_from_config (OstreeRepo *repo,
-                       const char *remote_name,
-                       const char *key,
-                       GPtrArray **out_verifiers,
-                       GError    **error)
+verifiers_from_config (OstreeRepo *repo, const char *remote_name, const char *key,
+                       GPtrArray **out_verifiers, GError **error)
 {
-  g_autoptr(GPtrArray) verifiers = NULL;
+  g_autoptr (GPtrArray) verifiers = NULL;
 
   g_autofree char *raw_value = NULL;
-  if (!ostree_repo_get_remote_option (repo, remote_name,
-                                      key, NULL,
-                                      &raw_value, error))
+  if (!ostree_repo_get_remote_option (repo, remote_name, key, NULL, &raw_value, error))
     return FALSE;
   if (raw_value == NULL || g_str_equal (raw_value, ""))
     {
@@ -204,12 +195,10 @@ verifiers_from_config (OstreeRepo *repo,
   else
     {
       /* If the value isn't "truthy", then it must be an explicit list */
-      g_auto(GStrv) sign_types = NULL;
-      if (!ostree_repo_get_remote_list_option (repo, remote_name,
-                                               key, &sign_types,
-                                               error))
+      g_auto (GStrv) sign_types = NULL;
+      if (!ostree_repo_get_remote_list_option (repo, remote_name, key, &sign_types, error))
         return FALSE;
-      verifiers = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
+      verifiers = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
       for (char **iter = sign_types; iter && *iter; iter++)
         {
           const char *sign_type = *iter;
@@ -233,14 +222,12 @@ verifiers_from_config (OstreeRepo *repo,
  * the resulting verifier list will be NULL.
  */
 gboolean
-_signapi_init_for_remote (OstreeRepo *repo,
-                          const char *remote_name,
-                          GPtrArray **out_commit_verifiers,
-                          GPtrArray **out_summary_verifiers,
-                          GError    **error)
+_signapi_init_for_remote (OstreeRepo *repo, const char *remote_name,
+                          GPtrArray **out_commit_verifiers, GPtrArray **out_summary_verifiers,
+                          GError **error)
 {
-  g_autoptr(GPtrArray) commit_verifiers = NULL;
-  g_autoptr(GPtrArray) summary_verifiers = NULL;
+  g_autoptr (GPtrArray) commit_verifiers = NULL;
+  g_autoptr (GPtrArray) summary_verifiers = NULL;
 
   if (!verifiers_from_config (repo, remote_name, "sign-verify", &commit_verifiers, error))
     return FALSE;
@@ -256,11 +243,8 @@ _signapi_init_for_remote (OstreeRepo *repo,
  * by at least one.
  */
 gboolean
-_sign_verify_for_remote (GPtrArray *verifiers,
-                         GBytes *signed_data,
-                         GVariant *metadata,
-                         char    **out_success_message,
-                         GError **error)
+_sign_verify_for_remote (GPtrArray *verifiers, GBytes *signed_data, GVariant *metadata,
+                         char **out_success_message, GError **error)
 {
   guint n_invalid_signatures = 0;
   g_autoptr (GError) last_sig_error = NULL;
@@ -274,9 +258,9 @@ _sign_verify_for_remote (GPtrArray *verifiers,
     {
       OstreeSign *sign = verifiers->pdata[i];
       const gchar *signature_key = ostree_sign_metadata_key (sign);
-      GVariantType *signature_format = (GVariantType *) ostree_sign_metadata_format (sign);
-      g_autoptr (GVariant) signatures =
-        g_variant_lookup_value (metadata, signature_key, signature_format);
+      GVariantType *signature_format = (GVariantType *)ostree_sign_metadata_format (sign);
+      g_autoptr (GVariant) signatures
+          = g_variant_lookup_value (metadata, signature_key, signature_format);
 
       /* If not found signatures for requested signature subsystem */
       if (!signatures)
@@ -285,12 +269,9 @@ _sign_verify_for_remote (GPtrArray *verifiers,
       found_sig = TRUE;
 
       g_autofree char *success_message = NULL;
-        /* Return true if any signature fit to pre-loaded public keys.
-          * If no keys configured -- then system configuration will be used */
-      if (!ostree_sign_data_verify (sign,
-                                    signed_data,
-                                    signatures,
-                                    &success_message,
+      /* Return true if any signature fit to pre-loaded public keys.
+       * If no keys configured -- then system configuration will be used */
+      if (!ostree_sign_data_verify (sign, signed_data, signatures, &success_message,
                                     last_sig_error ? NULL : &last_sig_error))
         {
           n_invalid_signatures++;
@@ -308,31 +289,25 @@ _sign_verify_for_remote (GPtrArray *verifiers,
   g_assert (last_sig_error);
   g_propagate_error (error, g_steal_pointer (&last_sig_error));
   if (n_invalid_signatures > 1)
-    glnx_prefix_error (error, "(%d other invalid signatures)", n_invalid_signatures-1);
+    glnx_prefix_error (error, "(%d other invalid signatures)", n_invalid_signatures - 1);
   return FALSE;
 }
 
-
 #ifndef OSTREE_DISABLE_GPGME
 gboolean
-_process_gpg_verify_result (OtPullData            *pull_data,
-                            const char            *checksum,
-                            OstreeGpgVerifyResult *result,
-                            GError               **error)
+_process_gpg_verify_result (OtPullData *pull_data, const char *checksum,
+                            OstreeGpgVerifyResult *result, GError **error)
 {
   const char *error_prefix = glnx_strjoina ("Commit ", checksum);
-  GLNX_AUTO_PREFIX_ERROR(error_prefix, error);
+  GLNX_AUTO_PREFIX_ERROR (error_prefix, error);
   if (result == NULL)
     return FALSE;
 
   /* Allow callers to output the results immediately. */
-  g_signal_emit_by_name (pull_data->repo,
-                         "gpg-verify-result",
-                         checksum, result);
+  g_signal_emit_by_name (pull_data->repo, "gpg-verify-result", checksum, result);
 
   if (!ostree_gpg_verify_result_require_valid_signature (result, error))
     return FALSE;
-
 
   /* We now check both *before* writing the commit, and after. Because the
    * behavior used to be only verifiying after writing, we need to handle
@@ -350,7 +325,9 @@ validate_metadata_size (const char *prefix, GBytes *buf, GError **error)
 {
   gsize len = g_bytes_get_size (buf);
   if (len > OSTREE_MAX_METADATA_SIZE)
-    return glnx_throw (error, "%s is %" G_GUINT64_FORMAT " bytes, exceeding maximum %" G_GUINT64_FORMAT, prefix, (guint64)len, (guint64)OSTREE_MAX_METADATA_SIZE);
+    return glnx_throw (error,
+                       "%s is %" G_GUINT64_FORMAT " bytes, exceeding maximum %" G_GUINT64_FORMAT,
+                       prefix, (guint64)len, (guint64)OSTREE_MAX_METADATA_SIZE);
   return TRUE;
 }
 
@@ -369,13 +346,10 @@ validate_metadata_size (const char *prefix, GBytes *buf, GError **error)
  * both enabled, then both must find at least one valid signature.
  */
 gboolean
-ostree_repo_signature_verify_commit_data (OstreeRepo    *self,
-                                          const char    *remote_name,
-                                          GBytes        *commit_data,
-                                          GBytes        *commit_metadata,
-                                          OstreeRepoVerifyFlags flags,
-                                          char         **out_results,
-                                          GError       **error)
+ostree_repo_signature_verify_commit_data (OstreeRepo *self, const char *remote_name,
+                                          GBytes *commit_data, GBytes *commit_metadata,
+                                          OstreeRepoVerifyFlags flags, char **out_results,
+                                          GError **error)
 {
   g_assert (self);
   g_assert (remote_name);
@@ -394,20 +368,20 @@ ostree_repo_signature_verify_commit_data (OstreeRepo    *self,
     return glnx_throw (error, "Can't verify commit without detached metadata");
   if (!validate_metadata_size ("Commit metadata", commit_metadata, error))
     return FALSE;
-  g_autoptr(GVariant) commit_metadata_v = g_variant_new_from_bytes (G_VARIANT_TYPE_VARDICT, commit_metadata, FALSE);
+  g_autoptr (GVariant) commit_metadata_v
+      = g_variant_new_from_bytes (G_VARIANT_TYPE_VARDICT, commit_metadata, FALSE);
 
-  g_autoptr(GString) results_buf = g_string_new ("");
+  g_autoptr (GString) results_buf = g_string_new ("");
   gboolean verified = FALSE;
 
   if (gpg)
     {
-      if (!ostree_repo_remote_get_gpg_verify (self, remote_name,
-                                              &gpg, error))
+      if (!ostree_repo_remote_get_gpg_verify (self, remote_name, &gpg, error))
         return FALSE;
     }
 
   /* TODO - we could cache this in the repo */
-  g_autoptr(GPtrArray) signapi_verifiers = NULL;
+  g_autoptr (GPtrArray) signapi_verifiers = NULL;
   if (signapi)
     {
       if (!_signapi_init_for_remote (self, remote_name, &signapi_verifiers, NULL, error))
@@ -415,16 +389,16 @@ ostree_repo_signature_verify_commit_data (OstreeRepo    *self,
     }
 
   if (!(gpg || signapi_verifiers))
-    return glnx_throw (error, "Cannot verify commit for remote %s; GPG verification disabled, and no signapi verifiers configured", remote_name);
+    return glnx_throw (error,
+                       "Cannot verify commit for remote %s; GPG verification disabled, and no "
+                       "signapi verifiers configured",
+                       remote_name);
 
 #ifndef OSTREE_DISABLE_GPGME
   if (gpg)
     {
-      g_autoptr(OstreeGpgVerifyResult) result =
-        _ostree_repo_gpg_verify_with_metadata (self, commit_data,
-                                               commit_metadata_v,
-                                               remote_name,
-                                               NULL, NULL, NULL, error);
+      g_autoptr (OstreeGpgVerifyResult) result = _ostree_repo_gpg_verify_with_metadata (
+          self, commit_data, commit_metadata_v, remote_name, NULL, NULL, NULL, error);
       if (!result)
         return FALSE;
       if (!ostree_gpg_verify_result_require_valid_signature (result, error))
@@ -434,8 +408,8 @@ ostree_repo_signature_verify_commit_data (OstreeRepo    *self,
       g_assert_cmpuint (n_signatures, >, 0);
       for (guint jj = 0; jj < n_signatures; jj++)
         {
-          ostree_gpg_verify_result_describe (result, jj, results_buf, "GPG: ",
-                                             OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT);
+          ostree_gpg_verify_result_describe (result, jj, results_buf,
+                                             "GPG: ", OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT);
         }
       verified = TRUE;
     }
@@ -444,7 +418,8 @@ ostree_repo_signature_verify_commit_data (OstreeRepo    *self,
   if (signapi_verifiers)
     {
       g_autofree char *success_message = NULL;
-      if (!_sign_verify_for_remote (signapi_verifiers, commit_data, commit_metadata_v, &success_message, error))
+      if (!_sign_verify_for_remote (signapi_verifiers, commit_data, commit_metadata_v,
+                                    &success_message, error))
         return glnx_prefix_error (error, "Can't verify commit");
       if (verified)
         g_string_append_c (results_buf, '\n');
@@ -460,20 +435,17 @@ ostree_repo_signature_verify_commit_data (OstreeRepo    *self,
 }
 
 gboolean
-_verify_unwritten_commit (OtPullData                 *pull_data,
-                          const char                 *checksum,
-                          GVariant                   *commit,
-                          GVariant                   *detached_metadata,
-                          const OstreeCollectionRef  *ref,
-                          GCancellable               *cancellable,
-                          GError                    **error)
+_verify_unwritten_commit (OtPullData *pull_data, const char *checksum, GVariant *commit,
+                          GVariant *detached_metadata, const OstreeCollectionRef *ref,
+                          GCancellable *cancellable, GError **error)
 {
   /* Shouldn't happen, but see comment in process_gpg_verify_result() */
   if ((!pull_data->gpg_verify || g_hash_table_contains (pull_data->verified_commits, checksum))
-      && (!pull_data->signapi_commit_verifiers || g_hash_table_contains (pull_data->signapi_verified_commits, checksum)))
+      && (!pull_data->signapi_commit_verifiers
+          || g_hash_table_contains (pull_data->signapi_verified_commits, checksum)))
     return TRUE;
 
-  g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes (commit);
+  g_autoptr (GBytes) signed_data = g_variant_get_data_as_bytes (commit);
 
 #ifndef OSTREE_DISABLE_GPGME
   if (pull_data->gpg_verify)
@@ -485,11 +457,9 @@ _verify_unwritten_commit (OtPullData                 *pull_data,
       if (keyring_remote == NULL)
         keyring_remote = pull_data->remote_name;
 
-      g_autoptr(OstreeGpgVerifyResult) result =
-        _ostree_repo_gpg_verify_with_metadata (pull_data->repo, signed_data,
-                                               detached_metadata,
-                                               keyring_remote,
-                                               NULL, NULL, cancellable, error);
+      g_autoptr (OstreeGpgVerifyResult) result
+          = _ostree_repo_gpg_verify_with_metadata (pull_data->repo, signed_data, detached_metadata,
+                                                   keyring_remote, NULL, NULL, cancellable, error);
       if (!_process_gpg_verify_result (pull_data, checksum, result, error))
         return FALSE;
     }
@@ -502,12 +472,14 @@ _verify_unwritten_commit (OtPullData                 *pull_data,
         return glnx_throw (error, "Can't verify commit without detached metadata");
 
       g_autofree char *success_message = NULL;
-      if (!_sign_verify_for_remote (pull_data->signapi_commit_verifiers, signed_data, detached_metadata, &success_message, error))
+      if (!_sign_verify_for_remote (pull_data->signapi_commit_verifiers, signed_data,
+                                    detached_metadata, &success_message, error))
         return glnx_prefix_error (error, "Can't verify commit");
 
       /* Mark the commit as verified to avoid double verification
        * see process_verify_result () for rationale */
-      g_hash_table_insert (pull_data->signapi_verified_commits, g_strdup (checksum), g_steal_pointer (&success_message));
+      g_hash_table_insert (pull_data->signapi_verified_commits, g_strdup (checksum),
+                           g_steal_pointer (&success_message));
     }
 
   return TRUE;

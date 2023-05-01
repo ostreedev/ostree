@@ -19,13 +19,14 @@
 
 #include "config.h"
 
-#include "ostree-metalink.h"
 #include "ostree-fetcher-util.h"
+#include "ostree-metalink.h"
 #include <gio/gfiledescriptorbased.h>
 
 #include "otutil.h"
 
-typedef enum {
+typedef enum
+{
   OSTREE_METALINK_STATE_INITIAL,
   OSTREE_METALINK_STATE_METALINK,
   OSTREE_METALINK_STATE_FILES,
@@ -83,8 +84,7 @@ typedef struct
 } OstreeMetalinkRequest;
 
 static void
-state_transition (OstreeMetalinkRequest  *self,
-                  OstreeMetalinkState     new_state)
+state_transition (OstreeMetalinkRequest *self, OstreeMetalinkState new_state)
 {
   g_assert (self->state != new_state);
 
@@ -95,21 +95,16 @@ state_transition (OstreeMetalinkRequest  *self,
 }
 
 static void
-unknown_element (OstreeMetalinkRequest         *self,
-                 const char                    *element_name,
-                 GError                       **error)
+unknown_element (OstreeMetalinkRequest *self, const char *element_name, GError **error)
 {
   state_transition (self, OSTREE_METALINK_STATE_PASSTHROUGH);
   g_assert (self->passthrough_depth == 0);
 }
 
 static void
-metalink_parser_start (GMarkupParseContext  *context,
-                       const gchar          *element_name,
-                       const gchar         **attribute_names,
-                       const gchar         **attribute_values,
-                       gpointer              user_data,
-                       GError              **error)
+metalink_parser_start (GMarkupParseContext *context, const gchar *element_name,
+                       const gchar **attribute_names, const gchar **attribute_values,
+                       gpointer user_data, GError **error)
 {
   OstreeMetalinkRequest *self = user_data;
 
@@ -139,13 +134,8 @@ metalink_parser_start (GMarkupParseContext  *context,
         {
           const char *file_name;
 
-          if (!g_markup_collect_attributes (element_name,
-                                            attribute_names,
-                                            attribute_values,
-                                            error,
-                                            G_MARKUP_COLLECT_STRING,
-                                            "name",
-                                            &file_name,
+          if (!g_markup_collect_attributes (element_name, attribute_names, attribute_values, error,
+                                            G_MARKUP_COLLECT_STRING, "name", &file_name,
                                             G_MARKUP_COLLECT_INVALID))
             goto out;
 
@@ -181,16 +171,11 @@ metalink_parser_start (GMarkupParseContext  *context,
     case OSTREE_METALINK_STATE_VERIFICATION:
       if (strcmp (element_name, "hash") == 0)
         {
-           char *verification_type_str = NULL;
+          char *verification_type_str = NULL;
 
           state_transition (self, OSTREE_METALINK_STATE_HASH);
-          if (!g_markup_collect_attributes (element_name,
-                                            attribute_names,
-                                            attribute_values,
-                                            error,
-                                            G_MARKUP_COLLECT_STRING,
-                                            "type",
-                                            &verification_type_str,
+          if (!g_markup_collect_attributes (element_name, attribute_names, attribute_values, error,
+                                            G_MARKUP_COLLECT_STRING, "type", &verification_type_str,
                                             G_MARKUP_COLLECT_INVALID))
             goto out;
 
@@ -227,23 +212,11 @@ metalink_parser_start (GMarkupParseContext  *context,
         {
           const char *protocol;
 
-          if (!g_markup_collect_attributes (element_name,
-                                            attribute_names,
-                                            attribute_values,
-                                            error,
-                                            G_MARKUP_COLLECT_STRING,
-                                            "protocol",
-                                            &protocol,
-                                            G_MARKUP_COLLECT_STRING,
-                                            "type",
-                                            NULL,
-                                            G_MARKUP_COLLECT_STRING,
-                                            "location",
-                                            NULL,
-                                            G_MARKUP_COLLECT_STRING,
-                                            "preference",
-                                            NULL,
-                                            G_MARKUP_COLLECT_INVALID))
+          if (!g_markup_collect_attributes (
+                  element_name, attribute_names, attribute_values, error, G_MARKUP_COLLECT_STRING,
+                  "protocol", &protocol, G_MARKUP_COLLECT_STRING, "type", NULL,
+                  G_MARKUP_COLLECT_STRING, "location", NULL, G_MARKUP_COLLECT_STRING, "preference",
+                  NULL, G_MARKUP_COLLECT_INVALID))
             goto out;
 
           /* Ignore non-HTTP resources */
@@ -263,15 +236,13 @@ metalink_parser_start (GMarkupParseContext  *context,
       break;
     }
 
- out:
+out:
   return;
 }
 
 static void
-metalink_parser_end (GMarkupParseContext  *context,
-                     const gchar          *element_name,
-                     gpointer              user_data,
-                     GError              **error)
+metalink_parser_end (GMarkupParseContext *context, const gchar *element_name, gpointer user_data,
+                     GError **error)
 {
   OstreeMetalinkRequest *self = user_data;
 
@@ -309,11 +280,8 @@ metalink_parser_end (GMarkupParseContext  *context,
 }
 
 static void
-metalink_parser_text (GMarkupParseContext *context,
-                      const gchar         *text,
-                      gsize                text_len,
-                      gpointer             user_data,
-                      GError             **error)
+metalink_parser_text (GMarkupParseContext *context, const gchar *text, gsize text_len,
+                      gpointer user_data, GError **error)
 {
   OstreeMetalinkRequest *self = user_data;
 
@@ -366,7 +334,6 @@ metalink_parser_text (GMarkupParseContext *context,
     case OSTREE_METALINK_STATE_PASSTHROUGH:
       break;
     }
-
 }
 
 static void
@@ -397,13 +364,10 @@ _ostree_metalink_init (OstreeMetalink *self)
 }
 
 OstreeMetalink *
-_ostree_metalink_new (OstreeFetcher  *fetcher,
-                      const char     *requested_file,
-                      guint64         max_size,
-                      OstreeFetcherURI *uri,
-                      guint             n_network_retries)
+_ostree_metalink_new (OstreeFetcher *fetcher, const char *requested_file, guint64 max_size,
+                      OstreeFetcherURI *uri, guint n_network_retries)
 {
-  OstreeMetalink *self = (OstreeMetalink*)g_object_new (OSTREE_TYPE_METALINK, NULL);
+  OstreeMetalink *self = (OstreeMetalink *)g_object_new (OSTREE_TYPE_METALINK, NULL);
 
   self->fetcher = g_object_ref (fetcher);
   self->requested_file = g_strdup (requested_file);
@@ -423,31 +387,23 @@ valid_hex_checksum (const char *s, gsize expected_len)
 }
 
 static gboolean
-try_one_url (OstreeMetalinkRequest *self,
-             OstreeFetcherURI *uri,
-             GBytes              **out_data,
-             GError         **error)
+try_one_url (OstreeMetalinkRequest *self, OstreeFetcherURI *uri, GBytes **out_data, GError **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GBytes) bytes = NULL;
+  g_autoptr (GBytes) bytes = NULL;
   gssize n_bytes;
 
-  if (!_ostree_fetcher_request_uri_to_membuf (self->metalink->fetcher,
-                                              uri, 0,
-                                              NULL, 0,
-                                              self->metalink->n_network_retries,
-                                              &bytes,
-                                              NULL, NULL, NULL,
-                                              self->metalink->max_size,
-                                              self->cancellable,
-                                              error))
+  if (!_ostree_fetcher_request_uri_to_membuf (
+          self->metalink->fetcher, uri, 0, NULL, 0, self->metalink->n_network_retries, &bytes, NULL,
+          NULL, NULL, self->metalink->max_size, self->cancellable, error))
     goto out;
 
   n_bytes = g_bytes_get_size (bytes);
   if (n_bytes != self->size)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Expected size is %" G_GUINT64_FORMAT " bytes but content is %" G_GSSIZE_FORMAT " bytes",
+                   "Expected size is %" G_GUINT64_FORMAT " bytes but content is %" G_GSSIZE_FORMAT
+                   " bytes",
                    self->size, n_bytes);
       goto out;
     }
@@ -461,8 +417,8 @@ try_one_url (OstreeMetalinkRequest *self,
       if (strcmp (self->verification_sha512, actual) != 0)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Expected checksum is %s but actual is %s",
-                       self->verification_sha512, actual);
+                       "Expected checksum is %s but actual is %s", self->verification_sha512,
+                       actual);
           goto out;
         }
     }
@@ -475,8 +431,8 @@ try_one_url (OstreeMetalinkRequest *self,
       if (strcmp (self->verification_sha256, actual) != 0)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Expected checksum is %s but actual is %s",
-                       self->verification_sha256, actual);
+                       "Expected checksum is %s but actual is %s", self->verification_sha256,
+                       actual);
           goto out;
         }
     }
@@ -484,24 +440,21 @@ try_one_url (OstreeMetalinkRequest *self,
   ret = TRUE;
   if (out_data)
     *out_data = g_steal_pointer (&bytes);
- out:
+out:
   return ret;
 }
 
 static gboolean
-try_metalink_targets (OstreeMetalinkRequest      *self,
-                      OstreeFetcherURI          **out_target_uri,
-                      GBytes                    **out_data,
-                      GError                    **error)
+try_metalink_targets (OstreeMetalinkRequest *self, OstreeFetcherURI **out_target_uri,
+                      GBytes **out_data, GError **error)
 {
   gboolean ret = FALSE;
   OstreeFetcherURI *target_uri = NULL;
-  g_autoptr(GBytes) ret_data = NULL;
+  g_autoptr (GBytes) ret_data = NULL;
 
   if (!self->found_a_file_element)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "No <file> element found");
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "No <file> element found");
       goto out;
     }
 
@@ -510,8 +463,8 @@ try_metalink_targets (OstreeMetalinkRequest      *self,
       /* XXX Use NOT_FOUND here so we can distinguish not finding the
        *     requested file from other errors.  This is a bit of a hack
        *     through; metalinks should have their own error enum. */
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "No <file name='%s'> found", self->metalink->requested_file);
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND, "No <file name='%s'> found",
+                   self->metalink->requested_file);
       goto out;
     }
 
@@ -524,27 +477,23 @@ try_metalink_targets (OstreeMetalinkRequest      *self,
 
   if (self->verification_sha256 && !valid_hex_checksum (self->verification_sha256, 64))
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid hash digest for sha256");
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Invalid hash digest for sha256");
       goto out;
     }
 
   if (self->verification_sha512 && !valid_hex_checksum (self->verification_sha512, 128))
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid hash digest for sha512");
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Invalid hash digest for sha512");
       goto out;
     }
 
   if (self->urls->len == 0)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "No <url method='http'> elements found");
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "No <url method='http'> elements found");
       goto out;
     }
 
-  for (self->current_url_index = 0;
-       self->current_url_index < self->urls->len;
+  for (self->current_url_index = 0; self->current_url_index < self->urls->len;
        self->current_url_index++)
     {
       GError *temp_error = NULL;
@@ -565,8 +514,8 @@ try_metalink_targets (OstreeMetalinkRequest      *self,
     {
       g_assert (self->last_metalink_error != NULL);
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Exhausted %u metalink targets, last error: %s",
-                   self->urls->len, self->last_metalink_error);
+                   "Exhausted %u metalink targets, last error: %s", self->urls->len,
+                   self->last_metalink_error);
       goto out;
     }
 
@@ -575,38 +524,32 @@ try_metalink_targets (OstreeMetalinkRequest      *self,
     *out_target_uri = _ostree_fetcher_uri_clone (target_uri);
   if (out_data)
     *out_data = g_steal_pointer (&ret_data);
- out:
+out:
   return ret;
 }
 
-static const GMarkupParser metalink_parser = {
-  metalink_parser_start,
-  metalink_parser_end,
-  metalink_parser_text,
-  NULL,
-  NULL
-};
+static const GMarkupParser metalink_parser
+    = { metalink_parser_start, metalink_parser_end, metalink_parser_text, NULL, NULL };
 
 typedef struct
 {
-  OstreeFetcherURI      **out_target_uri;
-  GBytes                **out_data;
-  gboolean              success;
-  GError                **error;
-  GMainLoop             *loop;
+  OstreeFetcherURI **out_target_uri;
+  GBytes **out_data;
+  gboolean success;
+  GError **error;
+  GMainLoop *loop;
 } FetchMetalinkSyncData;
 
 gboolean
-_ostree_metalink_request_sync (OstreeMetalink        *self,
-                               OstreeFetcherURI      **out_target_uri,
-                               GBytes                **out_data,
-                               GCancellable          *cancellable,
-                               GError                **error)
+_ostree_metalink_request_sync (OstreeMetalink *self, OstreeFetcherURI **out_target_uri,
+                               GBytes **out_data, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  OstreeMetalinkRequest request = { 0, };
-  g_autoptr(GMainContext) mainctx = NULL;
-  g_autoptr(GBytes) contents = NULL;
+  OstreeMetalinkRequest request = {
+    0,
+  };
+  g_autoptr (GMainContext) mainctx = NULL;
+  g_autoptr (GBytes) contents = NULL;
   gsize len;
   const guint8 *data;
 
@@ -614,25 +557,24 @@ _ostree_metalink_request_sync (OstreeMetalink        *self,
   g_main_context_push_thread_default (mainctx);
 
   request.metalink = g_object_ref (self);
-  request.urls = g_ptr_array_new_with_free_func ((GDestroyNotify) _ostree_fetcher_uri_free);
-  request.parser = g_markup_parse_context_new (&metalink_parser, G_MARKUP_PREFIX_ERROR_POSITION, &request, NULL);
+  request.urls = g_ptr_array_new_with_free_func ((GDestroyNotify)_ostree_fetcher_uri_free);
+  request.parser = g_markup_parse_context_new (&metalink_parser, G_MARKUP_PREFIX_ERROR_POSITION,
+                                               &request, NULL);
 
-  if (!_ostree_fetcher_request_uri_to_membuf (self->fetcher, self->uri, 0,
-                                              NULL, 0,
-                                              self->n_network_retries,
-                                              &contents, NULL, NULL, NULL, self->max_size,
-                                              cancellable, error))
+  if (!_ostree_fetcher_request_uri_to_membuf (self->fetcher, self->uri, 0, NULL, 0,
+                                              self->n_network_retries, &contents, NULL, NULL, NULL,
+                                              self->max_size, cancellable, error))
     goto out;
 
   data = g_bytes_get_data (contents, &len);
-  if (!g_markup_parse_context_parse (request.parser, (const char*)data, len, error))
+  if (!g_markup_parse_context_parse (request.parser, (const char *)data, len, error))
     goto out;
 
   if (!try_metalink_targets (&request, out_target_uri, out_data, error))
     goto out;
 
   ret = TRUE;
- out:
+out:
   if (mainctx)
     g_main_context_pop_thread_default (mainctx);
   g_clear_object (&request.metalink);

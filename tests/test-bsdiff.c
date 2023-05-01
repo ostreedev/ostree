@@ -19,37 +19,29 @@
 
 #include "config.h"
 
-#include "libglnx.h"
 #include "bsdiff/bsdiff.h"
 #include "bsdiff/bspatch.h"
+#include "libglnx.h"
+#include <gio/gio.h>
 #include <glib.h>
 #include <stdlib.h>
-#include <gio/gio.h>
 #include <string.h>
 
 static int
-bzpatch_read (const struct bspatch_stream* stream, void* buffer, int length)
+bzpatch_read (const struct bspatch_stream *stream, void *buffer, int length)
 {
   GInputStream *in = stream->opaque;
-  if (length && ! g_input_stream_read (in,
-                                       buffer,
-                                       length,
-                                       NULL,
-                                       NULL))
+  if (length && !g_input_stream_read (in, buffer, length, NULL, NULL))
     return -1;
 
   return 0;
 }
 
 static int
-bzdiff_write (struct bsdiff_stream* stream, const void* buffer, int size)
+bzdiff_write (struct bsdiff_stream *stream, const void *buffer, int size)
 {
   GOutputStream *out = stream->opaque;
-  if (! g_output_stream_write (out,
-                               buffer,
-                               size,
-                               NULL,
-                               NULL))
+  if (!g_output_stream_write (out, buffer, size, NULL, NULL))
     return -1;
 
   return 0;
@@ -59,7 +51,7 @@ static void
 test_bsdiff (void)
 {
 #define OLD_SIZE 512
-#define NEW_SIZE (512+24)
+#define NEW_SIZE (512 + 24)
 
   struct bsdiff_stream bsdiff_stream;
   struct bspatch_stream bspatch_stream;
@@ -67,8 +59,8 @@ test_bsdiff (void)
   g_autofree guint8 *old = g_new (guint8, OLD_SIZE);
   g_autofree guint8 *new = g_new (guint8, NEW_SIZE);
   g_autofree guint8 *new_generated = g_new0 (guint8, NEW_SIZE);
-  g_autoptr(GOutputStream) out = g_memory_output_stream_new_resizable ();
-  g_autoptr(GInputStream) in = NULL;
+  g_autoptr (GOutputStream) out = g_memory_output_stream_new_resizable ();
+  g_autoptr (GInputStream) in = NULL;
 
   new[0] = 'A';
   for (i = 0; i < OLD_SIZE; i++)
@@ -88,7 +80,8 @@ test_bsdiff (void)
   g_assert (g_output_stream_close (out, NULL, NULL));
 
   /* Now generate NEW_GENERATED from OLD and OUT.  */
-  { g_autoptr(GBytes) bytes = g_memory_output_stream_steal_as_bytes (G_MEMORY_OUTPUT_STREAM (out));
+  {
+    g_autoptr (GBytes) bytes = g_memory_output_stream_steal_as_bytes (G_MEMORY_OUTPUT_STREAM (out));
     in = g_memory_input_stream_new_from_bytes (bytes);
   }
   bspatch_stream.read = bzpatch_read;
@@ -99,9 +92,10 @@ test_bsdiff (void)
   g_assert_cmpint (memcmp (new, new_generated, NEW_SIZE), ==, 0);
 }
 
-int main (int argc, char **argv)
+int
+main (int argc, char **argv)
 {
   g_test_init (&argc, &argv, NULL);
   g_test_add_func ("/bsdiff", test_bsdiff);
-  return g_test_run();
+  return g_test_run ();
 }

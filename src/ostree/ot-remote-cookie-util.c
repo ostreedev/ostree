@@ -22,13 +22,14 @@
 
 #include "ot-remote-cookie-util.h"
 
-#include "otutil.h"
+#include "ostree-repo-private.h"
 #include "ot-main.h"
 #include "ot-remote-builtins.h"
-#include "ostree-repo-private.h"
+#include "otutil.h"
 
 typedef struct OtCookieParser OtCookieParser;
-struct OtCookieParser {
+struct OtCookieParser
+{
   char *buf;
   char *iter;
 
@@ -42,15 +43,11 @@ struct OtCookieParser {
   char *value;
 };
 void ot_cookie_parser_free (OtCookieParser *parser);
-G_DEFINE_AUTOPTR_CLEANUP_FUNC(OtCookieParser, ot_cookie_parser_free)
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OtCookieParser, ot_cookie_parser_free)
 
-gboolean
-ot_parse_cookies_at (int dfd, const char *path,
-                     OtCookieParser **out_parser,
-                     GCancellable *cancellable,
-                     GError **error);
-gboolean
-ot_parse_cookies_next (OtCookieParser *parser);
+gboolean ot_parse_cookies_at (int dfd, const char *path, OtCookieParser **out_parser,
+                              GCancellable *cancellable, GError **error);
+gboolean ot_parse_cookies_next (OtCookieParser *parser);
 
 static void
 ot_cookie_parser_clear (OtCookieParser *parser)
@@ -72,10 +69,8 @@ ot_cookie_parser_free (OtCookieParser *parser)
 }
 
 gboolean
-ot_parse_cookies_at (int dfd, const char *path,
-                     OtCookieParser **out_parser,
-                     GCancellable *cancellable,
-                     GError **error)
+ot_parse_cookies_at (int dfd, const char *path, OtCookieParser **out_parser,
+                     GCancellable *cancellable, GError **error)
 {
   OtCookieParser *parser;
   g_autofree char *cookies_content = NULL;
@@ -120,14 +115,10 @@ ot_parse_cookies_next (OtCookieParser *parser)
         parser->iter = NULL;
 
       ot_cookie_parser_clear (parser);
-      if (sscanf (iter, "%ms\t%ms\t%ms\t%ms\t%llu\t%ms\t%ms",
-                  &parser->domain,
-                  &parser->flag,
-                  &parser->path,
-                  &parser->secure,
-                  &parser->expiration,
-                  &parser->name,
-                  &parser->value) != 7)
+      if (sscanf (iter, "%ms\t%ms\t%ms\t%ms\t%llu\t%ms\t%ms", &parser->domain, &parser->flag,
+                  &parser->path, &parser->secure, &parser->expiration, &parser->name,
+                  &parser->value)
+          != 7)
         continue;
 
       parser->line = iter;
@@ -138,69 +129,58 @@ ot_parse_cookies_next (OtCookieParser *parser)
 }
 
 gboolean
-ot_add_cookie_at (int dfd, const char *jar_path,
-                  const char *domain, const char *path,
-                  const char *name, const char *value,
-                  GError **error)
+ot_add_cookie_at (int dfd, const char *jar_path, const char *domain, const char *path,
+                  const char *name, const char *value, GError **error)
 {
   glnx_autofd int fd = openat (dfd, jar_path, O_WRONLY | O_APPEND | O_CREAT, 0644);
   if (fd < 0)
     return glnx_throw_errno_prefix (error, "open(%s)", jar_path);
 
-  g_autoptr(GDateTime) now = g_date_time_new_now_utc ();
-  g_autoptr(GDateTime) expires = g_date_time_add_years (now, 25);
+  g_autoptr (GDateTime) now = g_date_time_new_now_utc ();
+  g_autoptr (GDateTime) expires = g_date_time_add_years (now, 25);
 
   /* Adapted from soup-cookie-jar-text.c:write_cookie() */
-  g_autofree char *buf = g_strdup_printf ("%s\t%s\t%s\t%s\t%llu\t%s\t%s\n",
-                                          domain,
-                                          *domain == '.' ? "TRUE" : "FALSE",
-                                          path,
-                                          "FALSE",
-                                          (long long unsigned)g_date_time_to_unix (expires),
-                                          name,
-                                          value);
+  g_autofree char *buf = g_strdup_printf (
+      "%s\t%s\t%s\t%s\t%llu\t%s\t%s\n", domain, *domain == '.' ? "TRUE" : "FALSE", path, "FALSE",
+      (long long unsigned)g_date_time_to_unix (expires), name, value);
   if (glnx_loop_write (fd, buf, strlen (buf)) < 0)
     return glnx_throw_errno_prefix (error, "write");
   return TRUE;
 }
 
 gboolean
-ot_delete_cookie_at (int dfd, const char *jar_path,
-                     const char *domain, const char *path,
-                     const char *name,
-                     GError **error)
+ot_delete_cookie_at (int dfd, const char *jar_path, const char *domain, const char *path,
+                     const char *name, GError **error)
 {
   gboolean found = FALSE;
-  g_auto(GLnxTmpfile) tmpf = { 0, };
-  g_autoptr(OtCookieParser) parser = NULL;
+  g_auto (GLnxTmpfile) tmpf = {
+    0,
+  };
+  g_autoptr (OtCookieParser) parser = NULL;
 
   if (!ot_parse_cookies_at (dfd, jar_path, &parser, NULL, error))
     return FALSE;
 
   g_assert (!strchr (jar_path, '/'));
-  if (!glnx_open_tmpfile_linkable_at (dfd, ".", O_WRONLY | O_CLOEXEC,
-                                      &tmpf, error))
+  if (!glnx_open_tmpfile_linkable_at (dfd, ".", O_WRONLY | O_CLOEXEC, &tmpf, error))
     return FALSE;
 
   while (ot_parse_cookies_next (parser))
     {
-      if (strcmp (domain, parser->domain) == 0 &&
-          strcmp (path, parser->path) == 0 &&
-          strcmp (name, parser->name) == 0)
+      if (strcmp (domain, parser->domain) == 0 && strcmp (path, parser->path) == 0
+          && strcmp (name, parser->name) == 0)
         {
           found = TRUE;
           /* Match, skip writing this one */
           continue;
         }
 
-      if (glnx_loop_write (tmpf.fd, parser->line, strlen (parser->line)) < 0 ||
-          glnx_loop_write (tmpf.fd, "\n", 1) < 0)
+      if (glnx_loop_write (tmpf.fd, parser->line, strlen (parser->line)) < 0
+          || glnx_loop_write (tmpf.fd, "\n", 1) < 0)
         return glnx_throw_errno_prefix (error, "write");
     }
 
-  if (!glnx_link_tmpfile_at (&tmpf, GLNX_LINK_TMPFILE_REPLACE,
-                             dfd, jar_path,
-                             error))
+  if (!glnx_link_tmpfile_at (&tmpf, GLNX_LINK_TMPFILE_REPLACE, dfd, jar_path, error))
     return FALSE;
 
   if (!found)
@@ -209,18 +189,17 @@ ot_delete_cookie_at (int dfd, const char *jar_path,
   return TRUE;
 }
 
-
 gboolean
 ot_list_cookies_at (int dfd, const char *jar_path, GError **error)
 {
-  g_autoptr(OtCookieParser) parser = NULL;
+  g_autoptr (OtCookieParser) parser = NULL;
 
   if (!ot_parse_cookies_at (AT_FDCWD, jar_path, &parser, NULL, error))
     return FALSE;
 
   while (ot_parse_cookies_next (parser))
     {
-      g_autoptr(GDateTime) expires = g_date_time_new_from_unix_utc (parser->expiration);
+      g_autoptr (GDateTime) expires = g_date_time_new_from_unix_utc (parser->expiration);
       g_autofree char *expires_str = NULL;
 
       if (expires != NULL)

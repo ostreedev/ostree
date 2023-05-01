@@ -19,32 +19,34 @@
 
 #include "config.h"
 
+#include <gio/gunixoutputstream.h>
 #include <stdlib.h>
 #include <string.h>
-#include <gio/gunixoutputstream.h>
 
-#include "ostree-core-private.h"
-#include "ostree-repo-private.h"
-#include "ostree-lzma-compressor.h"
-#include "ostree-repo-static-delta-private.h"
-#include "ostree-diff.h"
-#include "ostree-rollsum.h"
-#include "otutil.h"
-#include "libglnx.h"
-#include "ostree-varint.h"
 #include "bsdiff/bsdiff.h"
+#include "libglnx.h"
 #include "ostree-autocleanups.h"
+#include "ostree-core-private.h"
+#include "ostree-diff.h"
+#include "ostree-lzma-compressor.h"
+#include "ostree-repo-private.h"
+#include "ostree-repo-static-delta-private.h"
+#include "ostree-rollsum.h"
 #include "ostree-sign.h"
+#include "ostree-varint.h"
+#include "otutil.h"
 
 #define CONTENT_SIZE_SIMILARITY_THRESHOLD_PERCENT (30)
 
-typedef enum {
+typedef enum
+{
   DELTAOPT_FLAG_NONE = (1 << 0),
   DELTAOPT_FLAG_DISABLE_BSDIFF = (1 << 1),
   DELTAOPT_FLAG_VERBOSE = (1 << 2)
 } DeltaOpts;
 
-typedef struct {
+typedef struct
+{
   guint64 compressed_size;
   guint64 uncompressed_size;
   GPtrArray *objects;
@@ -58,7 +60,8 @@ typedef struct {
   GVariant *header;
 } OstreeStaticDeltaPartBuilder;
 
-typedef struct {
+typedef struct
+{
   GPtrArray *parts;
   GPtrArray *fallback_objects;
   guint64 loose_compressed_size;
@@ -76,15 +79,13 @@ typedef struct {
 
 /* Get an input stream for a GVariant */
 static GInputStream *
-variant_to_inputstream (GVariant             *variant)
+variant_to_inputstream (GVariant *variant)
 {
-  GMemoryInputStream *ret = (GMemoryInputStream*)
-    g_memory_input_stream_new_from_data (g_variant_get_data (variant),
-                                         g_variant_get_size (variant),
-                                         NULL);
-  g_object_set_data_full ((GObject*)ret, "ot-variant-data",
-                          g_variant_ref (variant), (GDestroyNotify) g_variant_unref);
-  return (GInputStream*)ret;
+  GMemoryInputStream *ret = (GMemoryInputStream *)g_memory_input_stream_new_from_data (
+      g_variant_get_data (variant), g_variant_get_size (variant), NULL);
+  g_object_set_data_full ((GObject *)ret, "ot-variant-data", g_variant_ref (variant),
+                          (GDestroyNotify)g_variant_unref);
+  return (GInputStream *)ret;
 }
 
 static GBytes *
@@ -102,7 +103,7 @@ objtype_checksum_array_new (GPtrArray *objects)
       guint8 objtype_v;
 
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
-      objtype_v = (guint8) objtype;
+      objtype_v = (guint8)objtype;
 
       ostree_checksum_inplace_to_bytes (checksum, csum);
 
@@ -134,7 +135,7 @@ ostree_static_delta_part_builder_unref (OstreeStaticDeltaPartBuilder *part_build
 static guint
 mode_chunk_hash (const void *vp)
 {
-  GVariant *v = (GVariant*)vp;
+  GVariant *v = (GVariant *)vp;
   guint uid, gid, mode;
   g_variant_get (v, "(uuu)", &uid, &gid, &mode);
   return uid + gid + mode;
@@ -143,8 +144,8 @@ mode_chunk_hash (const void *vp)
 static gboolean
 mode_chunk_equals (const void *one, const void *two)
 {
-  GVariant *v1 = (GVariant*)one;
-  GVariant *v2 = (GVariant*)two;
+  GVariant *v1 = (GVariant *)one;
+  GVariant *v2 = (GVariant *)two;
   guint uid1, gid1, mode1;
   guint uid2, gid2, mode2;
 
@@ -169,20 +170,19 @@ bufhash (const void *b, gsize len)
 static guint
 xattr_chunk_hash (const void *vp)
 {
-  GVariant *v = (GVariant*)vp;
+  GVariant *v = (GVariant *)vp;
   gsize n = g_variant_n_children (v);
   guint i;
   guint32 h = 5381;
 
   for (i = 0; i < n; i++)
     {
-      const guint8* name;
-      const guint8* value_data;
-      g_autoptr(GVariant) value = NULL;
+      const guint8 *name;
+      const guint8 *value_data;
+      g_autoptr (GVariant) value = NULL;
       gsize value_len;
 
-      g_variant_get_child (v, i, "(^&ay@ay)",
-                           &name, &value);
+      g_variant_get_child (v, i, "(^&ay@ay)", &name, &value);
       value_data = g_variant_get_fixed_array (value, &value_len, 1);
 
       h += g_str_hash (name);
@@ -195,8 +195,8 @@ xattr_chunk_hash (const void *vp)
 static gboolean
 xattr_chunk_equals (const void *one, const void *two)
 {
-  GVariant *v1 = (GVariant*)one;
-  GVariant *v2 = (GVariant*)two;
+  GVariant *v1 = (GVariant *)one;
+  GVariant *v2 = (GVariant *)two;
   gsize l1 = g_variant_get_size (v1);
   gsize l2 = g_variant_get_size (v2);
 
@@ -214,19 +214,19 @@ finish_part (OstreeStaticDeltaBuilder *builder, GError **error)
 {
   OstreeStaticDeltaPartBuilder *part_builder = builder->parts->pdata[builder->parts->len - 1];
   g_autofree guchar *part_checksum = NULL;
-  g_autoptr(GBytes) objtype_checksum_array = NULL;
-  g_autoptr(GBytes) checksum_bytes = NULL;
-  g_autoptr(GOutputStream) part_temp_outstream = NULL;
-  g_autoptr(GInputStream) part_in = NULL;
-  g_autoptr(GInputStream) part_payload_in = NULL;
-  g_autoptr(GMemoryOutputStream) part_payload_out = NULL;
-  g_autoptr(GConverterOutputStream) part_payload_compressor = NULL;
-  g_autoptr(GConverter) compressor = NULL;
-  g_autoptr(GVariant) delta_part_content = NULL;
-  g_autoptr(GVariant) delta_part = NULL;
-  g_autoptr(GVariant) delta_part_header = NULL;
-  g_auto(GVariantBuilder) mode_builder = OT_VARIANT_BUILDER_INITIALIZER;
-  g_auto(GVariantBuilder) xattr_builder = OT_VARIANT_BUILDER_INITIALIZER;
+  g_autoptr (GBytes) objtype_checksum_array = NULL;
+  g_autoptr (GBytes) checksum_bytes = NULL;
+  g_autoptr (GOutputStream) part_temp_outstream = NULL;
+  g_autoptr (GInputStream) part_in = NULL;
+  g_autoptr (GInputStream) part_payload_in = NULL;
+  g_autoptr (GMemoryOutputStream) part_payload_out = NULL;
+  g_autoptr (GConverterOutputStream) part_payload_compressor = NULL;
+  g_autoptr (GConverter) compressor = NULL;
+  g_autoptr (GVariant) delta_part_content = NULL;
+  g_autoptr (GVariant) delta_part = NULL;
+  g_autoptr (GVariant) delta_part_header = NULL;
+  g_auto (GVariantBuilder) mode_builder = OT_VARIANT_BUILDER_INITIALIZER;
+  g_auto (GVariantBuilder) xattr_builder = OT_VARIANT_BUILDER_INITIALIZER;
   guint8 compression_type_char;
 
   g_variant_builder_init (&mode_builder, G_VARIANT_TYPE ("a(uuu)"));
@@ -240,37 +240,39 @@ finish_part (OstreeStaticDeltaBuilder *builder, GError **error)
     g_variant_builder_add_value (&xattr_builder, part_builder->xattrs->pdata[j]);
 
   {
-    g_autoptr(GBytes) payload_b = g_string_free_to_bytes (g_steal_pointer (&part_builder->payload));
-    g_autoptr(GBytes) operations_b = g_string_free_to_bytes (g_steal_pointer (&part_builder->operations));
+    g_autoptr (GBytes) payload_b
+        = g_string_free_to_bytes (g_steal_pointer (&part_builder->payload));
+    g_autoptr (GBytes) operations_b
+        = g_string_free_to_bytes (g_steal_pointer (&part_builder->operations));
 
-    delta_part_content = g_variant_new ("(a(uuu)aa(ayay)@ay@ay)",
-                                        &mode_builder, &xattr_builder,
+    delta_part_content = g_variant_new ("(a(uuu)aa(ayay)@ay@ay)", &mode_builder, &xattr_builder,
                                         ot_gvariant_new_ay_bytes (payload_b),
                                         ot_gvariant_new_ay_bytes (operations_b));
     g_variant_ref_sink (delta_part_content);
   }
 
   /* Hardcode xz for now */
-  compressor = (GConverter*)_ostree_lzma_compressor_new (NULL);
+  compressor = (GConverter *)_ostree_lzma_compressor_new (NULL);
   compression_type_char = 'x';
   part_payload_in = variant_to_inputstream (delta_part_content);
-  part_payload_out = (GMemoryOutputStream*)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
-  part_payload_compressor = (GConverterOutputStream*)g_converter_output_stream_new ((GOutputStream*)part_payload_out, compressor);
+  part_payload_out = (GMemoryOutputStream *)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
+  part_payload_compressor = (GConverterOutputStream *)g_converter_output_stream_new (
+      (GOutputStream *)part_payload_out, compressor);
 
   {
-    gssize n_bytes_written = g_output_stream_splice ((GOutputStream*)part_payload_compressor, part_payload_in,
-                                                     G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET | G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
-                                                     NULL, error);
+    gssize n_bytes_written = g_output_stream_splice (
+        (GOutputStream *)part_payload_compressor, part_payload_in,
+        G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET | G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE, NULL, error);
     if (n_bytes_written < 0)
       return FALSE;
   }
 
   g_clear_pointer (&delta_part_content, g_variant_unref);
 
-  { g_autoptr(GBytes) payload = g_memory_output_stream_steal_as_bytes (part_payload_out);
-    delta_part = g_variant_ref_sink (g_variant_new ("(y@ay)",
-                                                    compression_type_char,
-                                                    ot_gvariant_new_ay_bytes (payload)));
+  {
+    g_autoptr (GBytes) payload = g_memory_output_stream_steal_as_bytes (part_payload_out);
+    delta_part = g_variant_ref_sink (
+        g_variant_new ("(y@ay)", compression_type_char, ot_gvariant_new_ay_bytes (payload)));
   }
 
   if (!glnx_open_tmpfile_linkable_at (builder->parts_dfd, ".", O_RDWR | O_CLOEXEC,
@@ -280,19 +282,17 @@ finish_part (OstreeStaticDeltaBuilder *builder, GError **error)
   part_temp_outstream = g_unix_output_stream_new (part_builder->part_tmpf.fd, FALSE);
 
   part_in = variant_to_inputstream (delta_part);
-  if (!ot_gio_splice_get_checksum (part_temp_outstream, part_in,
-                                   &part_checksum,
-                                   NULL, error))
+  if (!ot_gio_splice_get_checksum (part_temp_outstream, part_in, &part_checksum, NULL, error))
     return FALSE;
 
   checksum_bytes = g_bytes_new (part_checksum, OSTREE_SHA256_DIGEST_LEN);
   objtype_checksum_array = objtype_checksum_array_new (part_builder->objects);
-  delta_part_header = g_variant_new ("(u@aytt@ay)",
-                                     maybe_swap_endian_u32 (builder->swap_endian, OSTREE_DELTAPART_VERSION),
-                                     ot_gvariant_new_ay_bytes (checksum_bytes),
-                                     maybe_swap_endian_u64 (builder->swap_endian, (guint64) g_variant_get_size (delta_part)),
-                                     maybe_swap_endian_u64 (builder->swap_endian, part_builder->uncompressed_size),
-                                     ot_gvariant_new_ay_bytes (objtype_checksum_array));
+  delta_part_header = g_variant_new (
+      "(u@aytt@ay)", maybe_swap_endian_u32 (builder->swap_endian, OSTREE_DELTAPART_VERSION),
+      ot_gvariant_new_ay_bytes (checksum_bytes),
+      maybe_swap_endian_u64 (builder->swap_endian, (guint64)g_variant_get_size (delta_part)),
+      maybe_swap_endian_u64 (builder->swap_endian, part_builder->uncompressed_size),
+      ot_gvariant_new_ay_bytes (objtype_checksum_array));
   g_variant_ref_sink (delta_part_header);
 
   part_builder->header = g_variant_ref (delta_part_header);
@@ -300,9 +300,9 @@ finish_part (OstreeStaticDeltaBuilder *builder, GError **error)
 
   if (builder->delta_opts & DELTAOPT_FLAG_VERBOSE)
     {
-      g_printerr ("part %u n:%u compressed:%" G_GUINT64_FORMAT " uncompressed:%" G_GUINT64_FORMAT "\n",
-                  builder->parts->len, part_builder->objects->len,
-                  part_builder->compressed_size,
+      g_printerr ("part %u n:%u compressed:%" G_GUINT64_FORMAT " uncompressed:%" G_GUINT64_FORMAT
+                  "\n",
+                  builder->parts->len, part_builder->objects->len, part_builder->compressed_size,
                   part_builder->uncompressed_size);
     }
 
@@ -334,8 +334,7 @@ allocate_part (OstreeStaticDeltaBuilder *builder, GError **error)
 }
 
 static gsize
-allocate_part_buffer_space (OstreeStaticDeltaPartBuilder  *current_part,
-                            guint                          len)
+allocate_part_buffer_space (OstreeStaticDeltaPartBuilder *current_part, guint len)
 {
   gsize empty_space;
   gsize old_len;
@@ -347,7 +346,8 @@ allocate_part_buffer_space (OstreeStaticDeltaPartBuilder  *current_part,
     {
       gsize origlen;
       origlen = current_part->payload->len;
-      g_string_set_size (current_part->payload, current_part->payload->allocated_len + (len - empty_space));
+      g_string_set_size (current_part->payload,
+                         current_part->payload->allocated_len + (len - empty_space));
       current_part->payload->len = origlen;
     }
 
@@ -355,10 +355,8 @@ allocate_part_buffer_space (OstreeStaticDeltaPartBuilder  *current_part,
 }
 
 static gsize
-write_unique_variant_chunk (OstreeStaticDeltaPartBuilder *current_part,
-                            GHashTable                   *hash,
-                            GPtrArray                    *ordered,
-                            GVariant                     *key)
+write_unique_variant_chunk (OstreeStaticDeltaPartBuilder *current_part, GHashTable *hash,
+                            GPtrArray *ordered, GVariant *key)
 {
   gpointer target_offsetp;
   gsize offset;
@@ -375,10 +373,8 @@ write_unique_variant_chunk (OstreeStaticDeltaPartBuilder *current_part,
 }
 
 static gboolean
-splice_stream_to_payload (OstreeStaticDeltaPartBuilder  *current_part,
-                          GInputStream                  *istream,
-                          GCancellable                  *cancellable,
-                          GError                       **error)
+splice_stream_to_payload (OstreeStaticDeltaPartBuilder *current_part, GInputStream *istream,
+                          GCancellable *cancellable, GError **error)
 {
   while (TRUE)
     {
@@ -388,9 +384,7 @@ splice_stream_to_payload (OstreeStaticDeltaPartBuilder  *current_part,
       gsize bytes_read;
       if (!g_input_stream_read_all (istream,
                                     current_part->payload->str + current_part->payload->len,
-                                    readlen,
-                                    &bytes_read,
-                                    cancellable, error))
+                                    readlen, &bytes_read, cancellable, error))
         return FALSE;
       if (bytes_read == 0)
         break;
@@ -402,69 +396,50 @@ splice_stream_to_payload (OstreeStaticDeltaPartBuilder  *current_part,
 }
 
 static void
-write_content_mode_xattrs (OstreeRepo                       *repo,
-                           OstreeStaticDeltaPartBuilder     *current_part,
-                           GFileInfo                        *content_finfo,
-                           GVariant                         *content_xattrs,
-                           gsize                            *out_mode_offset,
-                           gsize                            *out_xattr_offset)
+write_content_mode_xattrs (OstreeRepo *repo, OstreeStaticDeltaPartBuilder *current_part,
+                           GFileInfo *content_finfo, GVariant *content_xattrs,
+                           gsize *out_mode_offset, gsize *out_xattr_offset)
 {
-  guint32 uid =
-    g_file_info_get_attribute_uint32 (content_finfo, "unix::uid");
-  guint32 gid =
-    g_file_info_get_attribute_uint32 (content_finfo, "unix::gid");
-  guint32 mode =
-    g_file_info_get_attribute_uint32 (content_finfo, "unix::mode");
-  g_autoptr(GVariant) modev
-    = g_variant_ref_sink (g_variant_new ("(uuu)",
-                                         GUINT32_TO_BE (uid),
-                                         GUINT32_TO_BE (gid),
-                                         GUINT32_TO_BE (mode)));
+  guint32 uid = g_file_info_get_attribute_uint32 (content_finfo, "unix::uid");
+  guint32 gid = g_file_info_get_attribute_uint32 (content_finfo, "unix::gid");
+  guint32 mode = g_file_info_get_attribute_uint32 (content_finfo, "unix::mode");
+  g_autoptr (GVariant) modev = g_variant_ref_sink (
+      g_variant_new ("(uuu)", GUINT32_TO_BE (uid), GUINT32_TO_BE (gid), GUINT32_TO_BE (mode)));
 
-  *out_mode_offset = write_unique_variant_chunk (current_part,
-                                                 current_part->mode_set,
-                                                 current_part->modes,
-                                                 modev);
-  *out_xattr_offset = write_unique_variant_chunk (current_part,
-                                                  current_part->xattr_set,
-                                                  current_part->xattrs,
-                                                  content_xattrs);
+  *out_mode_offset = write_unique_variant_chunk (current_part, current_part->mode_set,
+                                                 current_part->modes, modev);
+  *out_xattr_offset = write_unique_variant_chunk (current_part, current_part->xattr_set,
+                                                  current_part->xattrs, content_xattrs);
 }
 
 static gboolean
-process_one_object (OstreeRepo                       *repo,
-                    OstreeStaticDeltaBuilder         *builder,
-                    OstreeStaticDeltaPartBuilder    **current_part_val,
-                    const char                       *checksum,
-                    OstreeObjectType                  objtype,
-                    GCancellable                     *cancellable,
-                    GError                          **error)
+process_one_object (OstreeRepo *repo, OstreeStaticDeltaBuilder *builder,
+                    OstreeStaticDeltaPartBuilder **current_part_val, const char *checksum,
+                    OstreeObjectType objtype, GCancellable *cancellable, GError **error)
 {
   OstreeStaticDeltaPartBuilder *current_part = *current_part_val;
-  g_autoptr(GFileInfo) content_finfo = NULL;
-  g_autoptr(GVariant) content_xattrs = NULL;
+  g_autoptr (GFileInfo) content_finfo = NULL;
+  g_autoptr (GVariant) content_xattrs = NULL;
   guint64 content_size;
-  g_autoptr(GInputStream) content_stream = NULL;
+  g_autoptr (GInputStream) content_stream = NULL;
 
   if (OSTREE_OBJECT_TYPE_IS_META (objtype))
     {
-      if (!ostree_repo_load_object_stream (repo, objtype, checksum,
-                                           &content_stream, &content_size,
+      if (!ostree_repo_load_object_stream (repo, objtype, checksum, &content_stream, &content_size,
                                            cancellable, error))
         return FALSE;
     }
   else
     {
-      if (!ostree_repo_load_file (repo, checksum, &content_stream,
-                                  &content_finfo, &content_xattrs,
+      if (!ostree_repo_load_file (repo, checksum, &content_stream, &content_finfo, &content_xattrs,
                                   cancellable, error))
         return FALSE;
       content_size = g_file_info_get_size (content_finfo);
     }
 
   /* Check to see if this delta is maximum size */
-  if (current_part->objects->len > 0 &&
-      current_part->payload->len + content_size > builder->max_chunk_size_bytes)
+  if (current_part->objects->len > 0
+      && current_part->payload->len + content_size > builder->max_chunk_size_bytes)
     {
       current_part = allocate_part (builder, error);
       if (current_part == NULL)
@@ -473,8 +448,7 @@ process_one_object (OstreeRepo                       *repo,
     }
 
   guint64 compressed_size;
-  if (!ostree_repo_query_object_storage_size (repo, objtype, checksum,
-                                              &compressed_size,
+  if (!ostree_repo_query_object_storage_size (repo, objtype, checksum, &compressed_size,
                                               cancellable, error))
     return FALSE;
   builder->loose_compressed_size += compressed_size;
@@ -489,11 +463,11 @@ process_one_object (OstreeRepo                       *repo,
 
       object_payload_start = current_part->payload->len;
 
-      if (!splice_stream_to_payload (current_part, content_stream,
-                                     cancellable, error))
+      if (!splice_stream_to_payload (current_part, content_stream, cancellable, error))
         return FALSE;
 
-      g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_OPEN_SPLICE_AND_CLOSE);
+      g_string_append_c (current_part->operations,
+                         (gchar)OSTREE_STATIC_DELTA_OP_OPEN_SPLICE_AND_CLOSE);
       _ostree_write_varuint64 (current_part->operations, content_size);
       _ostree_write_varuint64 (current_part->operations, object_payload_start);
     }
@@ -502,15 +476,14 @@ process_one_object (OstreeRepo                       *repo,
       gsize mode_offset, xattr_offset, content_offset;
       guint32 mode = g_file_info_get_attribute_uint32 (content_finfo, "unix::mode");
 
-      write_content_mode_xattrs (repo, current_part, content_finfo, content_xattrs,
-                                 &mode_offset, &xattr_offset);
+      write_content_mode_xattrs (repo, current_part, content_finfo, content_xattrs, &mode_offset,
+                                 &xattr_offset);
 
       if (S_ISLNK (mode))
         {
           g_assert (content_stream == NULL);
           const char *target = g_file_info_get_symlink_target (content_finfo);
-          content_stream =
-            g_memory_input_stream_new_from_data (target, strlen (target), NULL);
+          content_stream = g_memory_input_stream_new_from_data (target, strlen (target), NULL);
           content_size = strlen (target);
         }
       else
@@ -519,11 +492,11 @@ process_one_object (OstreeRepo                       *repo,
         }
 
       content_offset = current_part->payload->len;
-      if (!splice_stream_to_payload (current_part, content_stream,
-                                     cancellable, error))
+      if (!splice_stream_to_payload (current_part, content_stream, cancellable, error))
         return FALSE;
 
-      g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_OPEN_SPLICE_AND_CLOSE);
+      g_string_append_c (current_part->operations,
+                         (gchar)OSTREE_STATIC_DELTA_OP_OPEN_SPLICE_AND_CLOSE);
       _ostree_write_varuint64 (current_part->operations, mode_offset);
       _ostree_write_varuint64 (current_part->operations, xattr_offset);
       _ostree_write_varuint64 (current_part->operations, content_size);
@@ -533,17 +506,19 @@ process_one_object (OstreeRepo                       *repo,
   return TRUE;
 }
 
-typedef struct {
+typedef struct
+{
   char *from_checksum;
 } ContentBsdiff;
 
-typedef struct {
+typedef struct
+{
   char *from_checksum;
   OstreeRollsumMatches *matches;
 } ContentRollsum;
 
 static void
-content_rollsums_free (ContentRollsum  *rollsum)
+content_rollsums_free (ContentRollsum *rollsum)
 {
   g_free (rollsum->from_checksum);
   _ostree_rollsum_matches_free (rollsum->matches);
@@ -551,7 +526,7 @@ content_rollsums_free (ContentRollsum  *rollsum)
 }
 
 static void
-content_bsdiffs_free (ContentBsdiff  *bsdiff)
+content_bsdiffs_free (ContentBsdiff *bsdiff)
 {
   g_free (bsdiff->from_checksum);
   g_free (bsdiff);
@@ -561,16 +536,12 @@ content_bsdiffs_free (ContentBsdiff  *bsdiff)
    that's mmap()'d and suitable for seeking.
  */
 static gboolean
-get_unpacked_unlinked_content (OstreeRepo       *repo,
-                               const char       *checksum,
-                               GBytes          **out_content,
-                               GCancellable     *cancellable,
-                               GError          **error)
+get_unpacked_unlinked_content (OstreeRepo *repo, const char *checksum, GBytes **out_content,
+                               GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GInputStream) istream = NULL;
+  g_autoptr (GInputStream) istream = NULL;
 
-  if (!ostree_repo_load_file (repo, checksum, &istream, NULL, NULL,
-                              cancellable, error))
+  if (!ostree_repo_load_file (repo, checksum, &istream, NULL, NULL, cancellable, error))
     return FALSE;
 
   *out_content = ot_map_anonymous_tmpfile_from_content (istream, cancellable, error);
@@ -580,23 +551,15 @@ get_unpacked_unlinked_content (OstreeRepo       *repo,
 }
 
 static gboolean
-try_content_bsdiff (OstreeRepo                       *repo,
-                    const char                       *from,
-                    const char                       *to,
-                    ContentBsdiff                    **out_bsdiff,
-                    guint64                          max_bsdiff_size_bytes,
-                    GCancellable                     *cancellable,
-                    GError                           **error)
+try_content_bsdiff (OstreeRepo *repo, const char *from, const char *to, ContentBsdiff **out_bsdiff,
+                    guint64 max_bsdiff_size_bytes, GCancellable *cancellable, GError **error)
 {
 
-
-  g_autoptr(GFileInfo) from_finfo = NULL;
-  if (!ostree_repo_load_file (repo, from, NULL, &from_finfo, NULL,
-                              cancellable, error))
+  g_autoptr (GFileInfo) from_finfo = NULL;
+  if (!ostree_repo_load_file (repo, from, NULL, &from_finfo, NULL, cancellable, error))
     return FALSE;
-  g_autoptr(GFileInfo) to_finfo = NULL;
-  if (!ostree_repo_load_file (repo, to, NULL, &to_finfo, NULL,
-                              cancellable, error))
+  g_autoptr (GFileInfo) to_finfo = NULL;
+  if (!ostree_repo_load_file (repo, to, NULL, &to_finfo, NULL, cancellable, error))
     return FALSE;
 
   *out_bsdiff = NULL;
@@ -613,29 +576,24 @@ try_content_bsdiff (OstreeRepo                       *repo,
 }
 
 static gboolean
-try_content_rollsum (OstreeRepo                       *repo,
-                     DeltaOpts                        opts,
-                     const char                       *from,
-                     const char                       *to,
-                     ContentRollsum                  **out_rollsum,
-                     GCancellable                     *cancellable,
-                     GError                          **error)
+try_content_rollsum (OstreeRepo *repo, DeltaOpts opts, const char *from, const char *to,
+                     ContentRollsum **out_rollsum, GCancellable *cancellable, GError **error)
 {
   *out_rollsum = NULL;
 
   /* Load the content objects, splice them to uncompressed temporary files that
    * we can just mmap() and seek around in conveniently.
    */
-  g_autoptr(GBytes) tmp_from = NULL;
+  g_autoptr (GBytes) tmp_from = NULL;
   if (!get_unpacked_unlinked_content (repo, from, &tmp_from, cancellable, error))
     return FALSE;
-  g_autoptr(GBytes) tmp_to = NULL;
+  g_autoptr (GBytes) tmp_to = NULL;
   if (!get_unpacked_unlinked_content (repo, to, &tmp_to, cancellable, error))
     return FALSE;
 
-  g_autoptr(OstreeRollsumMatches) matches = _ostree_compute_rollsum_matches (tmp_from, tmp_to);
+  g_autoptr (OstreeRollsumMatches) matches = _ostree_compute_rollsum_matches (tmp_from, tmp_to);
 
-  const guint match_ratio = (matches->bufmatches*100)/matches->total;
+  const guint match_ratio = (matches->bufmatches * 100) / matches->total;
 
   /* Only proceed if the file contains (arbitrary) more than 50% of
    * the previous chunks.
@@ -645,10 +603,9 @@ try_content_rollsum (OstreeRepo                       *repo,
 
   if (opts & DELTAOPT_FLAG_VERBOSE)
     {
-      g_printerr ("rollsum for %s -> %s; crcs=%u bufs=%u total=%u matchsize=%llu\n",
-                  from, to, matches->crcmatches,
-                  matches->bufmatches,
-                  matches->total, (unsigned long long)matches->match_size);
+      g_printerr ("rollsum for %s -> %s; crcs=%u bufs=%u total=%u matchsize=%llu\n", from, to,
+                  matches->crcmatches, matches->bufmatches, matches->total,
+                  (unsigned long long)matches->match_size);
     }
 
   ContentRollsum *ret_rollsum = g_new0 (ContentRollsum, 1);
@@ -666,47 +623,37 @@ struct bzdiff_opaque_s
 };
 
 static int
-bzdiff_write (struct bsdiff_stream* stream, const void* buffer, int size)
+bzdiff_write (struct bsdiff_stream *stream, const void *buffer, int size)
 {
   struct bzdiff_opaque_s *op = stream->opaque;
-  if (!g_output_stream_write (op->out,
-                              buffer,
-                              size,
-                              op->cancellable,
-                              op->error))
+  if (!g_output_stream_write (op->out, buffer, size, op->cancellable, op->error))
     return -1;
 
   return 0;
 }
 
 static void
-append_payload_chunk_and_write (OstreeStaticDeltaPartBuilder    *current_part,
-                                const guint8                    *buf,
-                                guint64                          offset)
+append_payload_chunk_and_write (OstreeStaticDeltaPartBuilder *current_part, const guint8 *buf,
+                                guint64 offset)
 {
   guint64 payload_start;
 
   payload_start = current_part->payload->len;
-  g_string_append_len (current_part->payload, (char*)buf, offset);
+  g_string_append_len (current_part->payload, (char *)buf, offset);
   g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_WRITE);
   _ostree_write_varuint64 (current_part->operations, offset);
   _ostree_write_varuint64 (current_part->operations, payload_start);
 }
 
 static gboolean
-process_one_rollsum (OstreeRepo                       *repo,
-                     OstreeStaticDeltaBuilder         *builder,
-                     OstreeStaticDeltaPartBuilder    **current_part_val,
-                     const char                       *to_checksum,
-                     ContentRollsum                   *rollsum,
-                     GCancellable                     *cancellable,
-                     GError                          **error)
+process_one_rollsum (OstreeRepo *repo, OstreeStaticDeltaBuilder *builder,
+                     OstreeStaticDeltaPartBuilder **current_part_val, const char *to_checksum,
+                     ContentRollsum *rollsum, GCancellable *cancellable, GError **error)
 {
   OstreeStaticDeltaPartBuilder *current_part = *current_part_val;
 
   /* Check to see if this delta has gone over maximum size */
-  if (current_part->objects->len > 0 &&
-      current_part->payload->len > builder->max_chunk_size_bytes)
+  if (current_part->objects->len > 0 && current_part->payload->len > builder->max_chunk_size_bytes)
     {
       current_part = allocate_part (builder, error);
       if (current_part == NULL)
@@ -714,46 +661,47 @@ process_one_rollsum (OstreeRepo                       *repo,
       *current_part_val = current_part;
     }
 
-  g_autoptr(GBytes) tmp_to = NULL;
-  if (!get_unpacked_unlinked_content (repo, to_checksum, &tmp_to,
-                                      cancellable, error))
+  g_autoptr (GBytes) tmp_to = NULL;
+  if (!get_unpacked_unlinked_content (repo, to_checksum, &tmp_to, cancellable, error))
     return FALSE;
 
   gsize tmp_to_len;
   const guint8 *tmp_to_buf = g_bytes_get_data (tmp_to, &tmp_to_len);
 
-  g_autoptr(GFileInfo) content_finfo = NULL;
-  g_autoptr(GVariant) content_xattrs = NULL;
-  if (!ostree_repo_load_file (repo, to_checksum, NULL,
-                              &content_finfo, &content_xattrs,
-                              cancellable, error))
+  g_autoptr (GFileInfo) content_finfo = NULL;
+  g_autoptr (GVariant) content_xattrs = NULL;
+  if (!ostree_repo_load_file (repo, to_checksum, NULL, &content_finfo, &content_xattrs, cancellable,
+                              error))
     return FALSE;
   guint64 content_size = g_file_info_get_size (content_finfo);
   g_assert_cmpint (tmp_to_len, ==, content_size);
 
   current_part->uncompressed_size += content_size;
 
-  g_ptr_array_add (current_part->objects, ostree_object_name_serialize (to_checksum, OSTREE_OBJECT_TYPE_FILE));
+  g_ptr_array_add (current_part->objects,
+                   ostree_object_name_serialize (to_checksum, OSTREE_OBJECT_TYPE_FILE));
 
-  { gsize mode_offset, xattr_offset, from_csum_offset;
+  {
+    gsize mode_offset, xattr_offset, from_csum_offset;
     gboolean reading_payload = TRUE;
     guchar source_csum[OSTREE_SHA256_DIGEST_LEN];
     guint i;
 
-    write_content_mode_xattrs (repo, current_part, content_finfo, content_xattrs,
-                               &mode_offset, &xattr_offset);
+    write_content_mode_xattrs (repo, current_part, content_finfo, content_xattrs, &mode_offset,
+                               &xattr_offset);
 
     /* Write the origin checksum */
     ostree_checksum_inplace_to_bytes (rollsum->from_checksum, source_csum);
     from_csum_offset = current_part->payload->len;
-    g_string_append_len (current_part->payload, (char*)source_csum, sizeof (source_csum));
+    g_string_append_len (current_part->payload, (char *)source_csum, sizeof (source_csum));
 
     g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_OPEN);
     _ostree_write_varuint64 (current_part->operations, mode_offset);
     _ostree_write_varuint64 (current_part->operations, xattr_offset);
     _ostree_write_varuint64 (current_part->operations, content_size);
 
-    { guint64 writing_offset = 0;
+    {
+      guint64 writing_offset = 0;
       guint64 offset = 0, to_start = 0, from_start = 0;
       GPtrArray *matchlist = rollsum->matches->matches;
 
@@ -771,7 +719,8 @@ process_one_rollsum (OstreeRepo                       *repo,
             {
               if (!reading_payload)
                 {
-                  g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_UNSET_READ_SOURCE);
+                  g_string_append_c (current_part->operations,
+                                     (gchar)OSTREE_STATIC_DELTA_OP_UNSET_READ_SOURCE);
                   reading_payload = TRUE;
                 }
 
@@ -782,7 +731,8 @@ process_one_rollsum (OstreeRepo                       *repo,
 
           if (reading_payload)
             {
-              g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_SET_READ_SOURCE);
+              g_string_append_c (current_part->operations,
+                                 (gchar)OSTREE_STATIC_DELTA_OP_SET_READ_SOURCE);
               _ostree_write_varuint64 (current_part->operations, from_csum_offset);
               reading_payload = FALSE;
             }
@@ -794,7 +744,8 @@ process_one_rollsum (OstreeRepo                       *repo,
         }
 
       if (!reading_payload)
-        g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_UNSET_READ_SOURCE);
+        g_string_append_c (current_part->operations,
+                           (gchar)OSTREE_STATIC_DELTA_OP_UNSET_READ_SOURCE);
 
       const guint64 remainder = tmp_to_len - writing_offset;
       if (remainder > 0)
@@ -804,7 +755,6 @@ process_one_rollsum (OstreeRepo                       *repo,
       g_assert_cmpint (writing_offset, ==, content_size);
     }
 
-
     g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_CLOSE);
   }
 
@@ -812,19 +762,14 @@ process_one_rollsum (OstreeRepo                       *repo,
 }
 
 static gboolean
-process_one_bsdiff (OstreeRepo                       *repo,
-                    OstreeStaticDeltaBuilder         *builder,
-                    OstreeStaticDeltaPartBuilder    **current_part_val,
-                    const char                       *to_checksum,
-                    ContentBsdiff                   *bsdiff_content,
-                    GCancellable                     *cancellable,
-                    GError                          **error)
+process_one_bsdiff (OstreeRepo *repo, OstreeStaticDeltaBuilder *builder,
+                    OstreeStaticDeltaPartBuilder **current_part_val, const char *to_checksum,
+                    ContentBsdiff *bsdiff_content, GCancellable *cancellable, GError **error)
 {
   OstreeStaticDeltaPartBuilder *current_part = *current_part_val;
 
   /* Check to see if this delta has gone over maximum size */
-  if (current_part->objects->len > 0 &&
-      current_part->payload->len > builder->max_chunk_size_bytes)
+  if (current_part->objects->len > 0 && current_part->payload->len > builder->max_chunk_size_bytes)
     {
       current_part = allocate_part (builder, error);
       if (current_part == NULL)
@@ -832,13 +777,12 @@ process_one_bsdiff (OstreeRepo                       *repo,
       *current_part_val = current_part;
     }
 
-  g_autoptr(GBytes) tmp_from = NULL;
-  if (!get_unpacked_unlinked_content (repo, bsdiff_content->from_checksum, &tmp_from,
-                                      cancellable, error))
+  g_autoptr (GBytes) tmp_from = NULL;
+  if (!get_unpacked_unlinked_content (repo, bsdiff_content->from_checksum, &tmp_from, cancellable,
+                                      error))
     return FALSE;
-  g_autoptr(GBytes) tmp_to = NULL;
-  if (!get_unpacked_unlinked_content (repo, to_checksum, &tmp_to,
-                                      cancellable, error))
+  g_autoptr (GBytes) tmp_to = NULL;
+  if (!get_unpacked_unlinked_content (repo, to_checksum, &tmp_to, cancellable, error))
     return FALSE;
 
   gsize tmp_to_len;
@@ -846,31 +790,32 @@ process_one_bsdiff (OstreeRepo                       *repo,
   gsize tmp_from_len;
   const guint8 *tmp_from_buf = g_bytes_get_data (tmp_from, &tmp_from_len);
 
-  g_autoptr(GFileInfo) content_finfo = NULL;
-  g_autoptr(GVariant) content_xattrs = NULL;
-  if (!ostree_repo_load_file (repo, to_checksum, NULL,
-                              &content_finfo, &content_xattrs,
-                              cancellable, error))
+  g_autoptr (GFileInfo) content_finfo = NULL;
+  g_autoptr (GVariant) content_xattrs = NULL;
+  if (!ostree_repo_load_file (repo, to_checksum, NULL, &content_finfo, &content_xattrs, cancellable,
+                              error))
     return FALSE;
   const guint64 content_size = g_file_info_get_size (content_finfo);
   g_assert_cmpint (tmp_to_len, ==, content_size);
 
   current_part->uncompressed_size += content_size;
 
-  g_ptr_array_add (current_part->objects, ostree_object_name_serialize (to_checksum, OSTREE_OBJECT_TYPE_FILE));
+  g_ptr_array_add (current_part->objects,
+                   ostree_object_name_serialize (to_checksum, OSTREE_OBJECT_TYPE_FILE));
 
-  { gsize mode_offset, xattr_offset;
+  {
+    gsize mode_offset, xattr_offset;
     guchar source_csum[OSTREE_SHA256_DIGEST_LEN];
 
-    write_content_mode_xattrs (repo, current_part, content_finfo, content_xattrs,
-                               &mode_offset, &xattr_offset);
+    write_content_mode_xattrs (repo, current_part, content_finfo, content_xattrs, &mode_offset,
+                               &xattr_offset);
 
     /* Write the origin checksum */
     ostree_checksum_inplace_to_bytes (bsdiff_content->from_checksum, source_csum);
 
     g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_SET_READ_SOURCE);
     _ostree_write_varuint64 (current_part->operations, current_part->payload->len);
-    g_string_append_len (current_part->payload, (char*)source_csum, sizeof (source_csum));
+    g_string_append_len (current_part->payload, (char *)source_csum, sizeof (source_csum));
 
     g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_OPEN);
     _ostree_write_varuint64 (current_part->operations, mode_offset);
@@ -882,7 +827,7 @@ process_one_bsdiff (OstreeRepo                       *repo,
       struct bzdiff_opaque_s op;
       const gchar *payload;
       gssize payload_size;
-      g_autoptr(GOutputStream) out = g_memory_output_stream_new_resizable ();
+      g_autoptr (GOutputStream) out = g_memory_output_stream_new_resizable ();
       stream.malloc = malloc;
       stream.free = free;
       stream.write = bzdiff_write;
@@ -925,17 +870,13 @@ process_one_bsdiff (OstreeRepo                       *repo,
 }
 
 static gboolean
-check_object_world_readable (OstreeRepo   *repo,
-                             const char   *checksum,
-                             gboolean     *out_readable,
-                             GCancellable *cancellable,
-                             GError      **error)
+check_object_world_readable (OstreeRepo *repo, const char *checksum, gboolean *out_readable,
+                             GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GFileInfo) finfo = NULL;
+  g_autoptr (GFileInfo) finfo = NULL;
   guint32 mode;
 
-  if (!ostree_repo_load_file (repo, checksum, NULL, &finfo, NULL,
-                              cancellable, error))
+  if (!ostree_repo_load_file (repo, checksum, NULL, &finfo, NULL, cancellable, error))
     return FALSE;
 
   mode = g_file_info_get_attribute_uint32 (finfo, "unix::mode");
@@ -944,54 +885,44 @@ check_object_world_readable (OstreeRepo   *repo,
 }
 
 static gboolean
-generate_delta_lowlatency (OstreeRepo                       *repo,
-                           const char                       *from,
-                           const char                       *to,
-                           DeltaOpts                         opts,
-                           OstreeStaticDeltaBuilder         *builder,
-                           GCancellable                     *cancellable,
-                           GError                          **error)
+generate_delta_lowlatency (OstreeRepo *repo, const char *from, const char *to, DeltaOpts opts,
+                           OstreeStaticDeltaBuilder *builder, GCancellable *cancellable,
+                           GError **error)
 {
   GHashTableIter hashiter;
   gpointer key, value;
   OstreeStaticDeltaPartBuilder *current_part = NULL;
-  g_autoptr(GFile) root_from = NULL;
-  g_autoptr(GVariant) from_commit = NULL;
-  g_autoptr(GFile) root_to = NULL;
-  g_autoptr(GVariant) to_commit = NULL;
-  g_autoptr(GHashTable) to_reachable_objects = NULL;
-  g_autoptr(GHashTable) from_reachable_objects = NULL;
-  g_autoptr(GHashTable) new_reachable_metadata = NULL;
-  g_autoptr(GHashTable) new_reachable_regfile_content = NULL;
-  g_autoptr(GHashTable) new_reachable_symlink_content = NULL;
-  g_autoptr(GHashTable) modified_regfile_content = NULL;
-  g_autoptr(GHashTable) rollsum_optimized_content_objects = NULL;
-  g_autoptr(GHashTable) bsdiff_optimized_content_objects = NULL;
+  g_autoptr (GFile) root_from = NULL;
+  g_autoptr (GVariant) from_commit = NULL;
+  g_autoptr (GFile) root_to = NULL;
+  g_autoptr (GVariant) to_commit = NULL;
+  g_autoptr (GHashTable) to_reachable_objects = NULL;
+  g_autoptr (GHashTable) from_reachable_objects = NULL;
+  g_autoptr (GHashTable) new_reachable_metadata = NULL;
+  g_autoptr (GHashTable) new_reachable_regfile_content = NULL;
+  g_autoptr (GHashTable) new_reachable_symlink_content = NULL;
+  g_autoptr (GHashTable) modified_regfile_content = NULL;
+  g_autoptr (GHashTable) rollsum_optimized_content_objects = NULL;
+  g_autoptr (GHashTable) bsdiff_optimized_content_objects = NULL;
 
   if (from != NULL)
     {
-      if (!ostree_repo_read_commit (repo, from, &root_from, NULL,
-                                    cancellable, error))
+      if (!ostree_repo_read_commit (repo, from, &root_from, NULL, cancellable, error))
         return FALSE;
 
-      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, from,
-                                     &from_commit, error))
+      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, from, &from_commit, error))
         return FALSE;
 
-      if (!ostree_repo_traverse_commit (repo, from, 0, &from_reachable_objects,
-                                        cancellable, error))
+      if (!ostree_repo_traverse_commit (repo, from, 0, &from_reachable_objects, cancellable, error))
         return FALSE;
     }
 
-  if (!ostree_repo_read_commit (repo, to, &root_to, NULL,
-                                cancellable, error))
+  if (!ostree_repo_read_commit (repo, to, &root_to, NULL, cancellable, error))
     return FALSE;
-  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, to,
-                                 &to_commit, error))
+  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, to, &to_commit, error))
     return FALSE;
 
-  if (!ostree_repo_traverse_commit (repo, to, 0, &to_reachable_objects,
-                                    cancellable, error))
+  if (!ostree_repo_traverse_commit (repo, to, 0, &to_reachable_objects, cancellable, error))
     return FALSE;
 
   new_reachable_metadata = ostree_repo_traverse_new_reachable ();
@@ -1014,11 +945,10 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
         g_hash_table_add (new_reachable_metadata, g_variant_ref (serialized_key));
       else
         {
-          g_autoptr(GFileInfo) finfo = NULL;
+          g_autoptr (GFileInfo) finfo = NULL;
           GFileType ftype;
 
-          if (!ostree_repo_load_file (repo, checksum, NULL, &finfo, NULL,
-                                      cancellable, error))
+          if (!ostree_repo_load_file (repo, checksum, NULL, &finfo, NULL, cancellable, error))
             return FALSE;
 
           ftype = g_file_info_get_file_type (finfo);
@@ -1036,8 +966,7 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
       if (!_ostree_delta_compute_similar_objects (repo, from_commit, to_commit,
                                                   new_reachable_regfile_content,
                                                   CONTENT_SIZE_SIMILARITY_THRESHOLD_PERCENT,
-                                                  &modified_regfile_content,
-                                                  cancellable, error))
+                                                  &modified_regfile_content, cancellable, error))
         return FALSE;
     }
   else
@@ -1053,17 +982,16 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
     }
 
   /* We already ship the to commit in the superblock, don't ship it twice */
-  { g_autoptr(GVariant) commit = ostree_object_name_serialize (to, OSTREE_OBJECT_TYPE_COMMIT);
+  {
+    g_autoptr (GVariant) commit = ostree_object_name_serialize (to, OSTREE_OBJECT_TYPE_COMMIT);
     g_hash_table_remove (new_reachable_metadata, commit);
   }
 
-  rollsum_optimized_content_objects = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                                             g_free,
-                                                             (GDestroyNotify) content_rollsums_free);
+  rollsum_optimized_content_objects = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+                                                             (GDestroyNotify)content_rollsums_free);
 
-  bsdiff_optimized_content_objects = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                                            g_free,
-                                                            (GDestroyNotify) content_bsdiffs_free);
+  bsdiff_optimized_content_objects = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+                                                            (GDestroyNotify)content_bsdiffs_free);
 
   g_hash_table_iter_init (&hashiter, modified_regfile_content);
   while (g_hash_table_iter_next (&hashiter, &key, &value))
@@ -1080,13 +1008,14 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
        * when the client is trying to update a bare-user repository with a
        * bare repository defined as its parent.
        */
-      if (!check_object_world_readable (repo, from_checksum, &from_world_readable, cancellable, error))
+      if (!check_object_world_readable (repo, from_checksum, &from_world_readable, cancellable,
+                                        error))
         return FALSE;
       if (!from_world_readable)
         continue;
 
-      if (!try_content_rollsum (repo, opts, from_checksum, to_checksum,
-                                &rollsum, cancellable, error))
+      if (!try_content_rollsum (repo, opts, from_checksum, to_checksum, &rollsum, cancellable,
+                                error))
         return FALSE;
 
       if (rollsum)
@@ -1098,9 +1027,8 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
 
       if (!(opts & DELTAOPT_FLAG_DISABLE_BSDIFF))
         {
-          if (!try_content_bsdiff (repo, from_checksum, to_checksum,
-                                   &bsdiff, builder->max_bsdiff_size_bytes,
-                                   cancellable, error))
+          if (!try_content_bsdiff (repo, from_checksum, to_checksum, &bsdiff,
+                                   builder->max_bsdiff_size_bytes, cancellable, error))
             return FALSE;
 
           if (bsdiff)
@@ -1129,9 +1057,7 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
 
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
 
-      if (!process_one_object (repo, builder, &current_part,
-                               checksum, objtype,
-                               cancellable, error))
+      if (!process_one_object (repo, builder, &current_part, checksum, objtype, cancellable, error))
         return FALSE;
     }
 
@@ -1143,9 +1069,8 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
       const char *checksum = key;
       ContentRollsum *rollsum = value;
 
-      if (!process_one_rollsum (repo, builder, &current_part,
-                                checksum, rollsum,
-                                cancellable, error))
+      if (!process_one_rollsum (repo, builder, &current_part, checksum, rollsum, cancellable,
+                                error))
         return FALSE;
 
       builder->n_rollsum++;
@@ -1163,13 +1088,11 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
           const char *checksum = key;
           ContentBsdiff *bsdiff = value;
 
-          if (opts & DELTAOPT_FLAG_VERBOSE &&
-              (mod == 0 || builder->n_bsdiff % mod == 0))
+          if (opts & DELTAOPT_FLAG_VERBOSE && (mod == 0 || builder->n_bsdiff % mod == 0))
             g_printerr ("processing bsdiff: [%u/%u]\n", builder->n_bsdiff, n_bsdiff);
 
-          if (!process_one_bsdiff (repo, builder, &current_part,
-                                   checksum, bsdiff,
-                                   cancellable, error))
+          if (!process_one_bsdiff (repo, builder, &current_part, checksum, bsdiff, cancellable,
+                                   error))
             return FALSE;
 
           builder->n_bsdiff++;
@@ -1187,16 +1110,15 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
       gboolean fallback = FALSE;
 
       /* Skip content objects we rollsum'd or bsdiff'ed */
-      if (g_hash_table_contains (rollsum_optimized_content_objects, checksum) ||
-          g_hash_table_contains (bsdiff_optimized_content_objects, checksum))
+      if (g_hash_table_contains (rollsum_optimized_content_objects, checksum)
+          || g_hash_table_contains (bsdiff_optimized_content_objects, checksum))
         continue;
 
-      if (!ostree_repo_load_object_stream (repo, OSTREE_OBJECT_TYPE_FILE, checksum,
-                                           NULL, &uncompressed_size,
-                                           cancellable, error))
+      if (!ostree_repo_load_object_stream (repo, OSTREE_OBJECT_TYPE_FILE, checksum, NULL,
+                                           &uncompressed_size, cancellable, error))
         return FALSE;
-      if (builder->min_fallback_size_bytes > 0 &&
-          uncompressed_size > builder->min_fallback_size_bytes)
+      if (builder->min_fallback_size_bytes > 0
+          && uncompressed_size > builder->min_fallback_size_bytes)
         fallback = TRUE;
 
       if (fallback)
@@ -1220,12 +1142,11 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
       const char *checksum = key;
 
       /* Skip content objects we rollsum'd */
-      if (g_hash_table_contains (rollsum_optimized_content_objects, checksum) ||
-          g_hash_table_contains (bsdiff_optimized_content_objects, checksum))
+      if (g_hash_table_contains (rollsum_optimized_content_objects, checksum)
+          || g_hash_table_contains (bsdiff_optimized_content_objects, checksum))
         continue;
 
-      if (!process_one_object (repo, builder, &current_part,
-                               checksum, OSTREE_OBJECT_TYPE_FILE,
+      if (!process_one_object (repo, builder, &current_part, checksum, OSTREE_OBJECT_TYPE_FILE,
                                cancellable, error))
         return FALSE;
     }
@@ -1236,8 +1157,7 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
     {
       const char *checksum = key;
 
-      if (!process_one_object (repo, builder, &current_part,
-                               checksum, OSTREE_OBJECT_TYPE_FILE,
+      if (!process_one_object (repo, builder, &current_part, checksum, OSTREE_OBJECT_TYPE_FILE,
                                cancellable, error))
         return FALSE;
     }
@@ -1249,14 +1169,11 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
 }
 
 static gboolean
-get_fallback_headers (OstreeRepo               *self,
-                      OstreeStaticDeltaBuilder *builder,
-                      GVariant                **out_headers,
-                      GCancellable             *cancellable,
-                      GError                  **error)
+get_fallback_headers (OstreeRepo *self, OstreeStaticDeltaBuilder *builder, GVariant **out_headers,
+                      GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GVariantBuilder) fallback_builder =
-    g_variant_builder_new (G_VARIANT_TYPE ("a" OSTREE_STATIC_DELTA_FALLBACK_FORMAT));
+  g_autoptr (GVariantBuilder) fallback_builder
+      = g_variant_builder_new (G_VARIANT_TYPE ("a" OSTREE_STATIC_DELTA_FALLBACK_FORMAT));
 
   for (guint i = 0; i < builder->fallback_objects->len; i++)
     {
@@ -1270,38 +1187,32 @@ get_fallback_headers (OstreeRepo               *self,
 
       if (OSTREE_OBJECT_TYPE_IS_META (objtype))
         {
-          if (!ostree_repo_load_object_stream (self, objtype, checksum,
-                                               NULL, &uncompressed_size,
+          if (!ostree_repo_load_object_stream (self, objtype, checksum, NULL, &uncompressed_size,
                                                cancellable, error))
             return FALSE;
           compressed_size = uncompressed_size;
         }
       else
         {
-          if (!ostree_repo_query_object_storage_size (self, OSTREE_OBJECT_TYPE_FILE,
-                                                      checksum,
-                                                      &compressed_size,
-                                                      cancellable, error))
+          if (!ostree_repo_query_object_storage_size (self, OSTREE_OBJECT_TYPE_FILE, checksum,
+                                                      &compressed_size, cancellable, error))
             return FALSE;
 
-          g_autoptr(GFileInfo) file_info = NULL;
-          if (!ostree_repo_load_file (self, checksum,
-                                      NULL, &file_info, NULL,
-                                      cancellable, error))
+          g_autoptr (GFileInfo) file_info = NULL;
+          if (!ostree_repo_load_file (self, checksum, NULL, &file_info, NULL, cancellable, error))
             return FALSE;
 
           uncompressed_size = g_file_info_get_size (file_info);
         }
 
-      g_variant_builder_add_value (fallback_builder,
-                                   g_variant_new ("(y@aytt)",
-                                                  objtype,
-                                                  ostree_checksum_to_bytes_v (checksum),
-                                                  maybe_swap_endian_u64 (builder->swap_endian, compressed_size),
-                                                  maybe_swap_endian_u64 (builder->swap_endian, uncompressed_size)));
+      g_variant_builder_add_value (
+          fallback_builder,
+          g_variant_new ("(y@aytt)", objtype, ostree_checksum_to_bytes_v (checksum),
+                         maybe_swap_endian_u64 (builder->swap_endian, compressed_size),
+                         maybe_swap_endian_u64 (builder->swap_endian, uncompressed_size)));
     }
 
-  g_autoptr(GVariant) ret_headers = g_variant_ref_sink (g_variant_builder_end (fallback_builder));
+  g_autoptr (GVariant) ret_headers = g_variant_ref_sink (g_variant_builder_end (fallback_builder));
   ot_transfer_out_value (out_headers, &ret_headers);
   return TRUE;
 }
@@ -1324,7 +1235,8 @@ get_fallback_headers (OstreeRepo               *self,
  *
  * The @params argument should be an a{sv}.  The following attributes
  * are known:
- *   - min-fallback-size: u: Minimum uncompressed size in megabytes to use fallback, 0 to disable fallbacks
+ *   - min-fallback-size: u: Minimum uncompressed size in megabytes to use fallback, 0 to disable
+ * fallbacks
  *   - max-chunk-size: u: Maximum size in megabytes of a delta part
  *   - max-bsdiff-size: u: Maximum size in megabytes to consider bsdiff compression
  *   for input files
@@ -1332,22 +1244,21 @@ get_fallback_headers (OstreeRepo               *self,
  *   - bsdiff-enabled: b: Enable bsdiff compression.  Default TRUE.
  *   - inline-parts: b: Put part data in header, to get a single file delta.  Default FALSE.
  *   - verbose: b: Print diagnostic messages.  Default FALSE.
- *   - endianness: b: Deltas use host byte order by default; this option allows choosing (G_BIG_ENDIAN or G_LITTLE_ENDIAN)
- *   - filename: ^ay: Save delta superblock to this filename (bytestring), and parts in the same directory.  Default saves to repository.
+ *   - endianness: b: Deltas use host byte order by default; this option allows choosing
+ * (G_BIG_ENDIAN or G_LITTLE_ENDIAN)
+ *   - filename: ^ay: Save delta superblock to this filename (bytestring), and parts in the same
+ * directory.  Default saves to repository.
  *   - sign-name: ^ay: Signature type to use (bytestring).
  *   - sign-key-ids: ^as: NULL-terminated array of keys used to sign delta superblock.
  */
 gboolean
-ostree_repo_static_delta_generate (OstreeRepo                   *self,
-                                   OstreeStaticDeltaGenerateOpt  opt,
-                                   const char                   *from,
-                                   const char                   *to,
-                                   GVariant                     *metadata,
-                                   GVariant                     *params,
-                                   GCancellable                 *cancellable,
-                                   GError                      **error)
+ostree_repo_static_delta_generate (OstreeRepo *self, OstreeStaticDeltaGenerateOpt opt,
+                                   const char *from, const char *to, GVariant *metadata,
+                                   GVariant *params, GCancellable *cancellable, GError **error)
 {
-  OstreeStaticDeltaBuilder builder = { 0, };
+  OstreeStaticDeltaBuilder builder = {
+    0,
+  };
   guint i;
   guint min_fallback_size;
   guint max_bsdiff_size;
@@ -1355,19 +1266,23 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   DeltaOpts delta_opts = DELTAOPT_FLAG_NONE;
   guint64 total_compressed_size = 0;
   guint64 total_uncompressed_size = 0;
-  g_autoptr(GVariantBuilder) part_headers = NULL;
-  g_autoptr(GPtrArray) part_temp_paths = NULL;
-  g_autoptr(GVariant) to_commit = NULL;
+  g_autoptr (GVariantBuilder) part_headers = NULL;
+  g_autoptr (GPtrArray) part_temp_paths = NULL;
+  g_autoptr (GVariant) to_commit = NULL;
   const char *opt_filename;
   g_autofree char *descriptor_name = NULL;
   glnx_autofd int descriptor_dfd = -1;
-  g_autoptr(GVariant) fallback_headers = NULL;
-  g_autoptr(GVariant) detached = NULL;
+  g_autoptr (GVariant) fallback_headers = NULL;
+  g_autoptr (GVariant) detached = NULL;
   gboolean inline_parts;
   guint endianness = G_BYTE_ORDER;
-  g_autoptr(GPtrArray) builder_parts = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_static_delta_part_builder_unref);
-  g_autoptr(GPtrArray) builder_fallback_objects = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
-  g_auto(GLnxTmpfile) descriptor_tmpf = { 0, };
+  g_autoptr (GPtrArray) builder_parts
+      = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_static_delta_part_builder_unref);
+  g_autoptr (GPtrArray) builder_fallback_objects
+      = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
+  g_auto (GLnxTmpfile) descriptor_tmpf = {
+    0,
+  };
   const char *opt_sign_name;
   const char **opt_key_ids;
 
@@ -1382,7 +1297,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
     max_chunk_size = 32;
   builder.max_chunk_size_bytes = ((guint64)max_chunk_size) * 1000 * 1000;
 
-  (void) g_variant_lookup (params, "endianness", "u", &endianness);
+  (void)g_variant_lookup (params, "endianness", "u", &endianness);
   if (!(endianness == G_BIG_ENDIAN || endianness == G_LITTLE_ENDIAN))
     return glnx_throw (error, "Invalid endianness parameter");
 
@@ -1390,14 +1305,16 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   builder.parts = builder_parts;
   builder.fallback_objects = builder_fallback_objects;
 
-  { gboolean use_bsdiff;
+  {
+    gboolean use_bsdiff;
     if (!g_variant_lookup (params, "bsdiff-enabled", "b", &use_bsdiff))
       use_bsdiff = TRUE;
     if (!use_bsdiff)
       delta_opts |= DELTAOPT_FLAG_DISABLE_BSDIFF;
   }
 
-  { gboolean verbose;
+  {
+    gboolean verbose;
     if (!g_variant_lookup (params, "verbose", "b", &verbose))
       verbose = FALSE;
     if (verbose)
@@ -1420,8 +1337,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   if (!g_variant_lookup (params, "sign-key-ids", "^a&s", &opt_key_ids))
     opt_key_ids = NULL;
 
-  if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, to,
-                                 &to_commit, error))
+  if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, to, &to_commit, error))
     return FALSE;
 
   builder.delta_opts = delta_opts;
@@ -1437,11 +1353,13 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
     }
   else
     {
-      g_autofree char *descriptor_relpath = _ostree_get_relative_static_delta_superblock_path (from, to);
+      g_autofree char *descriptor_relpath
+          = _ostree_get_relative_static_delta_superblock_path (from, to);
       g_autofree char *dnbuf = g_strdup (descriptor_relpath);
       const char *dn = dirname (dnbuf);
 
-      if (!glnx_shutil_mkdir_p_at (self->repo_dir_fd, dn, DEFAULT_DIRECTORY_MODE, cancellable, error))
+      if (!glnx_shutil_mkdir_p_at (self->repo_dir_fd, dn, DEFAULT_DIRECTORY_MODE, cancellable,
+                                   error))
         return FALSE;
       if (!glnx_opendirat (self->repo_dir_fd, dn, TRUE, &descriptor_dfd, error))
         return FALSE;
@@ -1451,17 +1369,15 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   builder.parts_dfd = descriptor_dfd;
 
   /* Ignore optimization flags */
-  if (!generate_delta_lowlatency (self, from, to, delta_opts, &builder,
-                                  cancellable, error))
+  if (!generate_delta_lowlatency (self, from, to, delta_opts, &builder, cancellable, error))
     return FALSE;
 
-  if (!glnx_open_tmpfile_linkable_at (descriptor_dfd, ".", O_RDWR | O_CLOEXEC,
-                                      &descriptor_tmpf, error))
+  if (!glnx_open_tmpfile_linkable_at (descriptor_dfd, ".", O_RDWR | O_CLOEXEC, &descriptor_tmpf,
+                                      error))
     return FALSE;
 
-  g_autoptr(OtVariantBuilder) descriptor_builder =
-    ot_variant_builder_new (G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT),
-                            descriptor_tmpf.fd);
+  g_autoptr (OtVariantBuilder) descriptor_builder = ot_variant_builder_new (
+      G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT), descriptor_tmpf.fd);
   g_assert (descriptor_builder != NULL);
 
   /* Open the metadata dict */
@@ -1486,7 +1402,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
         }
     }
 
-  { guint8 endianness_char;
+  {
+    guint8 endianness_char;
 
     switch (endianness)
       {
@@ -1499,7 +1416,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       default:
         g_assert_not_reached ();
       }
-    if (!ot_variant_builder_add (descriptor_builder, error, "{sv}", "ostree.endianness", g_variant_new_byte (endianness_char)))
+    if (!ot_variant_builder_add (descriptor_builder, error, "{sv}", "ostree.endianness",
+                                 g_variant_new_byte (endianness_char)))
       return FALSE;
   }
 
@@ -1515,12 +1433,14 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
 
           lseek (part_builder->part_tmpf.fd, 0, SEEK_SET);
 
-          if (!ot_variant_builder_open (descriptor_builder, G_VARIANT_TYPE ("{sv}"), error) ||
-              !ot_variant_builder_add (descriptor_builder, error, "s", part_relpath) ||
-              !ot_variant_builder_open (descriptor_builder, G_VARIANT_TYPE ("v"), error) ||
-              !ot_variant_builder_add_from_fd (descriptor_builder, G_VARIANT_TYPE ("(yay)"), part_builder->part_tmpf.fd, part_builder->compressed_size, error) ||
-              !ot_variant_builder_close (descriptor_builder, error) ||
-              !ot_variant_builder_close (descriptor_builder, error))
+          if (!ot_variant_builder_open (descriptor_builder, G_VARIANT_TYPE ("{sv}"), error)
+              || !ot_variant_builder_add (descriptor_builder, error, "s", part_relpath)
+              || !ot_variant_builder_open (descriptor_builder, G_VARIANT_TYPE ("v"), error)
+              || !ot_variant_builder_add_from_fd (descriptor_builder, G_VARIANT_TYPE ("(yay)"),
+                                                  part_builder->part_tmpf.fd,
+                                                  part_builder->compressed_size, error)
+              || !ot_variant_builder_close (descriptor_builder, error)
+              || !ot_variant_builder_close (descriptor_builder, error))
             return FALSE;
         }
       else
@@ -1541,8 +1461,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       total_uncompressed_size += part_builder->uncompressed_size;
     }
 
-  if (!get_fallback_headers (self, &builder, &fallback_headers,
-                             cancellable, error))
+  if (!get_fallback_headers (self, &builder, &fallback_headers, cancellable, error))
     return FALSE;
 
   if (!ostree_repo_read_commit_detached_metadata (self, to, &detached, cancellable, error))
@@ -1550,7 +1469,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
 
   if (detached)
     {
-      g_autofree char *detached_key = _ostree_get_relative_static_delta_path (from, to, "commitmeta");
+      g_autofree char *detached_key
+          = _ostree_get_relative_static_delta_path (from, to, "commitmeta");
       if (!ot_variant_builder_add (descriptor_builder, error, "{sv}", detached_key, detached))
         return FALSE;
     }
@@ -1562,26 +1482,20 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   /* Generate OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT */
   {
     GDateTime *now = g_date_time_new_now_utc ();
-    /* floating */ GVariant *from_csum_v =
-      from ? ostree_checksum_to_bytes_v (from) : ot_gvariant_new_bytearray ((guchar *)"", 0);
-    /* floating */ GVariant *to_csum_v =
-      ostree_checksum_to_bytes_v (to);
-
+    /* floating */ GVariant *from_csum_v
+        = from ? ostree_checksum_to_bytes_v (from) : ot_gvariant_new_bytearray ((guchar *)"", 0);
+    /* floating */ GVariant *to_csum_v = ostree_checksum_to_bytes_v (to);
 
     if (!ot_variant_builder_add (descriptor_builder, error, "t",
-                                 GUINT64_TO_BE (g_date_time_to_unix (now))) ||
-        !ot_variant_builder_add_value (descriptor_builder,
-                                       from_csum_v, error) ||
-        !ot_variant_builder_add_value (descriptor_builder,
-                                       to_csum_v, error) ||
-        !ot_variant_builder_add_value (descriptor_builder,
-                                       to_commit, error) ||
-        !ot_variant_builder_add_value (descriptor_builder,
-                                       ot_gvariant_new_bytearray ((guchar*)"", 0), error) ||
-        !ot_variant_builder_add_value (descriptor_builder,
-                                       g_variant_builder_end (part_headers), error) ||
-        !ot_variant_builder_add_value (descriptor_builder,
-                                       fallback_headers, error))
+                                 GUINT64_TO_BE (g_date_time_to_unix (now)))
+        || !ot_variant_builder_add_value (descriptor_builder, from_csum_v, error)
+        || !ot_variant_builder_add_value (descriptor_builder, to_csum_v, error)
+        || !ot_variant_builder_add_value (descriptor_builder, to_commit, error)
+        || !ot_variant_builder_add_value (descriptor_builder,
+                                          ot_gvariant_new_bytearray ((guchar *)"", 0), error)
+        || !ot_variant_builder_add_value (descriptor_builder, g_variant_builder_end (part_headers),
+                                          error)
+        || !ot_variant_builder_add_value (descriptor_builder, fallback_headers, error))
       return FALSE;
 
     if (!ot_variant_builder_end (descriptor_builder, error))
@@ -1592,23 +1506,23 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
 
   if (delta_opts & DELTAOPT_FLAG_VERBOSE)
     {
-      g_printerr ("uncompressed=%" G_GUINT64_FORMAT " compressed=%" G_GUINT64_FORMAT " loose=%" G_GUINT64_FORMAT "\n",
-                  total_uncompressed_size,
-                  total_compressed_size,
-                  builder.loose_compressed_size);
-      g_printerr ("rollsum=%u objects, %" G_GUINT64_FORMAT " bytes\n",
-                  builder.n_rollsum,
+      g_printerr ("uncompressed=%" G_GUINT64_FORMAT " compressed=%" G_GUINT64_FORMAT
+                  " loose=%" G_GUINT64_FORMAT "\n",
+                  total_uncompressed_size, total_compressed_size, builder.loose_compressed_size);
+      g_printerr ("rollsum=%u objects, %" G_GUINT64_FORMAT " bytes\n", builder.n_rollsum,
                   builder.rollsum_size);
       g_printerr ("bsdiff=%u objects\n", builder.n_bsdiff);
     }
 
   if (opt_sign_name != NULL && opt_key_ids != NULL)
     {
-      g_autoptr(GBytes) tmpdata = NULL;
-      g_autoptr(OstreeSign) sign = NULL;
+      g_autoptr (GBytes) tmpdata = NULL;
+      g_autoptr (OstreeSign) sign = NULL;
       const gchar *signature_key = NULL;
-      g_autoptr(GVariantBuilder) signature_builder = NULL;
-      g_auto(GLnxTmpfile) descriptor_sign_tmpf = { 0, };
+      g_autoptr (GVariantBuilder) signature_builder = NULL;
+      g_auto (GLnxTmpfile) descriptor_sign_tmpf = {
+        0,
+      };
 
       lseek (descriptor_tmpf.fd, 0, SEEK_SET);
       tmpdata = glnx_fd_readall_bytes (descriptor_tmpf.fd, cancellable, error);
@@ -1627,38 +1541,38 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       for (const char **iter = opt_key_ids; iter && *iter; iter++)
         {
           const char *keyid = *iter;
-          g_autoptr(GVariant) secret_key = NULL;
-          g_autoptr(GBytes) signature_bytes = NULL;
+          g_autoptr (GVariant) secret_key = NULL;
+          g_autoptr (GBytes) signature_bytes = NULL;
 
           secret_key = g_variant_new_string (keyid);
           if (!ostree_sign_set_sk (sign, secret_key, error))
-              return FALSE;
-
-          if (!ostree_sign_data (sign, tmpdata, &signature_bytes,
-                                 NULL, error))
             return FALSE;
 
-          g_variant_builder_add (signature_builder, "@ay", ot_gvariant_new_ay_bytes (signature_bytes));
+          if (!ostree_sign_data (sign, tmpdata, &signature_bytes, NULL, error))
+            return FALSE;
+
+          g_variant_builder_add (signature_builder, "@ay",
+                                 ot_gvariant_new_ay_bytes (signature_bytes));
         }
 
       if (!glnx_open_tmpfile_linkable_at (descriptor_dfd, ".", O_WRONLY | O_CLOEXEC,
                                           &descriptor_sign_tmpf, error))
         return FALSE;
 
-      g_autoptr(OtVariantBuilder) descriptor_sign_builder =
-        ot_variant_builder_new (G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SIGNED_FORMAT),
-                                descriptor_sign_tmpf.fd);
+      g_autoptr (OtVariantBuilder) descriptor_sign_builder = ot_variant_builder_new (
+          G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SIGNED_FORMAT), descriptor_sign_tmpf.fd);
       g_assert (descriptor_sign_builder != NULL);
 
       if (!ot_variant_builder_add (descriptor_sign_builder, error, "t",
                                    GUINT64_TO_BE (OSTREE_STATIC_DELTA_SIGNED_MAGIC)))
         return FALSE;
-      if (!ot_variant_builder_add (descriptor_sign_builder, error, "@ay", ot_gvariant_new_ay_bytes (tmpdata)))
+      if (!ot_variant_builder_add (descriptor_sign_builder, error, "@ay",
+                                   ot_gvariant_new_ay_bytes (tmpdata)))
         return FALSE;
       if (!ot_variant_builder_open (descriptor_sign_builder, G_VARIANT_TYPE ("a{sv}"), error))
         return FALSE;
-      if (!ot_variant_builder_add (descriptor_sign_builder, error, "{sv}",
-                                   signature_key, g_variant_builder_end(signature_builder)))
+      if (!ot_variant_builder_add (descriptor_sign_builder, error, "{sv}", signature_key,
+                                   g_variant_builder_end (signature_builder)))
         return FALSE;
       if (!ot_variant_builder_close (descriptor_sign_builder, error))
         return FALSE;
@@ -1669,8 +1583,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       if (fchmod (descriptor_sign_tmpf.fd, 0644) < 0)
         return glnx_throw_errno_prefix (error, "fchmod");
 
-      if (!glnx_link_tmpfile_at (&descriptor_sign_tmpf, GLNX_LINK_TMPFILE_REPLACE,
-                                 descriptor_dfd, descriptor_name, error))
+      if (!glnx_link_tmpfile_at (&descriptor_sign_tmpf, GLNX_LINK_TMPFILE_REPLACE, descriptor_dfd,
+                                 descriptor_name, error))
         return FALSE;
     }
   else
@@ -1678,8 +1592,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       if (fchmod (descriptor_tmpf.fd, 0644) < 0)
         return glnx_throw_errno_prefix (error, "fchmod");
 
-      if (!glnx_link_tmpfile_at (&descriptor_tmpf, GLNX_LINK_TMPFILE_REPLACE,
-                                 descriptor_dfd, descriptor_name, error))
+      if (!glnx_link_tmpfile_at (&descriptor_tmpf, GLNX_LINK_TMPFILE_REPLACE, descriptor_dfd,
+                                 descriptor_name, error))
         return FALSE;
     }
 

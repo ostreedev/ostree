@@ -25,8 +25,8 @@
 #if defined(HAVE_OPENSSL)
 #include <openssl/evp.h>
 #elif defined(HAVE_GNUTLS)
-#include <gnutls/gnutls.h>
 #include <gnutls/crypto.h>
+#include <gnutls/gnutls.h>
 #endif
 
 #include <string.h>
@@ -41,16 +41,18 @@ ot_bin2hex (char *out_buf, const guint8 *inbuf, gsize len)
     {
       guchar byte = inbuf[i];
       out_buf[j] = hexchars[byte >> 4];
-      out_buf[j+1] = hexchars[byte & 0xF];
+      out_buf[j + 1] = hexchars[byte & 0xF];
     }
   out_buf[j] = '\0';
 }
 
 /* I like to think of this as AbstractChecksumProxyFactoryBean. In homage to
  * https://news.ycombinator.com/item?id=4549544
- * aka http://static.springsource.org/spring/docs/2.5.x/api/org/springframework/aop/framework/AbstractSingletonProxyFactoryBean.html
+ * aka
+ * http://static.springsource.org/spring/docs/2.5.x/api/org/springframework/aop/framework/AbstractSingletonProxyFactoryBean.html
  */
-typedef struct {
+typedef struct
+{
   gboolean initialized;
   gboolean closed;
 #if defined(HAVE_OPENSSL)
@@ -68,7 +70,7 @@ G_STATIC_ASSERT (sizeof (OtChecksum) >= sizeof (OtRealChecksum));
 void
 ot_checksum_init (OtChecksum *checksum)
 {
-  OtRealChecksum *real = (OtRealChecksum*)checksum;
+  OtRealChecksum *real = (OtRealChecksum *)checksum;
   g_return_if_fail (!real->initialized);
 #if defined(HAVE_OPENSSL)
   real->checksum = EVP_MD_CTX_create ();
@@ -88,11 +90,9 @@ ot_checksum_init (OtChecksum *checksum)
 }
 
 void
-ot_checksum_update (OtChecksum *checksum,
-                    const guint8   *buf,
-                    size_t          len)
+ot_checksum_update (OtChecksum *checksum, const guint8 *buf, size_t len)
 {
-  OtRealChecksum *real = (OtRealChecksum*)checksum;
+  OtRealChecksum *real = (OtRealChecksum *)checksum;
   g_return_if_fail (real->initialized);
   g_return_if_fail (!real->closed);
 #if defined(HAVE_OPENSSL)
@@ -105,9 +105,7 @@ ot_checksum_update (OtChecksum *checksum,
 }
 
 static void
-ot_checksum_get_digest_internal (OtRealChecksum *real,
-                                 guint8      *buf,
-                                 size_t       buflen)
+ot_checksum_get_digest_internal (OtRealChecksum *real, guint8 *buf, size_t buflen)
 {
   g_return_if_fail (real->initialized);
   g_assert_cmpint (buflen, ==, _OSTREE_SHA256_DIGEST_LEN);
@@ -125,31 +123,27 @@ ot_checksum_get_digest_internal (OtRealChecksum *real,
 }
 
 void
-ot_checksum_get_digest (OtChecksum *checksum,
-                        guint8      *buf,
-                        size_t       buflen)
+ot_checksum_get_digest (OtChecksum *checksum, guint8 *buf, size_t buflen)
 {
-  OtRealChecksum *real = (OtRealChecksum*)checksum;
+  OtRealChecksum *real = (OtRealChecksum *)checksum;
   ot_checksum_get_digest_internal (real, buf, buflen);
   real->closed = TRUE;
 }
 
 void
-ot_checksum_get_hexdigest (OtChecksum *checksum,
-                           char           *buf,
-                           size_t          buflen)
+ot_checksum_get_hexdigest (OtChecksum *checksum, char *buf, size_t buflen)
 {
-  OtRealChecksum *real = (OtRealChecksum*)checksum;
+  OtRealChecksum *real = (OtRealChecksum *)checksum;
   const guint digest_len = real->digest_len;
   guint8 digest_buf[digest_len];
   ot_checksum_get_digest (checksum, digest_buf, digest_len);
-  ot_bin2hex (buf, (guint8*)digest_buf, digest_len);
+  ot_bin2hex (buf, (guint8 *)digest_buf, digest_len);
 }
 
 void
 ot_checksum_clear (OtChecksum *checksum)
 {
-  OtRealChecksum *real = (OtRealChecksum*)checksum;
+  OtRealChecksum *real = (OtRealChecksum *)checksum;
   if (!real->initialized)
     return;
 #if defined(HAVE_OPENSSL)
@@ -163,7 +157,7 @@ ot_checksum_clear (OtChecksum *checksum)
 }
 
 guchar *
-ot_csum_from_gchecksum (GChecksum  *checksum)
+ot_csum_from_gchecksum (GChecksum *checksum)
 {
   guchar *ret = g_malloc (32);
   gsize len = 32;
@@ -174,18 +168,13 @@ ot_csum_from_gchecksum (GChecksum  *checksum)
 }
 
 gboolean
-ot_gio_write_update_checksum (GOutputStream  *out,
-                              gconstpointer   data,
-                              gsize           len,
-                              gsize          *out_bytes_written,
-                              OtChecksum     *checksum,
-                              GCancellable   *cancellable,
-                              GError        **error)
+ot_gio_write_update_checksum (GOutputStream *out, gconstpointer data, gsize len,
+                              gsize *out_bytes_written, OtChecksum *checksum,
+                              GCancellable *cancellable, GError **error)
 {
   if (out)
     {
-      if (!g_output_stream_write_all (out, data, len, out_bytes_written,
-                                      cancellable, error))
+      if (!g_output_stream_write_all (out, data, len, out_bytes_written, cancellable, error))
         return FALSE;
     }
   else if (out_bytes_written)
@@ -199,11 +188,8 @@ ot_gio_write_update_checksum (GOutputStream  *out,
 }
 
 gboolean
-ot_gio_splice_update_checksum (GOutputStream  *out,
-                               GInputStream   *in,
-                               OtChecksum     *checksum,
-                               GCancellable   *cancellable,
-                               GError        **error)
+ot_gio_splice_update_checksum (GOutputStream *out, GInputStream *in, OtChecksum *checksum,
+                               GCancellable *cancellable, GError **error)
 {
   g_return_val_if_fail (out != NULL || checksum != NULL, FALSE);
 
@@ -234,13 +220,12 @@ ot_gio_splice_update_checksum (GOutputStream  *out,
  * all data read.
  */
 gboolean
-ot_gio_splice_get_checksum (GOutputStream  *out,
-                            GInputStream   *in,
-                            guchar        **out_csum,
-                            GCancellable   *cancellable,
-                            GError        **error)
+ot_gio_splice_get_checksum (GOutputStream *out, GInputStream *in, guchar **out_csum,
+                            GCancellable *cancellable, GError **error)
 {
-  g_auto(OtChecksum) checksum = { 0, };
+  g_auto (OtChecksum) checksum = {
+    0,
+  };
   ot_checksum_init (&checksum);
 
   if (!ot_gio_splice_update_checksum (out, in, &checksum, cancellable, error))
@@ -254,31 +239,31 @@ ot_gio_splice_get_checksum (GOutputStream  *out,
 }
 
 char *
-ot_checksum_file_at (int             dfd,
-                     const char     *path,
-                     GChecksumType   checksum_type,
-                     GCancellable   *cancellable,
-                     GError        **error)
+ot_checksum_file_at (int dfd, const char *path, GChecksumType checksum_type,
+                     GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GInputStream) in = NULL;
+  g_autoptr (GInputStream) in = NULL;
   if (!ot_openat_read_stream (dfd, path, TRUE, &in, cancellable, error))
     return FALSE;
 
-  g_auto(OtChecksum) checksum = { 0, };
+  g_auto (OtChecksum) checksum = {
+    0,
+  };
   ot_checksum_init (&checksum);
   if (!ot_gio_splice_update_checksum (NULL, in, &checksum, cancellable, error))
     return FALSE;
 
-  char hexdigest[_OSTREE_SHA256_STRING_LEN+1];
+  char hexdigest[_OSTREE_SHA256_STRING_LEN + 1];
   ot_checksum_get_hexdigest (&checksum, hexdigest, sizeof (hexdigest));
   return g_strdup (hexdigest);
 }
 
 void
-ot_checksum_bytes (GBytes *data,
-                   guint8 out_digest[_OSTREE_SHA256_DIGEST_LEN])
+ot_checksum_bytes (GBytes *data, guint8 out_digest[_OSTREE_SHA256_DIGEST_LEN])
 {
-  g_auto(OtChecksum) hasher = { 0, };
+  g_auto (OtChecksum) hasher = {
+    0,
+  };
   ot_checksum_init (&hasher);
   ot_checksum_update_bytes (&hasher, data);
   ot_checksum_get_digest (&hasher, out_digest, _OSTREE_SHA256_DIGEST_LEN);

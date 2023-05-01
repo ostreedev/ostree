@@ -22,39 +22,38 @@
 
 #include "config.h"
 
-#include <sys/types.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include "libglnx.h"
+#include "ostree-chain-input-stream.h"
+#include "ostree-core-private.h"
+#include "ostree-varint.h"
+#include "ostree.h"
+#include "otutil.h"
 #include <gio/gfiledescriptorbased.h>
 #include <gio/gunixinputstream.h>
-#include "libglnx.h"
-#include "ostree.h"
-#include "ostree-core-private.h"
-#include "ostree-chain-input-stream.h"
-#include "ostree-varint.h"
-#include "otutil.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
 
 /* Generic ABI checks */
-G_STATIC_ASSERT(OSTREE_REPO_MODE_BARE == 0);
-G_STATIC_ASSERT(OSTREE_REPO_MODE_ARCHIVE_Z2 == 1);
-G_STATIC_ASSERT(OSTREE_REPO_MODE_ARCHIVE == OSTREE_REPO_MODE_ARCHIVE_Z2);
-G_STATIC_ASSERT(OSTREE_REPO_MODE_BARE_USER == 2);
-G_STATIC_ASSERT(OSTREE_REPO_MODE_BARE_USER_ONLY == 3);
-G_STATIC_ASSERT(OSTREE_REPO_MODE_BARE_SPLIT_XATTRS == 4);
+G_STATIC_ASSERT (OSTREE_REPO_MODE_BARE == 0);
+G_STATIC_ASSERT (OSTREE_REPO_MODE_ARCHIVE_Z2 == 1);
+G_STATIC_ASSERT (OSTREE_REPO_MODE_ARCHIVE == OSTREE_REPO_MODE_ARCHIVE_Z2);
+G_STATIC_ASSERT (OSTREE_REPO_MODE_BARE_USER == 2);
+G_STATIC_ASSERT (OSTREE_REPO_MODE_BARE_USER_ONLY == 3);
+G_STATIC_ASSERT (OSTREE_REPO_MODE_BARE_SPLIT_XATTRS == 4);
 
 static GBytes *variant_to_lenprefixed_buffer (GVariant *variant);
 
 #define ALIGN_VALUE(this, boundary) \
-  (( ((unsigned long)(this)) + (((unsigned long)(boundary)) -1)) & (~(((unsigned long)(boundary))-1)))
+  ((((unsigned long)(this)) + (((unsigned long)(boundary)) - 1)) \
+   & (~(((unsigned long)(boundary)) - 1)))
 
 /* Return a copy of @input suitable for addition to
  * a GError message; newlines are quashed, the value
  * is forced to be UTF-8, is truncated to @maxlen (if maxlen != -1).
  */
 static char *
-quash_string_for_error_message (const char *input,
-                                ssize_t     len,
-                                ssize_t     maxlen)
+quash_string_for_error_message (const char *input, ssize_t len, ssize_t maxlen)
 {
   if (len == -1)
     len = strlen (input);
@@ -81,16 +80,10 @@ quash_string_for_error_message (const char *input,
   return buf;
 }
 
-static gboolean
-file_header_parse (GVariant         *metadata,
-                   GFileInfo       **out_file_info,
-                   GVariant        **out_xattrs,
-                   GError          **error);
-static gboolean
-zlib_file_header_parse (GVariant         *metadata,
-                        GFileInfo       **out_file_info,
-                        GVariant        **out_xattrs,
-                        GError          **error);
+static gboolean file_header_parse (GVariant *metadata, GFileInfo **out_file_info,
+                                   GVariant **out_xattrs, GError **error);
+static gboolean zlib_file_header_parse (GVariant *metadata, GFileInfo **out_file_info,
+                                        GVariant **out_xattrs, GError **error);
 
 /**
  * SECTION:ostree-core
@@ -139,8 +132,7 @@ ostree_metadata_variant_type (OstreeObjectType objtype)
  * Returns: %TRUE if @sha256 is a valid checksum string, %FALSE otherwise
  */
 gboolean
-ostree_validate_checksum_string (const char *sha256,
-                                 GError    **error)
+ostree_validate_checksum_string (const char *sha256, GError **error)
 {
   return ostree_validate_structureof_checksum_string (sha256, error);
 }
@@ -169,21 +161,19 @@ ostree_validate_checksum_string (const char *sha256,
  * Returns: %TRUE on successful parsing, %FALSE otherwise
  */
 gboolean
-ostree_parse_refspec (const char   *refspec,
-                      char        **out_remote,
-                      char        **out_ref,
-                      GError      **error)
+ostree_parse_refspec (const char *refspec, char **out_remote, char **out_ref, GError **error)
 {
   static GRegex *regex;
   static gsize regex_initialized;
   if (g_once_init_enter (&regex_initialized))
     {
-      regex = g_regex_new ("^(" OSTREE_REMOTE_NAME_REGEXP ":)?(" OSTREE_REF_REGEXP ")$", 0, 0, NULL);
+      regex
+          = g_regex_new ("^(" OSTREE_REMOTE_NAME_REGEXP ":)?(" OSTREE_REF_REGEXP ")$", 0, 0, NULL);
       g_assert (regex);
       g_once_init_leave (&regex_initialized, 1);
     }
 
-  g_autoptr(GMatchInfo) match = NULL;
+  g_autoptr (GMatchInfo) match = NULL;
   if (!g_regex_match (regex, refspec, 0, &match))
     return glnx_throw (error, "Invalid refspec %s", refspec);
 
@@ -195,7 +185,7 @@ ostree_parse_refspec (const char   *refspec,
   else
     {
       /* Trim the : */
-      remote[strlen(remote)-1] = '\0';
+      remote[strlen (remote) - 1] = '\0';
     }
 
   if (out_remote)
@@ -206,8 +196,7 @@ ostree_parse_refspec (const char   *refspec,
 }
 
 gboolean
-_ostree_validate_ref_fragment (const char *fragment,
-                               GError    **error)
+_ostree_validate_ref_fragment (const char *fragment, GError **error)
 {
   static GRegex *regex;
   static gsize regex_initialized;
@@ -218,7 +207,7 @@ _ostree_validate_ref_fragment (const char *fragment,
       g_once_init_leave (&regex_initialized, 1);
     }
 
-  g_autoptr(GMatchInfo) match = NULL;
+  g_autoptr (GMatchInfo) match = NULL;
   if (!g_regex_match (regex, fragment, 0, &match))
     return glnx_throw (error, "Invalid ref fragment '%s'", fragment);
 
@@ -233,10 +222,9 @@ _ostree_validate_ref_fragment (const char *fragment,
  * Returns: %TRUE if @rev is a valid ref string
  */
 gboolean
-ostree_validate_rev (const char *rev,
-                     GError **error)
+ostree_validate_rev (const char *rev, GError **error)
 {
-  g_autoptr(GMatchInfo) match = NULL;
+  g_autoptr (GMatchInfo) match = NULL;
 
   static gsize regex_initialized;
   static GRegex *regex;
@@ -262,10 +250,9 @@ ostree_validate_rev (const char *rev,
  * Since: 2017.8
  */
 gboolean
-ostree_validate_remote_name (const char  *remote_name,
-                             GError     **error)
+ostree_validate_remote_name (const char *remote_name, GError **error)
 {
-  g_autoptr(GMatchInfo) match = NULL;
+  g_autoptr (GMatchInfo) match = NULL;
 
   static gsize regex_initialized;
   static GRegex *regex;
@@ -321,8 +308,7 @@ ostree_validate_collection_id (const char *collection_id, GError **error)
  * as @xattrs (which if NULL, is taken to be the empty set).
  */
 GBytes *
-_ostree_file_header_new (GFileInfo         *file_info,
-                         GVariant          *xattrs)
+_ostree_file_header_new (GFileInfo *file_info, GVariant *xattrs)
 {
 
   guint32 uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
@@ -335,13 +321,13 @@ _ostree_file_header_new (GFileInfo         *file_info,
   else
     symlink_target = "";
 
-  g_autoptr(GVariant) tmp_xattrs = NULL;
+  g_autoptr (GVariant) tmp_xattrs = NULL;
   if (xattrs == NULL)
     tmp_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
 
-  g_autoptr(GVariant) ret = g_variant_new ("(uuuus@a(ayay))", GUINT32_TO_BE (uid),
-                                           GUINT32_TO_BE (gid), GUINT32_TO_BE (mode), 0,
-                                           symlink_target, xattrs ?: tmp_xattrs);
+  g_autoptr (GVariant) ret
+      = g_variant_new ("(uuuus@a(ayay))", GUINT32_TO_BE (uid), GUINT32_TO_BE (gid),
+                       GUINT32_TO_BE (mode), 0, symlink_target, xattrs ?: tmp_xattrs);
   return variant_to_lenprefixed_buffer (g_variant_ref_sink (ret));
 }
 
@@ -352,8 +338,7 @@ _ostree_file_header_new (GFileInfo         *file_info,
  * user.ostreemeta xattr.
  */
 GBytes *
-_ostree_zlib_file_header_new (GFileInfo         *file_info,
-                              GVariant          *xattrs)
+_ostree_zlib_file_header_new (GFileInfo *file_info, GVariant *xattrs)
 {
   guint64 size = 0;
   guint32 uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
@@ -369,14 +354,13 @@ _ostree_zlib_file_header_new (GFileInfo         *file_info,
   if (g_file_info_has_attribute (file_info, "standard::size"))
     size = g_file_info_get_size (file_info);
 
-  g_autoptr(GVariant) tmp_xattrs = NULL;
+  g_autoptr (GVariant) tmp_xattrs = NULL;
   if (xattrs == NULL)
     tmp_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
 
-  g_autoptr(GVariant) ret = g_variant_new ("(tuuuus@a(ayay))",
-                                           GUINT64_TO_BE (size), GUINT32_TO_BE (uid),
-                                           GUINT32_TO_BE (gid), GUINT32_TO_BE (mode), 0,
-                                           symlink_target, xattrs ?: tmp_xattrs);
+  g_autoptr (GVariant) ret = g_variant_new (
+      "(tuuuus@a(ayay))", GUINT64_TO_BE (size), GUINT32_TO_BE (uid), GUINT32_TO_BE (gid),
+      GUINT32_TO_BE (mode), 0, symlink_target, xattrs ?: tmp_xattrs);
   return variant_to_lenprefixed_buffer (g_variant_ref_sink (ret));
 }
 
@@ -387,27 +371,27 @@ static GBytes *
 variant_to_lenprefixed_buffer (GVariant *variant)
 {
   /* This string is really a binary memory buffer */
-  g_autoptr(GString) buf = g_string_new (NULL);
+  g_autoptr (GString) buf = g_string_new (NULL);
   /* Write variant size */
   const guint64 variant_size = g_variant_get_size (variant);
   g_assert (variant_size < G_MAXUINT32);
-  const guint32 variant_size_u32_be = GUINT32_TO_BE((guint32) variant_size);
+  const guint32 variant_size_u32_be = GUINT32_TO_BE ((guint32)variant_size);
 
-  g_string_append_len (buf, (char*)&variant_size_u32_be, sizeof (variant_size_u32_be));
+  g_string_append_len (buf, (char *)&variant_size_u32_be, sizeof (variant_size_u32_be));
 
-  /* Write NULs for alignment. At the moment this is a constant 4 bytes (i.e.
-   * align to 8, since the length is 4 bytes).  If we ever change this, the
-   * logic is here:
-   */
-  // const gsize alignment_offset = sizeof (variant_size_u32_be);
-  // const guint bits = alignment_offset & 7; /* mod 8 */
-  // const guint padding_len = alignment - bits;
-  #define padding_len sizeof(guint32)
-  const guchar padding_nuls[padding_len] = {0, 0, 0, 0};
-  g_string_append_len (buf, (char*)padding_nuls, padding_len);
-  #undef padding_len
+/* Write NULs for alignment. At the moment this is a constant 4 bytes (i.e.
+ * align to 8, since the length is 4 bytes).  If we ever change this, the
+ * logic is here:
+ */
+// const gsize alignment_offset = sizeof (variant_size_u32_be);
+// const guint bits = alignment_offset & 7; /* mod 8 */
+// const guint padding_len = alignment - bits;
+#define padding_len sizeof (guint32)
+  const guchar padding_nuls[padding_len] = { 0, 0, 0, 0 };
+  g_string_append_len (buf, (char *)padding_nuls, padding_len);
+#undef padding_len
 
-  g_string_append_len (buf, (char*)g_variant_get_data (variant), g_variant_get_size (variant));
+  g_string_append_len (buf, (char *)g_variant_get_data (variant), g_variant_get_size (variant));
   return g_string_free_to_bytes (g_steal_pointer (&buf));
 }
 
@@ -419,14 +403,13 @@ variant_to_lenprefixed_buffer (GVariant *variant)
  * Combines @file_header and @input into a single stream.
  */
 static GInputStream *
-header_and_input_to_stream (GBytes             *file_header,
-                            GInputStream       *input)
+header_and_input_to_stream (GBytes *file_header, GInputStream *input)
 {
   /* Our result stream chain */
-  g_autoptr(GPtrArray) streams = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+  g_autoptr (GPtrArray) streams = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 
   /* Append the header to the chain */
-  g_autoptr(GInputStream) header_in_stream = g_memory_input_stream_new_from_bytes (file_header);
+  g_autoptr (GInputStream) header_in_stream = g_memory_input_stream_new_from_bytes (file_header);
 
   g_ptr_array_add (streams, g_object_ref (header_in_stream));
 
@@ -435,27 +418,23 @@ header_and_input_to_stream (GBytes             *file_header,
     g_ptr_array_add (streams, g_object_ref (input));
 
   /* Return the result stream */
-  return (GInputStream*)ostree_chain_input_stream_new (streams);
+  return (GInputStream *)ostree_chain_input_stream_new (streams);
 }
 
 /* Convert file metadata + file content into an archive-format stream. */
 gboolean
-_ostree_raw_file_to_archive_stream (GInputStream       *input,
-                                    GFileInfo          *file_info,
-                                    GVariant           *xattrs,
-                                    guint               compression_level,
-                                    GInputStream      **out_input,
-                                    GCancellable       *cancellable,
-                                    GError            **error)
+_ostree_raw_file_to_archive_stream (GInputStream *input, GFileInfo *file_info, GVariant *xattrs,
+                                    guint compression_level, GInputStream **out_input,
+                                    GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GInputStream) zlib_input = NULL;
+  g_autoptr (GInputStream) zlib_input = NULL;
   if (input != NULL)
     {
-      g_autoptr(GConverter) zlib_compressor =
-        G_CONVERTER (g_zlib_compressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW, compression_level));
+      g_autoptr (GConverter) zlib_compressor
+          = G_CONVERTER (g_zlib_compressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW, compression_level));
       zlib_input = g_converter_input_stream_new (input, zlib_compressor);
     }
-  g_autoptr(GBytes) file_header = _ostree_zlib_file_header_new (file_info, xattrs);
+  g_autoptr (GBytes) file_header = _ostree_zlib_file_header_new (file_info, xattrs);
   *out_input = header_and_input_to_stream (file_header, zlib_input);
   return TRUE;
 }
@@ -475,16 +454,13 @@ _ostree_raw_file_to_archive_stream (GInputStream       *input,
  * Since: 2016.6
  */
 gboolean
-ostree_raw_file_to_archive_z2_stream (GInputStream       *input,
-                                      GFileInfo          *file_info,
-                                      GVariant           *xattrs,
-                                      GInputStream      **out_input,
-                                      GCancellable       *cancellable,
-                                      GError            **error)
+ostree_raw_file_to_archive_z2_stream (GInputStream *input, GFileInfo *file_info, GVariant *xattrs,
+                                      GInputStream **out_input, GCancellable *cancellable,
+                                      GError **error)
 {
   return _ostree_raw_file_to_archive_stream (input, file_info, xattrs,
-                                             OSTREE_ARCHIVE_DEFAULT_COMPRESSION_LEVEL,
-                                             out_input, cancellable, error);
+                                             OSTREE_ARCHIVE_DEFAULT_COMPRESSION_LEVEL, out_input,
+                                             cancellable, error);
 }
 
 /**
@@ -506,25 +482,21 @@ ostree_raw_file_to_archive_z2_stream (GInputStream       *input,
  * Since: 2017.3
  */
 gboolean
-ostree_raw_file_to_archive_z2_stream_with_options (GInputStream       *input,
-                                                   GFileInfo          *file_info,
-                                                   GVariant           *xattrs,
-                                                   GVariant           *options,
-                                                   GInputStream      **out_input,
-                                                   GCancellable       *cancellable,
-                                                   GError            **error)
+ostree_raw_file_to_archive_z2_stream_with_options (GInputStream *input, GFileInfo *file_info,
+                                                   GVariant *xattrs, GVariant *options,
+                                                   GInputStream **out_input,
+                                                   GCancellable *cancellable, GError **error)
 {
   gint compression_level = -1;
 
   if (options)
-    (void) g_variant_lookup (options, "compression-level", "i", &compression_level);
+    (void)g_variant_lookup (options, "compression-level", "i", &compression_level);
 
   if (compression_level < 0)
     compression_level = OSTREE_ARCHIVE_DEFAULT_COMPRESSION_LEVEL;
 
-  return _ostree_raw_file_to_archive_stream (input, file_info, xattrs,
-                                             compression_level,
-                                             out_input, cancellable, error);
+  return _ostree_raw_file_to_archive_stream (input, file_info, xattrs, compression_level, out_input,
+                                             cancellable, error);
 }
 
 /**
@@ -542,15 +514,11 @@ ostree_raw_file_to_archive_z2_stream_with_options (GInputStream       *input,
  * for writing data to an #OstreeRepo.
  */
 gboolean
-ostree_raw_file_to_content_stream (GInputStream       *input,
-                                   GFileInfo          *file_info,
-                                   GVariant           *xattrs,
-                                   GInputStream      **out_input,
-                                   guint64            *out_length,
-                                   GCancellable       *cancellable,
-                                   GError            **error)
+ostree_raw_file_to_content_stream (GInputStream *input, GFileInfo *file_info, GVariant *xattrs,
+                                   GInputStream **out_input, guint64 *out_length,
+                                   GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GBytes) file_header = _ostree_file_header_new (file_info, xattrs);
+  g_autoptr (GBytes) file_header = _ostree_file_header_new (file_info, xattrs);
   *out_input = header_and_input_to_stream (file_header, input);
   if (out_length)
     *out_length = g_bytes_get_size (file_header);
@@ -575,69 +543,51 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
  * converts an object content stream back into components.
  */
 gboolean
-ostree_content_stream_parse (gboolean                compressed,
-                             GInputStream           *input,
-                             guint64                 input_length,
-                             gboolean                trusted,
-                             GInputStream          **out_input,
-                             GFileInfo             **out_file_info,
-                             GVariant              **out_xattrs,
-                             GCancellable           *cancellable,
-                             GError                **error)
+ostree_content_stream_parse (gboolean compressed, GInputStream *input, guint64 input_length,
+                             gboolean trusted, GInputStream **out_input, GFileInfo **out_file_info,
+                             GVariant **out_xattrs, GCancellable *cancellable, GError **error)
 {
   guint32 archive_header_size;
   guchar dummy[4];
   gsize bytes_read;
 
-  if (!g_input_stream_read_all (input,
-                                &archive_header_size, 4, &bytes_read,
-                                cancellable, error))
+  if (!g_input_stream_read_all (input, &archive_header_size, 4, &bytes_read, cancellable, error))
     return FALSE;
   archive_header_size = GUINT32_FROM_BE (archive_header_size);
   if (archive_header_size > input_length)
-      return glnx_throw (error, "File header size %u exceeds size %" G_GUINT64_FORMAT,
-                         (guint)archive_header_size, input_length);
+    return glnx_throw (error, "File header size %u exceeds size %" G_GUINT64_FORMAT,
+                       (guint)archive_header_size, input_length);
   else if (archive_header_size == 0)
     return glnx_throw (error, "File header size is zero");
 
   /* Skip over padding */
-  if (!g_input_stream_read_all (input,
-                                dummy, 4, &bytes_read,
-                                cancellable, error))
+  if (!g_input_stream_read_all (input, dummy, 4, &bytes_read, cancellable, error))
     return FALSE;
 
   g_autofree guchar *buf = g_malloc (archive_header_size);
-  if (!g_input_stream_read_all (input, buf, archive_header_size, &bytes_read,
-                                cancellable, error))
+  if (!g_input_stream_read_all (input, buf, archive_header_size, &bytes_read, cancellable, error))
     return FALSE;
-  g_autoptr(GVariant) file_header =
-    g_variant_ref_sink(g_variant_new_from_data (compressed ? _OSTREE_ZLIB_FILE_HEADER_GVARIANT_FORMAT : _OSTREE_FILE_HEADER_GVARIANT_FORMAT,
-                                                buf, archive_header_size, trusted,
-                                                g_free, buf));
+  g_autoptr (GVariant) file_header = g_variant_ref_sink (g_variant_new_from_data (
+      compressed ? _OSTREE_ZLIB_FILE_HEADER_GVARIANT_FORMAT : _OSTREE_FILE_HEADER_GVARIANT_FORMAT,
+      buf, archive_header_size, trusted, g_free, buf));
   buf = NULL;
-  g_autoptr(GFileInfo) ret_file_info = NULL;
-  g_autoptr(GVariant) ret_xattrs = NULL;
+  g_autoptr (GFileInfo) ret_file_info = NULL;
+  g_autoptr (GVariant) ret_xattrs = NULL;
   if (compressed)
     {
-      if (!zlib_file_header_parse (file_header,
-                                   &ret_file_info,
-                                   out_xattrs ? &ret_xattrs : NULL,
+      if (!zlib_file_header_parse (file_header, &ret_file_info, out_xattrs ? &ret_xattrs : NULL,
                                    error))
         return FALSE;
     }
   else
     {
-      if (!file_header_parse (file_header,
-                              &ret_file_info,
-                              out_xattrs ? &ret_xattrs : NULL,
-                              error))
+      if (!file_header_parse (file_header, &ret_file_info, out_xattrs ? &ret_xattrs : NULL, error))
         return FALSE;
       g_file_info_set_size (ret_file_info, input_length - archive_header_size - 8);
     }
 
-  g_autoptr(GInputStream) ret_input = NULL;
-  if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR
-      && out_input)
+  g_autoptr (GInputStream) ret_input = NULL;
+  if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR && out_input)
     {
       /* Give the input stream at its current position as return value;
        * assuming the caller doesn't seek, this should be fine.  We might
@@ -645,7 +595,8 @@ ostree_content_stream_parse (gboolean                compressed,
        **/
       if (compressed)
         {
-          g_autoptr(GConverter) zlib_decomp = (GConverter*)g_zlib_decompressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW);
+          g_autoptr (GConverter) zlib_decomp
+              = (GConverter *)g_zlib_decompressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW);
           ret_input = g_converter_input_stream_new (input, zlib_decomp);
         }
       else
@@ -674,15 +625,9 @@ ostree_content_stream_parse (gboolean                compressed,
  * converts an object content stream back into components.
  */
 gboolean
-ostree_content_file_parse_at (gboolean                compressed,
-                              int                     parent_dfd,
-                              const char             *path,
-                              gboolean                trusted,
-                              GInputStream          **out_input,
-                              GFileInfo             **out_file_info,
-                              GVariant              **out_xattrs,
-                              GCancellable           *cancellable,
-                              GError                **error)
+ostree_content_file_parse_at (gboolean compressed, int parent_dfd, const char *path,
+                              gboolean trusted, GInputStream **out_input, GFileInfo **out_file_info,
+                              GVariant **out_xattrs, GCancellable *cancellable, GError **error)
 {
   glnx_autofd int fd = -1;
   if (!glnx_openat_rdonly (parent_dfd, path, TRUE, &fd, error))
@@ -692,14 +637,13 @@ ostree_content_file_parse_at (gboolean                compressed,
   if (!glnx_fstat (fd, &stbuf, error))
     return FALSE;
 
-  g_autoptr(GInputStream) file_input = g_unix_input_stream_new (g_steal_fd (&fd), TRUE);
+  g_autoptr (GInputStream) file_input = g_unix_input_stream_new (g_steal_fd (&fd), TRUE);
 
-  g_autoptr(GFileInfo) ret_file_info = NULL;
-  g_autoptr(GVariant) ret_xattrs = NULL;
-  g_autoptr(GInputStream) ret_input = NULL;
+  g_autoptr (GFileInfo) ret_file_info = NULL;
+  g_autoptr (GVariant) ret_xattrs = NULL;
+  g_autoptr (GInputStream) ret_input = NULL;
   if (!ostree_content_stream_parse (compressed, file_input, stbuf.st_size, trusted,
-                                    out_input ? &ret_input : NULL,
-                                    &ret_file_info, &ret_xattrs,
+                                    out_input ? &ret_input : NULL, &ret_file_info, &ret_xattrs,
                                     cancellable, error))
     return FALSE;
 
@@ -724,29 +668,18 @@ ostree_content_file_parse_at (gboolean                compressed,
  * converts an object content stream back into components.
  */
 gboolean
-ostree_content_file_parse (gboolean                compressed,
-                           GFile                  *content_path,
-                           gboolean                trusted,
-                           GInputStream          **out_input,
-                           GFileInfo             **out_file_info,
-                           GVariant              **out_xattrs,
-                           GCancellable           *cancellable,
-                           GError                **error)
+ostree_content_file_parse (gboolean compressed, GFile *content_path, gboolean trusted,
+                           GInputStream **out_input, GFileInfo **out_file_info,
+                           GVariant **out_xattrs, GCancellable *cancellable, GError **error)
 {
-  return ostree_content_file_parse_at (compressed, AT_FDCWD,
-                                       gs_file_get_path_cached (content_path),
-                                       trusted,
-                                       out_input, out_file_info, out_xattrs,
-                                       cancellable, error);
+  return ostree_content_file_parse_at (compressed, AT_FDCWD, gs_file_get_path_cached (content_path),
+                                       trusted, out_input, out_file_info, out_xattrs, cancellable,
+                                       error);
 }
 
 static gboolean
-break_symhardlink (int                dfd,
-                   const char        *path,
-                   struct stat       *stbuf,
-                   GLnxFileCopyFlags  copyflags,
-                   GCancellable      *cancellable,
-                   GError           **error)
+break_symhardlink (int dfd, const char *path, struct stat *stbuf, GLnxFileCopyFlags copyflags,
+                   GCancellable *cancellable, GError **error)
 {
   guint count;
   gboolean copy_success = FALSE;
@@ -754,12 +687,11 @@ break_symhardlink (int                dfd,
 
   for (count = 0; count < 100; count++)
     {
-      g_autoptr(GError) tmp_error = NULL;
+      g_autoptr (GError) tmp_error = NULL;
 
       glnx_gen_temp_name (path_tmp);
 
-      if (!glnx_file_copy_at (dfd, path, stbuf, dfd, path_tmp, copyflags,
-                              cancellable, &tmp_error))
+      if (!glnx_file_copy_at (dfd, path, stbuf, dfd, path_tmp, copyflags, cancellable, &tmp_error))
         {
           if (g_error_matches (tmp_error, G_IO_ERROR, G_IO_ERROR_EXISTS))
             continue;
@@ -808,11 +740,9 @@ break_symhardlink (int                dfd,
  *
  * Since: 2017.15
  */
-gboolean ostree_break_hardlink (int               dfd,
-                                const char       *path,
-                                gboolean          skip_xattrs,
-                                GCancellable     *cancellable,
-                                GError          **error)
+gboolean
+ostree_break_hardlink (int dfd, const char *path, gboolean skip_xattrs, GCancellable *cancellable,
+                       GError **error)
 {
   struct stat stbuf;
 
@@ -820,7 +750,7 @@ gboolean ostree_break_hardlink (int               dfd,
     return FALSE;
 
   if (stbuf.st_nlink <= 1)
-    return TRUE;  /* Note early return */
+    return TRUE; /* Note early return */
 
   const GLnxFileCopyFlags copyflags = skip_xattrs ? GLNX_FILE_COPY_NOXATTRS : 0;
 
@@ -829,12 +759,10 @@ gboolean ostree_break_hardlink (int               dfd,
      * as glnx_file_copy_at() is documented to do an O_TMPFILE + rename()
      * with GLNX_FILE_COPY_OVERWRITE.
      */
-    return glnx_file_copy_at (dfd, path, &stbuf, dfd, path,
-                              copyflags | GLNX_FILE_COPY_OVERWRITE,
+    return glnx_file_copy_at (dfd, path, &stbuf, dfd, path, copyflags | GLNX_FILE_COPY_OVERWRITE,
                               cancellable, error);
   else if (S_ISLNK (stbuf.st_mode))
-    return break_symhardlink (dfd, path, &stbuf, copyflags,
-                              cancellable, error);
+    return break_symhardlink (dfd, path, &stbuf, copyflags, cancellable, error);
   else
     return glnx_throw (error, "Unsupported type for entry '%s'", path);
 
@@ -899,16 +827,14 @@ ostree_fs_get_all_xattrs_at (int dfd, const char *path, GCancellable *cancellabl
  * Compute the OSTree checksum for a given input.
  */
 gboolean
-ostree_checksum_file_from_input (GFileInfo        *file_info,
-                                 GVariant         *xattrs,
-                                 GInputStream     *in,
-                                 OstreeObjectType  objtype,
-                                 guchar          **out_csum,
-                                 GCancellable     *cancellable,
-                                 GError          **error)
+ostree_checksum_file_from_input (GFileInfo *file_info, GVariant *xattrs, GInputStream *in,
+                                 OstreeObjectType objtype, guchar **out_csum,
+                                 GCancellable *cancellable, GError **error)
 {
 
-  g_auto(OtChecksum) checksum = { 0, };
+  g_auto (OtChecksum) checksum = {
+    0,
+  };
   ot_checksum_init (&checksum);
 
   if (OSTREE_OBJECT_TYPE_IS_META (objtype))
@@ -918,13 +844,12 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
     }
   else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
     {
-      g_autoptr(GVariant) dirmeta = ostree_create_directory_metadata (file_info, xattrs);
-      ot_checksum_update (&checksum, g_variant_get_data (dirmeta),
-                          g_variant_get_size (dirmeta));
+      g_autoptr (GVariant) dirmeta = ostree_create_directory_metadata (file_info, xattrs);
+      ot_checksum_update (&checksum, g_variant_get_data (dirmeta), g_variant_get_size (dirmeta));
     }
   else
     {
-      g_autoptr(GBytes) file_header = _ostree_file_header_new (file_info, xattrs);
+      g_autoptr (GBytes) file_header = _ostree_file_header_new (file_info, xattrs);
 
       ot_checksum_update_bytes (&checksum, file_header);
 
@@ -951,44 +876,40 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
  * Compute the OSTree checksum for a given file.
  */
 gboolean
-ostree_checksum_file (GFile            *f,
-                      OstreeObjectType  objtype,
-                      guchar          **out_csum,
-                      GCancellable     *cancellable,
-                      GError          **error)
+ostree_checksum_file (GFile *f, OstreeObjectType objtype, guchar **out_csum,
+                      GCancellable *cancellable, GError **error)
 {
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
 
-  g_autoptr(GFileInfo) file_info =
-    g_file_query_info (f, OSTREE_GIO_FAST_QUERYINFO,
-                       G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                       cancellable, error);
+  g_autoptr (GFileInfo) file_info = g_file_query_info (
+      f, OSTREE_GIO_FAST_QUERYINFO, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable, error);
   if (!file_info)
     return FALSE;
 
-  g_autoptr(GInputStream) in = NULL;
+  g_autoptr (GInputStream) in = NULL;
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
     {
-      in = (GInputStream*)g_file_read (f, cancellable, error);
+      in = (GInputStream *)g_file_read (f, cancellable, error);
       if (!in)
         return FALSE;
     }
 
-  g_autoptr(GVariant) xattrs = NULL;
+  g_autoptr (GVariant) xattrs = NULL;
   if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
-      xattrs = ostree_fs_get_all_xattrs_at (AT_FDCWD, gs_file_get_path_cached (f), cancellable, error);
+      xattrs
+          = ostree_fs_get_all_xattrs_at (AT_FDCWD, gs_file_get_path_cached (f), cancellable, error);
       if (!xattrs)
         return FALSE;
     }
 
   g_autofree guchar *ret_csum = NULL;
-  if (!ostree_checksum_file_from_input (file_info, xattrs, in, objtype,
-                                        &ret_csum, cancellable, error))
+  if (!ostree_checksum_file_from_input (file_info, xattrs, in, objtype, &ret_csum, cancellable,
+                                        error))
     return FALSE;
 
-  ot_transfer_out_value(out_csum, &ret_csum);
+  ot_transfer_out_value (out_csum, &ret_csum);
   return TRUE;
 }
 
@@ -1010,14 +931,9 @@ ostree_checksum_file (GFile            *f,
  * Since: 2017.13
  */
 gboolean
-ostree_checksum_file_at (int               dfd,
-                         const char       *path,
-                         struct stat      *stbuf,
-                         OstreeObjectType  objtype,
-                         OstreeChecksumFlags flags,
-                         char            **out_checksum,
-                         GCancellable     *cancellable,
-                         GError          **error)
+ostree_checksum_file_at (int dfd, const char *path, struct stat *stbuf, OstreeObjectType objtype,
+                         OstreeChecksumFlags flags, char **out_checksum, GCancellable *cancellable,
+                         GError **error)
 {
   g_return_val_if_fail (out_checksum != NULL, FALSE);
 
@@ -1032,12 +948,11 @@ ostree_checksum_file_at (int               dfd,
         return FALSE;
     }
 
-  g_autoptr(GFileInfo) file_info = _ostree_stbuf_to_gfileinfo (stbuf);
+  g_autoptr (GFileInfo) file_info = _ostree_stbuf_to_gfileinfo (stbuf);
 
-  const gboolean canonicalize_perms =
-    ((flags & OSTREE_CHECKSUM_FLAGS_CANONICAL_PERMISSIONS) != 0);
+  const gboolean canonicalize_perms = ((flags & OSTREE_CHECKSUM_FLAGS_CANONICAL_PERMISSIONS) != 0);
 
-  g_autoptr(GInputStream) in = NULL;
+  g_autoptr (GInputStream) in = NULL;
   if (S_ISREG (stbuf->st_mode))
     {
       glnx_autofd int fd = -1;
@@ -1056,10 +971,9 @@ ostree_checksum_file_at (int               dfd,
         return FALSE;
     }
 
-  const gboolean ignore_xattrs =
-    ((flags & OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS) > 0);
+  const gboolean ignore_xattrs = ((flags & OSTREE_CHECKSUM_FLAGS_IGNORE_XATTRS) > 0);
 
-  g_autoptr(GVariant) xattrs = NULL;
+  g_autoptr (GVariant) xattrs = NULL;
   if (!ignore_xattrs && objtype == OSTREE_OBJECT_TYPE_FILE)
     {
       if (!glnx_dfd_name_get_all_xattrs (dfd, path, &xattrs, cancellable, error))
@@ -1067,25 +981,23 @@ ostree_checksum_file_at (int               dfd,
     }
 
   g_autofree guchar *csum_bytes = NULL;
-  if (!ostree_checksum_file_from_input (file_info, xattrs, in, objtype,
-                                        &csum_bytes, cancellable, error))
+  if (!ostree_checksum_file_from_input (file_info, xattrs, in, objtype, &csum_bytes, cancellable,
+                                        error))
     return FALSE;
 
   *out_checksum = ostree_checksum_from_bytes (csum_bytes);
   return TRUE;
 }
 
-typedef struct {
-  GFile  *f;
+typedef struct
+{
+  GFile *f;
   OstreeObjectType objtype;
   guchar *csum;
 } ChecksumFileAsyncData;
 
 static void
-checksum_file_async_thread (GTask               *task,
-                            GObject             *object,
-                            gpointer             datap,
-                            GCancellable        *cancellable)
+checksum_file_async_thread (GTask *task, GObject *object, gpointer datap, GCancellable *cancellable)
 {
   GError *error = NULL;
   ChecksumFileAsyncData *data = datap;
@@ -1123,14 +1035,11 @@ checksum_file_async_data_free (gpointer datap)
  * complete with ostree_checksum_file_async_finish().
  */
 void
-ostree_checksum_file_async (GFile                 *f,
-                            OstreeObjectType       objtype,
-                            int                    io_priority,
-                            GCancellable          *cancellable,
-                            GAsyncReadyCallback    callback,
-                            gpointer               user_data)
+ostree_checksum_file_async (GFile *f, OstreeObjectType objtype, int io_priority,
+                            GCancellable *cancellable, GAsyncReadyCallback callback,
+                            gpointer user_data)
 {
-  g_autoptr(GTask) task = NULL;
+  g_autoptr (GTask) task = NULL;
   ChecksumFileAsyncData *data;
 
   data = g_new0 (ChecksumFileAsyncData, 1);
@@ -1155,10 +1064,8 @@ ostree_checksum_file_async (GFile                 *f,
  * ostree_checksum_file_async().
  */
 gboolean
-ostree_checksum_file_async_finish (GFile          *f,
-                                   GAsyncResult   *result,
-                                   guchar        **out_csum,
-                                   GError        **error)
+ostree_checksum_file_async_finish (GFile *f, GAsyncResult *result, guchar **out_csum,
+                                   GError **error)
 {
   ChecksumFileAsyncData *data;
 
@@ -1183,15 +1090,12 @@ ostree_checksum_file_async_finish (GFile          *f,
  * error message.
  */
 gboolean
-_ostree_compare_object_checksum (OstreeObjectType objtype,
-                                 const char      *expected,
-                                 const char      *actual,
-                                 GError         **error)
+_ostree_compare_object_checksum (OstreeObjectType objtype, const char *expected, const char *actual,
+                                 GError **error)
 {
   if (!g_str_equal (expected, actual))
     return glnx_throw (error, "Corrupted %s object; checksum expected='%s' actual='%s'",
-                       ostree_object_type_to_string (objtype),
-                       expected, actual);
+                       ostree_object_type_to_string (objtype), expected, actual);
   return TRUE;
 }
 
@@ -1203,16 +1107,15 @@ _ostree_compare_object_checksum (OstreeObjectType objtype,
  * Returns: (transfer full) (not nullable): A new #GVariant containing %OSTREE_OBJECT_TYPE_DIR_META
  */
 GVariant *
-ostree_create_directory_metadata (GFileInfo    *dir_info,
-                                  GVariant     *xattrs)
+ostree_create_directory_metadata (GFileInfo *dir_info, GVariant *xattrs)
 {
   GVariant *ret_metadata = NULL;
 
-  ret_metadata = g_variant_new ("(uuu@a(ayay))",
-                                GUINT32_TO_BE (g_file_info_get_attribute_uint32 (dir_info, "unix::uid")),
-                                GUINT32_TO_BE (g_file_info_get_attribute_uint32 (dir_info, "unix::gid")),
-                                GUINT32_TO_BE (g_file_info_get_attribute_uint32 (dir_info, "unix::mode")),
-                                xattrs ? xattrs : g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
+  ret_metadata = g_variant_new (
+      "(uuu@a(ayay))", GUINT32_TO_BE (g_file_info_get_attribute_uint32 (dir_info, "unix::uid")),
+      GUINT32_TO_BE (g_file_info_get_attribute_uint32 (dir_info, "unix::gid")),
+      GUINT32_TO_BE (g_file_info_get_attribute_uint32 (dir_info, "unix::mode")),
+      xattrs ? xattrs : g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
   g_variant_ref_sink (ret_metadata);
 
   return ret_metadata;
@@ -1230,11 +1133,8 @@ ostree_create_directory_metadata (GFileInfo    *dir_info,
  * where we override existing files via tempfile+rename().
  */
 gboolean
-_ostree_make_temporary_symlink_at (int             tmp_dirfd,
-                                   const char     *target,
-                                   char          **out_name,
-                                   GCancellable   *cancellable,
-                                   GError        **error)
+_ostree_make_temporary_symlink_at (int tmp_dirfd, const char *target, char **out_name,
+                                   GCancellable *cancellable, GError **error)
 {
   g_autofree char *tmpname = g_strdup ("tmplink.XXXXXX");
   const int max_attempts = 128;
@@ -1260,7 +1160,6 @@ _ostree_make_temporary_symlink_at (int             tmp_dirfd,
     *out_name = g_steal_pointer (&tmpname);
   return TRUE;
 }
-
 
 /**
  * ostree_object_type_to_string:
@@ -1336,8 +1235,7 @@ ostree_object_type_from_string (const char *str)
  * Returns: A string containing both @checksum and a stringifed version of @objtype
  */
 char *
-ostree_object_to_string (const char *checksum,
-                         OstreeObjectType objtype)
+ostree_object_to_string (const char *checksum, OstreeObjectType objtype)
 {
   return g_strconcat (checksum, ".", ostree_object_type_to_string (objtype), NULL);
 }
@@ -1351,9 +1249,7 @@ ostree_object_to_string (const char *checksum,
  * Reverse ostree_object_to_string().
  */
 void
-ostree_object_from_string (const char *str,
-                           gchar     **out_checksum,
-                           OstreeObjectType *out_objtype)
+ostree_object_from_string (const char *str, gchar **out_checksum, OstreeObjectType *out_objtype)
 {
   const char *dot;
 
@@ -1378,7 +1274,7 @@ ostree_hash_object_name (gconstpointer a)
   gint objtype_int;
 
   ostree_object_name_deserialize (variant, &checksum, &objtype);
-  objtype_int = (gint) objtype;
+  objtype_int = (gint)objtype;
   return g_str_hash (checksum) + g_int_hash (&objtype_int);
 }
 
@@ -1390,8 +1286,7 @@ ostree_hash_object_name (gconstpointer a)
  * Compare two binary checksums, using memcmp().
  */
 int
-ostree_cmp_checksum_bytes (const guchar *a,
-                           const guchar *b)
+ostree_cmp_checksum_bytes (const guchar *a, const guchar *b)
 {
   return memcmp (a, b, OSTREE_SHA256_DIGEST_LEN);
 }
@@ -1404,11 +1299,9 @@ ostree_cmp_checksum_bytes (const guchar *a,
  * Returns: (transfer floating): A new floating #GVariant containing checksum string and objtype
  */
 GVariant *
-ostree_object_name_serialize (const char *checksum,
-                              OstreeObjectType objtype)
+ostree_object_name_serialize (const char *checksum, OstreeObjectType objtype)
 {
-  g_assert (objtype >= OSTREE_OBJECT_TYPE_FILE
-            && objtype <= OSTREE_OBJECT_TYPE_LAST);
+  g_assert (objtype >= OSTREE_OBJECT_TYPE_FILE && objtype <= OSTREE_OBJECT_TYPE_LAST);
   return g_variant_new ("(su)", checksum, (guint32)objtype);
 }
 
@@ -1422,8 +1315,7 @@ ostree_object_name_serialize (const char *checksum,
  * only valid for the lifetime of @variant, and must not be freed.
  */
 void
-ostree_object_name_deserialize (GVariant         *variant,
-                                const char      **out_checksum,
+ostree_object_name_deserialize (GVariant *variant, const char **out_checksum,
                                 OstreeObjectType *out_objtype)
 {
   guint32 objtype_u32;
@@ -1439,8 +1331,7 @@ ostree_object_name_deserialize (GVariant         *variant,
  * Overwrite the contents of @buf with stringified version of @csum.
  */
 void
-ostree_checksum_b64_inplace_to_bytes (const char *checksum,
-                                      guchar     *buf)
+ostree_checksum_b64_inplace_to_bytes (const char *checksum, guchar *buf)
 {
   int state = 0;
   guint save = 0;
@@ -1457,7 +1348,7 @@ ostree_checksum_b64_inplace_to_bytes (const char *checksum,
     }
   tmpbuf[43] = '=';
 
-  g_base64_decode_step (tmpbuf, sizeof (tmpbuf), (guchar *) buf, &state, &save);
+  g_base64_decode_step (tmpbuf, sizeof (tmpbuf), (guchar *)buf, &state, &save);
 }
 
 /**
@@ -1469,8 +1360,7 @@ ostree_checksum_b64_inplace_to_bytes (const char *checksum,
  * allocating memory.  Use this function in hot code paths.
  */
 void
-ostree_checksum_inplace_to_bytes (const char *checksum,
-                                  guchar     *buf)
+ostree_checksum_inplace_to_bytes (const char *checksum, guchar *buf)
 {
   guint i;
   guint j;
@@ -1480,10 +1370,10 @@ ostree_checksum_inplace_to_bytes (const char *checksum,
       gint big, little;
 
       g_assert (checksum[j]);
-      g_assert (checksum[j+1]);
+      g_assert (checksum[j + 1]);
 
       big = g_ascii_xdigit_value (checksum[j]);
-      little = g_ascii_xdigit_value (checksum[j+1]);
+      little = g_ascii_xdigit_value (checksum[j + 1]);
 
       g_assert (big != -1);
       g_assert (little != -1);
@@ -1496,7 +1386,8 @@ ostree_checksum_inplace_to_bytes (const char *checksum,
  * ostree_checksum_to_bytes:
  * @checksum: An ASCII checksum
  *
- * Returns: (transfer full) (array fixed-size=32): Binary checksum from @checksum of length 32; free with g_free().
+ * Returns: (transfer full) (array fixed-size=32): Binary checksum from @checksum of length 32;
+ * free with g_free().
  */
 guchar *
 ostree_checksum_to_bytes (const char *checksum)
@@ -1517,7 +1408,7 @@ ostree_checksum_to_bytes_v (const char *checksum)
 {
   guchar result[OSTREE_SHA256_DIGEST_LEN];
   ostree_checksum_inplace_to_bytes (checksum, result);
-  return ot_gvariant_new_bytearray ((guchar*)result, OSTREE_SHA256_DIGEST_LEN);
+  return ot_gvariant_new_bytearray ((guchar *)result, OSTREE_SHA256_DIGEST_LEN);
 }
 
 /**
@@ -1544,8 +1435,7 @@ ostree_checksum_b64_to_bytes (const char *checksum)
  * Overwrite the contents of @buf with stringified version of @csum.
  */
 void
-ostree_checksum_inplace_from_bytes (const guchar *csum,
-                                    char         *buf)
+ostree_checksum_inplace_from_bytes (const guchar *csum, char *buf)
 {
   ot_bin2hex (buf, csum, OSTREE_SHA256_DIGEST_LEN);
 }
@@ -1560,8 +1450,7 @@ ostree_checksum_inplace_from_bytes (const guchar *csum,
  * character is used.
  */
 void
-ostree_checksum_b64_inplace_from_bytes (const guchar *csum,
-                                        char         *buf)
+ostree_checksum_b64_inplace_from_bytes (const guchar *csum, char *buf)
 {
   char tmpbuf[44];
   int save = 0;
@@ -1574,7 +1463,7 @@ ostree_checksum_b64_inplace_from_bytes (const guchar *csum,
    * to replace the '/' with '_'.
    */
   outlen = g_base64_encode_step (csum, OSTREE_SHA256_DIGEST_LEN, FALSE, tmpbuf, &state, &save);
-  outlen += g_base64_encode_close (FALSE, tmpbuf+outlen, &state, &save);
+  outlen += g_base64_encode_close (FALSE, tmpbuf + outlen, &state, &save);
   g_assert (outlen == 44);
 
   for (i = 0; i < sizeof (tmpbuf); i++)
@@ -1601,7 +1490,7 @@ ostree_checksum_b64_inplace_from_bytes (const guchar *csum,
 char *
 ostree_checksum_from_bytes (const guchar *csum)
 {
-  char *ret = g_malloc (OSTREE_SHA256_STRING_LEN+1);
+  char *ret = g_malloc (OSTREE_SHA256_STRING_LEN + 1);
   ostree_checksum_inplace_from_bytes (csum, ret);
   return ret;
 }
@@ -1641,7 +1530,8 @@ ostree_checksum_b64_from_bytes (const guchar *csum)
  * ostree_checksum_bytes_peek:
  * @bytes: #GVariant of type ay
  *
- * Returns: (transfer none) (array fixed-size=32) (element-type guint8): Binary checksum data in @bytes; do not free.  If @bytes does not have the correct length, return %NULL.
+ * Returns: (transfer none) (array fixed-size=32) (element-type guint8): Binary checksum data in
+ * @bytes; do not free.  If @bytes does not have the correct length, return %NULL.
  */
 const guchar *
 ostree_checksum_bytes_peek (GVariant *bytes)
@@ -1664,15 +1554,14 @@ ostree_checksum_bytes_peek (GVariant *bytes)
  * Returns: (transfer none) (array fixed-size=32) (element-type guint8): Binary checksum data
  */
 const guchar *
-ostree_checksum_bytes_peek_validate (GVariant  *bytes,
-                                     GError   **error)
+ostree_checksum_bytes_peek_validate (GVariant *bytes, GError **error)
 {
   const guchar *ret = ostree_checksum_bytes_peek (bytes);
   if (G_UNLIKELY (!ret))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid checksum of length %" G_GUINT64_FORMAT
-                   " expected 32", (guint64) g_variant_n_children (bytes));
+                   "Invalid checksum of length %" G_GUINT64_FORMAT " expected 32",
+                   (guint64)g_variant_n_children (bytes));
       return NULL;
     }
   return ret;
@@ -1689,17 +1578,14 @@ ostree_checksum_bytes_peek_validate (GVariant  *bytes,
  * object.
  */
 void
-_ostree_loose_path (char              *buf,
-                    const char        *checksum,
-                    OstreeObjectType   objtype,
-                    OstreeRepoMode     mode)
+_ostree_loose_path (char *buf, const char *checksum, OstreeObjectType objtype, OstreeRepoMode mode)
 {
   *buf = checksum[0];
   buf++;
   *buf = checksum[1];
   buf++;
-  snprintf (buf, _OSTREE_LOOSE_PATH_MAX - 2, "/%s.%s%s",
-            checksum + 2, ostree_object_type_to_string (objtype),
+  snprintf (buf, _OSTREE_LOOSE_PATH_MAX - 2, "/%s.%s%s", checksum + 2,
+            ostree_object_type_to_string (objtype),
             (!OSTREE_OBJECT_TYPE_IS_META (objtype) && mode == OSTREE_REPO_MODE_ARCHIVE) ? "z" : "");
 }
 
@@ -1728,7 +1614,7 @@ _ostree_stbuf_to_gfileinfo (const struct stat *stbuf)
     ftype = G_FILE_TYPE_REGULAR;
   else if (S_ISLNK (mode))
     ftype = G_FILE_TYPE_SYMBOLIC_LINK;
-  else if (S_ISBLK (mode) || S_ISCHR(mode) || S_ISFIFO(mode))
+  else if (S_ISBLK (mode) || S_ISCHR (mode) || S_ISFIFO (mode))
     ftype = G_FILE_TYPE_SPECIAL;
   else
     ftype = G_FILE_TYPE_UNKNOWN;
@@ -1758,10 +1644,11 @@ _ostree_stbuf_to_gfileinfo (const struct stat *stbuf)
  * Map GFileInfo data from @file_info onto @out_stbuf.
  */
 void
-_ostree_gfileinfo_to_stbuf (GFileInfo    *file_info,
-                            struct stat  *out_stbuf)
+_ostree_gfileinfo_to_stbuf (GFileInfo *file_info, struct stat *out_stbuf)
 {
-  struct stat stbuf = {0,};
+  struct stat stbuf = {
+    0,
+  };
   stbuf.st_mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
   stbuf.st_uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
   stbuf.st_gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
@@ -1789,10 +1676,13 @@ _ostree_gfileinfo_equal (GFileInfo *a, GFileInfo *b)
     return TRUE;
 
 #define CHECK_ONE_ATTR(type, attr, a, b) \
-    do { if (g_file_info_get_attribute_##type(a, attr) != \
-             g_file_info_get_attribute_##type(b, attr)) \
-           return FALSE; \
-    } while (0)
+  do \
+    { \
+      if (g_file_info_get_attribute_##type (a, attr) \
+          != g_file_info_get_attribute_##type (b, attr)) \
+        return FALSE; \
+    } \
+  while (0)
 
   CHECK_ONE_ATTR (uint32, "unix::uid", a, b);
   CHECK_ONE_ATTR (uint32, "unix::gid", a, b);
@@ -1829,7 +1719,9 @@ _ostree_stbuf_equal (struct stat *stbuf_a, struct stat *stbuf_b)
 GFileInfo *
 _ostree_mode_uidgid_to_gfileinfo (mode_t mode, uid_t uid, gid_t gid)
 {
-  struct stat stbuf = { 0, };
+  struct stat stbuf = {
+    0,
+  };
   stbuf.st_mode = mode;
   stbuf.st_uid = uid;
   stbuf.st_gid = gid;
@@ -1845,9 +1737,7 @@ _ostree_mode_uidgid_to_gfileinfo (mode_t mode, uid_t uid, gid_t gid)
  * Returns: (transfer full): Relative path for a loose object
  */
 char *
-_ostree_get_relative_object_path (const char         *checksum,
-                                  OstreeObjectType    type,
-                                  gboolean            compressed)
+_ostree_get_relative_object_path (const char *checksum, OstreeObjectType type, gboolean compressed)
 {
   GString *path;
 
@@ -1867,9 +1757,7 @@ _ostree_get_relative_object_path (const char         *checksum,
 }
 
 static GString *
-static_delta_path_base (const char *dir,
-                        const char *from,
-                        const char *to)
+static_delta_path_base (const char *dir, const char *from, const char *to)
 {
   guint8 csum_to[OSTREE_SHA256_DIGEST_LEN];
   char to_b64[44];
@@ -1907,9 +1795,7 @@ static_delta_path_base (const char *dir,
 }
 
 char *
-_ostree_get_relative_static_delta_path (const char *from,
-                                        const char *to,
-                                        const char *target)
+_ostree_get_relative_static_delta_path (const char *from, const char *to, const char *target)
 {
   GString *ret = static_delta_path_base ("deltas/", from, to);
 
@@ -1923,23 +1809,19 @@ _ostree_get_relative_static_delta_path (const char *from,
 }
 
 char *
-_ostree_get_relative_static_delta_superblock_path (const char        *from,
-                                                   const char        *to)
+_ostree_get_relative_static_delta_superblock_path (const char *from, const char *to)
 {
   return _ostree_get_relative_static_delta_path (from, to, "superblock");
 }
 
 char *
-_ostree_get_relative_static_delta_detachedmeta_path (const char        *from,
-                                                     const char        *to)
+_ostree_get_relative_static_delta_detachedmeta_path (const char *from, const char *to)
 {
   return _ostree_get_relative_static_delta_path (from, to, "meta");
 }
 
 char *
-_ostree_get_relative_static_delta_part_path (const char        *from,
-                                             const char        *to,
-                                             guint              i)
+_ostree_get_relative_static_delta_part_path (const char *from, const char *to, guint i)
 {
   g_autofree char *partstr = g_strdup_printf ("%u", i);
   return _ostree_get_relative_static_delta_path (from, to, partstr);
@@ -1956,12 +1838,9 @@ _ostree_get_relative_static_delta_index_path (const char *to)
 }
 
 gboolean
-_ostree_parse_delta_name (const char   *delta_name,
-                          char        **out_from,
-                          char        **out_to,
-                          GError      **error)
+_ostree_parse_delta_name (const char *delta_name, char **out_from, char **out_to, GError **error)
 {
-  g_auto(GStrv) parts = NULL;
+  g_auto (GStrv) parts = NULL;
   g_return_val_if_fail (delta_name != NULL, FALSE);
 
   parts = g_strsplit (delta_name, "-", 2);
@@ -1972,8 +1851,7 @@ _ostree_parse_delta_name (const char   *delta_name,
   if (!ostree_validate_checksum_string (parts[0] ?: "", error))
     return FALSE;
 
-  if (parts[0] && parts[1] &&
-      !ostree_validate_checksum_string (parts[1], error))
+  if (parts[0] && parts[1] && !ostree_validate_checksum_string (parts[1], error))
     return FALSE;
 
   *out_from = *out_to = NULL;
@@ -2001,25 +1879,22 @@ _ostree_parse_delta_name (const char   *delta_name,
  * along with extended attributes tored in @out_xattrs.
  */
 static gboolean
-file_header_parse (GVariant         *metadata,
-                   GFileInfo       **out_file_info,
-                   GVariant        **out_xattrs,
-                   GError          **error)
+file_header_parse (GVariant *metadata, GFileInfo **out_file_info, GVariant **out_xattrs,
+                   GError **error)
 {
   guint32 uid, gid, mode, rdev;
   const char *symlink_target;
-  g_autoptr(GVariant) ret_xattrs = NULL;
+  g_autoptr (GVariant) ret_xattrs = NULL;
 
-  g_variant_get (metadata, "(uuuu&s@a(ayay))",
-                 &uid, &gid, &mode, &rdev,
-                 &symlink_target, &ret_xattrs);
+  g_variant_get (metadata, "(uuuu&s@a(ayay))", &uid, &gid, &mode, &rdev, &symlink_target,
+                 &ret_xattrs);
   if (rdev != 0)
     return glnx_throw (error, "Corrupted archive file; invalid rdev %u", GUINT32_FROM_BE (rdev));
 
   uid = GUINT32_FROM_BE (uid);
   gid = GUINT32_FROM_BE (gid);
   mode = GUINT32_FROM_BE (mode);
-  g_autoptr(GFileInfo) ret_file_info = _ostree_mode_uidgid_to_gfileinfo (mode, uid, gid);
+  g_autoptr (GFileInfo) ret_file_info = _ostree_mode_uidgid_to_gfileinfo (mode, uid, gid);
 
   if (S_ISREG (mode))
     {
@@ -2027,15 +1902,16 @@ file_header_parse (GVariant         *metadata,
     }
   else if (S_ISLNK (mode))
     {
-      g_file_info_set_attribute_byte_string (ret_file_info, "standard::symlink-target", symlink_target);
+      g_file_info_set_attribute_byte_string (ret_file_info, "standard::symlink-target",
+                                             symlink_target);
     }
   else
     {
       return glnx_throw (error, "Corrupted archive file; invalid mode %u", mode);
     }
 
-  ot_transfer_out_value(out_file_info, &ret_file_info);
-  ot_transfer_out_value(out_xattrs, &ret_xattrs);
+  ot_transfer_out_value (out_file_info, &ret_file_info);
+  ot_transfer_out_value (out_xattrs, &ret_xattrs);
   return TRUE;
 }
 
@@ -2050,26 +1926,23 @@ file_header_parse (GVariant         *metadata,
  * content.
  */
 static gboolean
-zlib_file_header_parse (GVariant         *metadata,
-                        GFileInfo       **out_file_info,
-                        GVariant        **out_xattrs,
-                        GError          **error)
+zlib_file_header_parse (GVariant *metadata, GFileInfo **out_file_info, GVariant **out_xattrs,
+                        GError **error)
 {
   guint64 size;
   guint32 uid, gid, mode, rdev;
   const char *symlink_target;
-  g_autoptr(GVariant) ret_xattrs = NULL;
+  g_autoptr (GVariant) ret_xattrs = NULL;
 
-  g_variant_get (metadata, "(tuuuu&s@a(ayay))", &size,
-                 &uid, &gid, &mode, &rdev,
-                 &symlink_target, &ret_xattrs);
+  g_variant_get (metadata, "(tuuuu&s@a(ayay))", &size, &uid, &gid, &mode, &rdev, &symlink_target,
+                 &ret_xattrs);
   if (rdev != 0)
     return glnx_throw (error, "Corrupted archive file; invalid rdev %u", GUINT32_FROM_BE (rdev));
 
   uid = GUINT32_FROM_BE (uid);
   gid = GUINT32_FROM_BE (gid);
   mode = GUINT32_FROM_BE (mode);
-  g_autoptr(GFileInfo) ret_file_info = _ostree_mode_uidgid_to_gfileinfo (mode, uid, gid);
+  g_autoptr (GFileInfo) ret_file_info = _ostree_mode_uidgid_to_gfileinfo (mode, uid, gid);
   g_file_info_set_size (ret_file_info, GUINT64_FROM_BE (size));
 
   if (S_ISREG (mode))
@@ -2078,15 +1951,16 @@ zlib_file_header_parse (GVariant         *metadata,
     }
   else if (S_ISLNK (mode))
     {
-      g_file_info_set_attribute_byte_string (ret_file_info, "standard::symlink-target", symlink_target);
+      g_file_info_set_attribute_byte_string (ret_file_info, "standard::symlink-target",
+                                             symlink_target);
     }
   else
     {
       return glnx_throw (error, "Corrupted archive file; invalid mode %u", mode);
     }
 
-  ot_transfer_out_value(out_file_info, &ret_file_info);
-  ot_transfer_out_value(out_xattrs, &ret_xattrs);
+  ot_transfer_out_value (out_file_info, &ret_file_info);
+  ot_transfer_out_value (out_xattrs, &ret_xattrs);
   return TRUE;
 }
 
@@ -2098,12 +1972,10 @@ zlib_file_header_parse (GVariant         *metadata,
  * Returns: %TRUE if @objtype represents a valid object type
  */
 gboolean
-ostree_validate_structureof_objtype (guchar    objtype,
-                                     GError   **error)
+ostree_validate_structureof_objtype (guchar objtype, GError **error)
 {
-  OstreeObjectType objtype_v = (OstreeObjectType) objtype;
-  if (objtype_v < OSTREE_OBJECT_TYPE_FILE
-      || objtype_v > OSTREE_OBJECT_TYPE_COMMIT)
+  OstreeObjectType objtype_v = (OstreeObjectType)objtype;
+  if (objtype_v < OSTREE_OBJECT_TYPE_FILE || objtype_v > OSTREE_OBJECT_TYPE_COMMIT)
     return glnx_throw (error, "Invalid object type '%u'", objtype);
   return TRUE;
 }
@@ -2116,8 +1988,7 @@ ostree_validate_structureof_objtype (guchar    objtype,
  * Returns: %TRUE if @checksum is a valid binary SHA256 checksum
  */
 gboolean
-ostree_validate_structureof_csum_v (GVariant  *checksum,
-                                    GError   **error)
+ostree_validate_structureof_csum_v (GVariant *checksum, GError **error)
 {
   return ostree_checksum_bytes_peek_validate (checksum, error) != NULL;
 }
@@ -2130,8 +2001,7 @@ ostree_validate_structureof_csum_v (GVariant  *checksum,
  * Returns: %TRUE if @checksum is a valid ASCII SHA256 checksum
  */
 gboolean
-ostree_validate_structureof_checksum_string (const char *checksum,
-                                             GError   **error)
+ostree_validate_structureof_checksum_string (const char *checksum, GError **error)
 {
   int i = 0;
   size_t len = strlen (checksum);
@@ -2142,20 +2012,18 @@ ostree_validate_structureof_checksum_string (const char *checksum,
        * dump it all to the error.
        * https://github.com/projectatomic/rpm-ostree/issues/885
        */
-      g_autofree char *sanitized = quash_string_for_error_message (checksum, len,
-                                                                   OSTREE_SHA256_STRING_LEN);
+      g_autofree char *sanitized
+          = quash_string_for_error_message (checksum, len, OSTREE_SHA256_STRING_LEN);
       return glnx_throw (error, "Invalid rev %s", sanitized);
     }
 
   for (i = 0; i < len; i++)
     {
-      guint8 c = ((guint8*) checksum)[i];
+      guint8 c = ((guint8 *)checksum)[i];
 
-      if (!((c >= 48 && c <= 57)
-            || (c >= 97 && c <= 102)))
+      if (!((c >= 48 && c <= 57) || (c >= 97 && c <= 102)))
         {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Invalid character '%d' in rev '%s'",
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Invalid character '%d' in rev '%s'",
                        c, checksum);
           return FALSE;
         }
@@ -2164,9 +2032,7 @@ ostree_validate_structureof_checksum_string (const char *checksum,
 }
 
 static gboolean
-validate_variant (GVariant           *variant,
-                  const GVariantType *variant_type,
-                  GError            **error)
+validate_variant (GVariant *variant, const GVariantType *variant_type, GError **error)
 {
   if (!g_variant_is_normal_form (variant))
     {
@@ -2174,8 +2040,7 @@ validate_variant (GVariant           *variant,
     }
   if (!g_variant_is_of_type (variant, variant_type))
     {
-      return glnx_throw (error, "Doesn't match variant type '%s'",
-                        (char *)variant_type);
+      return glnx_throw (error, "Doesn't match variant type '%s'", (char *)variant_type);
     }
   return TRUE;
 }
@@ -2184,9 +2049,7 @@ validate_variant (GVariant           *variant,
  * commit/dirtree/dirmeta verifiers.
  */
 gboolean
-_ostree_validate_structureof_metadata (OstreeObjectType objtype,
-                                       GVariant        *metadata,
-                                       GError         **error)
+_ostree_validate_structureof_metadata (OstreeObjectType objtype, GVariant *metadata, GError **error)
 {
   g_assert (OSTREE_OBJECT_TYPE_IS_META (objtype));
 
@@ -2225,25 +2088,27 @@ _ostree_validate_structureof_metadata (OstreeObjectType objtype,
  * one is checking for path traversal in dirtree objects.
  */
 gboolean
-_ostree_verify_metadata_object (OstreeObjectType objtype,
-                                const char      *expected_checksum,
-                                GVariant        *metadata,
-                                GError         **error)
+_ostree_verify_metadata_object (OstreeObjectType objtype, const char *expected_checksum,
+                                GVariant *metadata, GError **error)
 {
   g_assert (expected_checksum);
 
-  g_auto(OtChecksum) hasher = { 0, };
+  g_auto (OtChecksum) hasher = {
+    0,
+  };
   ot_checksum_init (&hasher);
   ot_checksum_update (&hasher, g_variant_get_data (metadata), g_variant_get_size (metadata));
 
-  char actual_checksum[OSTREE_SHA256_STRING_LEN+1];
+  char actual_checksum[OSTREE_SHA256_STRING_LEN + 1];
   ot_checksum_get_hexdigest (&hasher, actual_checksum, sizeof (actual_checksum));
   if (!_ostree_compare_object_checksum (objtype, expected_checksum, actual_checksum, error))
     return FALSE;
 
   /* Add the checksum + objtype prefix here */
-  { const char *error_prefix = glnx_strjoina (expected_checksum, ".", ostree_object_type_to_string (objtype));
-    GLNX_AUTO_PREFIX_ERROR(error_prefix, error);
+  {
+    const char *error_prefix
+        = glnx_strjoina (expected_checksum, ".", ostree_object_type_to_string (objtype));
+    GLNX_AUTO_PREFIX_ERROR (error_prefix, error);
     if (!_ostree_validate_structureof_metadata (objtype, metadata, error))
       return FALSE;
   }
@@ -2262,18 +2127,17 @@ _ostree_verify_metadata_object (OstreeObjectType objtype,
  * Returns: %TRUE if @commit is structurally valid
  */
 gboolean
-ostree_validate_structureof_commit (GVariant      *commit,
-                                    GError       **error)
+ostree_validate_structureof_commit (GVariant *commit, GError **error)
 {
   if (!validate_variant (commit, OSTREE_COMMIT_GVARIANT_FORMAT, error))
     return FALSE;
 
-  g_autoptr(GVariant) metadata = NULL;
+  g_autoptr (GVariant) metadata = NULL;
   g_variant_get_child (commit, 0, "@a{sv}", &metadata);
   g_assert (metadata != NULL);
-  g_autoptr(GVariantIter) metadata_iter = g_variant_iter_new (metadata);
+  g_autoptr (GVariantIter) metadata_iter = g_variant_iter_new (metadata);
   g_assert (metadata_iter != NULL);
-  g_autoptr(GVariant) metadata_entry = NULL;
+  g_autoptr (GVariant) metadata_entry = NULL;
   const gchar *metadata_key = NULL;
   while (g_variant_iter_loop (metadata_iter, "{sv}", &metadata_key, NULL))
     {
@@ -2281,22 +2145,22 @@ ostree_validate_structureof_commit (GVariant      *commit,
         return glnx_throw (error, "Empty metadata key");
     }
 
-  g_autoptr(GVariant) parent_csum_v = NULL;
+  g_autoptr (GVariant) parent_csum_v = NULL;
   g_variant_get_child (commit, 1, "@ay", &parent_csum_v);
   gsize n_elts;
-  (void) g_variant_get_fixed_array (parent_csum_v, &n_elts, 1);
+  (void)g_variant_get_fixed_array (parent_csum_v, &n_elts, 1);
   if (n_elts > 0)
     {
       if (!ostree_validate_structureof_csum_v (parent_csum_v, error))
         return FALSE;
     }
 
-  g_autoptr(GVariant) content_csum_v = NULL;
+  g_autoptr (GVariant) content_csum_v = NULL;
   g_variant_get_child (commit, 6, "@ay", &content_csum_v);
   if (!ostree_validate_structureof_csum_v (content_csum_v, error))
     return FALSE;
 
-  g_autoptr(GVariant) metadata_csum_v = NULL;
+  g_autoptr (GVariant) metadata_csum_v = NULL;
   g_variant_get_child (commit, 7, "@ay", &metadata_csum_v);
   if (!ostree_validate_structureof_csum_v (metadata_csum_v, error))
     return FALSE;
@@ -2315,21 +2179,19 @@ ostree_validate_structureof_commit (GVariant      *commit,
  * Returns: %TRUE if @dirtree is structurally valid
  */
 gboolean
-ostree_validate_structureof_dirtree (GVariant      *dirtree,
-                                     GError       **error)
+ostree_validate_structureof_dirtree (GVariant *dirtree, GError **error)
 {
   const char *filename;
-  g_autoptr(GVariant) content_csum_v = NULL;
-  g_autoptr(GVariant) meta_csum_v = NULL;
-  g_autoptr(GVariantIter) contents_iter = NULL;
+  g_autoptr (GVariant) content_csum_v = NULL;
+  g_autoptr (GVariant) meta_csum_v = NULL;
+  g_autoptr (GVariantIter) contents_iter = NULL;
 
   if (!validate_variant (dirtree, OSTREE_TREE_GVARIANT_FORMAT, error))
     return FALSE;
 
   g_variant_get_child (dirtree, 0, "a(say)", &contents_iter);
 
-  while (g_variant_iter_loop (contents_iter, "(&s@ay)",
-                              &filename, &content_csum_v))
+  while (g_variant_iter_loop (contents_iter, "(&s@ay)", &filename, &content_csum_v))
     {
       if (!ot_util_filename_validate (filename, error))
         return FALSE;
@@ -2344,8 +2206,8 @@ ostree_validate_structureof_dirtree (GVariant      *dirtree,
   g_variant_iter_free (contents_iter);
   g_variant_get_child (dirtree, 1, "a(sayay)", &contents_iter);
 
-  while (g_variant_iter_loop (contents_iter, "(&s@ay@ay)",
-                              &filename, &content_csum_v, &meta_csum_v))
+  while (
+      g_variant_iter_loop (contents_iter, "(&s@ay@ay)", &filename, &content_csum_v, &meta_csum_v))
     {
       if (!ot_util_filename_validate (filename, error))
         return FALSE;
@@ -2364,16 +2226,14 @@ ostree_validate_structureof_dirtree (GVariant      *dirtree,
  * bare-user-only mode. It's opt-in though for all pulls.
  */
 gboolean
-_ostree_validate_bareuseronly_mode (guint32     content_mode,
-                                    const char *checksum,
-                                    GError    **error)
+_ostree_validate_bareuseronly_mode (guint32 content_mode, const char *checksum, GError **error)
 {
   if (S_ISREG (content_mode))
     {
       const guint32 invalid_modebits = ((content_mode & ~S_IFMT) & ~0775);
       if (invalid_modebits > 0)
-        return glnx_throw (error, "Content object %s: invalid mode 0%04o with bits 0%04o",
-                           checksum, content_mode, invalid_modebits);
+        return glnx_throw (error, "Content object %s: invalid mode 0%04o with bits 0%04o", checksum,
+                           content_mode, invalid_modebits);
     }
   else if (S_ISLNK (content_mode))
     ; /* Nothing */
@@ -2384,11 +2244,9 @@ _ostree_validate_bareuseronly_mode (guint32     content_mode,
 }
 
 static gboolean
-validate_stat_mode_perms (guint32        mode,
-                          GError       **error)
+validate_stat_mode_perms (guint32 mode, GError **error)
 {
-  guint32 otherbits = (~S_IFMT & ~S_IRWXU & ~S_IRWXG & ~S_IRWXO &
-                       ~S_ISUID & ~S_ISGID & ~S_ISVTX);
+  guint32 otherbits = (~S_IFMT & ~S_IRWXU & ~S_IRWXG & ~S_IRWXO & ~S_ISUID & ~S_ISGID & ~S_ISVTX);
 
   if (mode & otherbits)
     return glnx_throw (error, "Invalid mode %u; invalid bits in mode", mode);
@@ -2404,8 +2262,7 @@ validate_stat_mode_perms (guint32        mode,
  * Returns: %TRUE if @mode represents a valid file type and permissions
  */
 gboolean
-ostree_validate_structureof_file_mode (guint32            mode,
-                                       GError           **error)
+ostree_validate_structureof_file_mode (guint32 mode, GError **error)
 {
   if (!(S_ISREG (mode) || S_ISLNK (mode)))
     return glnx_throw (error, "Invalid file metadata mode %u; not a valid file type", mode);
@@ -2426,8 +2283,7 @@ ostree_validate_structureof_file_mode (guint32            mode,
  * Returns: %TRUE if @dirmeta is structurally valid
  */
 gboolean
-ostree_validate_structureof_dirmeta (GVariant      *dirmeta,
-                                     GError       **error)
+ostree_validate_structureof_dirmeta (GVariant *dirmeta, GError **error)
 {
   guint32 mode;
 
@@ -2454,9 +2310,9 @@ ostree_validate_structureof_dirmeta (GVariant      *dirmeta,
  * if none
  */
 gchar *
-ostree_commit_get_parent (GVariant  *commit_variant)
+ostree_commit_get_parent (GVariant *commit_variant)
 {
-  g_autoptr(GVariant) bytes = NULL;
+  g_autoptr (GVariant) bytes = NULL;
   bytes = g_variant_get_child_value (commit_variant, 1);
   if (g_variant_n_children (bytes) == 0)
     return NULL;
@@ -2471,13 +2327,12 @@ ostree_commit_get_parent (GVariant  *commit_variant)
  * Since: 2016.3
  */
 guint64
-ostree_commit_get_timestamp (GVariant  *commit_variant)
+ostree_commit_get_timestamp (GVariant *commit_variant)
 {
   guint64 ret;
   g_variant_get_child (commit_variant, 5, "t", &ret);
   return GUINT64_FROM_BE (ret);
 }
-
 
 /**
  * ostree_commit_get_content_checksum:
@@ -2491,9 +2346,9 @@ ostree_commit_get_timestamp (GVariant  *commit_variant)
  * By comparing checksums of content, it's possible to easily distinguish
  * cases where nothing actually changed.
  *
- * The content checksums is simply defined as `SHA256(root dirtree_checksum || root_dirmeta_checksum)`,
- * i.e. the SHA-256 of the root "dirtree" object's checksum concatenated with the
- * root "dirmeta" checksum (both in binary form, not hexadecimal).
+ * The content checksums is simply defined as `SHA256(root dirtree_checksum ||
+ * root_dirmeta_checksum)`, i.e. the SHA-256 of the root "dirtree" object's checksum concatenated
+ * with the root "dirmeta" checksum (both in binary form, not hexadecimal).
  *
  * Returns: (nullable): A SHA-256 hex string, or %NULL if @commit_variant is not well-formed
  *
@@ -2502,11 +2357,13 @@ ostree_commit_get_timestamp (GVariant  *commit_variant)
 gchar *
 ostree_commit_get_content_checksum (GVariant *commit_variant)
 {
-  g_auto(OtChecksum) checksum = { 0, };
+  g_auto (OtChecksum) checksum = {
+    0,
+  };
   ot_checksum_init (&checksum);
 
-  g_autoptr(GVariant) tree_contents_csum = NULL;
-  g_autoptr(GVariant) tree_meta_csum = NULL;
+  g_autoptr (GVariant) tree_contents_csum = NULL;
+  g_autoptr (GVariant) tree_meta_csum = NULL;
 
   g_variant_get_child (commit_variant, 6, "@ay", &tree_contents_csum);
   g_variant_get_child (commit_variant, 7, "@ay", &tree_meta_csum);
@@ -2520,7 +2377,7 @@ ostree_commit_get_content_checksum (GVariant *commit_variant)
   if (!bytes)
     return NULL;
   ot_checksum_update (&checksum, bytes, OSTREE_SHA256_DIGEST_LEN);
-  char hexdigest[OSTREE_SHA256_STRING_LEN+1];
+  char hexdigest[OSTREE_SHA256_STRING_LEN + 1];
   ot_checksum_get_hexdigest (&checksum, hexdigest, sizeof (hexdigest));
   return g_strdup (hexdigest);
 }
@@ -2542,14 +2399,12 @@ G_DEFINE_BOXED_TYPE (OstreeCommitSizesEntry, ostree_commit_sizes_entry,
  * Since: 2020.1
  */
 OstreeCommitSizesEntry *
-ostree_commit_sizes_entry_new (const gchar      *checksum,
-                               OstreeObjectType  objtype,
-                               guint64           unpacked,
-                               guint64           archived)
+ostree_commit_sizes_entry_new (const gchar *checksum, OstreeObjectType objtype, guint64 unpacked,
+                               guint64 archived)
 {
   g_return_val_if_fail (checksum == NULL || ostree_validate_checksum_string (checksum, NULL), NULL);
 
-  g_autoptr(OstreeCommitSizesEntry) entry = g_new0 (OstreeCommitSizesEntry, 1);
+  g_autoptr (OstreeCommitSizesEntry) entry = g_new0 (OstreeCommitSizesEntry, 1);
   entry->checksum = g_strdup (checksum);
   entry->objtype = objtype;
   entry->unpacked = unpacked;
@@ -2572,9 +2427,7 @@ ostree_commit_sizes_entry_copy (const OstreeCommitSizesEntry *entry)
 {
   g_return_val_if_fail (entry != NULL, NULL);
 
-  return ostree_commit_sizes_entry_new (entry->checksum,
-                                        entry->objtype,
-                                        entry->unpacked,
+  return ostree_commit_sizes_entry_new (entry->checksum, entry->objtype, entry->unpacked,
                                         entry->archived);
 }
 
@@ -2596,9 +2449,7 @@ ostree_commit_sizes_entry_free (OstreeCommitSizesEntry *entry)
 }
 
 static gboolean
-read_sizes_entry (GVariant                *entry,
-                  OstreeCommitSizesEntry **out_sizes,
-                  GError                 **error)
+read_sizes_entry (GVariant *entry, OstreeCommitSizesEntry **out_sizes, GError **error)
 {
   gsize entry_size = g_variant_get_size (entry);
   g_return_val_if_fail (entry_size >= OSTREE_SHA256_DIGEST_LEN + 2, FALSE);
@@ -2631,8 +2482,7 @@ read_sizes_entry (GVariant                *entry,
     {
       objtype = *buffer;
       if (objtype < OSTREE_OBJECT_TYPE_FILE || objtype > OSTREE_OBJECT_TYPE_LAST)
-        return glnx_throw (error, "Unexpected ostree.sizes object type %u",
-                           objtype);
+        return glnx_throw (error, "Unexpected ostree.sizes object type %u", objtype);
       buffer++;
       entry_size--;
     }
@@ -2642,10 +2492,8 @@ read_sizes_entry (GVariant                *entry,
       objtype = OSTREE_OBJECT_TYPE_FILE;
     }
 
-  g_autoptr(OstreeCommitSizesEntry) sizes = ostree_commit_sizes_entry_new (checksum,
-                                                                           objtype,
-                                                                           unpacked,
-                                                                           archived);
+  g_autoptr (OstreeCommitSizesEntry) sizes
+      = ostree_commit_sizes_entry_new (checksum, objtype, unpacked, archived);
 
   if (out_sizes != NULL)
     *out_sizes = g_steal_pointer (&sizes);
@@ -2669,16 +2517,14 @@ read_sizes_entry (GVariant                *entry,
  * Since: 2020.1
  */
 gboolean
-ostree_commit_get_object_sizes (GVariant   *commit_variant,
-                                GPtrArray **out_sizes_entries,
-                                GError    **error)
+ostree_commit_get_object_sizes (GVariant *commit_variant, GPtrArray **out_sizes_entries,
+                                GError **error)
 {
   g_return_val_if_fail (commit_variant != NULL, FALSE);
 
-  g_autoptr(GVariant) metadata = g_variant_get_child_value (commit_variant, 0);
-  g_autoptr(GVariant) sizes_variant =
-    g_variant_lookup_value (metadata, "ostree.sizes",
-                            G_VARIANT_TYPE ("a" _OSTREE_OBJECT_SIZES_ENTRY_SIGNATURE));
+  g_autoptr (GVariant) metadata = g_variant_get_child_value (commit_variant, 0);
+  g_autoptr (GVariant) sizes_variant = g_variant_lookup_value (
+      metadata, "ostree.sizes", G_VARIANT_TYPE ("a" _OSTREE_OBJECT_SIZES_ENTRY_SIGNATURE));
   if (sizes_variant == NULL)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
@@ -2686,9 +2532,9 @@ ostree_commit_get_object_sizes (GVariant   *commit_variant,
       return FALSE;
     }
 
-  g_autoptr(GPtrArray) sizes_entries =
-    g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_commit_sizes_entry_free);
-  g_autoptr(GVariant) entry = NULL;
+  g_autoptr (GPtrArray) sizes_entries
+      = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_commit_sizes_entry_free);
+  g_autoptr (GVariant) entry = NULL;
   GVariantIter entry_iter;
   g_variant_iter_init (&entry_iter, sizes_variant);
   while ((entry = g_variant_iter_next_value (&entry_iter)))
@@ -2708,11 +2554,8 @@ ostree_commit_get_object_sizes (GVariant   *commit_variant,
 
 /* Used in pull/deploy to validate we're not being downgraded */
 gboolean
-_ostree_compare_timestamps (const char   *current_rev,
-                            guint64       current_ts,
-                            const char   *new_rev,
-                            guint64       new_ts,
-                            GError      **error)
+_ostree_compare_timestamps (const char *current_rev, guint64 current_ts, const char *new_rev,
+                            guint64 new_ts, GError **error)
 {
   /* Newer timestamp is OK */
   if (new_ts > current_ts)
@@ -2722,44 +2565,45 @@ _ostree_compare_timestamps (const char   *current_rev,
     return TRUE;
 
   /* Looks like a downgrade, format an error message */
-  g_autoptr(GDateTime) current_dt = g_date_time_new_from_unix_utc (current_ts);
-  g_autoptr(GDateTime) new_dt = g_date_time_new_from_unix_utc (new_ts);
+  g_autoptr (GDateTime) current_dt = g_date_time_new_from_unix_utc (current_ts);
+  g_autoptr (GDateTime) new_dt = g_date_time_new_from_unix_utc (new_ts);
 
   if (current_dt == NULL || new_dt == NULL)
-    return glnx_throw (error, "Upgrade target revision '%s' timestamp (%" G_GINT64_FORMAT ") or current revision '%s' timestamp (%" G_GINT64_FORMAT ") is invalid",
-                       new_rev, new_ts,
-                       current_rev, current_ts);
+    return glnx_throw (error,
+                       "Upgrade target revision '%s' timestamp (%" G_GINT64_FORMAT
+                       ") or current revision '%s' timestamp (%" G_GINT64_FORMAT ") is invalid",
+                       new_rev, new_ts, current_rev, current_ts);
 
   g_autofree char *current_ts_str = g_date_time_format (current_dt, "%c");
   g_autofree char *new_ts_str = g_date_time_format (new_dt, "%c");
 
-  return glnx_throw (error, "Upgrade target revision '%s' with timestamp '%s' is chronologically older than current revision '%s' with timestamp '%s'; use --allow-downgrade to permit",
-                     new_rev, new_ts_str, current_rev, current_ts_str);
+  return glnx_throw (
+      error,
+      "Upgrade target revision '%s' with timestamp '%s' is chronologically older than current "
+      "revision '%s' with timestamp '%s'; use --allow-downgrade to permit",
+      new_rev, new_ts_str, current_rev, current_ts_str);
 }
-
 
 #ifndef OSTREE_DISABLE_GPGME
 GVariant *
-_ostree_detached_metadata_append_gpg_sig (GVariant   *existing_metadata,
-                                          GBytes     *signature_bytes)
+_ostree_detached_metadata_append_gpg_sig (GVariant *existing_metadata, GBytes *signature_bytes)
 {
   GVariantDict metadata_dict;
-  g_autoptr(GVariant) signature_data = NULL;
-  g_autoptr(GVariantBuilder) signature_builder = NULL;
+  g_autoptr (GVariant) signature_data = NULL;
+  g_autoptr (GVariantBuilder) signature_builder = NULL;
 
   g_variant_dict_init (&metadata_dict, existing_metadata);
 
-  signature_data = g_variant_dict_lookup_value (&metadata_dict,
-                                                _OSTREE_METADATA_GPGSIGS_NAME,
+  signature_data = g_variant_dict_lookup_value (&metadata_dict, _OSTREE_METADATA_GPGSIGS_NAME,
                                                 _OSTREE_METADATA_GPGSIGS_TYPE);
 
   /* signature_data may be NULL */
-  signature_builder = ot_util_variant_builder_from_variant (signature_data, _OSTREE_METADATA_GPGSIGS_TYPE);
+  signature_builder
+      = ot_util_variant_builder_from_variant (signature_data, _OSTREE_METADATA_GPGSIGS_TYPE);
 
   g_variant_builder_add (signature_builder, "@ay", ot_gvariant_new_ay_bytes (signature_bytes));
 
-  g_variant_dict_insert_value (&metadata_dict,
-                               _OSTREE_METADATA_GPGSIGS_NAME,
+  g_variant_dict_insert_value (&metadata_dict, _OSTREE_METADATA_GPGSIGS_NAME,
                                g_variant_builder_end (signature_builder));
 
   return g_variant_ref_sink (g_variant_dict_end (&metadata_dict));
@@ -2805,5 +2649,5 @@ _ostree_get_default_sysroot_path (void)
 gboolean
 ostree_check_version (guint required_year, guint required_release)
 {
-  return OSTREE_CHECK_VERSION(required_year, required_release);
+  return OSTREE_CHECK_VERSION (required_year, required_release);
 }

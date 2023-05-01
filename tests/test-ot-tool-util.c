@@ -20,11 +20,11 @@
 #include "config.h"
 #include "libglnx.h"
 #include "ostree-mutable-tree.h"
+#include "ot-tool-util.h"
+#include <gio/gio.h>
 #include <glib.h>
 #include <stdlib.h>
-#include <gio/gio.h>
 #include <string.h>
-#include "ot-tool-util.h"
 
 /*
 
@@ -42,7 +42,7 @@ ot_parse_keyvalue (const char  *keyvalue,
 static void
 test_ot_parse_boolean (void)
 {
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GError) error = NULL;
   gboolean out = FALSE;
   g_assert_true (ot_parse_boolean ("yes", &out, &error));
   g_assert_true (out);
@@ -79,20 +79,17 @@ test_ot_parse_boolean (void)
 static void
 test_ot_parse_keyvalue (void)
 {
-  g_autoptr(GError) error = NULL;
-  char *keyvalue[] = {"foo=bar", "a=", "b=1231231"};
-  char *key[] = {"foo", "a", "b"};
-  char *value[] = {"bar", "", "1231231"};
+  g_autoptr (GError) error = NULL;
+  char *keyvalue[] = { "foo=bar", "a=", "b=1231231" };
+  char *key[] = { "foo", "a", "b" };
+  char *value[] = { "bar", "", "1231231" };
   guint i;
 
   for (i = 0; i < G_N_ELEMENTS (keyvalue); i++)
     {
       g_autofree char *out_key = NULL;
       g_autofree char *out_value = NULL;
-      g_assert_true (ot_parse_keyvalue (keyvalue[i],
-                                        &out_key,
-                                        &out_value,
-                                        &error));
+      g_assert_true (ot_parse_keyvalue (keyvalue[i], &out_key, &out_value, &error));
       g_assert_cmpstr (out_key, ==, key[i]);
       g_assert_cmpstr (out_value, ==, value[i]);
     }
@@ -100,19 +97,17 @@ test_ot_parse_keyvalue (void)
   {
     g_autofree char *out_key = NULL;
     g_autofree char *out_value = NULL;
-    g_assert_false (ot_parse_keyvalue ("blabla",
-                                       &out_key,
-                                       &out_value,
-                                       &error));
+    g_assert_false (ot_parse_keyvalue ("blabla", &out_key, &out_value, &error));
     g_assert_error (error, G_IO_ERROR, G_IO_ERROR_FAILED);
     g_clear_error (&error);
   }
 }
 
-int main (int argc, char **argv)
+int
+main (int argc, char **argv)
 {
   g_test_init (&argc, &argv, NULL);
   g_test_add_func ("/ot-tool-util/parse-boolean", test_ot_parse_boolean);
   g_test_add_func ("/ot-tool-util/parse-keyvalue", test_ot_parse_keyvalue);
-  return g_test_run();
+  return g_test_run ();
 }
