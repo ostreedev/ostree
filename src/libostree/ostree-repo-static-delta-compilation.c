@@ -19,10 +19,9 @@
 
 #include "config.h"
 
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 #include <gio/gunixoutputstream.h>
-#include <gio/gmemoryoutputstream.h>
 
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"

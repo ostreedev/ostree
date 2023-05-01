@@ -16,6 +16,7 @@
  */
 
 #include "config.h"
+
 #include "ostree-bootloader.h"
 
 G_DEFINE_INTERFACE (OstreeBootloader, _ostree_bootloader, G_TYPE_OBJECT)

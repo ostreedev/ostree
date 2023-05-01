@@ -17,7 +17,8 @@
 
 #pragma once
 
-#include <gio/gio.h>
+#include <ostree.h>
+
 #include "otutil.h"
 
 G_BEGIN_DECLS

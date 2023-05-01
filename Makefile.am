@@ -132,6 +132,10 @@ include Makefile-bash.am
 release-tag:
 	cd $(srcdir) && git $(srcdir) tag -m "Release $(VERSION)" v$(VERSION)
 
+.PHONY: clang-format
+clang-format:
+	git ls-files '**.c' '**.cxx' '**.h' '**.hpp' | xargs clang-format -i
+
 embed_dependency=tar -C $(srcdir) --append --exclude='.git/*' --transform="s,^embedded-dependencies/,ostree-embeddeps-$${GITVERSION}/embedded-dependencies/," --file=$${TARFILE_TMP}
 
 git_version_rpm = $$(cd $(srcdir) && git describe | sed -e 's,-,\.,g' -e 's,^v,,')

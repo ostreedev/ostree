@@ -27,7 +27,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "ot-main.h"
 #include "ot-builtins.h"
 
 static OstreeCommand commands[] = {

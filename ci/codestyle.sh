@@ -15,6 +15,13 @@ done
 echo "ok"
 fi
 
+# Will uncomment this once we reformat
+#if command -v clang-format; then
+#    echo -n "checking clang-format... "
+#    git ls-files '**.c' '**.cxx' '**.h' '**.hpp' | xargs clang-format --Werror --dry-run
+#    echo "ok"
+#fi
+
 echo -n 'grep-based static analysis... '
 patterns=(glnx_fd_close)
 for pat in "${patterns[@]}"; do
