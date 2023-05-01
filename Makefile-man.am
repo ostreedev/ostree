@@ -17,6 +17,9 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library. If not, see <https://www.gnu.org/licenses/>.
 
+# This needs to be outside the conditional to avoid a warning
+.PHONY: manhtml
+
 if ENABLE_MAN
 
 # If you add a new man page here, add a reference to it in index.xml and
@@ -65,7 +68,6 @@ noinst_DATA += $(manhtml_files)
 
 # Convenience target for building the just the HTML man pages
 manhtml: $(manhtml_files)
-.PHONY: manhtml
 endif
 
 EXTRA_DIST += man/index.xml $(man1_MANS:.1=.xml) $(man5_MANS:.5=.xml)
