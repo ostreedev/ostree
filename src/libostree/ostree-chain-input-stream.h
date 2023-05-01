@@ -22,7 +22,7 @@
 
 #ifndef __GI_SCANNER__
 
-#include <gio/gio.h>
+#include <ostree.h>
 
 G_BEGIN_DECLS
 
