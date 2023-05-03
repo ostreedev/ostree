@@ -21,9 +21,9 @@
 
 #include "config.h"
 
-#include "ot-main.h"
-#include "ot-builtins.h"
 #include "ostree.h"
+#include "ot-builtins.h"
+#include "ot-main.h"
 
 static gboolean opt_delete;
 static gboolean opt_list;
@@ -39,19 +39,22 @@ static gboolean opt_force;
  */
 
 static GOptionEntry options[] = {
-  { "delete", 0, 0, G_OPTION_ARG_NONE, &opt_delete, "Delete refs which match PREFIX, rather than listing them", NULL },
+  { "delete", 0, 0, G_OPTION_ARG_NONE, &opt_delete,
+    "Delete refs which match PREFIX, rather than listing them", NULL },
   { "list", 0, 0, G_OPTION_ARG_NONE, &opt_list, "Do not remove the prefix from the refs", NULL },
   { "revision", 'r', 0, G_OPTION_ARG_NONE, &opt_revision, "Show revisions in listing", NULL },
-  { "alias", 'A', 0, G_OPTION_ARG_NONE, &opt_alias, "If used with --create, create an alias, otherwise just list aliases", NULL },
-  { "create", 0, 0, G_OPTION_ARG_STRING, &opt_create, "Create a new ref for an existing commit", "NEWREF" },
-  { "collections", 'c', 0, G_OPTION_ARG_NONE, &opt_collections, "Enable listing collection IDs for refs", NULL },
+  { "alias", 'A', 0, G_OPTION_ARG_NONE, &opt_alias,
+    "If used with --create, create an alias, otherwise just list aliases", NULL },
+  { "create", 0, 0, G_OPTION_ARG_STRING, &opt_create, "Create a new ref for an existing commit",
+    "NEWREF" },
+  { "collections", 'c', 0, G_OPTION_ARG_NONE, &opt_collections,
+    "Enable listing collection IDs for refs", NULL },
   { "force", 0, 0, G_OPTION_ARG_NONE, &opt_force, "Overwrite existing refs when creating", NULL },
   { NULL }
 };
 
 static int
-collection_ref_cmp (OstreeCollectionRef *a,
-                    OstreeCollectionRef *b)
+collection_ref_cmp (OstreeCollectionRef *a, OstreeCollectionRef *b)
 {
   int ret = g_strcmp0 (a->collection_id, b->collection_id);
   if (ret == 0)
@@ -60,26 +63,22 @@ collection_ref_cmp (OstreeCollectionRef *a,
 }
 
 static gboolean
-do_ref_with_collections (OstreeRepo    *repo,
-                         const char    *refspec_prefix,
-                         GCancellable  *cancellable,
-                         GError       **error)
+do_ref_with_collections (OstreeRepo *repo, const char *refspec_prefix, GCancellable *cancellable,
+                         GError **error)
 {
-  g_autoptr(GHashTable) refs = NULL;  /* (element-type OstreeCollectionRef utf8) */
+  g_autoptr (GHashTable) refs = NULL; /* (element-type OstreeCollectionRef utf8) */
   GHashTableIter hashiter;
   gpointer hashkey, hashvalue;
   gboolean ret = FALSE;
 
-  if (!ostree_repo_list_collection_refs (repo,
-                                         (!opt_create) ? refspec_prefix : NULL,
-                                         &refs, OSTREE_REPO_LIST_REFS_EXT_NONE,
-                                         cancellable, error))
+  if (!ostree_repo_list_collection_refs (repo, (!opt_create) ? refspec_prefix : NULL, &refs,
+                                         OSTREE_REPO_LIST_REFS_EXT_NONE, cancellable, error))
     goto out;
 
   if (!opt_delete && !opt_create)
     {
-      g_autoptr(GList) ordered_keys = g_hash_table_get_keys (refs);
-      ordered_keys = g_list_sort (ordered_keys, (GCompareFunc) collection_ref_cmp);
+      g_autoptr (GList) ordered_keys = g_hash_table_get_keys (refs);
+      ordered_keys = g_list_sort (ordered_keys, (GCompareFunc)collection_ref_cmp);
 
       for (GList *iter = ordered_keys; iter != NULL; iter = iter->next)
         {
@@ -101,7 +100,8 @@ do_ref_with_collections (OstreeRepo    *repo,
       g_autofree char *checksum = NULL;
       g_autofree char *checksum_existing = NULL;
 
-      if (!ostree_repo_resolve_rev_ext (repo, opt_create, TRUE, OSTREE_REPO_RESOLVE_REV_EXT_NONE, &checksum_existing, error))
+      if (!ostree_repo_resolve_rev_ext (repo, opt_create, TRUE, OSTREE_REPO_RESOLVE_REV_EXT_NONE,
+                                        &checksum_existing, error))
         {
           if (g_error_matches (*error, G_IO_ERROR, G_IO_ERROR_IS_DIRECTORY))
             {
@@ -109,7 +109,8 @@ do_ref_with_collections (OstreeRepo    *repo,
                * which is handled by _ostree_repo_write_ref */
               g_clear_error (error);
             }
-          else goto out;
+          else
+            goto out;
         }
 
       if (!opt_force && checksum_existing != NULL)
@@ -124,7 +125,7 @@ do_ref_with_collections (OstreeRepo    *repo,
 
       /* This is technically an abuse of the refspec syntax: collection IDs
        * should not be treated like remote names. */
-      g_auto(GStrv) parts = g_strsplit (opt_create, ":", 2);
+      g_auto (GStrv) parts = g_strsplit (opt_create, ":", 2);
       const char *collection_id = parts[0];
       const char *ref_name = parts[1];
       if (!ostree_validate_collection_id (collection_id, error))
@@ -132,9 +133,8 @@ do_ref_with_collections (OstreeRepo    *repo,
       if (!ostree_validate_rev (ref_name, error))
         goto out;
 
-      const OstreeCollectionRef ref = { (gchar *) collection_id, (gchar *) ref_name };
-      if (!ostree_repo_set_collection_ref_immediate (repo, &ref, checksum,
-                                                     cancellable, error))
+      const OstreeCollectionRef ref = { (gchar *)collection_id, (gchar *)ref_name };
+      if (!ostree_repo_set_collection_ref_immediate (repo, &ref, checksum, cancellable, error))
         goto out;
     }
   else
@@ -145,20 +145,20 @@ do_ref_with_collections (OstreeRepo    *repo,
         {
           const OstreeCollectionRef *ref = hashkey;
 
-          if (!ostree_repo_set_collection_ref_immediate (repo, ref, NULL,
-                                                         cancellable, error))
+          if (!ostree_repo_set_collection_ref_immediate (repo, ref, NULL, cancellable, error))
             goto out;
         }
     }
   ret = TRUE;
- out:
+out:
   return ret;
 }
 
-static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellable *cancellable, GError **error)
+static gboolean
+do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GHashTable) refs = NULL;
-  g_autoptr(GHashTable) ref_aliases = NULL;
+  g_autoptr (GHashTable) refs = NULL;
+  g_autoptr (GHashTable) ref_aliases = NULL;
   GHashTableIter hashiter;
   gpointer hashkey, hashvalue;
   gboolean ret = FALSE;
@@ -174,8 +174,7 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
    */
   if (opt_alias || opt_delete)
     {
-      if (!ostree_repo_list_refs_ext (repo, NULL, &ref_aliases,
-                                      OSTREE_REPO_LIST_REFS_EXT_ALIASES,
+      if (!ostree_repo_list_refs_ext (repo, NULL, &ref_aliases, OSTREE_REPO_LIST_REFS_EXT_ALIASES,
                                       cancellable, error))
         goto out;
     }
@@ -187,8 +186,7 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
       OstreeRepoListRefsExtFlags flags = OSTREE_REPO_LIST_REFS_EXT_NONE;
       if (opt_alias)
         flags |= OSTREE_REPO_LIST_REFS_EXT_ALIASES;
-      if (!ostree_repo_list_refs_ext (repo, refspec_prefix, &refs, flags,
-                                      cancellable, error))
+      if (!ostree_repo_list_refs_ext (repo, refspec_prefix, &refs, flags, cancellable, error))
         goto out;
     }
   else if (opt_create)
@@ -202,8 +200,8 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
 
   if (is_list)
     {
-      g_autoptr(GList) ordered_keys = g_hash_table_get_keys (refs);
-      ordered_keys = g_list_sort (ordered_keys, (GCompareFunc) g_strcmp0);
+      g_autoptr (GList) ordered_keys = g_hash_table_get_keys (refs);
+      ordered_keys = g_list_sort (ordered_keys, (GCompareFunc)g_strcmp0);
 
       for (GList *iter = ordered_keys; iter != NULL; iter = iter->next)
         {
@@ -232,7 +230,8 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
       g_autofree char *remote = NULL;
       g_autofree char *ref = NULL;
 
-      if (!ostree_repo_resolve_rev_ext (repo, opt_create, TRUE, OSTREE_REPO_RESOLVE_REV_EXT_NONE, &checksum_existing, error))
+      if (!ostree_repo_resolve_rev_ext (repo, opt_create, TRUE, OSTREE_REPO_RESOLVE_REV_EXT_NONE,
+                                        &checksum_existing, error))
         {
           if (g_error_matches (*error, G_IO_ERROR, G_IO_ERROR_IS_DIRECTORY))
             {
@@ -240,7 +239,8 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
                * which is handled by _ostree_repo_write_ref */
               g_clear_error (error);
             }
-          else goto out;
+          else
+            goto out;
         }
 
       /* We want to allow replacing an existing alias or a normal ref when
@@ -264,8 +264,8 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
           if (!g_hash_table_contains (refs, refspec_prefix))
             return glnx_throw (error, "Cannot create alias to non-existent ref: %s",
                                refspec_prefix);
-          if (!ostree_repo_set_alias_ref_immediate (repo, remote, ref, refspec_prefix,
-                                                    cancellable, error))
+          if (!ostree_repo_set_alias_ref_immediate (repo, remote, ref, refspec_prefix, cancellable,
+                                                    error))
             goto out;
         }
       else
@@ -273,8 +273,7 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
           if (!ostree_repo_resolve_rev (repo, refspec_prefix, FALSE, &checksum, error))
             goto out;
 
-          if (!ostree_repo_set_ref_immediate (repo, remote, ref, checksum,
-                                              cancellable, error))
+          if (!ostree_repo_set_ref_immediate (repo, remote, ref, checksum, cancellable, error))
             goto out;
         }
     }
@@ -292,8 +291,7 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
             goto out;
 
           /* Look for alias if it exists for a ref we want to delete */
-          GLNX_HASH_TABLE_FOREACH_KV (ref_aliases, const char *,
-                                      ref_alias, const char *, value)
+          GLNX_HASH_TABLE_FOREACH_KV (ref_aliases, const char *, ref_alias, const char *, value)
             {
               if (!strcmp (ref, value))
                 {
@@ -302,27 +300,28 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
                   goto out;
                 }
             }
-          if (!ostree_repo_set_ref_immediate (repo, remote, ref, NULL,
-                                              cancellable, error))
+          if (!ostree_repo_set_ref_immediate (repo, remote, ref, NULL, cancellable, error))
             goto out;
         }
     }
   ret = TRUE;
- out:
+out:
   return ret;
 }
 
 gboolean
-ostree_builtin_refs (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ostree_builtin_refs (int argc, char **argv, OstreeCommandInvocation *invocation,
+                     GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GOptionContext) context = NULL;
-  g_autoptr(OstreeRepo) repo = NULL;
+  g_autoptr (GOptionContext) context = NULL;
+  g_autoptr (OstreeRepo) repo = NULL;
   int i;
 
   context = g_option_context_new ("[PREFIX]");
 
-  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable,
+                                    error))
     goto out;
 
   if (argc >= 2)
@@ -358,7 +357,7 @@ ostree_builtin_refs (int argc, char **argv, OstreeCommandInvocation *invocation,
     }
 
   ret = TRUE;
- out:
+out:
   if (repo)
     ostree_repo_abort_transaction (repo, cancellable, NULL);
   return ret;

@@ -34,10 +34,21 @@ GType _ostree_sign_dummy_get_type (void);
 
 G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 typedef struct _OstreeSignDummy OstreeSignDummy;
-typedef struct { GObjectClass parent_class; } OstreeSignDummyClass;
+typedef struct
+{
+  GObjectClass parent_class;
+} OstreeSignDummyClass;
 
-static inline OstreeSignDummy *OSTREE_SIGN_DUMMY (gpointer ptr) { return G_TYPE_CHECK_INSTANCE_CAST (ptr, _ostree_sign_dummy_get_type (), OstreeSignDummy); }
-static inline gboolean OSTREE_IS_SIGN_DUMMY (gpointer ptr) { return G_TYPE_CHECK_INSTANCE_TYPE (ptr, _ostree_sign_dummy_get_type ()); }
+static inline OstreeSignDummy *
+OSTREE_SIGN_DUMMY (gpointer ptr)
+{
+  return G_TYPE_CHECK_INSTANCE_CAST (ptr, _ostree_sign_dummy_get_type (), OstreeSignDummy);
+}
+static inline gboolean
+OSTREE_IS_SIGN_DUMMY (gpointer ptr)
+{
+  return G_TYPE_CHECK_INSTANCE_TYPE (ptr, _ostree_sign_dummy_get_type ());
+}
 
 G_GNUC_END_IGNORE_DEPRECATIONS
 
@@ -50,26 +61,19 @@ G_DECLARE_FINAL_TYPE (OstreeSignDummy,
                       GObject)
 */
 
-const gchar * ostree_sign_dummy_get_name (OstreeSign *self);
+const gchar *ostree_sign_dummy_get_name (OstreeSign *self);
 
-gboolean ostree_sign_dummy_data (OstreeSign *self,
-                                 GBytes *data,
-                                 GBytes **signature,
-                                 GCancellable *cancellable,
-                                 GError **error);
+gboolean ostree_sign_dummy_data (OstreeSign *self, GBytes *data, GBytes **signature,
+                                 GCancellable *cancellable, GError **error);
 
-gboolean ostree_sign_dummy_data_verify (OstreeSign *self,
-                                        GBytes     *data,
-                                        GVariant   *signatures,
-                                        char       **success_message,
-                                        GError     **error);
+gboolean ostree_sign_dummy_data_verify (OstreeSign *self, GBytes *data, GVariant *signatures,
+                                        char **success_message, GError **error);
 
-const gchar * ostree_sign_dummy_metadata_key (OstreeSign *self);
-const gchar * ostree_sign_dummy_metadata_format (OstreeSign *self);
+const gchar *ostree_sign_dummy_metadata_key (OstreeSign *self);
+const gchar *ostree_sign_dummy_metadata_format (OstreeSign *self);
 
 gboolean ostree_sign_dummy_set_sk (OstreeSign *self, GVariant *key, GError **error);
 gboolean ostree_sign_dummy_set_pk (OstreeSign *self, GVariant *key, GError **error);
 gboolean ostree_sign_dummy_add_pk (OstreeSign *self, GVariant *key, GError **error);
 
 G_END_DECLS
-

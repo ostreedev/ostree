@@ -20,23 +20,24 @@
 
 #include "config.h"
 
+#include <curl/curl.h>
 #include <gio/gfiledescriptorbased.h>
 #include <gio/gunixoutputstream.h>
 #include <glib-unix.h>
-#include <curl/curl.h>
 
 /* These macros came from 7.43.0, but we want to check
  * for versions a bit earlier than that (to work on CentOS 7),
  * so define them here if we're using an older version.
  */
 #ifndef CURL_VERSION_BITS
-#define CURL_VERSION_BITS(x,y,z) ((x)<<16|(y)<<8|z)
+#define CURL_VERSION_BITS(x, y, z) ((x) << 16 | (y) << 8 | z)
 #endif
 #ifndef CURL_AT_LEAST_VERSION
-#define CURL_AT_LEAST_VERSION(x,y,z) (LIBCURL_VERSION_NUM >= CURL_VERSION_BITS(x, y, z))
+#define CURL_AT_LEAST_VERSION(x, y, z) (LIBCURL_VERSION_NUM >= CURL_VERSION_BITS (x, y, z))
 #endif
 
-/* Cargo culted from https://github.com/curl/curl/blob/curl-7_53_0/docs/examples/http2-download.c */
+/* Cargo culted from https://github.com/curl/curl/blob/curl-7_53_0/docs/examples/http2-download.c
+ */
 #ifndef CURLPIPE_MULTIPLEX
 /* This little trick will just make sure that we don't enable pipelining for
    libcurls old enough to not have this symbol. It is _not_ defined to zero in
@@ -45,9 +46,9 @@
 #endif
 
 #include "ostree-date-utils-private.h"
-#include "ostree-fetcher.h"
-#include "ostree-fetcher-util.h"
 #include "ostree-enumtypes.h"
+#include "ostree-fetcher-util.h"
+#include "ostree-fetcher.h"
 #include "ostree-repo-private.h"
 #include "otutil.h"
 
@@ -82,13 +83,14 @@ struct OstreeFetcher
   GSource *timer_event;
   int curl_running;
   GHashTable *outstanding_requests; /* Set<GTask> */
-  GHashTable *sockets; /* Set<SockInfo> */
+  GHashTable *sockets;              /* Set<SockInfo> */
 
   guint64 bytes_transferred;
 };
 
 /* Information associated with a request */
-struct FetcherRequest {
+struct FetcherRequest
+{
   guint refcount;
   GPtrArray *mirrorlist;
   guint idx;
@@ -98,15 +100,16 @@ struct FetcherRequest {
   guint64 max_size;
   OstreeFetcherRequestFlags flags;
   struct curl_slist *req_headers;
-  char *if_none_match;  /* request ETag */
-  guint64 if_modified_since;  /* seconds since the epoch */
+  char *if_none_match;       /* request ETag */
+  guint64 if_modified_since; /* seconds since the epoch */
   gboolean is_membuf;
   GError *caught_write_error;
   GLnxTmpfile tmpf;
   GString *output_buf;
-  gboolean out_not_modified;  /* TRUE if the server gave a HTTP 304 Not Modified response, which we don’t propagate as an error */
-  char *out_etag;  /* response ETag */
-  guint64 out_last_modified;  /* response Last-Modified, seconds since the epoch */
+  gboolean out_not_modified; /* TRUE if the server gave a HTTP 304 Not Modified response, which we
+                                don’t propagate as an error */
+  char *out_etag;            /* response ETag */
+  guint64 out_last_modified; /* response Last-Modified, seconds since the epoch */
 
   CURL *easy;
   char error[CURL_ERROR_SIZE];
@@ -115,7 +118,8 @@ struct FetcherRequest {
 };
 
 /* Information associated with a specific socket */
-struct SockInfo {
+struct SockInfo
+{
   guint refcount;
   curl_socket_t sockfd;
   int action;
@@ -124,7 +128,8 @@ struct SockInfo {
   OstreeFetcher *fetcher;
 };
 
-enum {
+enum
+{
   PROP_0,
   PROP_CONFIG_FLAGS
 };
@@ -132,40 +137,35 @@ enum {
 G_DEFINE_TYPE (OstreeFetcher, _ostree_fetcher, G_TYPE_OBJECT)
 
 static void
-_ostree_fetcher_set_property (GObject      *object,
-                              guint         prop_id,
-                              const GValue *value,
-                              GParamSpec   *pspec)
-{
-  OstreeFetcher *self = OSTREE_FETCHER (object);
-
-  switch (prop_id)
-    {
-      case PROP_CONFIG_FLAGS:
-        self->config_flags = g_value_get_flags (value);
-        break;
-      default:
-        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-        break;
-    }
-}
-
-static void
-_ostree_fetcher_get_property (GObject    *object,
-                              guint       prop_id,
-                              GValue     *value,
+_ostree_fetcher_set_property (GObject *object, guint prop_id, const GValue *value,
                               GParamSpec *pspec)
 {
   OstreeFetcher *self = OSTREE_FETCHER (object);
 
   switch (prop_id)
     {
-      case PROP_CONFIG_FLAGS:
-        g_value_set_flags (value, self->config_flags);
-        break;
-      default:
-        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-        break;
+    case PROP_CONFIG_FLAGS:
+      self->config_flags = g_value_get_flags (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+    }
+}
+
+static void
+_ostree_fetcher_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
+{
+  OstreeFetcher *self = OSTREE_FETCHER (object);
+
+  switch (prop_id)
+    {
+    case PROP_CONFIG_FLAGS:
+      g_value_set_flags (value, self->config_flags);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
     }
 }
 
@@ -211,23 +211,19 @@ _ostree_fetcher_class_init (OstreeFetcherClass *klass)
   gobject_class->finalize = _ostree_fetcher_finalize;
   gobject_class->constructed = _ostree_fetcher_constructed;
 
-  g_object_class_install_property (gobject_class,
-                                   PROP_CONFIG_FLAGS,
-                                   g_param_spec_flags ("config-flags",
-                                                       "",
-                                                       "",
-                                                       OSTREE_TYPE_FETCHER_CONFIG_FLAGS,
-                                                       OSTREE_FETCHER_FLAGS_NONE,
-                                                       G_PARAM_READWRITE |
-                                                       G_PARAM_CONSTRUCT_ONLY |
-                                                       G_PARAM_STATIC_STRINGS));
+  g_object_class_install_property (
+      gobject_class, PROP_CONFIG_FLAGS,
+      g_param_spec_flags ("config-flags", "", "", OSTREE_TYPE_FETCHER_CONFIG_FLAGS,
+                          OSTREE_FETCHER_FLAGS_NONE,
+                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 
 static void
 _ostree_fetcher_init (OstreeFetcher *self)
 {
-  self->multi = curl_multi_init();
-  self->outstanding_requests = g_hash_table_new_full (NULL, NULL, (GDestroyNotify)g_object_unref, NULL);
+  self->multi = curl_multi_init ();
+  self->outstanding_requests
+      = g_hash_table_new_full (NULL, NULL, (GDestroyNotify)g_object_unref, NULL);
   self->sockets = g_hash_table_new_full (NULL, NULL, (GDestroyNotify)sock_unref, NULL);
   curl_multi_setopt (self->multi, CURLMOPT_SOCKETFUNCTION, sock_cb);
   curl_multi_setopt (self->multi, CURLMOPT_SOCKETDATA, self);
@@ -245,11 +241,8 @@ _ostree_fetcher_init (OstreeFetcher *self)
 #endif
 }
 
-
 OstreeFetcher *
-_ostree_fetcher_new (int                      tmpdir_dfd,
-                     const char              *remote_name,
-                     OstreeFetcherConfigFlags flags)
+_ostree_fetcher_new (int tmpdir_dfd, const char *remote_name, OstreeFetcherConfigFlags flags)
 {
   OstreeFetcher *fetcher = g_object_new (OSTREE_TYPE_FETCHER, "config-flags", flags, NULL);
   fetcher->remote_name = g_strdup (remote_name);
@@ -269,7 +262,8 @@ request_get_uri (FetcherRequest *req, GUri *baseuri)
 {
   if (!req->filename)
     return g_uri_to_string_partial (baseuri, G_URI_HIDE_PASSWORD);
-  { g_autofree char *uristr =  g_uri_to_string_partial (baseuri, G_URI_HIDE_PASSWORD);
+  {
+    g_autofree char *uristr = g_uri_to_string_partial (baseuri, G_URI_HIDE_PASSWORD);
     return g_build_filename (uristr, req->filename, NULL);
   }
 }
@@ -279,8 +273,8 @@ ensure_tmpfile (FetcherRequest *req, GError **error)
 {
   if (!req->tmpf.initialized)
     {
-      if (!_ostree_fetcher_tmpf_from_flags (req->flags, req->fetcher->tmpdir_dfd,
-                                            &req->tmpf, error))
+      if (!_ostree_fetcher_tmpf_from_flags (req->flags, req->fetcher->tmpdir_dfd, &req->tmpf,
+                                            error))
         return FALSE;
     }
   return TRUE;
@@ -324,24 +318,24 @@ check_multi_info (OstreeFetcher *fetcher)
           if (is_file && curlres == CURLE_FILE_COULDNT_READ_FILE)
             {
               /* Handle file not found */
-              g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                                       "%s", curl_easy_strerror (curlres));
+              g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_NOT_FOUND, "%s",
+                                       curl_easy_strerror (curlres));
             }
           else
             {
               g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_FAILED,
                                        "While fetching %s: [%u] %s", eff_url, curlres,
                                        curl_easy_strerror (curlres));
-              _ostree_fetcher_journal_failure (req->fetcher->remote_name,
-                                               eff_url, curl_easy_strerror (curlres));
+              _ostree_fetcher_journal_failure (req->fetcher->remote_name, eff_url,
+                                               curl_easy_strerror (curlres));
             }
         }
       else
         {
           curl_easy_getinfo (easy, CURLINFO_RESPONSE_CODE, &response);
 
-          if (!is_file && response == 304 &&
-              (req->if_none_match != NULL || req->if_modified_since > 0))
+          if (!is_file && response == 304
+              && (req->if_none_match != NULL || req->if_modified_since > 0))
             {
               /* Version on the server is unchanged from the version we have
                * cached locally; report this as an out-argument, a zero-length
@@ -355,15 +349,14 @@ check_multi_info (OstreeFetcher *fetcher)
 
               if (req->idx + 1 == req->mirrorlist->len)
                 {
-                  g_autofree char *response_msg = g_strdup_printf ("Server returned HTTP %lu", response);
-                  g_task_return_new_error (task, G_IO_ERROR, giocode,
-                                           "%s", response_msg);
-                  if (req->fetcher->remote_name &&
-                      !((req->flags & OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT) > 0 &&
-                        giocode == G_IO_ERROR_NOT_FOUND))
-                    _ostree_fetcher_journal_failure (req->fetcher->remote_name,
-                                                     eff_url, response_msg);
-
+                  g_autofree char *response_msg
+                      = g_strdup_printf ("Server returned HTTP %lu", response);
+                  g_task_return_new_error (task, G_IO_ERROR, giocode, "%s", response_msg);
+                  if (req->fetcher->remote_name
+                      && !((req->flags & OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT) > 0
+                           && giocode == G_IO_ERROR_NOT_FOUND))
+                    _ostree_fetcher_journal_failure (req->fetcher->remote_name, eff_url,
+                                                     response_msg);
                 }
               else
                 {
@@ -381,7 +374,7 @@ check_multi_info (OstreeFetcher *fetcher)
             }
           else
             {
-              g_autoptr(GError) local_error = NULL;
+              g_autoptr (GError) local_error = NULL;
               GError **error = &local_error;
 
               if (!ensure_tmpfile (req, error))
@@ -454,9 +447,8 @@ event_cb (int fd, GIOCondition condition, gpointer data)
 {
   OstreeFetcher *fetcher = data;
 
-  int action =
-    (condition & G_IO_IN ? CURL_CSELECT_IN : 0) |
-    (condition & G_IO_OUT ? CURL_CSELECT_OUT : 0);
+  int action
+      = (condition & G_IO_IN ? CURL_CSELECT_IN : 0) | (condition & G_IO_OUT ? CURL_CSELECT_OUT : 0);
 
   (void)curl_multi_socket_action (fetcher->multi, fd, action, &fetcher->curl_running);
   check_multi_info (fetcher);
@@ -484,10 +476,9 @@ sock_unref (SockInfo *f)
 
 /* Assign information to a SockInfo structure */
 static void
-setsock (SockInfo*f, curl_socket_t s, int act, OstreeFetcher *fetcher)
+setsock (SockInfo *f, curl_socket_t s, int act, OstreeFetcher *fetcher)
 {
-  GIOCondition kind =
-     (act&CURL_POLL_IN?G_IO_IN:0)|(act&CURL_POLL_OUT?G_IO_OUT:0);
+  GIOCondition kind = (act & CURL_POLL_IN ? G_IO_IN : 0) | (act & CURL_POLL_OUT ? G_IO_OUT : 0);
 
   f->sockfd = s;
   f->action = act;
@@ -496,7 +487,7 @@ setsock (SockInfo*f, curl_socket_t s, int act, OstreeFetcher *fetcher)
    * flags involves less allocation.
    */
   f->ch = g_unix_fd_source_new (f->sockfd, kind);
-  g_source_set_callback (f->ch, (GSourceFunc) event_cb, fetcher, NULL);
+  g_source_set_callback (f->ch, (GSourceFunc)event_cb, fetcher, NULL);
   g_source_attach (f->ch, fetcher->mainctx);
 }
 
@@ -518,7 +509,7 @@ static int
 sock_cb (CURL *easy, curl_socket_t s, int what, void *cbp, void *sockp)
 {
   OstreeFetcher *fetcher = cbp;
-  SockInfo *fdp = (SockInfo*) sockp;
+  SockInfo *fdp = (SockInfo *)sockp;
 
   if (what == CURL_POLL_REMOVE)
     {
@@ -554,14 +545,14 @@ write_cb (void *ptr, size_t size, size_t nmemb, void *data)
 
   if (req->max_size > 0)
     {
-      if (realsize > req->max_size ||
-          (realsize + req->current_size) > req->max_size)
+      if (realsize > req->max_size || (realsize + req->current_size) > req->max_size)
         {
           const char *eff_url;
           curl_easy_getinfo (req->easy, CURLINFO_EFFECTIVE_URL, &eff_url);
-          req->caught_write_error =  g_error_new (G_IO_ERROR, G_IO_ERROR_FAILED,
-                                                  "URI %s exceeded maximum size of %" G_GUINT64_FORMAT " bytes",
-                                                  eff_url, req->max_size);
+          req->caught_write_error
+              = g_error_new (G_IO_ERROR, G_IO_ERROR_FAILED,
+                             "URI %s exceeded maximum size of %" G_GUINT64_FORMAT " bytes", eff_url,
+                             req->max_size);
           return -1;
         }
     }
@@ -603,17 +594,17 @@ response_header_cb (const char *buffer, size_t size, size_t n_items, void *user_
   const char *etag_header = "ETag: ";
   const char *last_modified_header = "Last-Modified: ";
 
-  if (real_size > strlen (etag_header) &&
-      strncasecmp (buffer, etag_header, strlen (etag_header)) == 0)
+  if (real_size > strlen (etag_header)
+      && strncasecmp (buffer, etag_header, strlen (etag_header)) == 0)
     {
       g_clear_pointer (&req->out_etag, g_free);
       req->out_etag = g_strstrip (g_strdup (buffer + strlen (etag_header)));
     }
-  else if (real_size > strlen (last_modified_header) &&
-           strncasecmp (buffer, last_modified_header, strlen (last_modified_header)) == 0)
+  else if (real_size > strlen (last_modified_header)
+           && strncasecmp (buffer, last_modified_header, strlen (last_modified_header)) == 0)
     {
       g_autofree char *lm_buf = g_strstrip (g_strdup (buffer + strlen (last_modified_header)));
-      g_autoptr(GDateTime) dt = _ostree_parse_rfc2616_date_time (lm_buf, strlen (lm_buf));
+      g_autoptr (GDateTime) dt = _ostree_parse_rfc2616_date_time (lm_buf, strlen (lm_buf));
       req->out_last_modified = (dt != NULL) ? g_date_time_to_unix (dt) : 0;
     }
 
@@ -660,28 +651,23 @@ _ostree_fetcher_get_dfd (OstreeFetcher *fetcher)
 }
 
 void
-_ostree_fetcher_set_proxy (OstreeFetcher *self,
-                           const char    *http_proxy)
+_ostree_fetcher_set_proxy (OstreeFetcher *self, const char *http_proxy)
 {
   g_free (self->proxy);
   self->proxy = g_strdup (http_proxy);
 }
 
 void
-_ostree_fetcher_set_cookie_jar (OstreeFetcher *self,
-                                const char    *jar_path)
+_ostree_fetcher_set_cookie_jar (OstreeFetcher *self, const char *jar_path)
 {
   g_free (self->cookie_jar_path);
   self->cookie_jar_path = g_strdup (jar_path);
 }
 
 void
-_ostree_fetcher_set_client_cert (OstreeFetcher   *self,
-                                 const char      *cert_path,
-                                 const char      *key_path)
+_ostree_fetcher_set_client_cert (OstreeFetcher *self, const char *cert_path, const char *key_path)
 {
-  g_assert ((cert_path == NULL && key_path == NULL)
-            || (cert_path != NULL && key_path != NULL));
+  g_assert ((cert_path == NULL && key_path == NULL) || (cert_path != NULL && key_path != NULL));
   g_free (self->tls_client_cert_path);
   self->tls_client_cert_path = g_strdup (cert_path);
   g_free (self->tls_client_key_path);
@@ -689,16 +675,14 @@ _ostree_fetcher_set_client_cert (OstreeFetcher   *self,
 }
 
 void
-_ostree_fetcher_set_tls_database (OstreeFetcher *self,
-                                  const char    *dbpath)
+_ostree_fetcher_set_tls_database (OstreeFetcher *self, const char *dbpath)
 {
   g_free (self->tls_ca_db_path);
   self->tls_ca_db_path = g_strdup (dbpath);
 }
 
 void
-_ostree_fetcher_set_extra_headers (OstreeFetcher *self,
-                                   GVariant      *extra_headers)
+_ostree_fetcher_set_extra_headers (OstreeFetcher *self, GVariant *extra_headers)
 {
   GVariantIter viter;
   const char *key;
@@ -715,21 +699,19 @@ _ostree_fetcher_set_extra_headers (OstreeFetcher *self,
 }
 
 void
-_ostree_fetcher_set_extra_user_agent (OstreeFetcher *self,
-                                      const char    *extra_user_agent)
+_ostree_fetcher_set_extra_user_agent (OstreeFetcher *self, const char *extra_user_agent)
 {
   g_clear_pointer (&self->custom_user_agent, g_free);
   if (extra_user_agent)
     {
-      self->custom_user_agent =
-        g_strdup_printf ("%s %s", OSTREE_FETCHER_USERAGENT_STRING, extra_user_agent);
+      self->custom_user_agent
+          = g_strdup_printf ("%s %s", OSTREE_FETCHER_USERAGENT_STRING, extra_user_agent);
     }
 }
 
 /* Re-bind all of the outstanding curl items to our new main context */
 static void
-adopt_steal_mainctx (OstreeFetcher *self,
-                     GMainContext *mainctx)
+adopt_steal_mainctx (OstreeFetcher *self, GMainContext *mainctx)
 {
   g_assert (self->mainctx == NULL);
   self->mainctx = mainctx; /* Transfer */
@@ -744,13 +726,12 @@ adopt_steal_mainctx (OstreeFetcher *self,
       update_timeout_cb (self->multi, timeout_micros / 1000, self);
     }
 
-  GLNX_HASH_TABLE_FOREACH (self->sockets, SockInfo*, fdp)
+  GLNX_HASH_TABLE_FOREACH (self->sockets, SockInfo *, fdp)
     setsock (fdp, fdp->sockfd, fdp->action, self);
 }
 
 static void
-initiate_next_curl_request (FetcherRequest *req,
-                            GTask *task)
+initiate_next_curl_request (FetcherRequest *req, GTask *task)
 {
   CURLcode rc;
   OstreeFetcher *self = req->fetcher;
@@ -763,13 +744,14 @@ initiate_next_curl_request (FetcherRequest *req,
   g_assert_cmpint (req->idx, <, req->mirrorlist->len);
 
   GUri *baseuri = req->mirrorlist->pdata[req->idx];
-  { g_autofree char *uri = request_get_uri (req, baseuri);
+  {
+    g_autofree char *uri = request_get_uri (req, baseuri);
     rc = curl_easy_setopt (req->easy, CURLOPT_URL, uri);
     g_assert_cmpint (rc, ==, CURLM_OK);
   }
 
   rc = curl_easy_setopt (req->easy, CURLOPT_USERAGENT,
-                           self->custom_user_agent ?: OSTREE_FETCHER_USERAGENT_STRING);
+                         self->custom_user_agent ?: OSTREE_FETCHER_USERAGENT_STRING);
   g_assert_cmpint (rc, ==, CURLM_OK);
 
   /* Set caching request headers */
@@ -781,8 +763,9 @@ initiate_next_curl_request (FetcherRequest *req,
 
   if (req->if_modified_since > 0)
     {
-      g_autoptr(GDateTime) date_time = g_date_time_new_from_unix_utc (req->if_modified_since);
-      g_autofree char *mod_date = g_date_time_format (date_time, "If-Modified-Since: %a, %d %b %Y %H:%M:%S %Z");
+      g_autoptr (GDateTime) date_time = g_date_time_new_from_unix_utc (req->if_modified_since);
+      g_autofree char *mod_date
+          = g_date_time_format (date_time, "If-Modified-Since: %a, %d %b %Y %H:%M:%S %Z");
 
       req->req_headers = curl_slist_append (req->req_headers, mod_date);
     }
@@ -817,7 +800,6 @@ initiate_next_curl_request (FetcherRequest *req,
       rc = curl_easy_setopt (req->easy, CURLOPT_CAINFO, self->tls_ca_db_path);
       g_assert_cmpint (rc, ==, CURLM_OK);
     }
-
 
   if ((self->config_flags & OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE) > 0)
     {
@@ -873,7 +855,8 @@ initiate_next_curl_request (FetcherRequest *req,
   g_assert_cmpint (rc, ==, CURLM_OK);
 
   /* We should only speak HTTP; TODO: only enable file if specified */
-  rc = curl_easy_setopt (req->easy, CURLOPT_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS | CURLPROTO_FILE));
+  rc = curl_easy_setopt (req->easy, CURLOPT_PROTOCOLS,
+                         (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS | CURLPROTO_FILE));
   g_assert_cmpint (rc, ==, CURLM_OK);
   /* Picked the current version in F25 as of 20170127, since
    * there are numerous HTTP/2 fixes since the original version in
@@ -882,12 +865,13 @@ initiate_next_curl_request (FetcherRequest *req,
   if (!(self->config_flags & OSTREE_FETCHER_FLAGS_DISABLE_HTTP2))
     {
 #if CURL_AT_LEAST_VERSION(7, 51, 0)
-     if ((curl_version_info (CURLVERSION_NOW))->features & CURL_VERSION_HTTP2) {
-         rc = curl_easy_setopt (req->easy, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
-         g_assert_cmpint (rc, ==, CURLM_OK);
-     }
+      if ((curl_version_info (CURLVERSION_NOW))->features & CURL_VERSION_HTTP2)
+        {
+          rc = curl_easy_setopt (req->easy, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
+          g_assert_cmpint (rc, ==, CURLM_OK);
+        }
 #endif
-      /* https://github.com/curl/curl/blob/curl-7_53_0/docs/examples/http2-download.c */
+        /* https://github.com/curl/curl/blob/curl-7_53_0/docs/examples/http2-download.c */
 #if (CURLPIPE_MULTIPLEX > 0)
       /* wait for pipe connection to confirm */
       rc = curl_easy_setopt (req->easy, CURLOPT_PIPEWAIT, 1L);
@@ -938,29 +922,21 @@ initiate_next_curl_request (FetcherRequest *req,
 }
 
 static void
-_ostree_fetcher_request_async (OstreeFetcher         *self,
-                               GPtrArray             *mirrorlist,
-                               const char            *filename,
-                               OstreeFetcherRequestFlags flags,
-                               const char            *if_none_match,
-                               guint64                if_modified_since,
-                               gboolean               is_membuf,
-                               guint64                max_size,
-                               int                    priority,
-                               GCancellable          *cancellable,
-                               GAsyncReadyCallback    callback,
-                               gpointer               user_data)
+_ostree_fetcher_request_async (OstreeFetcher *self, GPtrArray *mirrorlist, const char *filename,
+                               OstreeFetcherRequestFlags flags, const char *if_none_match,
+                               guint64 if_modified_since, gboolean is_membuf, guint64 max_size,
+                               int priority, GCancellable *cancellable,
+                               GAsyncReadyCallback callback, gpointer user_data)
 {
-  g_autoptr(GTask) task = NULL;
+  g_autoptr (GTask) task = NULL;
   FetcherRequest *req;
-  g_autoptr(GMainContext) mainctx = g_main_context_ref_thread_default ();
+  g_autoptr (GMainContext) mainctx = g_main_context_ref_thread_default ();
 
   /* We don't support multiple concurrent main contexts; take
    * a ref to the first one, and require that later invocations
    * share it.
    */
-  if (g_hash_table_size (self->outstanding_requests) == 0
-      && mainctx != self->mainctx)
+  if (g_hash_table_size (self->outstanding_requests) == 0 && mainctx != self->mainctx)
     {
       adopt_steal_mainctx (self, g_steal_pointer (&mainctx));
     }
@@ -971,7 +947,7 @@ _ostree_fetcher_request_async (OstreeFetcher         *self,
 
   req = g_new0 (FetcherRequest, 1);
   req->refcount = 1;
-  req->error[0]='\0';
+  req->error[0] = '\0';
   req->fetcher = self;
   req->mirrorlist = g_ptr_array_ref (mirrorlist);
   req->filename = g_strdup (filename);
@@ -990,7 +966,7 @@ _ostree_fetcher_request_async (OstreeFetcher         *self,
   /* We'll use the GTask priority for our own priority queue. */
   g_task_set_priority (task, priority);
   g_task_set_source_tag (task, _ostree_fetcher_request_async);
-  g_task_set_task_data (task, req, (GDestroyNotify) request_unref);
+  g_task_set_task_data (task, req, (GDestroyNotify)request_unref);
 
   initiate_next_curl_request (req, task);
 
@@ -998,37 +974,27 @@ _ostree_fetcher_request_async (OstreeFetcher         *self,
 }
 
 void
-_ostree_fetcher_request_to_tmpfile (OstreeFetcher         *self,
-                                    GPtrArray             *mirrorlist,
-                                    const char            *filename,
-                                    OstreeFetcherRequestFlags flags,
-                                    const char            *if_none_match,
-                                    guint64                if_modified_since,
-                                    guint64                max_size,
-                                    int                    priority,
-                                    GCancellable          *cancellable,
-                                    GAsyncReadyCallback    callback,
-                                    gpointer               user_data)
+_ostree_fetcher_request_to_tmpfile (OstreeFetcher *self, GPtrArray *mirrorlist,
+                                    const char *filename, OstreeFetcherRequestFlags flags,
+                                    const char *if_none_match, guint64 if_modified_since,
+                                    guint64 max_size, int priority, GCancellable *cancellable,
+                                    GAsyncReadyCallback callback, gpointer user_data)
 {
-  _ostree_fetcher_request_async (self, mirrorlist, filename, flags,
-                                 if_none_match, if_modified_since, FALSE,
-                                 max_size, priority, cancellable,
+  _ostree_fetcher_request_async (self, mirrorlist, filename, flags, if_none_match,
+                                 if_modified_since, FALSE, max_size, priority, cancellable,
                                  callback, user_data);
 }
 
 gboolean
-_ostree_fetcher_request_to_tmpfile_finish (OstreeFetcher *self,
-                                           GAsyncResult  *result,
-                                           GLnxTmpfile   *out_tmpf,
-                                           gboolean      *out_not_modified,
-                                           char         **out_etag,
-                                           guint64       *out_last_modified,
-                                           GError       **error)
+_ostree_fetcher_request_to_tmpfile_finish (OstreeFetcher *self, GAsyncResult *result,
+                                           GLnxTmpfile *out_tmpf, gboolean *out_not_modified,
+                                           char **out_etag, guint64 *out_last_modified,
+                                           GError **error)
 {
   g_return_val_if_fail (g_task_is_valid (result, self), FALSE);
   g_return_val_if_fail (g_async_result_is_tagged (result, _ostree_fetcher_request_async), FALSE);
 
-  GTask *task = (GTask*)result;
+  GTask *task = (GTask *)result;
   FetcherRequest *req = g_task_get_task_data (task);
 
   if (!g_task_propagate_boolean (task, error))
@@ -1049,32 +1015,22 @@ _ostree_fetcher_request_to_tmpfile_finish (OstreeFetcher *self,
 }
 
 void
-_ostree_fetcher_request_to_membuf (OstreeFetcher         *self,
-                                   GPtrArray             *mirrorlist,
-                                   const char            *filename,
-                                   OstreeFetcherRequestFlags flags,
-                                   const char            *if_none_match,
-                                   guint64                if_modified_since,
-                                   guint64                max_size,
-                                   int                    priority,
-                                   GCancellable          *cancellable,
-                                   GAsyncReadyCallback    callback,
-                                   gpointer               user_data)
+_ostree_fetcher_request_to_membuf (OstreeFetcher *self, GPtrArray *mirrorlist, const char *filename,
+                                   OstreeFetcherRequestFlags flags, const char *if_none_match,
+                                   guint64 if_modified_since, guint64 max_size, int priority,
+                                   GCancellable *cancellable, GAsyncReadyCallback callback,
+                                   gpointer user_data)
 {
-  _ostree_fetcher_request_async (self, mirrorlist, filename, flags,
-                                 if_none_match, if_modified_since, TRUE,
-                                 max_size, priority, cancellable,
-                                 callback, user_data);
+  _ostree_fetcher_request_async (self, mirrorlist, filename, flags, if_none_match,
+                                 if_modified_since, TRUE, max_size, priority, cancellable, callback,
+                                 user_data);
 }
 
 gboolean
-_ostree_fetcher_request_to_membuf_finish (OstreeFetcher *self,
-                                          GAsyncResult  *result,
-                                          GBytes       **out_buf,
-                                          gboolean      *out_not_modified,
-                                          char         **out_etag,
-                                          guint64       *out_last_modified,
-                                          GError       **error)
+_ostree_fetcher_request_to_membuf_finish (OstreeFetcher *self, GAsyncResult *result,
+                                          GBytes **out_buf, gboolean *out_not_modified,
+                                          char **out_etag, guint64 *out_last_modified,
+                                          GError **error)
 {
   GTask *task;
   FetcherRequest *req;
@@ -1083,7 +1039,7 @@ _ostree_fetcher_request_to_membuf_finish (OstreeFetcher *self,
   g_return_val_if_fail (g_task_is_valid (result, self), FALSE);
   g_return_val_if_fail (g_async_result_is_tagged (result, _ostree_fetcher_request_async), FALSE);
 
-  task = (GTask*)result;
+  task = (GTask *)result;
   req = g_task_get_task_data (task);
 
   ret = g_task_propagate_pointer (task, error);
@@ -1105,7 +1061,7 @@ _ostree_fetcher_request_to_membuf_finish (OstreeFetcher *self,
 }
 
 guint64
-_ostree_fetcher_bytes_transferred (OstreeFetcher       *self)
+_ostree_fetcher_bytes_transferred (OstreeFetcher *self)
 {
   return self->bytes_transferred;
 }

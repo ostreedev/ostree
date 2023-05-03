@@ -45,7 +45,8 @@
  * must always have the correct type.
  */
 
-enum {
+enum
+{
   CHANGED,
   LAST_SIGNAL
 };
@@ -59,7 +60,7 @@ struct OstreeAsyncProgress
   GMutex lock;
   GMainContext *maincontext;
   GSource *idle_source;
-  GHashTable *values;  /* (element-type uint GVariant) */
+  GHashTable *values; /* (element-type uint GVariant) */
 
   gboolean dead;
 };
@@ -94,14 +95,9 @@ ostree_async_progress_class_init (OstreeAsyncProgressClass *klass)
    *
    * Emitted when @self has been changed.
    **/
-  signals[CHANGED] =
-    g_signal_new ("changed",
-		  OSTREE_TYPE_ASYNC_PROGRESS,
-		  G_SIGNAL_RUN_LAST,
-		  G_STRUCT_OFFSET (OstreeAsyncProgressClass, changed),
-		  NULL, NULL,
-		  NULL,
-		  G_TYPE_NONE, 0);
+  signals[CHANGED] = g_signal_new ("changed", OSTREE_TYPE_ASYNC_PROGRESS, G_SIGNAL_RUN_LAST,
+                                   G_STRUCT_OFFSET (OstreeAsyncProgressClass, changed), NULL, NULL,
+                                   NULL, G_TYPE_NONE, 0);
 }
 
 static void
@@ -109,7 +105,7 @@ ostree_async_progress_init (OstreeAsyncProgress *self)
 {
   g_mutex_init (&self->lock);
   self->maincontext = g_main_context_ref_thread_default ();
-  self->values = g_hash_table_new_full (NULL, NULL, NULL, (GDestroyNotify) g_variant_unref);
+  self->values = g_hash_table_new_full (NULL, NULL, NULL, (GDestroyNotify)g_variant_unref);
 }
 
 /**
@@ -125,8 +121,7 @@ ostree_async_progress_init (OstreeAsyncProgress *self)
  * Since: 2017.6
  */
 GVariant *
-ostree_async_progress_get_variant (OstreeAsyncProgress *self,
-                                   const char          *key)
+ostree_async_progress_get_variant (OstreeAsyncProgress *self, const char *key)
 {
   g_assert (OSTREE_IS_ASYNC_PROGRESS (self));
 
@@ -145,18 +140,16 @@ ostree_async_progress_get_variant (OstreeAsyncProgress *self,
 }
 
 guint
-ostree_async_progress_get_uint (OstreeAsyncProgress       *self,
-                                const char                *key)
+ostree_async_progress_get_uint (OstreeAsyncProgress *self, const char *key)
 {
-  g_autoptr(GVariant) rval = ostree_async_progress_get_variant (self, key);
+  g_autoptr (GVariant) rval = ostree_async_progress_get_variant (self, key);
   return (rval != NULL) ? g_variant_get_uint32 (rval) : 0;
 }
 
 guint64
-ostree_async_progress_get_uint64 (OstreeAsyncProgress       *self,
-                                  const char                *key)
+ostree_async_progress_get_uint64 (OstreeAsyncProgress *self, const char *key)
 {
-  g_autoptr(GVariant) rval = ostree_async_progress_get_variant (self, key);
+  g_autoptr (GVariant) rval = ostree_async_progress_get_variant (self, key);
   return (rval != NULL) ? g_variant_get_uint64 (rval) : 0;
 }
 
@@ -194,8 +187,7 @@ ostree_async_progress_get_uint64 (OstreeAsyncProgress       *self,
  * Since: 2017.6
  */
 void
-ostree_async_progress_get (OstreeAsyncProgress *self,
-                           ...)
+ostree_async_progress_get (OstreeAsyncProgress *self, ...)
 {
   va_list ap;
   const char *key, *format_string;
@@ -203,8 +195,7 @@ ostree_async_progress_get (OstreeAsyncProgress *self,
   g_mutex_lock (&self->lock);
   va_start (ap, self);
 
-  for (key = va_arg (ap, const char *), format_string = va_arg (ap, const char *);
-       key != NULL;
+  for (key = va_arg (ap, const char *), format_string = va_arg (ap, const char *); key != NULL;
        key = va_arg (ap, const char *), format_string = va_arg (ap, const char *))
     {
       GVariant *variant;
@@ -259,8 +250,7 @@ ensure_callback_locked (OstreeAsyncProgress *self)
  * Since: 2017.6
  */
 void
-ostree_async_progress_set_status (OstreeAsyncProgress       *self,
-                                  const char                *status)
+ostree_async_progress_set_status (OstreeAsyncProgress *self, const char *status)
 {
   ostree_async_progress_set_variant (self, "status",
                                      g_variant_new_string ((status != NULL) ? status : ""));
@@ -280,9 +270,9 @@ ostree_async_progress_set_status (OstreeAsyncProgress       *self,
  * Since: 2017.6
  */
 char *
-ostree_async_progress_get_status (OstreeAsyncProgress       *self)
+ostree_async_progress_get_status (OstreeAsyncProgress *self)
 {
-  g_autoptr(GVariant) rval = ostree_async_progress_get_variant (self, "status");
+  g_autoptr (GVariant) rval = ostree_async_progress_get_variant (self, "status");
   const gchar *status = (rval != NULL) ? g_variant_get_string (rval, NULL) : NULL;
   if (status != NULL && *status == '\0')
     status = NULL;
@@ -320,8 +310,7 @@ ostree_async_progress_get_status (OstreeAsyncProgress       *self)
  * Since: 2017.6
  */
 void
-ostree_async_progress_set (OstreeAsyncProgress *self,
-                           ...)
+ostree_async_progress_set (OstreeAsyncProgress *self, ...)
 {
   va_list ap;
   const char *key, *format_string;
@@ -336,18 +325,17 @@ ostree_async_progress_set (OstreeAsyncProgress *self,
 
   va_start (ap, self);
 
-  for (key = va_arg (ap, const char *), format_string = va_arg (ap, const char *);
-       key != NULL;
+  for (key = va_arg (ap, const char *), format_string = va_arg (ap, const char *); key != NULL;
        key = va_arg (ap, const char *), format_string = va_arg (ap, const char *))
     {
       GVariant *orig_value;
-      g_autoptr(GVariant) new_value = NULL;
+      g_autoptr (GVariant) new_value = NULL;
       gpointer qkey = GUINT_TO_POINTER (g_quark_from_string (key));
 
       new_value = g_variant_ref_sink (g_variant_new_va (format_string, NULL, &ap));
 
-      if (g_hash_table_lookup_extended (self->values, qkey, NULL, (gpointer *) &orig_value) &&
-          g_variant_equal (orig_value, new_value))
+      if (g_hash_table_lookup_extended (self->values, qkey, NULL, (gpointer *)&orig_value)
+          && g_variant_equal (orig_value, new_value))
         continue;
 
       g_hash_table_replace (self->values, qkey, g_steal_pointer (&new_value));
@@ -379,12 +367,10 @@ out:
  * Since: 2017.6
  */
 void
-ostree_async_progress_set_variant (OstreeAsyncProgress *self,
-                                   const char          *key,
-                                   GVariant            *value)
+ostree_async_progress_set_variant (OstreeAsyncProgress *self, const char *key, GVariant *value)
 {
   GVariant *orig_value;
-  g_autoptr(GVariant) new_value = g_variant_ref_sink (value);
+  g_autoptr (GVariant) new_value = g_variant_ref_sink (value);
   gpointer qkey = GUINT_TO_POINTER (g_quark_from_string (key));
 
   g_return_if_fail (OSTREE_IS_ASYNC_PROGRESS (self));
@@ -396,7 +382,7 @@ ostree_async_progress_set_variant (OstreeAsyncProgress *self,
   if (self->dead)
     goto out;
 
-  if (g_hash_table_lookup_extended (self->values, qkey, NULL, (gpointer *) &orig_value))
+  if (g_hash_table_lookup_extended (self->values, qkey, NULL, (gpointer *)&orig_value))
     {
       if (g_variant_equal (orig_value, new_value))
         goto out;
@@ -404,22 +390,18 @@ ostree_async_progress_set_variant (OstreeAsyncProgress *self,
   g_hash_table_replace (self->values, qkey, g_steal_pointer (&new_value));
   ensure_callback_locked (self);
 
- out:
+out:
   g_mutex_unlock (&self->lock);
 }
 
 void
-ostree_async_progress_set_uint (OstreeAsyncProgress       *self,
-                                const char                *key,
-                                guint                      value)
+ostree_async_progress_set_uint (OstreeAsyncProgress *self, const char *key, guint value)
 {
   ostree_async_progress_set_variant (self, key, g_variant_new_uint32 (value));
 }
 
 void
-ostree_async_progress_set_uint64 (OstreeAsyncProgress       *self,
-                                  const char                *key,
-                                  guint64                    value)
+ostree_async_progress_set_uint64 (OstreeAsyncProgress *self, const char *key, guint64 value)
 {
   ostree_async_progress_set_variant (self, key, g_variant_new_uint64 (value));
 }
@@ -436,8 +418,7 @@ ostree_async_progress_set_uint64 (OstreeAsyncProgress       *self,
  * Since: 2019.6
  */
 void
-ostree_async_progress_copy_state (OstreeAsyncProgress *self,
-                                  OstreeAsyncProgress *dest)
+ostree_async_progress_copy_state (OstreeAsyncProgress *self, OstreeAsyncProgress *dest)
 {
   g_assert (OSTREE_IS_ASYNC_PROGRESS (self));
   g_assert (OSTREE_IS_ASYNC_PROGRESS (dest));
@@ -454,7 +435,7 @@ ostree_async_progress_copy_state (OstreeAsyncProgress *self,
       g_hash_table_replace (dest->values, key, value);
     }
 
- out:
+out:
   g_mutex_unlock (&self->lock);
 }
 
@@ -466,7 +447,7 @@ ostree_async_progress_copy_state (OstreeAsyncProgress *self,
 OstreeAsyncProgress *
 ostree_async_progress_new (void)
 {
-  return (OstreeAsyncProgress*)g_object_new (OSTREE_TYPE_ASYNC_PROGRESS, NULL);
+  return (OstreeAsyncProgress *)g_object_new (OSTREE_TYPE_ASYNC_PROGRESS, NULL);
 }
 
 /**
@@ -477,7 +458,8 @@ ostree_async_progress_new (void)
  * Returns: (transfer full): A new progress object
  */
 OstreeAsyncProgress *
-ostree_async_progress_new_and_connect (void (*changed) (OstreeAsyncProgress *self, gpointer user_data),
+ostree_async_progress_new_and_connect (void (*changed) (OstreeAsyncProgress *self,
+                                                        gpointer user_data),
                                        gpointer user_data)
 {
   OstreeAsyncProgress *ret = ostree_async_progress_new ();

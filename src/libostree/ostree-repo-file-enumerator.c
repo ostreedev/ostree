@@ -38,13 +38,10 @@ struct _OstreeRepoFileEnumerator
 #define ostree_repo_file_enumerator_get_type _ostree_repo_file_enumerator_get_type
 G_DEFINE_TYPE (OstreeRepoFileEnumerator, ostree_repo_file_enumerator, G_TYPE_FILE_ENUMERATOR);
 
-static GFileInfo *ostree_repo_file_enumerator_next_file (GFileEnumerator  *enumerator,
-						     GCancellable     *cancellable,
-						     GError          **error);
-static gboolean   ostree_repo_file_enumerator_close     (GFileEnumerator  *enumerator,
-						     GCancellable     *cancellable,
-						     GError          **error);
-
+static GFileInfo *ostree_repo_file_enumerator_next_file (GFileEnumerator *enumerator,
+                                                         GCancellable *cancellable, GError **error);
+static gboolean ostree_repo_file_enumerator_close (GFileEnumerator *enumerator,
+                                                   GCancellable *cancellable, GError **error);
 
 static void
 ostree_repo_file_enumerator_dispose (GObject *object)
@@ -71,7 +68,6 @@ ostree_repo_file_enumerator_finalize (GObject *object)
   G_OBJECT_CLASS (ostree_repo_file_enumerator_parent_class)->finalize (object);
 }
 
-
 static void
 ostree_repo_file_enumerator_class_init (OstreeRepoFileEnumeratorClass *klass)
 {
@@ -91,17 +87,13 @@ ostree_repo_file_enumerator_init (OstreeRepoFileEnumerator *self)
 }
 
 GFileEnumerator *
-_ostree_repo_file_enumerator_new (OstreeRepoFile       *dir,
-				  const char           *attributes,
-				  GFileQueryInfoFlags   flags,
-				  GCancellable         *cancellable,
-				  GError              **error)
+_ostree_repo_file_enumerator_new (OstreeRepoFile *dir, const char *attributes,
+                                  GFileQueryInfoFlags flags, GCancellable *cancellable,
+                                  GError **error)
 {
   OstreeRepoFileEnumerator *self;
 
-  self = g_object_new (OSTREE_TYPE_REPO_FILE_ENUMERATOR,
-		       "container", dir,
-		       NULL);
+  self = g_object_new (OSTREE_TYPE_REPO_FILE_ENUMERATOR, "container", dir, NULL);
 
   self->dir = g_object_ref (dir);
   self->attributes = g_strdup (attributes);
@@ -111,32 +103,29 @@ _ostree_repo_file_enumerator_new (OstreeRepoFile       *dir,
 }
 
 static GFileInfo *
-ostree_repo_file_enumerator_next_file (GFileEnumerator  *enumerator,
-				       GCancellable     *cancellable,
-				       GError          **error)
+ostree_repo_file_enumerator_next_file (GFileEnumerator *enumerator, GCancellable *cancellable,
+                                       GError **error)
 {
   OstreeRepoFileEnumerator *self = OSTREE_REPO_FILE_ENUMERATOR (enumerator);
   gboolean ret = FALSE;
   GFileInfo *info = NULL;
 
-  if (!ostree_repo_file_tree_query_child (self->dir, self->index,
-                                          self->attributes, self->flags,
+  if (!ostree_repo_file_tree_query_child (self->dir, self->index, self->attributes, self->flags,
                                           &info, cancellable, error))
     goto out;
 
   self->index++;
 
   ret = TRUE;
- out:
+out:
   if (!ret)
     g_clear_object (&info);
   return info;
 }
 
 static gboolean
-ostree_repo_file_enumerator_close (GFileEnumerator  *enumerator,
-				   GCancellable     *cancellable,
-				   GError          **error)
+ostree_repo_file_enumerator_close (GFileEnumerator *enumerator, GCancellable *cancellable,
+                                   GError **error)
 {
   return TRUE;
 }

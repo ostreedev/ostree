@@ -21,29 +21,29 @@
 
 #include "config.h"
 
-#include "ot-main.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
+#include "ot-main.h"
 #include "otutil.h"
 
 #include <glib/gi18n.h>
 
 static gboolean opt_modern;
 
-static GOptionEntry options[] = {
-  { "modern", 0, 0, G_OPTION_ARG_NONE, &opt_modern, "Only create /boot and /ostree", NULL },
-  { NULL }
-};
+static GOptionEntry options[]
+    = { { "modern", 0, 0, G_OPTION_ARG_NONE, &opt_modern, "Only create /boot and /ostree", NULL },
+        { NULL } };
 
 gboolean
-ot_admin_builtin_init_fs (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_admin_builtin_init_fs (int argc, char **argv, OstreeCommandInvocation *invocation,
+                          GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = g_option_context_new ("PATH");
+  g_autoptr (GOptionContext) context = g_option_context_new ("PATH");
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER |
-                                          OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED |
-                                          OSTREE_ADMIN_BUILTIN_FLAG_NO_SYSROOT,
+                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER
+                                              | OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED
+                                              | OSTREE_ADMIN_BUILTIN_FLAG_NO_SYSROOT,
                                           invocation, NULL, cancellable, error))
     return FALSE;
 
@@ -70,20 +70,18 @@ ot_admin_builtin_init_fs (int argc, char **argv, OstreeCommandInvocation *invoca
    */
   if (!opt_modern)
     {
-      const char *traditional_toplevels[] = {"boot", "dev", "home", "proc", "run", "sys"};
+      const char *traditional_toplevels[] = { "boot", "dev", "home", "proc", "run", "sys" };
       for (guint i = 0; i < G_N_ELEMENTS (traditional_toplevels); i++)
         {
-          if (!glnx_shutil_mkdir_p_at (root_dfd, traditional_toplevels[i], 0755,
-                                      cancellable, error))
+          if (!glnx_shutil_mkdir_p_at (root_dfd, traditional_toplevels[i], 0755, cancellable,
+                                       error))
             return FALSE;
         }
 
-      if (!glnx_shutil_mkdir_p_at (root_dfd, "root", 0700,
-                                  cancellable, error))
+      if (!glnx_shutil_mkdir_p_at (root_dfd, "root", 0700, cancellable, error))
         return FALSE;
 
-      if (!glnx_shutil_mkdir_p_at (root_dfd, "tmp", 01777,
-                                  cancellable, error))
+      if (!glnx_shutil_mkdir_p_at (root_dfd, "tmp", 01777, cancellable, error))
         return FALSE;
       if (fchmodat (root_dfd, "tmp", 01777, 0) == -1)
         {
@@ -92,8 +90,8 @@ ot_admin_builtin_init_fs (int argc, char **argv, OstreeCommandInvocation *invoca
         }
     }
 
-  g_autoptr(GFile) dir = g_file_new_for_path (sysroot_path);
-  g_autoptr(OstreeSysroot) sysroot = ostree_sysroot_new (dir);
+  g_autoptr (GFile) dir = g_file_new_for_path (sysroot_path);
+  g_autoptr (OstreeSysroot) sysroot = ostree_sysroot_new (dir);
   if (!ostree_sysroot_ensure_initialized (sysroot, cancellable, error))
     return FALSE;
 

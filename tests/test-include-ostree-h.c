@@ -32,12 +32,13 @@ test_include_ostree_h_compiled (void)
 }
 
 /* Just ensure that we can compile with ostree.h included */
-int main (int argc, char **argv)
+int
+main (int argc, char **argv)
 {
   setlocale (LC_ALL, "");
   g_test_init (&argc, &argv, NULL);
 
   g_test_add_func ("/include-ostree-h/compiled", test_include_ostree_h_compiled);
 
-  return g_test_run();
+  return g_test_run ();
 }

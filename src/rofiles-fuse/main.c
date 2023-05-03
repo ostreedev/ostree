@@ -23,19 +23,19 @@
 #error config.h needs to define FUSE_USE_VERSION
 #endif
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/statvfs.h>
-#include <stdio.h>
+#include <dirent.h>
 #include <err.h>
-#include <stdlib.h>
-#include <string.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <sys/xattr.h>
-#include <dirent.h>
-#include <unistd.h>
 #include <fuse.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/statvfs.h>
+#include <sys/types.h>
+#include <sys/xattr.h>
+#include <unistd.h>
 
 #include <glib.h>
 
@@ -98,11 +98,11 @@ callback_readlink (const char *path, char *buf, size_t size)
 
 static int
 #if FUSE_USE_VERSION >= 31
-callback_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
-                  off_t offset, struct fuse_file_info *fi, enum fuse_readdir_flags flags)
+callback_readdir (const char *path, void *buf, fuse_fill_dir_t filler, off_t offset,
+                  struct fuse_file_info *fi, enum fuse_readdir_flags flags)
 #else
-callback_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
-                  off_t offset, struct fuse_file_info *fi)
+callback_readdir (const char *path, void *buf, fuse_fill_dir_t filler, off_t offset,
+                  struct fuse_file_info *fi)
 #endif
 {
   DIR *dp;
@@ -146,7 +146,7 @@ callback_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 #endif
     }
 
-  (void) closedir (dp);
+  (void)closedir (dp);
   return 0;
 }
 
@@ -195,8 +195,7 @@ callback_symlink (const char *from, const char *to)
 
   if (fstatat (basefd, to, &stbuf, AT_SYMLINK_NOFOLLOW) == -1)
     {
-      fprintf (stderr, "Failed to find newly created symlink '%s': %s\n",
-               to, g_strerror (errno));
+      fprintf (stderr, "Failed to find newly created symlink '%s': %s\n", to, g_strerror (errno));
       exit (EXIT_FAILURE);
     }
   return 0;
@@ -277,8 +276,7 @@ gioerror_to_errno (GIOErrorEnum e)
 }
 
 static int
-verify_write_or_copyup (const char *path, const struct stat *stbuf,
-                        gboolean *out_did_copyup)
+verify_write_or_copyup (const char *path, const struct stat *stbuf, gboolean *out_did_copyup)
 {
   struct stat stbuf_local;
 
@@ -303,7 +301,7 @@ verify_write_or_copyup (const char *path, const struct stat *stbuf,
     {
       if (opt_copyup)
         {
-          g_autoptr(GError) tmp_error = NULL;
+          g_autoptr (GError) tmp_error = NULL;
           if (!ostree_break_hardlink (basefd, path, FALSE, NULL, &tmp_error))
             return -gioerror_to_errno ((GIOErrorEnum)tmp_error->code);
           if (out_did_copyup)
@@ -320,12 +318,15 @@ verify_write_or_copyup (const char *path, const struct stat *stbuf,
  * to a relative path (even for the caller) and
  * perform either write verification or copy-up.
  */
-#define PATH_WRITE_ENTRYPOINT(path) do {                     \
-    path = ENSURE_RELPATH (path);                            \
-    int r = verify_write_or_copyup (path, NULL, NULL);       \
-    if (r != 0)                                              \
-      return r;                                              \
-  } while (0)
+#define PATH_WRITE_ENTRYPOINT(path) \
+  do \
+    { \
+      path = ENSURE_RELPATH (path); \
+      int r = verify_write_or_copyup (path, NULL, NULL); \
+      if (r != 0) \
+        return r; \
+    } \
+  while (0)
 
 static int
 #if FUSE_USE_VERSION >= 31
@@ -368,7 +369,7 @@ callback_truncate (const char *path, off_t size)
 {
   PATH_WRITE_ENTRYPOINT (path);
 
-  glnx_autofd int fd = openat (basefd, path, O_NOFOLLOW|O_WRONLY);
+  glnx_autofd int fd = openat (basefd, path, O_NOFOLLOW | O_WRONLY);
   if (fd == -1)
     return -errno;
 
@@ -422,7 +423,7 @@ do_open (const char *path, mode_t mode, struct fuse_file_info *finfo)
 
       if (fstat (fd, &stbuf) == -1)
         {
-          (void) close (fd);
+          (void)close (fd);
           return -errno;
         }
 
@@ -430,20 +431,20 @@ do_open (const char *path, mode_t mode, struct fuse_file_info *finfo)
       int r = verify_write_or_copyup (path, &stbuf, &did_copyup);
       if (r != 0)
         {
-          (void) close (fd);
+          (void)close (fd);
           return r;
         }
 
       /* In the copyup case, we need to re-open */
       if (did_copyup)
         {
-          (void) close (fd);
+          (void)close (fd);
           /* Note that unlike the initial open, we will pass through
            * O_TRUNC.  More ideally in this copyup case we'd avoid copying
            * the whole file in the first place, but eh.  It's not like we're
            * high performance anyways.
            */
-          fd = openat (basefd, path, finfo->flags & ~(O_EXCL|O_CREAT), mode);
+          fd = openat (basefd, path, finfo->flags & ~(O_EXCL | O_CREAT), mode);
           if (fd == -1)
             return -errno;
         }
@@ -456,7 +457,7 @@ do_open (const char *path, mode_t mode, struct fuse_file_info *finfo)
             {
               if (ftruncate (fd, 0) == -1)
                 {
-                  (void) close (fd);
+                  (void)close (fd);
                   return -errno;
                 }
             }
@@ -475,14 +476,14 @@ callback_open (const char *path, struct fuse_file_info *finfo)
 }
 
 static int
-callback_create(const char *path, mode_t mode, struct fuse_file_info *finfo)
+callback_create (const char *path, mode_t mode, struct fuse_file_info *finfo)
 {
   return do_open (path, mode, finfo);
 }
 
 static int
-callback_read_buf (const char *path, struct fuse_bufvec **bufp,
-                   size_t size, off_t offset, struct fuse_file_info *finfo)
+callback_read_buf (const char *path, struct fuse_bufvec **bufp, size_t size, off_t offset,
+                   struct fuse_file_info *finfo)
 {
   struct fuse_bufvec *src;
 
@@ -501,8 +502,7 @@ callback_read_buf (const char *path, struct fuse_bufvec **bufp,
 }
 
 static int
-callback_read (const char *path, char *buf, size_t size, off_t offset,
-               struct fuse_file_info *finfo)
+callback_read (const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *finfo)
 {
   int r;
   r = pread (finfo->fh, buf, size, offset);
@@ -546,7 +546,7 @@ callback_statfs (const char *path, struct statvfs *st_buf)
 static int
 callback_release (const char *path, struct fuse_file_info *finfo)
 {
-  (void) close (finfo->fh);
+  (void)close (finfo->fh);
   return 0;
 }
 
@@ -573,8 +573,7 @@ callback_access (const char *path, int mode)
 }
 
 static int
-callback_setxattr (const char *path, const char *name, const char *value,
-                   size_t size, int flags)
+callback_setxattr (const char *path, const char *name, const char *value, size_t size, int flags)
 {
   PATH_WRITE_ENTRYPOINT (path);
 
@@ -587,8 +586,7 @@ callback_setxattr (const char *path, const char *name, const char *value,
 }
 
 static int
-callback_getxattr (const char *path, const char *name, char *value,
-                   size_t size)
+callback_getxattr (const char *path, const char *name, char *value, size_t size)
 {
   path = ENSURE_RELPATH (path);
 
@@ -634,40 +632,39 @@ callback_removexattr (const char *path, const char *name)
   return 0;
 }
 
-struct fuse_operations callback_oper = {
-  .getattr = callback_getattr,
-  .readlink = callback_readlink,
-  .readdir = callback_readdir,
-  .mknod = callback_mknod,
-  .mkdir = callback_mkdir,
-  .symlink = callback_symlink,
-  .unlink = callback_unlink,
-  .rmdir = callback_rmdir,
-  .rename = callback_rename,
-  .link = callback_link,
-  .chmod = callback_chmod,
-  .chown = callback_chown,
-  .truncate = callback_truncate,
-  .utimens = callback_utimens,
-  .create = callback_create,
-  .open = callback_open,
-  .read_buf = callback_read_buf,
-  .read = callback_read,
-  .write_buf = callback_write_buf,
-  .write = callback_write,
-  .statfs = callback_statfs,
-  .release = callback_release,
-  .fsync = callback_fsync,
-  .access = callback_access,
+struct fuse_operations callback_oper = { .getattr = callback_getattr,
+                                         .readlink = callback_readlink,
+                                         .readdir = callback_readdir,
+                                         .mknod = callback_mknod,
+                                         .mkdir = callback_mkdir,
+                                         .symlink = callback_symlink,
+                                         .unlink = callback_unlink,
+                                         .rmdir = callback_rmdir,
+                                         .rename = callback_rename,
+                                         .link = callback_link,
+                                         .chmod = callback_chmod,
+                                         .chown = callback_chown,
+                                         .truncate = callback_truncate,
+                                         .utimens = callback_utimens,
+                                         .create = callback_create,
+                                         .open = callback_open,
+                                         .read_buf = callback_read_buf,
+                                         .read = callback_read,
+                                         .write_buf = callback_write_buf,
+                                         .write = callback_write,
+                                         .statfs = callback_statfs,
+                                         .release = callback_release,
+                                         .fsync = callback_fsync,
+                                         .access = callback_access,
 
-  /* Extended attributes support for userland interaction */
-  .setxattr = callback_setxattr,
-  .getxattr = callback_getxattr,
-  .listxattr = callback_listxattr,
-  .removexattr = callback_removexattr
-};
+                                         /* Extended attributes support for userland interaction */
+                                         .setxattr = callback_setxattr,
+                                         .getxattr = callback_getxattr,
+                                         .listxattr = callback_listxattr,
+                                         .removexattr = callback_removexattr };
 
-enum {
+enum
+{
   KEY_HELP,
   KEY_VERSION,
   KEY_COPYUP,
@@ -679,26 +676,28 @@ usage (const char *progname)
   fprintf (stdout,
            "usage: %s basepath mountpoint [options]\n"
            "\n"
-           "   Makes basepath visible at mountpoint such that files are read-only, directories are writable\n"
+           "   Makes basepath visible at mountpoint such that files are read-only, directories "
+           "are writable\n"
            "\n"
            "general options:\n"
            "   -o opt,[opt...]     mount options\n"
            "   -h  --help          print help\n"
-           "\n", progname);
+           "\n",
+           progname);
 }
 
 static int
-rofs_parse_opt (void *data, const char *arg, int key,
-                struct fuse_args *outargs)
+rofs_parse_opt (void *data, const char *arg, int key, struct fuse_args *outargs)
 {
-  (void) data;
+  (void)data;
 
   switch (key)
     {
     case FUSE_OPT_KEY_NONOPT:
       if (basefd == -1)
         {
-          basefd = openat (AT_FDCWD, arg, O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC | O_NOCTTY);
+          basefd
+              = openat (AT_FDCWD, arg, O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC | O_NOCTTY);
           if (basefd == -1)
             err (1, "opening rootfs %s", arg);
           return 0;
@@ -722,14 +721,10 @@ rofs_parse_opt (void *data, const char *arg, int key,
   return 1;
 }
 
-static struct fuse_opt rofs_opts[] = {
-  FUSE_OPT_KEY ("-h", KEY_HELP),
-  FUSE_OPT_KEY ("--help", KEY_HELP),
-  FUSE_OPT_KEY ("-V", KEY_VERSION),
-  FUSE_OPT_KEY ("--version", KEY_VERSION),
-  FUSE_OPT_KEY ("--copyup", KEY_COPYUP),
-  FUSE_OPT_END
-};
+static struct fuse_opt rofs_opts[]
+    = { FUSE_OPT_KEY ("-h", KEY_HELP),         FUSE_OPT_KEY ("--help", KEY_HELP),
+        FUSE_OPT_KEY ("-V", KEY_VERSION),      FUSE_OPT_KEY ("--version", KEY_VERSION),
+        FUSE_OPT_KEY ("--copyup", KEY_COPYUP), FUSE_OPT_END };
 
 int
 main (int argc, char *argv[])

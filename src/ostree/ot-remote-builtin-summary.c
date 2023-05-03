@@ -21,37 +21,39 @@
 
 #include "otutil.h"
 
-#include "ot-main.h"
 #include "ot-dump.h"
+#include "ot-main.h"
 #include "ot-remote-builtins.h"
 
 static gboolean opt_list_metadata_keys;
 static gboolean opt_raw;
 
 static char *opt_print_metadata_key;
-static char* opt_cache_dir;
+static char *opt_cache_dir;
 
 /* ATTENTION:
  * Please remember to update the bash-completion script (bash/ostree) and
  * man page (man/ostree-remote.xml) when changing the option list.
  */
 
-static GOptionEntry option_entries[] = {
-  { "list-metadata-keys", 0, 0, G_OPTION_ARG_NONE, &opt_list_metadata_keys, "List the available metadata keys", NULL },
-  { "print-metadata-key", 0, 0, G_OPTION_ARG_STRING, &opt_print_metadata_key, "Print string value of metadata key", "KEY" },
-  { "cache-dir", 0, 0, G_OPTION_ARG_FILENAME, &opt_cache_dir, "Use custom cache dir", NULL },
-  { "raw", 0, 0, G_OPTION_ARG_NONE, &opt_raw, "Show raw variant data", NULL },
-  { NULL }
-};
+static GOptionEntry option_entries[]
+    = { { "list-metadata-keys", 0, 0, G_OPTION_ARG_NONE, &opt_list_metadata_keys,
+          "List the available metadata keys", NULL },
+        { "print-metadata-key", 0, 0, G_OPTION_ARG_STRING, &opt_print_metadata_key,
+          "Print string value of metadata key", "KEY" },
+        { "cache-dir", 0, 0, G_OPTION_ARG_FILENAME, &opt_cache_dir, "Use custom cache dir", NULL },
+        { "raw", 0, 0, G_OPTION_ARG_NONE, &opt_raw, "Show raw variant data", NULL },
+        { NULL } };
 
 gboolean
-ot_remote_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_remote_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocation,
+                           GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
-  g_autoptr(OstreeRepo) repo = NULL;
+  g_autoptr (GOptionContext) context = NULL;
+  g_autoptr (OstreeRepo) repo = NULL;
   const char *remote_name;
-  g_autoptr(GBytes) summary_bytes = NULL;
-  g_autoptr(GBytes) signature_bytes = NULL;
+  g_autoptr (GBytes) summary_bytes = NULL;
+  g_autoptr (GBytes) signature_bytes = NULL;
   OstreeDumpFlags flags = OSTREE_DUMP_NONE;
 #ifndef OSTREE_DISABLE_GPGME
   gboolean gpg_verify_summary;
@@ -60,8 +62,8 @@ ot_remote_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invoc
 
   context = g_option_context_new ("NAME");
 
-  if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
-                                    invocation, &repo, cancellable, error))
+  if (!ostree_option_context_parse (context, option_entries, &argc, &argv, invocation, &repo,
+                                    cancellable, error))
     goto out;
 
   if (argc < 2)
@@ -81,16 +83,13 @@ ot_remote_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invoc
   if (opt_raw)
     flags |= OSTREE_DUMP_RAW;
 
-  if (!ostree_repo_remote_fetch_summary (repo, remote_name,
-                                         &summary_bytes,
-                                         &signature_bytes,
+  if (!ostree_repo_remote_fetch_summary (repo, remote_name, &summary_bytes, &signature_bytes,
                                          cancellable, error))
     goto out;
 
   if (summary_bytes == NULL)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Remote server has no summary file");
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Remote server has no summary file");
       goto out;
     }
 
@@ -108,8 +107,7 @@ ot_remote_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invoc
       ot_dump_summary_bytes (summary_bytes, flags);
 
 #ifndef OSTREE_DISABLE_GPGME
-      if (!ostree_repo_remote_get_gpg_verify_summary (repo, remote_name,
-                                                      &gpg_verify_summary,
+      if (!ostree_repo_remote_get_gpg_verify_summary (repo, remote_name, &gpg_verify_summary,
                                                       error))
         goto out;
 
@@ -123,17 +121,13 @@ ot_remote_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invoc
        *     option for raw signature data like "--raw-signatures". */
       if (signature_bytes != NULL && !opt_raw)
         {
-          g_autoptr(OstreeGpgVerifyResult) result = NULL;
+          g_autoptr (OstreeGpgVerifyResult) result = NULL;
 
           /* The actual signed summary verification happens above in
            * ostree_repo_remote_fetch_summary().  Here we just parse
            * the signatures again for the purpose of printing. */
-          result = ostree_repo_verify_summary (repo,
-                                               remote_name,
-                                               summary_bytes,
-                                               signature_bytes,
-                                               cancellable,
-                                               error);
+          result = ostree_repo_verify_summary (repo, remote_name, summary_bytes, signature_bytes,
+                                               cancellable, error);
           if (result == NULL)
             goto out;
 

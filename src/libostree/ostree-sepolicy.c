@@ -20,17 +20,17 @@
 #include "config.h"
 
 #ifdef HAVE_SELINUX
-#include <selinux/selinux.h>
 #include <selinux/label.h>
+#include <selinux/selinux.h>
 #endif
 
 #include "otutil.h"
 
-#include "ostree-sepolicy.h"
+#include "ostree-bootloader-syslinux.h"
+#include "ostree-bootloader-uboot.h"
 #include "ostree-repo.h"
 #include "ostree-sepolicy-private.h"
-#include "ostree-bootloader-uboot.h"
-#include "ostree-bootloader-syslinux.h"
+#include "ostree-sepolicy.h"
 
 /**
  * SECTION:ostree-sepolicy
@@ -40,7 +40,8 @@
  * A #OstreeSePolicy object can load the SELinux policy from a given
  * root and perform labeling.
  */
-struct OstreeSePolicy {
+struct OstreeSePolicy
+{
   GObject parent;
 
   int rootfs_dfd;
@@ -56,13 +57,15 @@ struct OstreeSePolicy {
 #endif
 };
 
-typedef struct {
+typedef struct
+{
   GObjectClass parent_class;
 } OstreeSePolicyClass;
 
-static void initable_iface_init       (GInitableIface      *initable_iface);
+static void initable_iface_init (GInitableIface *initable_iface);
 
-enum {
+enum
+{
   PROP_0,
 
   PROP_PATH,
@@ -77,11 +80,11 @@ ostree_sepolicy_finalize (GObject *object)
 {
   OstreeSePolicy *self = OSTREE_SEPOLICY (object);
 
-  (void) glnx_tmpdir_delete (&self->tmpdir, NULL, NULL);
+  (void)glnx_tmpdir_delete (&self->tmpdir, NULL, NULL);
 
   g_clear_object (&self->path);
   if (self->rootfs_dfd_owned != -1)
-    (void) close (self->rootfs_dfd_owned);
+    (void)close (self->rootfs_dfd_owned);
 #ifdef HAVE_SELINUX
   g_clear_object (&self->selinux_policy_root);
   g_clear_pointer (&self->selinux_policy_name, g_free);
@@ -97,10 +100,8 @@ ostree_sepolicy_finalize (GObject *object)
 }
 
 static void
-ostree_sepolicy_set_property(GObject         *object,
-                            guint            prop_id,
-                            const GValue    *value,
-                            GParamSpec      *pspec)
+ostree_sepolicy_set_property (GObject *object, guint prop_id, const GValue *value,
+                              GParamSpec *pspec)
 {
   OstreeSePolicy *self = OSTREE_SEPOLICY (object);
 
@@ -134,10 +135,7 @@ ostree_sepolicy_set_property(GObject         *object,
 }
 
 static void
-ostree_sepolicy_get_property(GObject         *object,
-                            guint            prop_id,
-                            GValue          *value,
-                            GParamSpec      *pspec)
+ostree_sepolicy_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
 {
   OstreeSePolicy *self = OSTREE_SEPOLICY (object);
 
@@ -175,34 +173,24 @@ ostree_sepolicy_class_init (OstreeSePolicyClass *klass)
   object_class->set_property = ostree_sepolicy_set_property;
   object_class->finalize = ostree_sepolicy_finalize;
 
-  g_object_class_install_property (object_class,
-                                   PROP_PATH,
-                                   g_param_spec_object ("path",
-                                                        "",
-                                                        "",
-                                                        G_TYPE_FILE,
-                                                        G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
-  g_object_class_install_property (object_class,
-                                   PROP_ROOTFS_DFD,
-                                   g_param_spec_int ("rootfs-dfd",
-                                                     "", "",
-                                                     -1, G_MAXINT, -1,
+  g_object_class_install_property (
+      object_class, PROP_PATH,
+      g_param_spec_object ("path", "", "", G_TYPE_FILE,
+                           G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+  g_object_class_install_property (object_class, PROP_ROOTFS_DFD,
+                                   g_param_spec_int ("rootfs-dfd", "", "", -1, G_MAXINT, -1,
                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
-
 }
 
 #ifdef HAVE_SELINUX
 
 /* Find the latest policy file in our root and return its checksum. */
 static gboolean
-get_policy_checksum (char        **out_csum,
-                     GCancellable *cancellable,
-                     GError      **error)
+get_policy_checksum (char **out_csum, GCancellable *cancellable, GError **error)
 {
   const char *binary_policy_path = selinux_binary_policy_path ();
   const char *binfile_prefix = glnx_basename (binary_policy_path);
   g_autofree char *bindir_path = g_path_get_dirname (binary_policy_path);
-
 
   g_autofree char *best_policy = NULL;
   int best_version = 0;
@@ -211,7 +199,9 @@ get_policy_checksum (char        **out_csum,
   if (!glnx_opendirat (AT_FDCWD, bindir_path, TRUE, &bindir_dfd, error))
     return FALSE;
 
-  g_auto(GLnxDirFdIterator) dfd_iter = { 0,};
+  g_auto (GLnxDirFdIterator) dfd_iter = {
+    0,
+  };
   if (!glnx_dirfd_iterator_init_at (bindir_dfd, ".", FALSE, &dfd_iter, error))
     return FALSE;
 
@@ -219,8 +209,7 @@ get_policy_checksum (char        **out_csum,
     {
       struct dirent *dent = NULL;
 
-      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent,
-                                                       cancellable, error))
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
         return FALSE;
       if (dent == NULL)
         break;
@@ -233,16 +222,14 @@ get_policy_checksum (char        **out_csum,
            * somehow change; there would be cheers & slow-mo high-fives at the
            * sight of our code not breaking. Is that hope not worth a fraction
            * of a millisecond? I believe it is... or maybe I'm just lazy. */
-          g_autofree char *regex = g_strdup_printf ("^\\Q%s\\E\\.[0-9]+$",
-                                                    binfile_prefix);
+          g_autofree char *regex = g_strdup_printf ("^\\Q%s\\E\\.[0-9]+$", binfile_prefix);
 
           /* we could use match groups to extract the version, but mehhh, we
            * already have the prefix on hand */
           if (g_regex_match_simple (regex, dent->d_name, 0, 0))
             {
               int version = /* do +1 for the period */
-                (int)g_ascii_strtoll (dent->d_name + strlen (binfile_prefix)+1,
-                                      NULL, 10);
+                  (int)g_ascii_strtoll (dent->d_name + strlen (binfile_prefix) + 1, NULL, 10);
               g_assert (version > 0);
 
               if (version > best_version)
@@ -258,8 +245,7 @@ get_policy_checksum (char        **out_csum,
   if (!best_policy)
     return glnx_throw (error, "Could not find binary policy file");
 
-  *out_csum = ot_checksum_file_at (bindir_dfd, best_policy, G_CHECKSUM_SHA256,
-                                   cancellable, error);
+  *out_csum = ot_checksum_file_at (bindir_dfd, best_policy, G_CHECKSUM_SHA256, cancellable, error);
   if (*out_csum == NULL)
     return FALSE;
 
@@ -282,21 +268,21 @@ get_policy_checksum (char        **out_csum,
  *
  * Returns: (transfer full): A new policy
  */
-OstreeSePolicy*
-ostree_sepolicy_new_from_commit (OstreeRepo  *repo,
-                                 const char  *rev,
-                                 GCancellable *cancellable,
-                                 GError     **error)
+OstreeSePolicy *
+ostree_sepolicy_new_from_commit (OstreeRepo *repo, const char *rev, GCancellable *cancellable,
+                                 GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("setting sepolicy from commit", error);
-  g_autoptr(GFile) root = NULL;
+  g_autoptr (GFile) root = NULL;
   g_autofree char *commit = NULL;
   if (!ostree_repo_read_commit (repo, rev, &root, &commit, cancellable, error))
     return NULL;
   const char policypath[] = "usr/etc/selinux";
-  g_autoptr(GFile) policyroot = g_file_get_child (root, policypath);
+  g_autoptr (GFile) policyroot = g_file_get_child (root, policypath);
 
-  GLnxTmpDir tmpdir = {0,};
+  GLnxTmpDir tmpdir = {
+    0,
+  };
   if (!glnx_mkdtemp ("ostree-commit-sepolicy-XXXXXX", 0700, &tmpdir, error))
     return FALSE;
   if (!glnx_shutil_mkdir_p_at (tmpdir.fd, "usr/etc", 0755, cancellable, error))
@@ -304,12 +290,15 @@ ostree_sepolicy_new_from_commit (OstreeRepo  *repo,
 
   if (g_file_query_exists (policyroot, NULL))
     {
-       OstreeRepoCheckoutAtOptions coopts = {0,};
-       coopts.mode = OSTREE_REPO_CHECKOUT_MODE_USER;
-       coopts.subpath = glnx_strjoina ("/", policypath);
+      OstreeRepoCheckoutAtOptions coopts = {
+        0,
+      };
+      coopts.mode = OSTREE_REPO_CHECKOUT_MODE_USER;
+      coopts.subpath = glnx_strjoina ("/", policypath);
 
-       if (!ostree_repo_checkout_at (repo, &coopts, tmpdir.fd, policypath, commit, cancellable, error))
-         return glnx_prefix_error_null (error, "policy checkout");
+      if (!ostree_repo_checkout_at (repo, &coopts, tmpdir.fd, policypath, commit, cancellable,
+                                    error))
+        return glnx_prefix_error_null (error, "policy checkout");
     }
 
   OstreeSePolicy *ret = ostree_sepolicy_new_at (tmpdir.fd, cancellable, error);
@@ -338,9 +327,7 @@ cached_is_selinux_enabled (void)
 #endif
 
 static gboolean
-initable_init (GInitable     *initable,
-               GCancellable  *cancellable,
-               GError       **error)
+initable_init (GInitable *initable, GCancellable *cancellable, GError **error)
 {
 #ifdef HAVE_SELINUX
   OstreeSePolicy *self = OSTREE_SEPOLICY (initable);
@@ -352,10 +339,10 @@ initable_init (GInitable     *initable,
   /* First thing here, call is_selinux_enabled() to prime the cache. See the
    * link above for more information why.
    */
-  (void) cached_is_selinux_enabled ();
+  (void)cached_is_selinux_enabled ();
 
   /* TODO - use this below */
-  g_autoptr(GFile) path = NULL;
+  g_autoptr (GFile) path = NULL;
   if (self->rootfs_dfd != -1)
     path = ot_fdrel_to_gfile (self->rootfs_dfd, ".");
   else if (self->path)
@@ -372,30 +359,30 @@ initable_init (GInitable     *initable,
   else
     g_assert_not_reached ();
 
-  g_autoptr(GFile) etc_selinux_dir = g_file_resolve_relative_path (path, "etc/selinux");
+  g_autoptr (GFile) etc_selinux_dir = g_file_resolve_relative_path (path, "etc/selinux");
   if (!g_file_query_exists (etc_selinux_dir, NULL))
     {
       g_object_unref (etc_selinux_dir);
       etc_selinux_dir = g_file_resolve_relative_path (path, "usr/etc/selinux");
     }
 
-  g_autoptr(GFile) policy_config_path = g_file_get_child (etc_selinux_dir, "config");
-  g_autoptr(GFile) policy_root = NULL;
+  g_autoptr (GFile) policy_config_path = g_file_get_child (etc_selinux_dir, "config");
+  g_autoptr (GFile) policy_root = NULL;
   if (g_file_query_exists (policy_config_path, NULL))
     {
-      g_autoptr(GFileInputStream) filein = g_file_read (policy_config_path, cancellable, error);
+      g_autoptr (GFileInputStream) filein = g_file_read (policy_config_path, cancellable, error);
 
       if (!filein)
         return FALSE;
 
-      g_autoptr(GDataInputStream) datain = g_data_input_stream_new ((GInputStream*)filein);
+      g_autoptr (GDataInputStream) datain = g_data_input_stream_new ((GInputStream *)filein);
 
       while (TRUE)
         {
           gsize len;
-          g_autoptr(GError) temp_error = NULL;
-          g_autofree char *line = g_data_input_stream_read_line_utf8 (datain, &len,
-                                                                   cancellable, &temp_error);
+          g_autoptr (GError) temp_error = NULL;
+          g_autofree char *line
+              = g_data_input_stream_read_line_utf8 (datain, &len, cancellable, &temp_error);
 
           if (temp_error)
             return g_propagate_error (error, g_steal_pointer (&temp_error)), FALSE;
@@ -411,8 +398,8 @@ initable_init (GInitable     *initable,
           else if (g_str_has_prefix (line, selinux_prefix))
             {
               const char *enabled_str = line + strlen (selinux_prefix);
-              if (g_ascii_strncasecmp (enabled_str, "enforcing", strlen ("enforcing")) == 0 ||
-                  g_ascii_strncasecmp (enabled_str, "permissive", strlen ("permissive")) == 0)
+              if (g_ascii_strncasecmp (enabled_str, "enforcing", strlen ("enforcing")) == 0
+                  || g_ascii_strncasecmp (enabled_str, "permissive", strlen ("permissive")) == 0)
                 enabled = TRUE;
             }
         }
@@ -427,13 +414,13 @@ initable_init (GInitable     *initable,
 
       self->selinux_hnd = selabel_open (SELABEL_CTX_FILE, NULL, 0);
       if (!self->selinux_hnd)
-        return glnx_throw_errno_prefix (error, "With policy root '%s': selabel_open(SELABEL_CTX_FILE)",
-                                        policy_rootpath);
+        return glnx_throw_errno_prefix (
+            error, "With policy root '%s': selabel_open(SELABEL_CTX_FILE)", policy_rootpath);
 
       char *con = NULL;
       if (selabel_lookup_raw (self->selinux_hnd, &con, "/", 0755) != 0)
-        return glnx_throw_errno_prefix (error, "With policy root '%s': Failed to look up context of /",
-                                        policy_rootpath);
+        return glnx_throw_errno_prefix (
+            error, "With policy root '%s': Failed to look up context of /", policy_rootpath);
       freecon (con);
 
       if (!get_policy_checksum (&self->selinux_policy_csum, cancellable, error))
@@ -468,10 +455,8 @@ initable_iface_init (GInitableIface *initable_iface)
  *
  * Returns: (transfer full): An accessor object for SELinux policy in root located at @path
  */
-OstreeSePolicy*
-ostree_sepolicy_new (GFile         *path,
-                     GCancellable  *cancellable,
-                     GError       **error)
+OstreeSePolicy *
+ostree_sepolicy_new (GFile *path, GCancellable *cancellable, GError **error)
 {
   return g_initable_new (OSTREE_TYPE_SEPOLICY, cancellable, error, "path", path, NULL);
 }
@@ -486,10 +471,8 @@ ostree_sepolicy_new (GFile         *path,
  *
  * Since: 2017.4
  */
-OstreeSePolicy*
-ostree_sepolicy_new_at (int         rootfs_dfd,
-                        GCancellable  *cancellable,
-                        GError       **error)
+OstreeSePolicy *
+ostree_sepolicy_new_at (int rootfs_dfd, GCancellable *cancellable, GError **error)
 {
   return g_initable_new (OSTREE_TYPE_SEPOLICY, cancellable, error, "rootfs-dfd", rootfs_dfd, NULL);
 }
@@ -505,7 +488,7 @@ ostree_sepolicy_new_at (int         rootfs_dfd,
  * Returns: (transfer none) (nullable): Path to rootfs
  */
 GFile *
-ostree_sepolicy_get_path (OstreeSePolicy  *self)
+ostree_sepolicy_get_path (OstreeSePolicy *self)
 {
   return self->path;
 }
@@ -558,12 +541,8 @@ ostree_sepolicy_get_csum (OstreeSePolicy *self)
  * will be returned.
  */
 gboolean
-ostree_sepolicy_get_label (OstreeSePolicy    *self,
-                           const char       *relpath,
-                           guint32           unix_mode,
-                           char            **out_label,
-                           GCancellable     *cancellable,
-                           GError          **error)
+ostree_sepolicy_get_label (OstreeSePolicy *self, const char *relpath, guint32 unix_mode,
+                           char **out_label, GCancellable *cancellable, GError **error)
 {
   *out_label = NULL;
 #ifdef HAVE_SELINUX
@@ -611,23 +590,17 @@ ostree_sepolicy_get_label (OstreeSePolicy    *self,
  * Reset the security context of @target based on the SELinux policy.
  */
 gboolean
-ostree_sepolicy_restorecon (OstreeSePolicy    *self,
-                            const char       *path,
-                            GFileInfo        *info,
-                            GFile            *target,
-                            OstreeSePolicyRestoreconFlags flags,
-                            char            **out_new_label,
-                            GCancellable     *cancellable,
-                            GError          **error)
+ostree_sepolicy_restorecon (OstreeSePolicy *self, const char *path, GFileInfo *info, GFile *target,
+                            OstreeSePolicyRestoreconFlags flags, char **out_new_label,
+                            GCancellable *cancellable, GError **error)
 {
 #ifdef HAVE_SELINUX
-  g_autoptr(GFileInfo) src_info = NULL;
+  g_autoptr (GFileInfo) src_info = NULL;
   if (info != NULL)
     src_info = g_object_ref (info);
   else
     {
-      src_info = g_file_query_info (target, "unix::mode",
-                                    G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+      src_info = g_file_query_info (target, "unix::mode", G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                     cancellable, error);
       if (!src_info)
         return FALSE;
@@ -637,8 +610,7 @@ ostree_sepolicy_restorecon (OstreeSePolicy    *self,
   if (flags & OSTREE_SEPOLICY_RESTORECON_FLAGS_KEEP_EXISTING)
     {
       char *existing_con = NULL;
-      if (lgetfilecon_raw (gs_file_get_path_cached (target), &existing_con) > 0
-          && existing_con)
+      if (lgetfilecon_raw (gs_file_get_path_cached (target), &existing_con) > 0 && existing_con)
         {
           do_relabel = FALSE;
           freecon (existing_con);
@@ -650,8 +622,7 @@ ostree_sepolicy_restorecon (OstreeSePolicy    *self,
     {
       if (!ostree_sepolicy_get_label (self, path,
                                       g_file_info_get_attribute_uint32 (src_info, "unix::mode"),
-                                      &label,
-                                      cancellable, error))
+                                      &label, cancellable, error))
         return FALSE;
 
       if (!label)
@@ -681,10 +652,8 @@ ostree_sepolicy_restorecon (OstreeSePolicy    *self,
  *
  */
 gboolean
-ostree_sepolicy_setfscreatecon (OstreeSePolicy   *self,
-                                const char       *path,
-                                guint32           mode,
-                                GError          **error)
+ostree_sepolicy_setfscreatecon (OstreeSePolicy *self, const char *path, guint32 mode,
+                                GError **error)
 {
 #ifdef HAVE_SELINUX
   g_autofree char *label = NULL;
@@ -726,11 +695,8 @@ ostree_sepolicy_fscreatecon_cleanup (void **unused)
  * g_auto() cleanup. May be made public later.
  */
 gboolean
-_ostree_sepolicy_preparefscreatecon (OstreeSepolicyFsCreatecon *con,
-                                     OstreeSePolicy   *self,
-                                     const char       *path,
-                                     guint32           mode,
-                                     GError          **error)
+_ostree_sepolicy_preparefscreatecon (OstreeSepolicyFsCreatecon *con, OstreeSePolicy *self,
+                                     const char *path, guint32 mode, GError **error)
 {
   if (!self || ostree_sepolicy_get_name (self) == NULL)
     return TRUE;
@@ -768,10 +734,9 @@ _ostree_filter_selinux_xattr (GVariant *xattrs)
   for (guint i = 0; i < n; i++)
     {
       const char *name = NULL;
-      g_autoptr(GVariant) value = NULL;
+      g_autoptr (GVariant) value = NULL;
 
-      g_variant_get_child (xattrs, i, "(^&ay@ay)",
-                           &name, &value);
+      g_variant_get_child (xattrs, i, "(^&ay@ay)", &name, &value);
 
       if (strcmp (name, "security.selinux") == 0)
         continue;
@@ -781,9 +746,7 @@ _ostree_filter_selinux_xattr (GVariant *xattrs)
           have_xattrs = TRUE;
           g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(ayay)"));
         }
-      g_variant_builder_add (&builder, "(@ay@ay)",
-                             g_variant_new_bytestring (name),
-                             value);
+      g_variant_builder_add (&builder, "(@ay@ay)", g_variant_new_bytestring (name), value);
     }
   /* Canonicalize zero length to NULL for efficiency */
   if (!have_xattrs)

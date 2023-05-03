@@ -20,10 +20,10 @@
 
 #include "config.h"
 
-#include "ot-main.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
 #include "ot-admin-kargs-builtins.h"
+#include "ot-main.h"
 #include "otutil.h"
 
 #include <glib/gi18n.h>
@@ -31,7 +31,7 @@
 static OstreeCommand admin_kargs_subcommands[] = {
   { "edit-in-place", OSTREE_BUILTIN_FLAG_NO_REPO | OSTREE_BUILTIN_FLAG_HIDDEN,
     ot_admin_kargs_builtin_edit_in_place,
-    "Set new kernel command line arguments in place (applies to all deployments by default)"  },
+    "Set new kernel command line arguments in place (applies to all deployments by default)" },
   { NULL, 0, NULL, NULL }
 };
 
@@ -41,7 +41,7 @@ ostree_admin_kargs_option_context_new_with_commands (void)
   OstreeCommand *command = admin_kargs_subcommands;
   GOptionContext *context = g_option_context_new ("COMMAND");
 
-  g_autoptr(GString) summary = g_string_new ("Builtin \"admin kargs\" Commands:");
+  g_autoptr (GString) summary = g_string_new ("Builtin \"admin kargs\" Commands:");
 
   while (command->name != NULL)
     {
@@ -61,7 +61,8 @@ ostree_admin_kargs_option_context_new_with_commands (void)
 }
 
 gboolean
-ot_admin_builtin_kargs (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_admin_builtin_kargs (int argc, char **argv, OstreeCommandInvocation *invocation,
+                        GCancellable *cancellable, GError **error)
 {
   const char *subcommand_name = NULL;
   int in, out;
@@ -98,13 +99,12 @@ ot_admin_builtin_kargs (int argc, char **argv, OstreeCommandInvocation *invocati
 
   if (!subcommand->name)
     {
-      g_autoptr(GOptionContext) context =
-        ostree_admin_kargs_option_context_new_with_commands ();
+      g_autoptr (GOptionContext) context = ostree_admin_kargs_option_context_new_with_commands ();
 
       /* This will not return for some options (e.g. --version). */
       if (ostree_admin_option_context_parse (context, NULL, &argc, &argv,
-                                             OSTREE_ADMIN_BUILTIN_FLAG_NO_SYSROOT,
-                                             invocation, NULL, cancellable, error))
+                                             OSTREE_ADMIN_BUILTIN_FLAG_NO_SYSROOT, invocation, NULL,
+                                             cancellable, error))
         {
           if (subcommand_name == NULL)
             {

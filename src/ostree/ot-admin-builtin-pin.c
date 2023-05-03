@@ -21,27 +21,26 @@
 
 #include <stdlib.h>
 
-#include "ot-main.h"
+#include "ostree.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
-#include "ostree.h"
+#include "ot-main.h"
 #include "otutil.h"
 
 static gboolean opt_unpin;
 
-static GOptionEntry options[] = {
-  { "unpin", 'u', 0, G_OPTION_ARG_NONE, &opt_unpin, "Unset pin", NULL },
-  { NULL }
-};
+static GOptionEntry options[]
+    = { { "unpin", 'u', 0, G_OPTION_ARG_NONE, &opt_unpin, "Unset pin", NULL }, { NULL } };
 
 gboolean
-ot_admin_builtin_pin (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_admin_builtin_pin (int argc, char **argv, OstreeCommandInvocation *invocation,
+                      GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = g_option_context_new ("INDEX");
-  g_autoptr(OstreeSysroot) sysroot = NULL;
+  g_autoptr (GOptionContext) context = g_option_context_new ("INDEX");
+  g_autoptr (OstreeSysroot) sysroot = NULL;
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
-                                          invocation, &sysroot, cancellable, error))
+                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER, invocation, &sysroot,
+                                          cancellable, error))
     return FALSE;
 
   if (argc < 2)
@@ -62,7 +61,8 @@ ot_admin_builtin_pin (int argc, char **argv, OstreeCommandInvocation *invocation
       if (errno == ERANGE)
         return glnx_throw (error, "Index too large: %s", deploy_index_str);
 
-      g_autoptr(OstreeDeployment) target_deployment = ot_admin_get_indexed_deployment (sysroot, deploy_index, error);
+      g_autoptr (OstreeDeployment) target_deployment
+          = ot_admin_get_indexed_deployment (sysroot, deploy_index, error);
       if (!target_deployment)
         return FALSE;
 
@@ -70,14 +70,17 @@ ot_admin_builtin_pin (int argc, char **argv, OstreeCommandInvocation *invocation
       const gboolean desired_pin = !opt_unpin;
       if (current_pin == desired_pin)
         {
-          g_print ("Deployment %s is already %s\n", deploy_index_str, current_pin ? "pinned" : "unpinned");
+          g_print ("Deployment %s is already %s\n", deploy_index_str,
+                   current_pin ? "pinned" : "unpinned");
         }
       else
-      {
-        if (!ostree_sysroot_deployment_set_pinned (sysroot, target_deployment, desired_pin, error))
-          return FALSE;
-        g_print ("Deployment %s is now %s\n", deploy_index_str, desired_pin ? "pinned" : "unpinned");
-      }
+        {
+          if (!ostree_sysroot_deployment_set_pinned (sysroot, target_deployment, desired_pin,
+                                                     error))
+            return FALSE;
+          g_print ("Deployment %s is now %s\n", deploy_index_str,
+                   desired_pin ? "pinned" : "unpinned");
+        }
     }
 
   return TRUE;

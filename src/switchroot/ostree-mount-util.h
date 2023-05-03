@@ -22,13 +22,13 @@
 #define __OSTREE_MOUNT_UTIL_H_
 
 #include <err.h>
-#include <stdlib.h>
-#include <sys/statvfs.h>
-#include <stdio.h>
-#include <unistd.h>
 #include <fcntl.h>
-#include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/statvfs.h>
+#include <unistd.h>
 
 #define INITRAMFS_MOUNT_VAR "/run/ostree/initramfs-mount-var"
 #define _OSTREE_SYSROOT_READONLY_STAMP "/run/ostree-sysroot-ro.stamp"
@@ -47,7 +47,7 @@ path_is_on_readonly_fs (const char *path)
 static inline char *
 read_proc_cmdline (void)
 {
-  FILE *f = fopen("/proc/cmdline", "r");
+  FILE *f = fopen ("/proc/cmdline", "r");
   char *cmdline = NULL;
   size_t len;
 
@@ -64,8 +64,8 @@ read_proc_cmdline (void)
    */
   len = strlen (cmdline);
 
-  if (cmdline[len-1] == '\n')
-    cmdline[len-1] = '\0';
+  if (cmdline[len - 1] == '\n')
+    cmdline[len - 1] = '\0';
 out:
   if (f)
     fclose (f);
@@ -118,7 +118,7 @@ touch_run_ostree (void)
    */
   if (fd == -1)
     return;
-  (void) close (fd);
+  (void)close (fd);
 }
 
 #endif /* __OSTREE_MOUNT_UTIL_H_ */

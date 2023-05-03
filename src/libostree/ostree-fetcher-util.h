@@ -32,10 +32,8 @@ G_BEGIN_DECLS
 #define OSTREE_FETCHER_USERAGENT_STRING (PACKAGE_NAME "/" PACKAGE_VERSION)
 
 static inline gboolean
-_ostree_fetcher_tmpf_from_flags (OstreeFetcherRequestFlags flags,
-                                 int                       dfd,
-                                 GLnxTmpfile              *tmpf,
-                                 GError                  **error)
+_ostree_fetcher_tmpf_from_flags (OstreeFetcherRequestFlags flags, int dfd, GLnxTmpfile *tmpf,
+                                 GError **error)
 {
   if ((flags & OSTREE_FETCHER_REQUEST_LINKABLE) > 0)
     {
@@ -50,41 +48,21 @@ _ostree_fetcher_tmpf_from_flags (OstreeFetcherRequestFlags flags,
   return TRUE;
 }
 
-gboolean _ostree_fetcher_mirrored_request_to_membuf (OstreeFetcher *fetcher,
-                                                     GPtrArray     *mirrorlist,
-                                                     const char    *filename,
-                                                     OstreeFetcherRequestFlags flags,
-                                                     const char    *if_none_match,
-                                                     guint64        if_modified_since,
-                                                     guint          n_network_retries,
-                                                     GBytes         **out_contents,
-                                                     gboolean      *out_not_modified,
-                                                     char         **out_etag,
-                                                     guint64       *out_last_modified,
-                                                     guint64        max_size,
-                                                     GCancellable   *cancellable,
-                                                     GError         **error);
+gboolean _ostree_fetcher_mirrored_request_to_membuf (
+    OstreeFetcher *fetcher, GPtrArray *mirrorlist, const char *filename,
+    OstreeFetcherRequestFlags flags, const char *if_none_match, guint64 if_modified_since,
+    guint n_network_retries, GBytes **out_contents, gboolean *out_not_modified, char **out_etag,
+    guint64 *out_last_modified, guint64 max_size, GCancellable *cancellable, GError **error);
 
-gboolean _ostree_fetcher_request_uri_to_membuf (OstreeFetcher *fetcher,
-                                                OstreeFetcherURI *uri,
-                                                OstreeFetcherRequestFlags flags,
-                                                const char    *if_none_match,
-                                                guint64        if_modified_since,
-                                                guint          n_network_retries,
-                                                GBytes         **out_contents,
-                                                gboolean      *out_not_modified,
-                                                char         **out_etag,
-                                                guint64       *out_last_modified,
-                                                guint64        max_size,
-                                                GCancellable   *cancellable,
-                                                GError         **error);
+gboolean _ostree_fetcher_request_uri_to_membuf (
+    OstreeFetcher *fetcher, OstreeFetcherURI *uri, OstreeFetcherRequestFlags flags,
+    const char *if_none_match, guint64 if_modified_since, guint n_network_retries,
+    GBytes **out_contents, gboolean *out_not_modified, char **out_etag, guint64 *out_last_modified,
+    guint64 max_size, GCancellable *cancellable, GError **error);
 
-void _ostree_fetcher_journal_failure (const char *remote_name,
-                                      const char *url,
-                                      const char *msg);
+void _ostree_fetcher_journal_failure (const char *remote_name, const char *url, const char *msg);
 
-gboolean _ostree_fetcher_should_retry_request (const GError *error,
-                                               guint         n_retries_remaining);
+gboolean _ostree_fetcher_should_retry_request (const GError *error, guint n_retries_remaining);
 
 GIOErrorEnum _ostree_fetcher_http_status_code_to_io_error (guint status_code);
 

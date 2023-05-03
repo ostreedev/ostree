@@ -19,9 +19,9 @@
 
 #include "config.h"
 
-#include "otutil.h"
-#include "ostree-repo-private.h"
 #include "ostree-linuxfsutil.h"
+#include "ostree-repo-private.h"
+#include "otutil.h"
 
 #include "ostree-sysroot-private.h"
 
@@ -30,13 +30,13 @@
  * @inout_deployments: All deployments in this subdir will be appended to this array
  */
 gboolean
-_ostree_sysroot_list_deployment_dirs_for_os (int                  deploydir_dfd,
-                                             const char          *osname,
-                                             GPtrArray           *inout_deployments,
-                                             GCancellable        *cancellable,
-                                             GError             **error)
+_ostree_sysroot_list_deployment_dirs_for_os (int deploydir_dfd, const char *osname,
+                                             GPtrArray *inout_deployments,
+                                             GCancellable *cancellable, GError **error)
 {
-  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  g_auto (GLnxDirFdIterator) dfd_iter = {
+    0,
+  };
   gboolean exists;
   const char *osdeploy_path = glnx_strjoina (osname, "/deploy");
   if (!ot_dfd_iter_init_allow_noent (deploydir_dfd, osdeploy_path, &dfd_iter, &exists, error))
@@ -61,7 +61,8 @@ _ostree_sysroot_list_deployment_dirs_for_os (int                  deploydir_dfd,
       if (!_ostree_sysroot_parse_deploy_path_name (dent->d_name, &csum, &deployserial, error))
         return FALSE;
 
-      g_ptr_array_add (inout_deployments, ostree_deployment_new (-1, osname, csum, deployserial, NULL, -1));
+      g_ptr_array_add (inout_deployments,
+                       ostree_deployment_new (-1, osname, csum, deployserial, NULL, -1));
     }
 
   return TRUE;
@@ -71,15 +72,14 @@ _ostree_sysroot_list_deployment_dirs_for_os (int                  deploydir_dfd,
  * filesystem state.
  */
 static gboolean
-list_all_deployment_directories (OstreeSysroot       *self,
-                                 GPtrArray          **out_deployments,
-                                 GCancellable        *cancellable,
-                                 GError             **error)
+list_all_deployment_directories (OstreeSysroot *self, GPtrArray **out_deployments,
+                                 GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GPtrArray) ret_deployments =
-    g_ptr_array_new_with_free_func (g_object_unref);
+  g_autoptr (GPtrArray) ret_deployments = g_ptr_array_new_with_free_func (g_object_unref);
 
-  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  g_auto (GLnxDirFdIterator) dfd_iter = {
+    0,
+  };
   gboolean exists;
   if (!ot_dfd_iter_init_allow_noent (self->sysroot_fd, "ostree/deploy", &dfd_iter, &exists, error))
     return FALSE;
@@ -98,8 +98,7 @@ list_all_deployment_directories (OstreeSysroot       *self,
       if (dent->d_type != DT_DIR)
         continue;
 
-      if (!_ostree_sysroot_list_deployment_dirs_for_os (dfd_iter.fd, dent->d_name,
-                                                        ret_deployments,
+      if (!_ostree_sysroot_list_deployment_dirs_for_os (dfd_iter.fd, dent->d_name, ret_deployments,
                                                         cancellable, error))
         return FALSE;
     }
@@ -109,9 +108,7 @@ list_all_deployment_directories (OstreeSysroot       *self,
 }
 
 gboolean
-_ostree_sysroot_parse_bootdir_name (const char *name,
-                                    char      **out_osname,
-                                    char      **out_csum)
+_ostree_sysroot_parse_bootdir_name (const char *name, char **out_osname, char **out_csum)
 {
   const char *lastdash;
 
@@ -137,16 +134,17 @@ _ostree_sysroot_parse_bootdir_name (const char *name,
 }
 
 gboolean
-_ostree_sysroot_list_all_boot_directories (OstreeSysroot       *self,
-                                           char              ***out_bootdirs,
-                                           GCancellable        *cancellable,
-                                           GError             **error)
+_ostree_sysroot_list_all_boot_directories (OstreeSysroot *self, char ***out_bootdirs,
+                                           GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GPtrArray) ret_bootdirs = g_ptr_array_new_with_free_func (g_free);
+  g_autoptr (GPtrArray) ret_bootdirs = g_ptr_array_new_with_free_func (g_free);
 
   gboolean exists = FALSE;
-  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
-  if (self->boot_fd >= 0 && !ot_dfd_iter_init_allow_noent (self->boot_fd, "ostree", &dfd_iter, &exists, error))
+  g_auto (GLnxDirFdIterator) dfd_iter = {
+    0,
+  };
+  if (self->boot_fd >= 0
+      && !ot_dfd_iter_init_allow_noent (self->boot_fd, "ostree", &dfd_iter, &exists, error))
     return FALSE;
 
   while (exists)
@@ -170,7 +168,7 @@ _ostree_sysroot_list_all_boot_directories (OstreeSysroot       *self,
     }
 
   g_ptr_array_add (ret_bootdirs, NULL);
-  *out_bootdirs = (char**)g_ptr_array_free (g_steal_pointer (&ret_bootdirs), FALSE);
+  *out_bootdirs = (char **)g_ptr_array_free (g_steal_pointer (&ret_bootdirs), FALSE);
   return TRUE;
 }
 
@@ -179,31 +177,34 @@ _ostree_sysroot_list_all_boot_directories (OstreeSysroot       *self,
  * other versions that aren't active.
  */
 static gboolean
-cleanup_other_bootversions (OstreeSysroot       *self,
-                            GCancellable        *cancellable,
-                            GError             **error)
+cleanup_other_bootversions (OstreeSysroot *self, GCancellable *cancellable, GError **error)
 {
   const int cleanup_bootversion = self->bootversion == 0 ? 1 : 0;
   const int cleanup_subbootversion = self->subbootversion == 0 ? 1 : 0;
   /* Reusable buffer for path */
-  g_autoptr(GString) buf = g_string_new ("");
+  g_autoptr (GString) buf = g_string_new ("");
 
   /* These directories are for the other major version */
-  g_string_truncate (buf, 0); g_string_append_printf (buf, "boot/loader.%d", cleanup_bootversion);
+  g_string_truncate (buf, 0);
+  g_string_append_printf (buf, "boot/loader.%d", cleanup_bootversion);
   if (!glnx_shutil_rm_rf_at (self->sysroot_fd, buf->str, cancellable, error))
     return FALSE;
-  g_string_truncate (buf, 0); g_string_append_printf (buf, "ostree/boot.%d", cleanup_bootversion);
+  g_string_truncate (buf, 0);
+  g_string_append_printf (buf, "ostree/boot.%d", cleanup_bootversion);
   if (!glnx_shutil_rm_rf_at (self->sysroot_fd, buf->str, cancellable, error))
     return FALSE;
-  g_string_truncate (buf, 0); g_string_append_printf (buf, "ostree/boot.%d.0", cleanup_bootversion);
+  g_string_truncate (buf, 0);
+  g_string_append_printf (buf, "ostree/boot.%d.0", cleanup_bootversion);
   if (!glnx_shutil_rm_rf_at (self->sysroot_fd, buf->str, cancellable, error))
     return FALSE;
-  g_string_truncate (buf, 0); g_string_append_printf (buf, "ostree/boot.%d.1", cleanup_bootversion);
+  g_string_truncate (buf, 0);
+  g_string_append_printf (buf, "ostree/boot.%d.1", cleanup_bootversion);
   if (!glnx_shutil_rm_rf_at (self->sysroot_fd, buf->str, cancellable, error))
     return FALSE;
 
   /* And finally the other subbootversion */
-  g_string_truncate (buf, 0); g_string_append_printf (buf, "ostree/boot.%d.%d", self->bootversion, cleanup_subbootversion);
+  g_string_truncate (buf, 0);
+  g_string_append_printf (buf, "ostree/boot.%d.%d", self->bootversion, cleanup_subbootversion);
   if (!glnx_shutil_rm_rf_at (self->sysroot_fd, buf->str, cancellable, error))
     return FALSE;
 
@@ -212,18 +213,15 @@ cleanup_other_bootversions (OstreeSysroot       *self,
 
 /* Delete a deployment directory */
 gboolean
-_ostree_sysroot_rmrf_deployment (OstreeSysroot *self,
-                                 OstreeDeployment *deployment,
-                                 GCancellable  *cancellable,
-                                 GError       **error)
+_ostree_sysroot_rmrf_deployment (OstreeSysroot *self, OstreeDeployment *deployment,
+                                 GCancellable *cancellable, GError **error)
 {
   g_autofree char *origin_relpath = ostree_deployment_get_origin_relpath (deployment);
   g_autofree char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
   struct stat stbuf;
   glnx_autofd int deployment_fd = -1;
 
-  if (!glnx_opendirat (self->sysroot_fd, deployment_path, TRUE,
-                       &deployment_fd, error))
+  if (!glnx_opendirat (self->sysroot_fd, deployment_path, TRUE, &deployment_fd, error))
     return FALSE;
 
   if (!glnx_fstat (deployment_fd, &stbuf, error))
@@ -232,13 +230,11 @@ _ostree_sysroot_rmrf_deployment (OstreeSysroot *self,
   /* This shouldn't happen, because higher levels should
    * disallow having the booted deployment not in the active
    * deployment list, but let's be extra safe. */
-  if (stbuf.st_dev == self->root_device &&
-      stbuf.st_ino == self->root_inode)
+  if (stbuf.st_dev == self->root_device && stbuf.st_ino == self->root_inode)
     return TRUE;
 
   /* This deployment wasn't referenced, so delete it */
-  if (!_ostree_linuxfs_fd_alter_immutable_flag (deployment_fd, FALSE,
-                                                cancellable, error))
+  if (!_ostree_linuxfs_fd_alter_immutable_flag (deployment_fd, FALSE, cancellable, error))
     return FALSE;
   if (!glnx_shutil_rm_rf_at (self->sysroot_fd, origin_relpath, cancellable, error))
     return FALSE;
@@ -253,13 +249,11 @@ _ostree_sysroot_rmrf_deployment (OstreeSysroot *self,
  * referenced.
  */
 static gboolean
-cleanup_old_deployments (OstreeSysroot       *self,
-                         GCancellable        *cancellable,
-                         GError             **error)
+cleanup_old_deployments (OstreeSysroot *self, GCancellable *cancellable, GError **error)
 {
   /* Load all active deployments referenced by bootloader configuration. */
-  g_autoptr(GHashTable) active_deployment_dirs =
-    g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  g_autoptr (GHashTable) active_deployment_dirs
+      = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   for (guint i = 0; i < self->deployments->len; i++)
     {
       OstreeDeployment *deployment = self->deployments->pdata[i];
@@ -269,9 +263,8 @@ cleanup_old_deployments (OstreeSysroot       *self,
     }
 
   /* Find all deployment directories, both active and inactive */
-  g_autoptr(GPtrArray) all_deployment_dirs = NULL;
-  if (!list_all_deployment_directories (self, &all_deployment_dirs,
-                                        cancellable, error))
+  g_autoptr (GPtrArray) all_deployment_dirs = NULL;
+  if (!list_all_deployment_directories (self, &all_deployment_dirs, cancellable, error))
     return FALSE;
   g_assert (all_deployment_dirs); /* Pacify static analysis */
   for (guint i = 0; i < all_deployment_dirs->len; i++)
@@ -293,15 +286,13 @@ cleanup_old_deployments (OstreeSysroot       *self,
  * bootloader configuration.
  */
 gboolean
-_ostree_sysroot_cleanup_bootfs (OstreeSysroot       *self,
-                                GCancellable        *cancellable,
-                                GError             **error)
+_ostree_sysroot_cleanup_bootfs (OstreeSysroot *self, GCancellable *cancellable, GError **error)
 {
   /* Load all active bootcsums and overlays referenced by bootloader configuration. */
-  g_autoptr(GHashTable) active_boot_checksums =
-    g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-  g_autoptr(GHashTable) active_overlay_initrds =
-    g_hash_table_new (g_str_hash, g_str_equal); /* borrows from deployment's bootconfig */
+  g_autoptr (GHashTable) active_boot_checksums
+      = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  g_autoptr (GHashTable) active_overlay_initrds
+      = g_hash_table_new (g_str_hash, g_str_equal); /* borrows from deployment's bootconfig */
   for (guint i = 0; i < self->deployments->len; i++)
     {
       OstreeDeployment *deployment = self->deployments->pdata[i];
@@ -312,11 +303,11 @@ _ostree_sysroot_cleanup_bootfs (OstreeSysroot       *self,
       OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
       char **initrds = ostree_bootconfig_parser_get_overlay_initrds (bootconfig);
       for (char **it = initrds; it && *it; it++)
-        g_hash_table_add (active_overlay_initrds, (char*)glnx_basename (*it));
+        g_hash_table_add (active_overlay_initrds, (char *)glnx_basename (*it));
     }
 
   /* Clean up boot directories */
-  g_auto(GStrv) all_boot_dirs = NULL;
+  g_auto (GStrv) all_boot_dirs = NULL;
   if (!_ostree_sysroot_list_all_boot_directories (self, &all_boot_dirs, cancellable, error))
     return FALSE;
 
@@ -337,8 +328,8 @@ _ostree_sysroot_cleanup_bootfs (OstreeSysroot       *self,
     }
 
   /* Clean up overlay initrds */
-  glnx_autofd int overlays_dfd =
-    glnx_opendirat_with_errno (self->sysroot_fd, _OSTREE_SYSROOT_INITRAMFS_OVERLAYS, FALSE);
+  glnx_autofd int overlays_dfd
+      = glnx_opendirat_with_errno (self->sysroot_fd, _OSTREE_SYSROOT_INITRAMFS_OVERLAYS, FALSE);
   if (overlays_dfd < 0)
     {
       if (errno != ENOENT)
@@ -346,8 +337,10 @@ _ostree_sysroot_cleanup_bootfs (OstreeSysroot       *self,
     }
   else
     {
-      g_autoptr(GPtrArray) initrds_to_delete = g_ptr_array_new_with_free_func (g_free);
-      g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+      g_autoptr (GPtrArray) initrds_to_delete = g_ptr_array_new_with_free_func (g_free);
+      g_auto (GLnxDirFdIterator) dfd_iter = {
+        0,
+      };
       if (!glnx_dirfd_iterator_init_at (overlays_dfd, ".", TRUE, &dfd_iter, error))
         return FALSE;
       while (TRUE)
@@ -377,15 +370,13 @@ _ostree_sysroot_cleanup_bootfs (OstreeSysroot       *self,
 
 /* Delete the ref bindings for a non-active boot version */
 static gboolean
-cleanup_ref_prefix (OstreeRepo         *repo,
-                    int                 bootversion,
-                    int                 subbootversion,
-                    GCancellable       *cancellable,
-                    GError            **error)
+cleanup_ref_prefix (OstreeRepo *repo, int bootversion, int subbootversion,
+                    GCancellable *cancellable, GError **error)
 {
   g_autofree char *prefix = g_strdup_printf ("ostree/%d/%d", bootversion, subbootversion);
-  g_autoptr(GHashTable) refs = NULL;
-  if (!ostree_repo_list_refs_ext (repo, prefix, &refs, OSTREE_REPO_LIST_REFS_EXT_NONE, cancellable, error))
+  g_autoptr (GHashTable) refs = NULL;
+  if (!ostree_repo_list_refs_ext (repo, prefix, &refs, OSTREE_REPO_LIST_REFS_EXT_NONE, cancellable,
+                                  error))
     return FALSE;
 
   GLNX_HASH_TABLE_FOREACH (refs, const char *, ref)
@@ -402,39 +393,31 @@ cleanup_ref_prefix (OstreeRepo         *repo,
  * to match active deployments.
  */
 static gboolean
-generate_deployment_refs (OstreeSysroot       *self,
-                          OstreeRepo          *repo,
-                          int                  bootversion,
-                          int                  subbootversion,
-                          GPtrArray           *deployments,
-                          GCancellable        *cancellable,
-                          GError             **error)
+generate_deployment_refs (OstreeSysroot *self, OstreeRepo *repo, int bootversion,
+                          int subbootversion, GPtrArray *deployments, GCancellable *cancellable,
+                          GError **error)
 {
   int cleanup_bootversion = (bootversion == 0) ? 1 : 0;
   int cleanup_subbootversion = (subbootversion == 0) ? 1 : 0;
 
-  if (!cleanup_ref_prefix (repo, cleanup_bootversion, 0,
-                           cancellable, error))
+  if (!cleanup_ref_prefix (repo, cleanup_bootversion, 0, cancellable, error))
     return FALSE;
 
-  if (!cleanup_ref_prefix (repo, cleanup_bootversion, 1,
-                           cancellable, error))
+  if (!cleanup_ref_prefix (repo, cleanup_bootversion, 1, cancellable, error))
     return FALSE;
 
-  if (!cleanup_ref_prefix (repo, bootversion, cleanup_subbootversion,
-                           cancellable, error))
+  if (!cleanup_ref_prefix (repo, bootversion, cleanup_subbootversion, cancellable, error))
     return FALSE;
 
-  g_autoptr(OstreeRepoAutoTransaction) txn =
-    _ostree_repo_auto_transaction_start (repo, cancellable, error);
+  g_autoptr (OstreeRepoAutoTransaction) txn
+      = _ostree_repo_auto_transaction_start (repo, cancellable, error);
   if (!txn)
     return FALSE;
   for (guint i = 0; i < deployments->len; i++)
     {
       OstreeDeployment *deployment = deployments->pdata[i];
-      g_autofree char *refname = g_strdup_printf ("ostree/%d/%d/%u",
-                                               bootversion, subbootversion,
-                                               i);
+      g_autofree char *refname
+          = g_strdup_printf ("ostree/%d/%d/%u", bootversion, subbootversion, i);
 
       ostree_repo_transaction_set_refspec (repo, refname, ostree_deployment_get_csum (deployment));
     }
@@ -466,13 +449,10 @@ generate_deployment_refs (OstreeSysroot       *self,
  * Since: 2018.6
  */
 gboolean
-ostree_sysroot_cleanup_prune_repo (OstreeSysroot          *sysroot,
-                                   OstreeRepoPruneOptions *options,
-                                   gint                   *out_objects_total,
-                                   gint                   *out_objects_pruned,
-                                   guint64                *out_pruned_object_size_total,
-                                   GCancellable           *cancellable,
-                                   GError                **error)
+ostree_sysroot_cleanup_prune_repo (OstreeSysroot *sysroot, OstreeRepoPruneOptions *options,
+                                   gint *out_objects_total, gint *out_objects_pruned,
+                                   guint64 *out_pruned_object_size_total, GCancellable *cancellable,
+                                   GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("Pruning system repository", error);
   OstreeRepo *repo = ostree_sysroot_repo (sysroot);
@@ -484,8 +464,8 @@ ostree_sysroot_cleanup_prune_repo (OstreeSysroot          *sysroot,
   /* Hold an exclusive lock by default across gathering refs and doing
    * the prune.
    */
-  g_autoptr(OstreeRepoAutoLock) lock =
-    ostree_repo_auto_lock_push (repo, OSTREE_REPO_LOCK_EXCLUSIVE, cancellable, error);
+  g_autoptr (OstreeRepoAutoLock) lock
+      = ostree_repo_auto_lock_push (repo, OSTREE_REPO_LOCK_EXCLUSIVE, cancellable, error);
   if (!lock)
     return FALSE;
 
@@ -511,10 +491,8 @@ ostree_sysroot_cleanup_prune_repo (OstreeSysroot          *sysroot,
         return FALSE;
     }
 
-  if (!ostree_repo_prune_from_reachable (repo, options,
-                                         out_objects_total, out_objects_pruned,
-                                         out_pruned_object_size_total,
-                                         cancellable, error))
+  if (!ostree_repo_prune_from_reachable (repo, options, out_objects_total, out_objects_pruned,
+                                         out_pruned_object_size_total, cancellable, error))
     return FALSE;
 
   return TRUE;
@@ -530,9 +508,7 @@ ostree_sysroot_cleanup_prune_repo (OstreeSysroot          *sysroot,
  * transaction, such as incomplete deployments.
  */
 gboolean
-ostree_sysroot_cleanup (OstreeSysroot       *self,
-                        GCancellable        *cancellable,
-                        GError             **error)
+ostree_sysroot_cleanup (OstreeSysroot *self, GCancellable *cancellable, GError **error)
 {
   return _ostree_sysroot_cleanup_internal (self, TRUE, cancellable, error);
 }
@@ -547,18 +523,14 @@ ostree_sysroot_cleanup (OstreeSysroot       *self,
  * and old boot versions, but does NOT prune the repository.
  */
 gboolean
-ostree_sysroot_prepare_cleanup (OstreeSysroot  *self,
-                                GCancellable   *cancellable,
-                                GError        **error)
+ostree_sysroot_prepare_cleanup (OstreeSysroot *self, GCancellable *cancellable, GError **error)
 {
   return _ostree_sysroot_cleanup_internal (self, FALSE, cancellable, error);
 }
 
 gboolean
-_ostree_sysroot_cleanup_internal (OstreeSysroot              *self,
-                                  gboolean                    do_prune_repo,
-                                  GCancellable               *cancellable,
-                                  GError                    **error)
+_ostree_sysroot_cleanup_internal (OstreeSysroot *self, gboolean do_prune_repo,
+                                  GCancellable *cancellable, GError **error)
 {
   g_assert (OSTREE_IS_SYSROOT (self));
   g_assert (self->loadstate == OSTREE_SYSROOT_LOAD_STATE_LOADED);
@@ -576,11 +548,8 @@ _ostree_sysroot_cleanup_internal (OstreeSysroot              *self,
     return glnx_prefix_error (error, "Cleaning bootfs");
 
   OstreeRepo *repo = ostree_sysroot_repo (self);
-  if (!generate_deployment_refs (self, repo,
-                                 self->bootversion,
-                                 self->subbootversion,
-                                 self->deployments,
-                                 cancellable, error))
+  if (!generate_deployment_refs (self, repo, self->bootversion, self->subbootversion,
+                                 self->deployments, cancellable, error))
     return glnx_prefix_error (error, "Generating deployment refs");
 
   if (do_prune_repo)
@@ -588,11 +557,10 @@ _ostree_sysroot_cleanup_internal (OstreeSysroot              *self,
       gint n_objects_total;
       gint n_objects_pruned;
       guint64 freed_space;
-      g_autoptr(GHashTable) reachable = ostree_repo_traverse_new_reachable ();
+      g_autoptr (GHashTable) reachable = ostree_repo_traverse_new_reachable ();
       OstreeRepoPruneOptions opts = { OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY, reachable };
-      if (!ostree_sysroot_cleanup_prune_repo (self, &opts, &n_objects_total,
-                                              &n_objects_pruned, &freed_space,
-                                              cancellable, error))
+      if (!ostree_sysroot_cleanup_prune_repo (self, &opts, &n_objects_total, &n_objects_pruned,
+                                              &freed_space, cancellable, error))
         return FALSE;
 
       /* TODO remove printf in library */

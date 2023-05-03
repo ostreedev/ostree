@@ -21,15 +21,15 @@
 
 #include "config.h"
 
-#include "ot-main.h"
+#include "ostree.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
-#include "ostree.h"
+#include "ot-main.h"
 #include "otutil.h"
 
-#include <unistd.h>
-#include <stdlib.h>
 #include <glib/gi18n.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 static gboolean opt_reboot;
 static gboolean opt_allow_downgrade;
@@ -40,25 +40,31 @@ static char *opt_osname;
 static char *opt_override_commit;
 
 static GOptionEntry options[] = {
-  { "os", 0, 0, G_OPTION_ARG_STRING, &opt_osname, "Use a different operating system root than the current one", "OSNAME" },
+  { "os", 0, 0, G_OPTION_ARG_STRING, &opt_osname,
+    "Use a different operating system root than the current one", "OSNAME" },
   { "reboot", 'r', 0, G_OPTION_ARG_NONE, &opt_reboot, "Reboot after a successful upgrade", NULL },
-  { "allow-downgrade", 0, 0, G_OPTION_ARG_NONE, &opt_allow_downgrade, "Permit deployment of chronologically older trees", NULL },
-  { "override-commit", 0, 0, G_OPTION_ARG_STRING, &opt_override_commit, "Deploy CHECKSUM instead of the latest tree", "CHECKSUM" },
-  { "pull-only", 0, 0, G_OPTION_ARG_NONE, &opt_pull_only, "Do not create a deployment, just download", NULL },
+  { "allow-downgrade", 0, 0, G_OPTION_ARG_NONE, &opt_allow_downgrade,
+    "Permit deployment of chronologically older trees", NULL },
+  { "override-commit", 0, 0, G_OPTION_ARG_STRING, &opt_override_commit,
+    "Deploy CHECKSUM instead of the latest tree", "CHECKSUM" },
+  { "pull-only", 0, 0, G_OPTION_ARG_NONE, &opt_pull_only,
+    "Do not create a deployment, just download", NULL },
   { "deploy-only", 0, 0, G_OPTION_ARG_NONE, &opt_deploy_only, "Do not pull, only deploy", NULL },
-  { "stage", 0, 0, G_OPTION_ARG_NONE, &opt_stage, "Enable staging (finalization at reboot time)", NULL },
+  { "stage", 0, 0, G_OPTION_ARG_NONE, &opt_stage, "Enable staging (finalization at reboot time)",
+    NULL },
   { NULL }
 };
 
 gboolean
-ot_admin_builtin_upgrade (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_admin_builtin_upgrade (int argc, char **argv, OstreeCommandInvocation *invocation,
+                          GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = g_option_context_new ("");
+  g_autoptr (GOptionContext) context = g_option_context_new ("");
 
-  g_autoptr(OstreeSysroot) sysroot = NULL;
+  g_autoptr (OstreeSysroot) sysroot = NULL;
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
-                                          invocation, &sysroot, cancellable, error))
+                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER, invocation, &sysroot,
+                                          cancellable, error))
     return FALSE;
 
   if (opt_pull_only && opt_deploy_only)
@@ -78,13 +84,12 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeCommandInvocation *invoca
   if (opt_stage)
     flags |= OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE;
 
-  g_autoptr(OstreeSysrootUpgrader) upgrader =
-    ostree_sysroot_upgrader_new_for_os_with_flags (sysroot, opt_osname, flags,
-                                                   cancellable, error);
+  g_autoptr (OstreeSysrootUpgrader) upgrader = ostree_sysroot_upgrader_new_for_os_with_flags (
+      sysroot, opt_osname, flags, cancellable, error);
   if (!upgrader)
     return FALSE;
 
-  g_autoptr(GKeyFile) origin = ostree_sysroot_upgrader_dup_origin (upgrader);
+  g_autoptr (GKeyFile) origin = ostree_sysroot_upgrader_dup_origin (upgrader);
   if (origin != NULL)
     {
       /* Should we consider requiring --discard-hotfix here? */
@@ -92,9 +97,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeCommandInvocation *invoca
       if (opt_override_commit != NULL)
         {
           /* Override the commit to pull and deploy. */
-          g_key_file_set_string (origin, "origin",
-                                 "override-commit",
-                                 opt_override_commit);
+          g_key_file_set_string (origin, "origin", "override-commit", opt_override_commit);
         }
 
       if (!ostree_sysroot_upgrader_set_origin (upgrader, origin, NULL, error))
@@ -106,18 +109,21 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeCommandInvocation *invoca
   if (opt_deploy_only)
     upgraderpullflags |= OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_SYNTHETIC;
 
-  { g_auto(GLnxConsoleRef) console = { 0, };
+  {
+    g_auto (GLnxConsoleRef) console = {
+      0,
+    };
     glnx_console_lock (&console);
 
-    g_autoptr(OstreeAsyncProgress) progress = NULL;
+    g_autoptr (OstreeAsyncProgress) progress = NULL;
     if (console.is_tty)
-      progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, &console);
+      progress = ostree_async_progress_new_and_connect (
+          ostree_repo_pull_default_console_progress_changed, &console);
 
     if (opt_allow_downgrade)
       upgraderpullflags |= OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER;
 
-    if (!ostree_sysroot_upgrader_pull (upgrader, 0, upgraderpullflags,
-                                       progress, &changed,
+    if (!ostree_sysroot_upgrader_pull (upgrader, 0, upgraderpullflags, progress, &changed,
                                        cancellable, error))
       {
         /* In the pull-only case, we do a cleanup here to ensure that if
@@ -129,7 +135,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeCommandInvocation *invoca
          * isn't directly referenced.
          */
         if (opt_pull_only)
-          (void) ostree_sysroot_cleanup (sysroot, NULL, NULL);
+          (void)ostree_sysroot_cleanup (sysroot, NULL, NULL);
         return FALSE;
       }
 

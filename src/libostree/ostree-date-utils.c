@@ -30,11 +30,7 @@
 
 /* @buf must already be known to be long enough */
 static gboolean
-parse_uint (const char *buf,
-            guint       n_digits,
-            guint       min,
-            guint       max,
-            guint      *out)
+parse_uint (const char *buf, guint n_digits, guint min, guint max, guint *out)
 {
   guint64 number;
   const char *end_ptr = NULL;
@@ -42,19 +38,15 @@ parse_uint (const char *buf,
 
   g_assert (out != NULL);
 
-  if(!(n_digits == 2 || n_digits == 4))
+  if (!(n_digits == 2 || n_digits == 4))
     return FALSE;
 
   errno = 0;
   number = g_ascii_strtoull (buf, (gchar **)&end_ptr, 10);
   saved_errno = errno;
 
-  if (!g_ascii_isdigit (buf[0]) ||
-      saved_errno != 0 ||
-      end_ptr == NULL ||
-      end_ptr != buf + n_digits ||
-      number < min ||
-      number > max)
+  if (!g_ascii_isdigit (buf[0]) || saved_errno != 0 || end_ptr == NULL || end_ptr != buf + n_digits
+      || number < min || number > max)
     return FALSE;
 
   *out = number;
@@ -75,36 +67,16 @@ parse_uint (const char *buf,
  *    Wed, 21 Oct 2015 07:28:00 GMT
  */
 GDateTime *
-_ostree_parse_rfc2616_date_time (const char *buf,
-                                 size_t      len)
+_ostree_parse_rfc2616_date_time (const char *buf, size_t len)
 {
   guint day_int, year_int, hour_int, minute_int, second_int;
-  const char *day_names[] =
-    {
-      "Mon",
-      "Tue",
-      "Wed",
-      "Thu",
-      "Fri",
-      "Sat",
-      "Sun",
-    };
+  const char *day_names[] = {
+    "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun",
+  };
   size_t day_name_index;
-  const char *month_names[] =
-    {
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    };
+  const char *month_names[] = {
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  };
   size_t month_name_index;
 
   if (len != 29)
@@ -154,13 +126,13 @@ _ostree_parse_rfc2616_date_time (const char *buf,
     return NULL;
   if (*(minute + 2) != ':')
     return NULL;
-  if (!parse_uint (second, 2, 0, 60, &second_int))  /* allow leap seconds */
+  if (!parse_uint (second, 2, 0, 60, &second_int)) /* allow leap seconds */
     return NULL;
   if (*(second + 2) != ' ')
     return NULL;
   if (strncmp (tz, "GMT", 3) != 0)
     return NULL;
 
-  return g_date_time_new_utc (year_int, month_name_index + 1, day_int,
-                              hour_int, minute_int, second_int);
+  return g_date_time_new_utc (year_int, month_name_index + 1, day_int, hour_int, minute_int,
+                              second_int);
 }

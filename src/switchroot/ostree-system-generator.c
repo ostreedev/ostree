@@ -20,10 +20,10 @@
 #include "config.h"
 
 #include <err.h>
-#include <unistd.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <libglnx.h>
 
@@ -37,10 +37,11 @@ static const char *arg_dest_late = "/tmp";
  * lives inside libostree.
  */
 int
-main(int argc, char *argv[])
+main (int argc, char *argv[])
 {
   /* We conflict with the magic ostree-mount-deployment-var file for ostree-prepare-root */
-  { struct stat stbuf;
+  {
+    struct stat stbuf;
     if (fstatat (AT_FDCWD, INITRAMFS_MOUNT_VAR, &stbuf, 0) == 0)
       {
         if (unlinkat (AT_FDCWD, INITRAMFS_MOUNT_VAR, 0) < 0)
@@ -74,8 +75,10 @@ main(int argc, char *argv[])
    */
   touch_run_ostree ();
 
-  { g_autoptr(GError) local_error = NULL;
-    if (!ostree_cmd__private__()->ostree_system_generator (ostree_cmdline, arg_dest, NULL, arg_dest_late, &local_error))
+  {
+    g_autoptr (GError) local_error = NULL;
+    if (!ostree_cmd__private__ ()->ostree_system_generator (ostree_cmdline, arg_dest, NULL,
+                                                            arg_dest_late, &local_error))
       errx (EXIT_FAILURE, "%s", local_error->message);
   }
 

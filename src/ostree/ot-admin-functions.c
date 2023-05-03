@@ -22,20 +22,18 @@
 #include "config.h"
 
 #include "libglnx.h"
+#include "ostree.h"
 #include "ot-admin-functions.h"
 #include "otutil.h"
-#include "ostree.h"
 
 gboolean
-ot_admin_require_booted_deployment_or_osname (OstreeSysroot       *sysroot,
-                                              const char          *osname,
-                                              GCancellable        *cancellable,
-                                              GError             **error)
+ot_admin_require_booted_deployment_or_osname (OstreeSysroot *sysroot, const char *osname,
+                                              GCancellable *cancellable, GError **error)
 {
-  OstreeDeployment *booted_deployment =
-    ostree_sysroot_get_booted_deployment (sysroot);
+  OstreeDeployment *booted_deployment = ostree_sysroot_get_booted_deployment (sysroot);
   if (booted_deployment == NULL && osname == NULL)
-      return glnx_throw (error, "Not currently booted into an OSTree system and no --os= argument given");
+    return glnx_throw (error,
+                       "Not currently booted into an OSTree system and no --os= argument given");
   return TRUE;
 }
 
@@ -51,7 +49,7 @@ ot_admin_require_booted_deployment_or_osname (OstreeSysroot       *sysroot,
 char *
 ot_admin_checksum_version (GVariant *checksum)
 {
-  g_autoptr(GVariant) metadata = NULL;
+  g_autoptr (GVariant) metadata = NULL;
   const char *ret = NULL;
 
   metadata = g_variant_get_child_value (checksum, 0);
@@ -63,18 +61,14 @@ ot_admin_checksum_version (GVariant *checksum)
 }
 
 OstreeDeployment *
-ot_admin_get_indexed_deployment (OstreeSysroot  *sysroot,
-                                 int             index,
-                                 GError        **error)
+ot_admin_get_indexed_deployment (OstreeSysroot *sysroot, int index, GError **error)
 
 {
-  g_autoptr(GPtrArray) current_deployments =
-    ostree_sysroot_get_deployments (sysroot);
+  g_autoptr (GPtrArray) current_deployments = ostree_sysroot_get_deployments (sysroot);
 
   if (index < 0)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "Invalid index %d", index);
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND, "Invalid index %d", index);
       return NULL;
     }
   if (index >= current_deployments->len)
@@ -88,7 +82,8 @@ ot_admin_get_indexed_deployment (OstreeSysroot  *sysroot,
   return g_object_ref (current_deployments->pdata[index]);
 }
 
-struct ContextState {
+struct ContextState
+{
   GMainContext *mainctx;
   gboolean running;
 };
@@ -101,17 +96,14 @@ on_sysroot_lock_timeout (gpointer user_data)
 }
 
 static void
-on_sysroot_lock_acquired (OstreeSysroot       *sysroot,
-                          GAsyncResult        *result,
-                          struct ContextState *state)
+on_sysroot_lock_acquired (OstreeSysroot *sysroot, GAsyncResult *result, struct ContextState *state)
 {
   state->running = FALSE;
   g_main_context_wakeup (state->mainctx);
 }
 
 gboolean
-ot_admin_sysroot_lock (OstreeSysroot  *sysroot,
-                       GError        **error)
+ot_admin_sysroot_lock (OstreeSysroot *sysroot, GError **error)
 {
   gboolean ret = FALSE;
   gboolean acquired;
@@ -134,14 +126,15 @@ ot_admin_sysroot_lock (OstreeSysroot  *sysroot,
 
       on_sysroot_lock_timeout (&state);
 
-      ostree_sysroot_lock_async (sysroot, NULL, (GAsyncReadyCallback)on_sysroot_lock_acquired, &state);
+      ostree_sysroot_lock_async (sysroot, NULL, (GAsyncReadyCallback)on_sysroot_lock_acquired,
+                                 &state);
 
       while (state.running)
         g_main_context_iteration (state.mainctx, TRUE);
     }
 
   ret = TRUE;
- out:
+out:
   g_main_context_pop_thread_default (state.mainctx);
   g_main_context_unref (state.mainctx);
   return ret;

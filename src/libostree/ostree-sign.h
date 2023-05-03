@@ -24,8 +24,8 @@
 
 #pragma once
 
-#include <glib.h>
 #include <glib-object.h>
+#include <glib.h>
 
 #include "ostree-ref.h"
 #include "ostree-remote.h"
@@ -42,9 +42,21 @@ G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 typedef struct _OstreeSign OstreeSign;
 typedef struct _OstreeSignInterface OstreeSignInterface;
 
-static inline OstreeSign *OSTREE_SIGN (gpointer ptr) { return G_TYPE_CHECK_INSTANCE_CAST (ptr, ostree_sign_get_type (), OstreeSign); }
-static inline gboolean OSTREE_IS_SIGN (gpointer ptr) { return G_TYPE_CHECK_INSTANCE_TYPE (ptr, ostree_sign_get_type ()); }
-static inline OstreeSignInterface *OSTREE_SIGN_GET_IFACE (gpointer ptr) { return G_TYPE_INSTANCE_GET_INTERFACE (ptr, ostree_sign_get_type (), OstreeSignInterface); }
+static inline OstreeSign *
+OSTREE_SIGN (gpointer ptr)
+{
+  return G_TYPE_CHECK_INSTANCE_CAST (ptr, ostree_sign_get_type (), OstreeSign);
+}
+static inline gboolean
+OSTREE_IS_SIGN (gpointer ptr)
+{
+  return G_TYPE_CHECK_INSTANCE_TYPE (ptr, ostree_sign_get_type ());
+}
+static inline OstreeSignInterface *
+OSTREE_SIGN_GET_IFACE (gpointer ptr)
+{
+  return G_TYPE_INSTANCE_GET_INTERFACE (ptr, ostree_sign_get_type (), OstreeSignInterface);
+}
 G_GNUC_END_IGNORE_DEPRECATIONS
 
 /**
@@ -63,109 +75,68 @@ G_DECLARE_INTERFACE (OstreeSign, ostree_sign, OSTREE, SIGN, GObject)
 struct _OstreeSignInterface
 {
   GTypeInterface g_iface;
-  const gchar *(* get_name) (OstreeSign *self);
-  gboolean (* data)   (OstreeSign *self,
-                       GBytes *data,
-                       GBytes **signature,
-                       GCancellable *cancellable,
-                       GError **error);
-  gboolean (* data_verify) (OstreeSign *self,
-                            GBytes *data,
-                            GVariant   *signatures,
-                            char      **out_success_message,
-                            GError **error);
-  const gchar *(* metadata_key) (OstreeSign *self);
-  const gchar *(* metadata_format) (OstreeSign *self);
-  gboolean (* clear_keys) (OstreeSign *self,
-                           GError **error);
-  gboolean (* set_sk) (OstreeSign *self,
-                       GVariant *secret_key,
-                       GError **error);
-  gboolean (* set_pk) (OstreeSign *self,
-                       GVariant *public_key,
-                       GError **error);
-  gboolean (* add_pk) (OstreeSign *self,
-                       GVariant *public_key,
-                       GError **error);
-  gboolean (* load_pk) (OstreeSign *self,
-                        GVariant *options,
-                        GError **error);
+  const gchar *(*get_name) (OstreeSign *self);
+  gboolean (*data) (OstreeSign *self, GBytes *data, GBytes **signature, GCancellable *cancellable,
+                    GError **error);
+  gboolean (*data_verify) (OstreeSign *self, GBytes *data, GVariant *signatures,
+                           char **out_success_message, GError **error);
+  const gchar *(*metadata_key) (OstreeSign *self);
+  const gchar *(*metadata_format) (OstreeSign *self);
+  gboolean (*clear_keys) (OstreeSign *self, GError **error);
+  gboolean (*set_sk) (OstreeSign *self, GVariant *secret_key, GError **error);
+  gboolean (*set_pk) (OstreeSign *self, GVariant *public_key, GError **error);
+  gboolean (*add_pk) (OstreeSign *self, GVariant *public_key, GError **error);
+  gboolean (*load_pk) (OstreeSign *self, GVariant *options, GError **error);
 };
 
 _OSTREE_PUBLIC
-const gchar * ostree_sign_get_name (OstreeSign *self);
+const gchar *ostree_sign_get_name (OstreeSign *self);
 
 _OSTREE_PUBLIC
-gboolean ostree_sign_data (OstreeSign *self,
-                           GBytes *data,
-                           GBytes **signature,
-                           GCancellable *cancellable,
-                           GError **error);
+gboolean ostree_sign_data (OstreeSign *self, GBytes *data, GBytes **signature,
+                           GCancellable *cancellable, GError **error);
 
 _OSTREE_PUBLIC
-gboolean ostree_sign_data_verify (OstreeSign *self,
-                                  GBytes     *data,
-                                  GVariant   *signatures,
-                                  char      **out_success_message,
-                                  GError     **error);
+gboolean ostree_sign_data_verify (OstreeSign *self, GBytes *data, GVariant *signatures,
+                                  char **out_success_message, GError **error);
 
 _OSTREE_PUBLIC
-const gchar * ostree_sign_metadata_key (OstreeSign *self);
+const gchar *ostree_sign_metadata_key (OstreeSign *self);
 
 _OSTREE_PUBLIC
-const gchar * ostree_sign_metadata_format (OstreeSign *self);
+const gchar *ostree_sign_metadata_format (OstreeSign *self);
 
 _OSTREE_PUBLIC
-gboolean ostree_sign_commit (OstreeSign     *self,
-                             OstreeRepo     *repo,
-                             const gchar    *commit_checksum,
-                             GCancellable   *cancellable,
-                             GError         **error);
+gboolean ostree_sign_commit (OstreeSign *self, OstreeRepo *repo, const gchar *commit_checksum,
+                             GCancellable *cancellable, GError **error);
 
 _OSTREE_PUBLIC
-gboolean ostree_sign_commit_verify (OstreeSign *self,
-                                    OstreeRepo     *repo,
-                                    const gchar    *commit_checksum,
-                                    char          **out_success_message,
-                                    GCancellable   *cancellable,
-                                    GError         **error);
+gboolean ostree_sign_commit_verify (OstreeSign *self, OstreeRepo *repo,
+                                    const gchar *commit_checksum, char **out_success_message,
+                                    GCancellable *cancellable, GError **error);
 
 _OSTREE_PUBLIC
-gboolean ostree_sign_clear_keys (OstreeSign *self,
-                                 GError **error);
+gboolean ostree_sign_clear_keys (OstreeSign *self, GError **error);
 
 _OSTREE_PUBLIC
-gboolean ostree_sign_set_sk (OstreeSign *self,
-                             GVariant *secret_key,
-                             GError **error);
+gboolean ostree_sign_set_sk (OstreeSign *self, GVariant *secret_key, GError **error);
 
 _OSTREE_PUBLIC
-gboolean ostree_sign_set_pk (OstreeSign *self,
-                             GVariant *public_key,
-                             GError **error);
+gboolean ostree_sign_set_pk (OstreeSign *self, GVariant *public_key, GError **error);
 
 _OSTREE_PUBLIC
-gboolean ostree_sign_add_pk (OstreeSign *self,
-                             GVariant *public_key,
-                             GError **error);
+gboolean ostree_sign_add_pk (OstreeSign *self, GVariant *public_key, GError **error);
 
 _OSTREE_PUBLIC
-gboolean ostree_sign_load_pk (OstreeSign *self,
-                              GVariant *options,
-                              GError **error);
-
+gboolean ostree_sign_load_pk (OstreeSign *self, GVariant *options, GError **error);
 
 _OSTREE_PUBLIC
-GPtrArray * ostree_sign_get_all(void);
+GPtrArray *ostree_sign_get_all (void);
 
 _OSTREE_PUBLIC
-OstreeSign * ostree_sign_get_by_name (const gchar *name, GError **error);
+OstreeSign *ostree_sign_get_by_name (const gchar *name, GError **error);
 
 _OSTREE_PUBLIC
-gboolean ostree_sign_summary (OstreeSign    *self,
-                              OstreeRepo    *repo,
-                              GVariant      *keys,
-                              GCancellable  *cancellable,
-                              GError       **error);
+gboolean ostree_sign_summary (OstreeSign *self, OstreeRepo *repo, GVariant *keys,
+                              GCancellable *cancellable, GError **error);
 G_END_DECLS
-

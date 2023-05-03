@@ -27,8 +27,8 @@
 // This should be the only file including linux/fs.h; see
 // https://sourceware.org/glibc/wiki/Release/2.36#Usage_of_.3Clinux.2Fmount.h.3E_and_.3Csys.2Fmount.h.3E
 // https://github.com/ostreedev/ostree/issues/2685
-#include <linux/fs.h>
 #include <ext2fs/ext2_fs.h>
+#include <linux/fs.h>
 
 /**
  * _ostree_linuxfs_fd_alter_immutable_flag:
@@ -45,10 +45,8 @@
  * silently do nothing.
  */
 gboolean
-_ostree_linuxfs_fd_alter_immutable_flag (int            fd,
-                                         gboolean       new_immutable_state,
-                                         GCancellable  *cancellable,
-                                         GError       **error)
+_ostree_linuxfs_fd_alter_immutable_flag (int fd, gboolean new_immutable_state,
+                                         GCancellable *cancellable, GError **error)
 {
   static gint no_alter_immutable = 0;
 
@@ -70,7 +68,7 @@ _ostree_linuxfs_fd_alter_immutable_flag (int            fd,
     {
       gboolean prev_immutable_state = (flags & EXT2_IMMUTABLE_FL) > 0;
       if (prev_immutable_state == new_immutable_state)
-        return TRUE;  /* Nothing to do */
+        return TRUE; /* Nothing to do */
 
       if (new_immutable_state)
         flags |= EXT2_IMMUTABLE_FL;

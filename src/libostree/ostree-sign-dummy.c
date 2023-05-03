@@ -22,8 +22,8 @@
 
 #include "config.h"
 
-#include <libglnx.h>
 #include "ostree-sign-dummy.h"
+#include <libglnx.h>
 #include <string.h>
 
 #undef G_LOG_DOMAIN
@@ -45,11 +45,10 @@ struct _OstreeSignDummy
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeSignDummy, g_object_unref)
 #endif
 
-static void
-ostree_sign_dummy_iface_init (OstreeSignInterface *self);
+static void ostree_sign_dummy_iface_init (OstreeSignInterface *self);
 
 G_DEFINE_TYPE_WITH_CODE (OstreeSignDummy, _ostree_sign_dummy, G_TYPE_OBJECT,
-        G_IMPLEMENT_INTERFACE (OSTREE_TYPE_SIGN, ostree_sign_dummy_iface_init));
+                         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_SIGN, ostree_sign_dummy_iface_init));
 
 static gboolean
 check_dummy_sign_enabled (GError **error)
@@ -87,73 +86,74 @@ _ostree_sign_dummy_init (OstreeSignDummy *self)
   self->pk_ascii = NULL;
 }
 
-gboolean ostree_sign_dummy_set_sk (OstreeSign *self, GVariant *key, GError **error)
+gboolean
+ostree_sign_dummy_set_sk (OstreeSign *self, GVariant *key, GError **error)
 {
   if (!check_dummy_sign_enabled (error))
     return FALSE;
 
-  OstreeSignDummy *sign =  _ostree_sign_dummy_get_instance_private(OSTREE_SIGN_DUMMY(self));
+  OstreeSignDummy *sign = _ostree_sign_dummy_get_instance_private (OSTREE_SIGN_DUMMY (self));
 
-  g_free(sign->sk_ascii);
+  g_free (sign->sk_ascii);
 
   sign->sk_ascii = g_variant_dup_string (key, 0);
 
   return TRUE;
 }
 
-gboolean ostree_sign_dummy_set_pk (OstreeSign *self, GVariant *key, GError **error)
+gboolean
+ostree_sign_dummy_set_pk (OstreeSign *self, GVariant *key, GError **error)
 {
-  OstreeSignDummy *sign =  _ostree_sign_dummy_get_instance_private(OSTREE_SIGN_DUMMY(self));
+  OstreeSignDummy *sign = _ostree_sign_dummy_get_instance_private (OSTREE_SIGN_DUMMY (self));
 
-  g_free(sign->pk_ascii);
+  g_free (sign->pk_ascii);
 
   sign->pk_ascii = g_variant_dup_string (key, 0);
 
   return TRUE;
 }
 
-gboolean ostree_sign_dummy_data (OstreeSign *self,
-                                 GBytes *data,
-                                 GBytes **signature,
-                                 GCancellable *cancellable,
-                                 GError **error)
+gboolean
+ostree_sign_dummy_data (OstreeSign *self, GBytes *data, GBytes **signature,
+                        GCancellable *cancellable, GError **error)
 {
   if (!check_dummy_sign_enabled (error))
     return FALSE;
 
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
-  OstreeSignDummy *sign =  _ostree_sign_dummy_get_instance_private(OSTREE_SIGN_DUMMY(self));
+  OstreeSignDummy *sign = _ostree_sign_dummy_get_instance_private (OSTREE_SIGN_DUMMY (self));
 
-  *signature = g_bytes_new (sign->sk_ascii, strlen(sign->sk_ascii));
+  *signature = g_bytes_new (sign->sk_ascii, strlen (sign->sk_ascii));
 
   return TRUE;
 }
 
-const gchar * ostree_sign_dummy_get_name (OstreeSign *self)
+const gchar *
+ostree_sign_dummy_get_name (OstreeSign *self)
 {
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
 
   return OSTREE_SIGN_DUMMY_NAME;
 }
 
-const gchar * ostree_sign_dummy_metadata_key (OstreeSign *self)
+const gchar *
+ostree_sign_dummy_metadata_key (OstreeSign *self)
 {
 
   return OSTREE_SIGN_METADATA_DUMMY_KEY;
 }
 
-const gchar * ostree_sign_dummy_metadata_format (OstreeSign *self)
+const gchar *
+ostree_sign_dummy_metadata_format (OstreeSign *self)
 {
 
   return OSTREE_SIGN_METADATA_DUMMY_TYPE;
 }
 
-gboolean ostree_sign_dummy_data_verify (OstreeSign *self,
-                                            GBytes     *data,
-                                            GVariant   *signatures,
-                                            char       **out_success_message,
-                                            GError     **error)
+gboolean
+ostree_sign_dummy_data_verify (OstreeSign *self, GBytes *data, GVariant *signatures,
+                               char **out_success_message, GError **error)
 {
   if (!check_dummy_sign_enabled (error))
     return FALSE;
@@ -161,27 +161,27 @@ gboolean ostree_sign_dummy_data_verify (OstreeSign *self,
   g_return_val_if_fail (OSTREE_IS_SIGN (self), FALSE);
   g_return_val_if_fail (data != NULL, FALSE);
 
-  OstreeSignDummy *sign =  _ostree_sign_dummy_get_instance_private(OSTREE_SIGN_DUMMY(self));
+  OstreeSignDummy *sign = _ostree_sign_dummy_get_instance_private (OSTREE_SIGN_DUMMY (self));
 
   if (signatures == NULL)
     return glnx_throw (error, "signature: dummy: commit have no signatures of my type");
 
-  if (!g_variant_is_of_type (signatures, (GVariantType *) OSTREE_SIGN_METADATA_DUMMY_TYPE))
+  if (!g_variant_is_of_type (signatures, (GVariantType *)OSTREE_SIGN_METADATA_DUMMY_TYPE))
     return glnx_throw (error, "signature: dummy: wrong type passed for verification");
 
-  gsize n = g_variant_n_children(signatures);
+  gsize n = g_variant_n_children (signatures);
   for (gsize i = 0; i < n; i++)
     {
       g_autoptr (GVariant) child = g_variant_get_child_value (signatures, i);
-      g_autoptr (GBytes) signature = g_variant_get_data_as_bytes(child);
+      g_autoptr (GBytes) signature = g_variant_get_data_as_bytes (child);
 
       gsize sign_size = 0;
       g_bytes_get_data (signature, &sign_size);
-      g_autofree gchar *sign_ascii = g_strndup(g_bytes_get_data (signature, NULL), sign_size);
-      g_debug("Read signature %d: %s", (gint)i, sign_ascii);
-      g_debug("Stored signature %d: %s", (gint)i, sign->pk_ascii);
+      g_autofree gchar *sign_ascii = g_strndup (g_bytes_get_data (signature, NULL), sign_size);
+      g_debug ("Read signature %d: %s", (gint)i, sign_ascii);
+      g_debug ("Stored signature %d: %s", (gint)i, sign->pk_ascii);
 
-      if (!g_strcmp0(sign_ascii, sign->pk_ascii))
+      if (!g_strcmp0 (sign_ascii, sign->pk_ascii))
         {
           if (out_success_message)
             *out_success_message = g_strdup ("dummy: Signature verified");

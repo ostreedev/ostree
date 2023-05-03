@@ -17,18 +17,20 @@
 
 #include "config.h"
 
-#include "ostree-kernel-args.h"
 #include "libglnx.h"
+#include "ostree-kernel-args.h"
 #include "otutil.h"
 
 #include <string.h>
 
-struct _OstreeKernelArgs {
-  GPtrArray  *order;
+struct _OstreeKernelArgs
+{
+  GPtrArray *order;
   GHashTable *table;
 };
 
-struct _OstreeKernelArgsEntry {
+struct _OstreeKernelArgsEntry
+{
   char *key;
   char *value;
 };
@@ -46,30 +48,26 @@ _ostree_kernel_args_entry_get_value (const OstreeKernelArgsEntry *e)
 }
 
 void
-_ostree_kernel_args_entry_set_key (OstreeKernelArgsEntry *e,
-                                   char  *key)
+_ostree_kernel_args_entry_set_key (OstreeKernelArgsEntry *e, char *key)
 {
   e->key = key;
 }
 
 void
-_ostree_kernel_args_entry_set_value (OstreeKernelArgsEntry *e,
-                                     char  *value)
+_ostree_kernel_args_entry_set_value (OstreeKernelArgsEntry *e, char *value)
 {
   e->value = value;
 }
 
 char *
-_ostree_kernel_args_get_key_index (const OstreeKernelArgs *kargs,
-                                   int i)
+_ostree_kernel_args_get_key_index (const OstreeKernelArgs *kargs, int i)
 {
   OstreeKernelArgsEntry *e = kargs->order->pdata[i];
   return e->key;
 }
 
 char *
-_ostree_kernel_args_get_value_index (const OstreeKernelArgs *kargs,
-                                     int i)
+_ostree_kernel_args_get_value_index (const OstreeKernelArgs *kargs, int i)
 {
   OstreeKernelArgsEntry *e = kargs->order->pdata[i];
   return e->value;
@@ -100,24 +98,21 @@ kernel_args_entry_free_from_table (gpointer data)
 }
 
 static gboolean
-kernel_args_entry_value_equal (gconstpointer data,
-                               gconstpointer value)
+kernel_args_entry_value_equal (gconstpointer data, gconstpointer value)
 {
   const OstreeKernelArgsEntry *e = data;
   return g_strcmp0 (_ostree_kernel_args_entry_get_value (e), value) == 0;
 }
 
 static gboolean
-kernel_args_entry_key_equal (gconstpointer data,
-                             gconstpointer key)
+kernel_args_entry_key_equal (gconstpointer data, gconstpointer key)
 {
   const OstreeKernelArgsEntry *e = data;
   return g_strcmp0 (_ostree_kernel_args_entry_get_key (e), key) == 0;
 }
 
 static void
-kernel_args_entry_replace_value (OstreeKernelArgsEntry *e,
-                                 const char *value)
+kernel_args_entry_replace_value (OstreeKernelArgsEntry *e, const char *value)
 {
   g_assert (e);
   _ostree_kernel_args_entry_value_free (e);
@@ -125,8 +120,7 @@ kernel_args_entry_replace_value (OstreeKernelArgsEntry *e,
 }
 
 static void
-kernel_args_remove_entries_from_order (GPtrArray *order,
-                                       GPtrArray *entries)
+kernel_args_remove_entries_from_order (GPtrArray *order, GPtrArray *entries)
 {
   g_assert (entries);
   for (int i = 0; i < entries->len; i++)
@@ -144,12 +138,11 @@ split_keyeq (char *arg)
 
   // Note: key/val are in a single allocation block, so we don't free val.
   *eq = '\0';
-  return eq+1;
+  return eq + 1;
 }
 
 static gboolean
-_arg_has_prefix (const char *arg,
-                 char      **prefixes)
+_arg_has_prefix (const char *arg, char **prefixes)
 {
   char **strviter;
 
@@ -165,8 +158,7 @@ _arg_has_prefix (const char *arg,
 }
 
 static gboolean
-strcmp0_equal (gconstpointer v1,
-               gconstpointer v2)
+strcmp0_equal (gconstpointer v1, gconstpointer v2)
 {
   return g_strcmp0 (v1, v2) == 0;
 }
@@ -187,8 +179,8 @@ ostree_kernel_args_new (void)
   ret = g_new0 (OstreeKernelArgs, 1);
   /* Hash table owns the kernel args entries, since it uses keys to index,
    * and its values are used to locate entries in the order array. */
-  ret->table = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                      g_free, (GDestroyNotify)g_ptr_array_unref);
+  ret->table
+      = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
   ret->order = g_ptr_array_new_with_free_func (NULL);
   return ret;
 }
@@ -222,7 +214,7 @@ ostree_kernel_args_free (OstreeKernelArgs *kargs)
 void
 ostree_kernel_args_cleanup (void *loc)
 {
-  ostree_kernel_args_free (*((OstreeKernelArgs**)loc));
+  ostree_kernel_args_free (*((OstreeKernelArgs **)loc));
 }
 
 /**
@@ -235,7 +227,7 @@ ostree_kernel_args_cleanup (void *loc)
  *
  * Since: 2019.3
  **/
-GHashTable*
+GHashTable *
 _ostree_kernel_arg_get_kargs_table (OstreeKernelArgs *kargs)
 {
   if (kargs != NULL)
@@ -253,7 +245,7 @@ _ostree_kernel_arg_get_kargs_table (OstreeKernelArgs *kargs)
  *
  * Since: 2019.3
  **/
-GPtrArray*
+GPtrArray *
 _ostree_kernel_arg_get_key_array (OstreeKernelArgs *kargs)
 {
   if (kargs != NULL)
@@ -291,9 +283,7 @@ _ostree_kernel_arg_get_key_array (OstreeKernelArgs *kargs)
  * Since: 2019.3
  **/
 gboolean
-ostree_kernel_args_new_replace (OstreeKernelArgs *kargs,
-                                const char       *arg,
-                                GError          **error)
+ostree_kernel_args_new_replace (OstreeKernelArgs *kargs, const char *arg, GError **error)
 {
   g_autofree char *arg_owned = g_strdup (arg);
   const char *key = arg_owned;
@@ -345,9 +335,7 @@ ostree_kernel_args_new_replace (OstreeKernelArgs *kargs,
  * Since: 2019.3
  **/
 gboolean
-ostree_kernel_args_delete_key_entry (OstreeKernelArgs *kargs,
-                                     const char       *key,
-                                     GError          **error)
+ostree_kernel_args_delete_key_entry (OstreeKernelArgs *kargs, const char *key, GError **error)
 {
   GPtrArray *entries = g_hash_table_lookup (kargs->table, key);
   if (!entries)
@@ -358,8 +346,7 @@ ostree_kernel_args_delete_key_entry (OstreeKernelArgs *kargs,
 
   if (!g_hash_table_remove (kargs->table, key))
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Failed to find kernel argument '%s'",
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Failed to find kernel argument '%s'",
                    key);
       return FALSE;
     }
@@ -392,9 +379,7 @@ ostree_kernel_args_delete_key_entry (OstreeKernelArgs *kargs,
  *  Since: 2019.3
  **/
 gboolean
-ostree_kernel_args_delete (OstreeKernelArgs  *kargs,
-                           const char        *arg,
-                           GError           **error)
+ostree_kernel_args_delete (OstreeKernelArgs *kargs, const char *arg, GError **error)
 {
   g_autofree char *arg_owned = g_strdup (arg);
   const char *key = arg_owned;
@@ -444,8 +429,7 @@ ostree_kernel_args_delete (OstreeKernelArgs  *kargs,
  * Since: 2019.3
  **/
 void
-ostree_kernel_args_replace_take (OstreeKernelArgs   *kargs,
-                                 char               *arg)
+ostree_kernel_args_replace_take (OstreeKernelArgs *kargs, char *arg)
 {
   gboolean existed;
   GPtrArray *entries = g_ptr_array_new_with_free_func (kernel_args_entry_free_from_table);
@@ -466,7 +450,8 @@ ostree_kernel_args_replace_take (OstreeKernelArgs   *kargs,
       g_assert_cmpuint (old_entries->len, >, 0);
 
       guint old_order_index = 0;
-      g_assert (ot_ptr_array_find_with_equal_func (kargs->order, old_key, kernel_args_entry_key_equal, &old_order_index));
+      g_assert (ot_ptr_array_find_with_equal_func (kargs->order, old_key,
+                                                   kernel_args_entry_key_equal, &old_order_index));
       kernel_args_remove_entries_from_order (kargs->order, old_entries);
 
       g_assert_cmpstr (old_key, ==, arg);
@@ -495,8 +480,7 @@ ostree_kernel_args_replace_take (OstreeKernelArgs   *kargs,
  * Since: 2019.3
  **/
 void
-ostree_kernel_args_replace (OstreeKernelArgs  *kargs,
-                            const char        *arg)
+ostree_kernel_args_replace (OstreeKernelArgs *kargs, const char *arg)
 {
   ostree_kernel_args_replace_take (kargs, g_strdup (arg));
 }
@@ -513,8 +497,7 @@ ostree_kernel_args_replace (OstreeKernelArgs  *kargs,
  * Since: 2019.3
  **/
 void
-ostree_kernel_args_append (OstreeKernelArgs  *kargs,
-                           const char        *arg)
+ostree_kernel_args_append (OstreeKernelArgs *kargs, const char *arg)
 {
   gboolean existed = TRUE;
   GPtrArray *entries = NULL;
@@ -551,8 +534,7 @@ ostree_kernel_args_append (OstreeKernelArgs  *kargs,
  * Since: 2019.3
  **/
 void
-ostree_kernel_args_replace_argv (OstreeKernelArgs  *kargs,
-                                 char             **argv)
+ostree_kernel_args_replace_argv (OstreeKernelArgs *kargs, char **argv)
 {
   char **strviter;
 
@@ -574,9 +556,7 @@ ostree_kernel_args_replace_argv (OstreeKernelArgs  *kargs,
  * Since: 2019.3
  **/
 void
-ostree_kernel_args_append_argv_filtered (OstreeKernelArgs  *kargs,
-                                         char             **argv,
-                                         char             **prefixes)
+ostree_kernel_args_append_argv_filtered (OstreeKernelArgs *kargs, char **argv, char **prefixes)
 {
   char **strviter;
 
@@ -600,8 +580,7 @@ ostree_kernel_args_append_argv_filtered (OstreeKernelArgs  *kargs,
  * Since: 2019.3
  **/
 void
-ostree_kernel_args_append_argv (OstreeKernelArgs  *kargs,
-                                char             **argv)
+ostree_kernel_args_append_argv (OstreeKernelArgs *kargs, char **argv)
 {
   ostree_kernel_args_append_argv_filtered (kargs, argv, NULL);
 }
@@ -620,32 +599,29 @@ ostree_kernel_args_append_argv (OstreeKernelArgs  *kargs,
  * Since: 2019.3
  **/
 gboolean
-ostree_kernel_args_append_proc_cmdline (OstreeKernelArgs *kargs,
-                                        GCancellable     *cancellable,
-                                        GError          **error)
+ostree_kernel_args_append_proc_cmdline (OstreeKernelArgs *kargs, GCancellable *cancellable,
+                                        GError **error)
 {
-  g_autoptr(GFile) proc_cmdline_path = g_file_new_for_path ("/proc/cmdline");
+  g_autoptr (GFile) proc_cmdline_path = g_file_new_for_path ("/proc/cmdline");
   g_autofree char *proc_cmdline = NULL;
   gsize proc_cmdline_len = 0;
-  g_auto(GStrv) proc_cmdline_args = NULL;
+  g_auto (GStrv) proc_cmdline_args = NULL;
   /* When updating the filter list don't forget to update the list in the tests
    * e.g. tests/test-admin-deploy-karg.sh and
    * tests/test-admin-instutil-set-kargs.sh
    */
   char *filtered_prefixes[] = { "BOOT_IMAGE=", /* GRUB 2 */
-                                "initrd=", /* sd-boot */
+                                "initrd=",     /* sd-boot */
                                 NULL };
 
-  if (!g_file_load_contents (proc_cmdline_path, cancellable,
-                             &proc_cmdline, &proc_cmdline_len,
-                             NULL, error))
+  if (!g_file_load_contents (proc_cmdline_path, cancellable, &proc_cmdline, &proc_cmdline_len, NULL,
+                             error))
     return FALSE;
 
   g_strchomp (proc_cmdline);
 
   proc_cmdline_args = g_strsplit (proc_cmdline, " ", -1);
-  ostree_kernel_args_append_argv_filtered (kargs, proc_cmdline_args,
-                                            filtered_prefixes);
+  ostree_kernel_args_append_argv_filtered (kargs, proc_cmdline_args, filtered_prefixes);
 
   return TRUE;
 }
@@ -660,8 +636,7 @@ ostree_kernel_args_append_proc_cmdline (OstreeKernelArgs *kargs,
  * Since: 2019.3
  **/
 void
-ostree_kernel_args_parse_append (OstreeKernelArgs *kargs,
-                                 const char       *options)
+ostree_kernel_args_parse_append (OstreeKernelArgs *kargs, const char *options)
 {
   char **args = NULL;
   char **iter;
@@ -730,7 +705,7 @@ ostree_kernel_args_to_strv (OstreeKernelArgs *kargs)
     }
   g_ptr_array_add (strv, NULL);
 
-  return (char**)g_ptr_array_free (strv, FALSE);
+  return (char **)g_ptr_array_free (strv, FALSE);
 }
 
 /**
@@ -801,7 +776,7 @@ ostree_kernel_args_get_last_value (OstreeKernelArgs *kargs, const char *key)
     return NULL;
 
   g_assert (entries->len > 0);
-  const OstreeKernelArgsEntry *e = entries->pdata[entries->len-1];
+  const OstreeKernelArgsEntry *e = entries->pdata[entries->len - 1];
   return _ostree_kernel_args_entry_get_value (e);
 }
 
@@ -817,8 +792,7 @@ ostree_kernel_args_get_last_value (OstreeKernelArgs *kargs, const char *key)
  * Since: 2022.5
  **/
 void
-ostree_kernel_args_append_if_missing (OstreeKernelArgs  *kargs,
-                                      const char *arg)
+ostree_kernel_args_append_if_missing (OstreeKernelArgs *kargs, const char *arg)
 {
   // Don't insert a duplicate key.
   if (ostree_kernel_args_contains (kargs, arg))
@@ -840,8 +814,7 @@ ostree_kernel_args_append_if_missing (OstreeKernelArgs  *kargs,
  * Since: 2022.7
  **/
 gboolean
-ostree_kernel_args_contains (OstreeKernelArgs  *kargs,
-                             const char *arg)
+ostree_kernel_args_contains (OstreeKernelArgs *kargs, const char *arg)
 {
   g_autofree char *key = g_strdup (arg);
   split_keyeq (key);
@@ -862,9 +835,7 @@ ostree_kernel_args_contains (OstreeKernelArgs  *kargs,
  * Since: 2022.7
  **/
 gboolean
-ostree_kernel_args_delete_if_present (OstreeKernelArgs  *kargs,
-                                      const char        *arg,
-                                      GError           **error)
+ostree_kernel_args_delete_if_present (OstreeKernelArgs *kargs, const char *arg, GError **error)
 {
   if (ostree_kernel_args_contains (kargs, arg))
     return ostree_kernel_args_delete (kargs, arg, error);

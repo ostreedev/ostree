@@ -17,51 +17,57 @@
 
 #include "config.h"
 
-#include <string.h>
 #include <glib-unix.h>
+#include <string.h>
 
-#include "ot-main.h"
 #include "ot-admin-instutil-builtins.h"
+#include "ot-main.h"
 
-#include "otutil.h"
 #include "ostree.h"
+#include "otutil.h"
 
 static gboolean opt_proc_cmdline;
 static gboolean opt_merge;
 static char **opt_replace;
 static char **opt_append;
 
-static GOptionEntry options[] = {
-  { "import-proc-cmdline", 0, 0, G_OPTION_ARG_NONE, &opt_proc_cmdline, "Import current /proc/cmdline", NULL },
-  { "merge", 0, 0, G_OPTION_ARG_NONE, &opt_merge, "Merge with previous command line", NULL },
-  { "replace", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_replace, "Set kernel argument, like root=/dev/sda1; this overrides any earlier argument with the same name", "NAME=VALUE" },
-  { "append", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_append, "Append kernel argument; useful with e.g. console= that can be used multiple times", "NAME=VALUE" },
-  { NULL }
-};
+static GOptionEntry options[]
+    = { { "import-proc-cmdline", 0, 0, G_OPTION_ARG_NONE, &opt_proc_cmdline,
+          "Import current /proc/cmdline", NULL },
+        { "merge", 0, 0, G_OPTION_ARG_NONE, &opt_merge, "Merge with previous command line", NULL },
+        { "replace", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_replace,
+          "Set kernel argument, like root=/dev/sda1; this overrides any earlier argument with the "
+          "same name",
+          "NAME=VALUE" },
+        { "append", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_append,
+          "Append kernel argument; useful with e.g. console= that can be used multiple times",
+          "NAME=VALUE" },
+        { NULL } };
 
 gboolean
-ot_admin_instutil_builtin_set_kargs (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_admin_instutil_builtin_set_kargs (int argc, char **argv, OstreeCommandInvocation *invocation,
+                                     GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   guint i;
-  g_autoptr(GPtrArray) deployments = NULL;
+  g_autoptr (GPtrArray) deployments = NULL;
   OstreeDeployment *first_deployment = NULL;
-  g_autoptr(GOptionContext) context = NULL;
-  g_autoptr(OstreeSysroot) sysroot = NULL;
-  g_autoptr(OstreeKernelArgs) kargs = NULL;
+  g_autoptr (GOptionContext) context = NULL;
+  g_autoptr (OstreeSysroot) sysroot = NULL;
+  g_autoptr (OstreeKernelArgs) kargs = NULL;
 
   context = g_option_context_new ("ARGS");
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER | OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
+                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER
+                                              | OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
                                           invocation, &sysroot, cancellable, error))
     goto out;
 
   deployments = ostree_sysroot_get_deployments (sysroot);
   if (deployments->len == 0)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Unable to find a deployment in sysroot");
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Unable to find a deployment in sysroot");
       goto out;
     }
   first_deployment = deployments->pdata[0];
@@ -79,7 +85,8 @@ ot_admin_instutil_builtin_set_kargs (int argc, char **argv, OstreeCommandInvocat
   else if (opt_merge)
     {
       OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (first_deployment);
-      g_auto(GStrv) previous_args = g_strsplit (ostree_bootconfig_parser_get (bootconfig, "options"), " ", -1);
+      g_auto (GStrv) previous_args
+          = g_strsplit (ostree_bootconfig_parser_get (bootconfig, "options"), " ", -1);
 
       ostree_kernel_args_append_argv (kargs, previous_args);
     }
@@ -98,15 +105,14 @@ ot_admin_instutil_builtin_set_kargs (int argc, char **argv, OstreeCommandInvocat
     ostree_kernel_args_append (kargs, argv[i]);
 
   {
-    g_auto(GStrv) kargs_strv = ostree_kernel_args_to_strv (kargs);
+    g_auto (GStrv) kargs_strv = ostree_kernel_args_to_strv (kargs);
 
-    if (!ostree_sysroot_deployment_set_kargs (sysroot, first_deployment,
-                                              kargs_strv,
-                                              cancellable, error))
+    if (!ostree_sysroot_deployment_set_kargs (sysroot, first_deployment, kargs_strv, cancellable,
+                                              error))
       goto out;
   }
 
   ret = TRUE;
- out:
+out:
   return ret;
 }

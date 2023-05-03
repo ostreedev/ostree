@@ -49,7 +49,7 @@
  * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ */
 
 #include "config.h"
 
@@ -67,10 +67,7 @@ static const int max_varint_bytes = 10;
  * Returns: %TRUE on success, %FALSE on end of stream
  */
 gboolean
-_ostree_read_varuint64 (const guint8   *buf,
-                        gsize           buflen,
-                        guint64        *out_value,
-                        gsize          *bytes_read)
+_ostree_read_varuint64 (const guint8 *buf, gsize buflen, guint64 *out_value, gsize *bytes_read)
 {
   guint64 result = 0;
   int count = 0;
@@ -90,7 +87,8 @@ _ostree_read_varuint64 (const guint8   *buf,
       buf++;
       buflen--;
       ++count;
-  } while (b & 0x80);
+    }
+  while (b & 0x80);
 
   *bytes_read = count;
   *out_value = result;
@@ -126,58 +124,105 @@ _ostree_write_varuint64 (GString *buf, guint64 n)
    * we probably don't want to optimize for small numbers anyway.  Thus,
    * we end up with a hardcoded binary search tree...
    */
-  if (part2 == 0) {
-    if (part1 == 0) {
-      if (part0 < (1 << 14)) {
-        if (part0 < (1 << 7)) {
-          size = 1; goto size1;
-        } else {
-          size = 2; goto size2;
+  if (part2 == 0)
+    {
+      if (part1 == 0)
+        {
+          if (part0 < (1 << 14))
+            {
+              if (part0 < (1 << 7))
+                {
+                  size = 1;
+                  goto size1;
+                }
+              else
+                {
+                  size = 2;
+                  goto size2;
+                }
+            }
+          else
+            {
+              if (part0 < (1 << 21))
+                {
+                  size = 3;
+                  goto size3;
+                }
+              else
+                {
+                  size = 4;
+                  goto size4;
+                }
+            }
         }
-      } else {
-        if (part0 < (1 << 21)) {
-          size = 3; goto size3;
-        } else {
-          size = 4; goto size4;
+      else
+        {
+          if (part1 < (1 << 14))
+            {
+              if (part1 < (1 << 7))
+                {
+                  size = 5;
+                  goto size5;
+                }
+              else
+                {
+                  size = 6;
+                  goto size6;
+                }
+            }
+          else
+            {
+              if (part1 < (1 << 21))
+                {
+                  size = 7;
+                  goto size7;
+                }
+              else
+                {
+                  size = 8;
+                  goto size8;
+                }
+            }
         }
-      }
-    } else {
-      if (part1 < (1 << 14)) {
-        if (part1 < (1 << 7)) {
-          size = 5; goto size5;
-        } else {
-          size = 6; goto size6;
-        }
-      } else {
-        if (part1 < (1 << 21)) {
-          size = 7; goto size7;
-        } else {
-          size = 8; goto size8;
-        }
-      }
     }
-  } else {
-    if (part2 < (1 << 7)) {
-      size = 9; goto size9;
-    } else {
-      size = 10; goto size10;
+  else
+    {
+      if (part2 < (1 << 7))
+        {
+          size = 9;
+          goto size9;
+        }
+      else
+        {
+          size = 10;
+          goto size10;
+        }
     }
-  }
 
   g_assert_not_reached ();
 
-  size10: target[9] = (guint8)((part2 >>  7) | 0x80);
-  size9 : target[8] = (guint8)((part2      ) | 0x80);
-  size8 : target[7] = (guint8)((part1 >> 21) | 0x80);
-  size7 : target[6] = (guint8)((part1 >> 14) | 0x80);
-  size6 : target[5] = (guint8)((part1 >>  7) | 0x80);
-  size5 : target[4] = (guint8)((part1      ) | 0x80);
-  size4 : target[3] = (guint8)((part0 >> 21) | 0x80);
-  size3 : target[2] = (guint8)((part0 >> 14) | 0x80);
-  size2 : target[1] = (guint8)((part0 >>  7) | 0x80);
-  size1 : target[0] = (guint8)((part0      ) | 0x80);
+size10:
+  target[9] = (guint8)((part2 >> 7) | 0x80);
+size9:
+  target[8] = (guint8)((part2) | 0x80);
+size8:
+  target[7] = (guint8)((part1 >> 21) | 0x80);
+size7:
+  target[6] = (guint8)((part1 >> 14) | 0x80);
+size6:
+  target[5] = (guint8)((part1 >> 7) | 0x80);
+size5:
+  target[4] = (guint8)((part1) | 0x80);
+size4:
+  target[3] = (guint8)((part0 >> 21) | 0x80);
+size3:
+  target[2] = (guint8)((part0 >> 14) | 0x80);
+size2:
+  target[1] = (guint8)((part0 >> 7) | 0x80);
+size1:
+  target[0] = (guint8)((part0) | 0x80);
 
-  target[size-1] &= 0x7F;
+  target[size - 1] &= 0x7F;
 
   for (i = 0; i < size; i++)
     g_string_append_c (buf, target[i]);

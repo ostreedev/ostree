@@ -18,13 +18,13 @@
  */
 
 #include "config.h"
+#include "libglnx.h"
 #include "ostree-mutable-tree.h"
+#include "ot-opt-utils.h"
+#include <gio/gio.h>
 #include <glib.h>
 #include <stdlib.h>
-#include <gio/gio.h>
 #include <string.h>
-#include "ot-opt-utils.h"
-#include "libglnx.h"
 
 static GString *printerr_str = NULL;
 
@@ -39,8 +39,8 @@ util_usage_error_printerr (const gchar *string)
 static void
 test_ot_util_usage_error (void)
 {
-  g_autoptr(GError) error = NULL;
-  g_autoptr(GOptionContext) context = g_option_context_new ("[TEST]");
+  g_autoptr (GError) error = NULL;
+  g_autoptr (GOptionContext) context = g_option_context_new ("[TEST]");
   GPrintFunc old_printerr = g_set_printerr_handler (util_usage_error_printerr);
 
   ot_util_usage_error (context, "find_me", &error);
@@ -54,9 +54,10 @@ test_ot_util_usage_error (void)
   printerr_str = NULL;
 }
 
-int main (int argc, char **argv)
+int
+main (int argc, char **argv)
 {
   g_test_init (&argc, &argv, NULL);
   g_test_add_func ("/ot-opt-utils/ot-util-usage-error", test_ot_util_usage_error);
-  return g_test_run();
+  return g_test_run ();
 }

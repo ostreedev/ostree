@@ -22,15 +22,15 @@
 
 struct _OstreeBootconfigParser
 {
-  GObject       parent_instance;
+  GObject parent_instance;
 
-  gboolean      parsed;
-  const char   *separators;
+  gboolean parsed;
+  const char *separators;
 
-  GHashTable   *options;
+  GHashTable *options;
 
   /* Additional initrds; the primary initrd is in options. */
-  char        **overlay_initrds;
+  char **overlay_initrds;
 };
 
 typedef GObjectClass OstreeBootconfigParserClass;
@@ -48,7 +48,7 @@ ostree_bootconfig_parser_clone (OstreeBootconfigParser *self)
 {
   OstreeBootconfigParser *parser = ostree_bootconfig_parser_new ();
 
-  GLNX_HASH_TABLE_FOREACH_KV (self->options, const char*, k, const char*, v)
+  GLNX_HASH_TABLE_FOREACH_KV (self->options, const char *, k, const char *, v)
     g_hash_table_replace (parser->options, g_strdup (k), g_strdup (v));
 
   parser->overlay_initrds = g_strdupv (self->overlay_initrds);
@@ -67,11 +67,8 @@ ostree_bootconfig_parser_clone (OstreeBootconfigParser *self)
  * Initialize a bootconfig from the given file.
  */
 gboolean
-ostree_bootconfig_parser_parse_at (OstreeBootconfigParser  *self,
-                                   int                      dfd,
-                                   const char              *path,
-                                   GCancellable            *cancellable,
-                                   GError                 **error)
+ostree_bootconfig_parser_parse_at (OstreeBootconfigParser *self, int dfd, const char *path,
+                                   GCancellable *cancellable, GError **error)
 {
   g_assert (!self->parsed);
 
@@ -79,9 +76,9 @@ ostree_bootconfig_parser_parse_at (OstreeBootconfigParser  *self,
   if (!contents)
     return FALSE;
 
-  g_autoptr(GPtrArray) overlay_initrds = NULL;
+  g_autoptr (GPtrArray) overlay_initrds = NULL;
 
-  g_auto(GStrv) lines = g_strsplit (contents, "\n", -1);
+  g_auto (GStrv) lines = g_strsplit (contents, "\n", -1);
   for (char **iter = lines; *iter; iter++)
     {
       const char *line = *iter;
@@ -92,8 +89,8 @@ ostree_bootconfig_parser_parse_at (OstreeBootconfigParser  *self,
           items = g_strsplit_set (line, self->separators, 2);
           if (g_strv_length (items) == 2 && items[0][0] != '\0')
             {
-              if (g_str_equal (items[0], "initrd") &&
-                  g_hash_table_contains (self->options, "initrd"))
+              if (g_str_equal (items[0], "initrd")
+                  && g_hash_table_contains (self->options, "initrd"))
                 {
                   if (!overlay_initrds)
                     overlay_initrds = g_ptr_array_new_with_free_func (g_free);
@@ -116,7 +113,7 @@ ostree_bootconfig_parser_parse_at (OstreeBootconfigParser  *self,
   if (overlay_initrds)
     {
       g_ptr_array_add (overlay_initrds, NULL);
-      self->overlay_initrds = (char**)g_ptr_array_free (g_steal_pointer (&overlay_initrds), FALSE);
+      self->overlay_initrds = (char **)g_ptr_array_free (g_steal_pointer (&overlay_initrds), FALSE);
     }
 
   self->parsed = TRUE;
@@ -125,10 +122,8 @@ ostree_bootconfig_parser_parse_at (OstreeBootconfigParser  *self,
 }
 
 gboolean
-ostree_bootconfig_parser_parse (OstreeBootconfigParser  *self,
-                                GFile           *path,
-                                GCancellable    *cancellable,
-                                GError         **error)
+ostree_bootconfig_parser_parse (OstreeBootconfigParser *self, GFile *path,
+                                GCancellable *cancellable, GError **error)
 {
   return ostree_bootconfig_parser_parse_at (self, AT_FDCWD, gs_file_get_path_cached (path),
                                             cancellable, error);
@@ -143,9 +138,7 @@ ostree_bootconfig_parser_parse (OstreeBootconfigParser  *self,
  * Set the @key/@value pair to the boot configuration dictionary.
  */
 void
-ostree_bootconfig_parser_set (OstreeBootconfigParser  *self,
-                              const char      *key,
-                              const char      *value)
+ostree_bootconfig_parser_set (OstreeBootconfigParser *self, const char *key, const char *value)
 {
   g_hash_table_replace (self->options, g_strdup (key), g_strdup (value));
 }
@@ -161,8 +154,7 @@ ostree_bootconfig_parser_set (OstreeBootconfigParser  *self,
  * found.
  */
 const char *
-ostree_bootconfig_parser_get (OstreeBootconfigParser  *self,
-                              const char      *key)
+ostree_bootconfig_parser_get (OstreeBootconfigParser *self, const char *key)
 {
   return g_hash_table_lookup (self->options, key);
 }
@@ -179,8 +171,7 @@ ostree_bootconfig_parser_get (OstreeBootconfigParser  *self,
  * Since: 2020.7
  */
 void
-ostree_bootconfig_parser_set_overlay_initrds (OstreeBootconfigParser  *self,
-                                              char                   **initrds)
+ostree_bootconfig_parser_set_overlay_initrds (OstreeBootconfigParser *self, char **initrds)
 {
   g_assert (g_hash_table_contains (self->options, "initrd"));
   g_strfreev (self->overlay_initrds);
@@ -196,17 +187,14 @@ ostree_bootconfig_parser_set_overlay_initrds (OstreeBootconfigParser  *self,
  *
  * Since: 2020.7
  */
-char**
-ostree_bootconfig_parser_get_overlay_initrds (OstreeBootconfigParser  *self)
+char **
+ostree_bootconfig_parser_get_overlay_initrds (OstreeBootconfigParser *self)
 {
   return self->overlay_initrds;
 }
 
 static void
-write_key (OstreeBootconfigParser    *self,
-           GString                   *buf,
-           const char                *key,
-           const char                *value)
+write_key (OstreeBootconfigParser *self, GString *buf, const char *key, const char *value)
 {
   g_string_append (buf, key);
   g_string_append_c (buf, self->separators[0]);
@@ -215,19 +203,16 @@ write_key (OstreeBootconfigParser    *self,
 }
 
 gboolean
-ostree_bootconfig_parser_write_at (OstreeBootconfigParser   *self,
-                                   int                       dfd,
-                                   const char               *path,
-                                   GCancellable             *cancellable,
-                                   GError                  **error)
+ostree_bootconfig_parser_write_at (OstreeBootconfigParser *self, int dfd, const char *path,
+                                   GCancellable *cancellable, GError **error)
 {
   /* Write the fields in a deterministic order, following what is used
    * in the bootconfig example of the BootLoaderspec document:
    * https://systemd.io/BOOT_LOADER_SPECIFICATION
    */
   const char *fields[] = { "title", "version", "options", "devicetree", "linux", "initrd" };
-  g_autoptr(GHashTable) keys_written = g_hash_table_new (g_str_hash, g_str_equal);
-  g_autoptr(GString) buf = g_string_new ("");
+  g_autoptr (GHashTable) keys_written = g_hash_table_new (g_str_hash, g_str_equal);
+  g_autoptr (GString) buf = g_string_new ("");
 
   for (guint i = 0; i < G_N_ELEMENTS (fields); i++)
     {
@@ -250,29 +235,25 @@ ostree_bootconfig_parser_write_at (OstreeBootconfigParser   *self,
     }
 
   /* Write unknown fields */
-  GLNX_HASH_TABLE_FOREACH_KV (self->options, const char*, k, const char*, v)
+  GLNX_HASH_TABLE_FOREACH_KV (self->options, const char *, k, const char *, v)
     {
       if (g_hash_table_lookup (keys_written, k))
         continue;
       write_key (self, buf, k, v);
     }
 
-  if (!glnx_file_replace_contents_at (dfd, path, (guint8*)buf->str, buf->len,
-                                      GLNX_FILE_REPLACE_NODATASYNC,
-                                      cancellable, error))
+  if (!glnx_file_replace_contents_at (dfd, path, (guint8 *)buf->str, buf->len,
+                                      GLNX_FILE_REPLACE_NODATASYNC, cancellable, error))
     return FALSE;
 
   return TRUE;
 }
 
 gboolean
-ostree_bootconfig_parser_write (OstreeBootconfigParser   *self,
-                                GFile            *output,
-                                GCancellable     *cancellable,
-                                GError          **error)
+ostree_bootconfig_parser_write (OstreeBootconfigParser *self, GFile *output,
+                                GCancellable *cancellable, GError **error)
 {
-  return ostree_bootconfig_parser_write_at (self,
-                                            AT_FDCWD, gs_file_get_path_cached (output),
+  return ostree_bootconfig_parser_write_at (self, AT_FDCWD, gs_file_get_path_cached (output),
                                             cancellable, error);
 }
 

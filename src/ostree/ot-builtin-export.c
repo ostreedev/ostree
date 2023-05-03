@@ -19,12 +19,12 @@
 
 #include "config.h"
 
-#include "otutil.h"
-#include "ot-main.h"
-#include "ot-builtins.h"
 #include "ostree-libarchive-private.h"
-#include "ostree.h"
 #include "ostree-repo-file.h"
+#include "ostree.h"
+#include "ot-builtins.h"
+#include "ot-main.h"
+#include "otutil.h"
 
 #ifdef HAVE_LIBARCHIVE
 #include <archive.h>
@@ -41,45 +41,49 @@ static gboolean opt_no_xattrs;
  * man page (man/ostree-export.xml) when changing the option list.
  */
 
-static GOptionEntry options[] = {
-  { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_no_xattrs, "Skip output of extended attributes", NULL },
-  { "subpath", 0, 0, G_OPTION_ARG_FILENAME, &opt_subpath, "Checkout sub-directory PATH", "PATH" },
-  { "prefix", 0, 0, G_OPTION_ARG_FILENAME, &opt_prefix, "Add PATH as prefix to archive pathnames", "PATH" },
-  { "output", 'o', 0, G_OPTION_ARG_FILENAME, &opt_output_path, "Output to PATH ", "PATH" },
-  { NULL }
-};
+static GOptionEntry options[]
+    = { { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_no_xattrs,
+          "Skip output of extended attributes", NULL },
+        { "subpath", 0, 0, G_OPTION_ARG_FILENAME, &opt_subpath, "Checkout sub-directory PATH",
+          "PATH" },
+        { "prefix", 0, 0, G_OPTION_ARG_FILENAME, &opt_prefix,
+          "Add PATH as prefix to archive pathnames", "PATH" },
+        { "output", 'o', 0, G_OPTION_ARG_FILENAME, &opt_output_path, "Output to PATH ", "PATH" },
+        { NULL } };
 
 #ifdef HAVE_LIBARCHIVE
 
 static void
-propagate_libarchive_error (GError      **error,
-                            struct archive *a)
+propagate_libarchive_error (GError **error, struct archive *a)
 {
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-               "%s", archive_error_string (a));
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "%s", archive_error_string (a));
 }
 
 #endif
 
 gboolean
-ostree_builtin_export (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ostree_builtin_export (int argc, char **argv, OstreeCommandInvocation *invocation,
+                       GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
-  g_autoptr(OstreeRepo) repo = NULL;
+  g_autoptr (GOptionContext) context = NULL;
+  g_autoptr (OstreeRepo) repo = NULL;
   gboolean ret = FALSE;
-  g_autoptr(GFile) root = NULL;
-  g_autoptr(GFile) subtree = NULL;
+  g_autoptr (GFile) root = NULL;
+  g_autoptr (GFile) subtree = NULL;
   g_autofree char *commit = NULL;
-  g_autoptr(GVariant) commit_data = NULL;
+  g_autoptr (GVariant) commit_data = NULL;
 #ifdef HAVE_LIBARCHIVE
   const char *rev;
-  g_autoptr(OtAutoArchiveWrite) a = NULL;
-  OstreeRepoExportArchiveOptions opts = { 0, };
+  g_autoptr (OtAutoArchiveWrite) a = NULL;
+  OstreeRepoExportArchiveOptions opts = {
+    0,
+  };
 #endif
 
   context = g_option_context_new ("COMMIT");
 
-  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable,
+                                    error))
     goto out;
 
 #ifdef HAVE_LIBARCHIVE
@@ -143,8 +147,8 @@ ostree_builtin_export (int argc, char **argv, OstreeCommandInvocation *invocatio
 
   opts.path_prefix = opt_prefix;
 
-  if (!ostree_repo_export_tree_to_archive (repo, &opts, (OstreeRepoFile*)subtree, a,
-                                           cancellable, error))
+  if (!ostree_repo_export_tree_to_archive (repo, &opts, (OstreeRepoFile *)subtree, a, cancellable,
+                                           error))
     goto out;
 
   if (archive_write_close (a) != ARCHIVE_OK)
@@ -160,6 +164,6 @@ ostree_builtin_export (int argc, char **argv, OstreeCommandInvocation *invocatio
 #endif
 
   ret = TRUE;
- out:
+out:
   return ret;
 }

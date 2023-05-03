@@ -24,14 +24,16 @@
 #include "libglnx.h"
 #include "ostree.h"
 
-typedef enum {
+typedef enum
+{
   OSTREE_BUILTIN_FLAG_NONE = 0,
   OSTREE_BUILTIN_FLAG_NO_REPO = 1 << 0,
   OSTREE_BUILTIN_FLAG_NO_CHECK = 1 << 1,
   OSTREE_BUILTIN_FLAG_HIDDEN = 1 << 2,
 } OstreeBuiltinFlags;
 
-typedef enum {
+typedef enum
+{
   OSTREE_ADMIN_BUILTIN_FLAG_NONE = 0,
   OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER = (1 << 0),
   OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED = (1 << 1),
@@ -39,13 +41,14 @@ typedef enum {
   OSTREE_ADMIN_BUILTIN_FLAG_NO_LOAD = (1 << 3),
 } OstreeAdminBuiltinFlags;
 
-
 typedef struct OstreeCommandInvocation OstreeCommandInvocation;
 
-typedef struct {
+typedef struct
+{
   const char *name;
   OstreeBuiltinFlags flags;
-  gboolean (*fn) (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error);
+  gboolean (*fn) (int argc, char **argv, OstreeCommandInvocation *invocation,
+                  GCancellable *cancellable, GError **error);
   const char *description;
 } OstreeCommand;
 
@@ -55,7 +58,8 @@ typedef struct {
  * In the future if we want to add something new we won't need to
  * touch every prototype
  */
-struct OstreeCommandInvocation {
+struct OstreeCommandInvocation
+{
   OstreeCommand *command;
 };
 
@@ -65,37 +69,29 @@ int ostree_run (int argc, char **argv, OstreeCommand *commands, GError **error);
 
 int ostree_usage (OstreeCommand *commands, gboolean is_error);
 
-char* ostree_command_lookup_external (int argc, char **argv, OstreeCommand *commands);
+char *ostree_command_lookup_external (int argc, char **argv, OstreeCommand *commands);
 
 int ostree_command_exec_external (char **argv);
 
-gboolean ostree_parse_sysroot_or_repo_option (GOptionContext *context,
-                                              const char *sysroot_path,
-                                              const char *repo_path,
-                                              OstreeSysroot **out_sysroot,
-                                              OstreeRepo **out_repo,
-                                              GCancellable *cancellable,
+gboolean ostree_parse_sysroot_or_repo_option (GOptionContext *context, const char *sysroot_path,
+                                              const char *repo_path, OstreeSysroot **out_sysroot,
+                                              OstreeRepo **out_repo, GCancellable *cancellable,
                                               GError **error);
 
-gboolean ostree_option_context_parse (GOptionContext *context,
-                                      const GOptionEntry *main_entries,
-                                      int *argc, char ***argv,
-                                      OstreeCommandInvocation *invocation,
-                                      OstreeRepo **out_repo,
-                                      GCancellable *cancellable, GError **error);
+gboolean ostree_option_context_parse (GOptionContext *context, const GOptionEntry *main_entries,
+                                      int *argc, char ***argv, OstreeCommandInvocation *invocation,
+                                      OstreeRepo **out_repo, GCancellable *cancellable,
+                                      GError **error);
 
 gboolean ostree_admin_option_context_parse (GOptionContext *context,
-                                            const GOptionEntry *main_entries,
-                                            int *argc, char ***argv,
-                                            OstreeAdminBuiltinFlags flags,
+                                            const GOptionEntry *main_entries, int *argc,
+                                            char ***argv, OstreeAdminBuiltinFlags flags,
                                             OstreeCommandInvocation *invocation,
-                                            OstreeSysroot **out_sysroot,
-                                            GCancellable *cancellable, GError **error);
+                                            OstreeSysroot **out_sysroot, GCancellable *cancellable,
+                                            GError **error);
 
-gboolean ostree_admin_sysroot_load (OstreeSysroot            *sysroot,
-                                    OstreeAdminBuiltinFlags   flags,
-                                    GCancellable             *cancellable,
-                                    GError                  **error);
+gboolean ostree_admin_sysroot_load (OstreeSysroot *sysroot, OstreeAdminBuiltinFlags flags,
+                                    GCancellable *cancellable, GError **error);
 
 gboolean ostree_ensure_repo_writable (OstreeRepo *repo, GError **error);
 
@@ -104,16 +100,17 @@ void ostree_print_gpg_verify_result (OstreeGpgVerifyResult *result);
 gboolean ot_enable_tombstone_commits (OstreeRepo *repo, GError **error);
 
 /* Copied from rpm-ostree's rpmostree-libbuiltin.h */
-#define TERM_ESCAPE_SEQUENCE(type,seq)          \
-  static inline const char* ot_get_##type (void) { \
-    if (glnx_stdout_is_tty ())                  \
-      return seq;                               \
-    return "";                                  \
+#define TERM_ESCAPE_SEQUENCE(type, seq) \
+  static inline const char *ot_get_##type (void) \
+  { \
+    if (glnx_stdout_is_tty ()) \
+      return seq; \
+    return ""; \
   }
 
-TERM_ESCAPE_SEQUENCE(red_start,  "\x1b[31m")
-TERM_ESCAPE_SEQUENCE(red_end,    "\x1b[22m")
-TERM_ESCAPE_SEQUENCE(bold_start, "\x1b[1m")
-TERM_ESCAPE_SEQUENCE(bold_end,   "\x1b[0m")
+TERM_ESCAPE_SEQUENCE (red_start, "\x1b[31m")
+TERM_ESCAPE_SEQUENCE (red_end, "\x1b[22m")
+TERM_ESCAPE_SEQUENCE (bold_start, "\x1b[1m")
+TERM_ESCAPE_SEQUENCE (bold_end, "\x1b[0m")
 
 #undef TERM_ESCAPE_SEQUENCE

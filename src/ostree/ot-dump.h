@@ -25,27 +25,22 @@
 
 #include "ostree-core.h"
 
-typedef enum {
+typedef enum
+{
   OSTREE_DUMP_NONE = (1 << 0),
   OSTREE_DUMP_RAW = (1 << 1),
   OSTREE_DUMP_UNSWAPPED = (1 << 2),
 } OstreeDumpFlags;
 
-void   ot_dump_variant    (GVariant *variant);
+void ot_dump_variant (GVariant *variant);
 
-void   ot_dump_object     (OstreeObjectType   objtype,
-                           const char        *checksum,
-                           GVariant          *variant,
-                           OstreeDumpFlags    flags);
+void ot_dump_object (OstreeObjectType objtype, const char *checksum, GVariant *variant,
+                     OstreeDumpFlags flags);
 
-void   ot_dump_summary_bytes  (GBytes          *summary_bytes,
-                               OstreeDumpFlags  flags);
+void ot_dump_summary_bytes (GBytes *summary_bytes, OstreeDumpFlags flags);
 
 void ot_dump_summary_metadata_keys (GBytes *summary_bytes);
 
-gboolean ot_dump_summary_metadata_key (GBytes      *summary_bytes,
-                                       const char  *key,
-                                       GError     **error);
+gboolean ot_dump_summary_metadata_key (GBytes *summary_bytes, const char *key, GError **error);
 
-gboolean ot_dump_gpg_key  (GVariant  *key,
-                           GError   **error);
+gboolean ot_dump_gpg_key (GVariant *key, GError **error);

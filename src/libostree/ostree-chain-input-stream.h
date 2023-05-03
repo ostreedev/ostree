@@ -22,20 +22,25 @@
 
 #ifndef __GI_SCANNER__
 
-#include <gio/gio.h>
+#include <ostree.h>
 
 G_BEGIN_DECLS
 
-#define OSTREE_TYPE_CHAIN_INPUT_STREAM         (ostree_chain_input_stream_get_type ())
-#define OSTREE_CHAIN_INPUT_STREAM(o)           (G_TYPE_CHECK_INSTANCE_CAST ((o), OSTREE_TYPE_CHAIN_INPUT_STREAM, OstreeChainInputStream))
-#define OSTREE_CHAIN_INPUT_STREAM_CLASS(k)     (G_TYPE_CHECK_CLASS_CAST((k), OSTREE_TYPE_CHAIN_INPUT_STREAM, OstreeChainInputStreamClass))
-#define OSTREE_IS_CHAIN_INPUT_STREAM(o)        (G_TYPE_CHECK_INSTANCE_TYPE ((o), OSTREE_TYPE_CHAIN_INPUT_STREAM))
-#define OSTREE_IS_CHAIN_INPUT_STREAM_CLASS(k)  (G_TYPE_CHECK_CLASS_TYPE ((k), OSTREE_TYPE_CHAIN_INPUT_STREAM))
-#define OSTREE_CHAIN_INPUT_STREAM_GET_CLASS(o) (G_TYPE_INSTANCE_GET_CLASS ((o), OSTREE_TYPE_CHAIN_INPUT_STREAM, OstreeChainInputStreamClass))
+#define OSTREE_TYPE_CHAIN_INPUT_STREAM (ostree_chain_input_stream_get_type ())
+#define OSTREE_CHAIN_INPUT_STREAM(o) \
+  (G_TYPE_CHECK_INSTANCE_CAST ((o), OSTREE_TYPE_CHAIN_INPUT_STREAM, OstreeChainInputStream))
+#define OSTREE_CHAIN_INPUT_STREAM_CLASS(k) \
+  (G_TYPE_CHECK_CLASS_CAST ((k), OSTREE_TYPE_CHAIN_INPUT_STREAM, OstreeChainInputStreamClass))
+#define OSTREE_IS_CHAIN_INPUT_STREAM(o) \
+  (G_TYPE_CHECK_INSTANCE_TYPE ((o), OSTREE_TYPE_CHAIN_INPUT_STREAM))
+#define OSTREE_IS_CHAIN_INPUT_STREAM_CLASS(k) \
+  (G_TYPE_CHECK_CLASS_TYPE ((k), OSTREE_TYPE_CHAIN_INPUT_STREAM))
+#define OSTREE_CHAIN_INPUT_STREAM_GET_CLASS(o) \
+  (G_TYPE_INSTANCE_GET_CLASS ((o), OSTREE_TYPE_CHAIN_INPUT_STREAM, OstreeChainInputStreamClass))
 
-typedef struct _OstreeChainInputStream         OstreeChainInputStream;
-typedef struct _OstreeChainInputStreamClass    OstreeChainInputStreamClass;
-typedef struct _OstreeChainInputStreamPrivate  OstreeChainInputStreamPrivate;
+typedef struct _OstreeChainInputStream OstreeChainInputStream;
+typedef struct _OstreeChainInputStreamClass OstreeChainInputStreamClass;
+typedef struct _OstreeChainInputStreamPrivate OstreeChainInputStreamPrivate;
 
 struct _OstreeChainInputStream
 {
@@ -59,10 +64,10 @@ struct _OstreeChainInputStreamClass
 };
 
 _OSTREE_PUBLIC
-GType          ostree_chain_input_stream_get_type     (void) G_GNUC_CONST;
+GType ostree_chain_input_stream_get_type (void) G_GNUC_CONST;
 
 _OSTREE_PUBLIC
-OstreeChainInputStream * ostree_chain_input_stream_new          (GPtrArray *streams);
+OstreeChainInputStream *ostree_chain_input_stream_new (GPtrArray *streams);
 
 G_END_DECLS
 

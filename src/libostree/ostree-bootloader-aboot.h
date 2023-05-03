@@ -22,12 +22,14 @@
 G_BEGIN_DECLS
 
 #define OSTREE_TYPE_BOOTLOADER_ABOOT (_ostree_bootloader_aboot_get_type ())
-#define OSTREE_BOOTLOADER_ABOOT(inst) (G_TYPE_CHECK_INSTANCE_CAST ((inst), OSTREE_TYPE_BOOTLOADER_ABOOT, OstreeBootloaderAboot))
-#define OSTREE_IS_BOOTLOADER_ABOOT(inst) (G_TYPE_CHECK_INSTANCE_TYPE ((inst), OSTREE_TYPE_BOOTLOADER_ABOOT))
+#define OSTREE_BOOTLOADER_ABOOT(inst) \
+  (G_TYPE_CHECK_INSTANCE_CAST ((inst), OSTREE_TYPE_BOOTLOADER_ABOOT, OstreeBootloaderAboot))
+#define OSTREE_IS_BOOTLOADER_ABOOT(inst) \
+  (G_TYPE_CHECK_INSTANCE_TYPE ((inst), OSTREE_TYPE_BOOTLOADER_ABOOT))
 
 typedef struct _OstreeBootloaderAboot OstreeBootloaderAboot;
 
 GType _ostree_bootloader_aboot_get_type (void) G_GNUC_CONST;
 
-OstreeBootloaderAboot * _ostree_bootloader_aboot_new (OstreeSysroot *sysroot);
+OstreeBootloaderAboot *_ostree_bootloader_aboot_new (OstreeSysroot *sysroot);
 G_END_DECLS

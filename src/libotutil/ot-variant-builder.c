@@ -21,8 +21,8 @@
 
 #include "config.h"
 
-#include "ot-variant-builder.h"
 #include "libglnx/libglnx.h"
+#include "ot-variant-builder.h"
 
 /*****************************************************************************************
  * This code is copied from gvariant in glib. With the following copyright:
@@ -48,13 +48,12 @@
 
 typedef struct _GVariantTypeInfo GVariantTypeInfo;
 
-#define G_VARIANT_TYPE_INFO_CHAR_MAYBE      'm'
-#define G_VARIANT_TYPE_INFO_CHAR_ARRAY      'a'
-#define G_VARIANT_TYPE_INFO_CHAR_TUPLE      '('
+#define G_VARIANT_TYPE_INFO_CHAR_MAYBE 'm'
+#define G_VARIANT_TYPE_INFO_CHAR_ARRAY 'a'
+#define G_VARIANT_TYPE_INFO_CHAR_TUPLE '('
 #define G_VARIANT_TYPE_INFO_CHAR_DICT_ENTRY '{'
-#define G_VARIANT_TYPE_INFO_CHAR_VARIANT    'v'
-#define g_variant_type_info_get_type_char(info) \
-  (g_variant_type_info_get_type_string(info)[0])
+#define G_VARIANT_TYPE_INFO_CHAR_VARIANT 'v'
+#define g_variant_type_info_get_type_char(info) (g_variant_type_info_get_type_string (info)[0])
 
 struct _GVariantTypeInfo
 {
@@ -73,9 +72,9 @@ typedef struct
   guint8 ending_type;
 } GVariantMemberInfo;
 
-#define G_VARIANT_MEMBER_ENDING_FIXED   0
-#define G_VARIANT_MEMBER_ENDING_LAST    1
-#define G_VARIANT_MEMBER_ENDING_OFFSET  2
+#define G_VARIANT_MEMBER_ENDING_FIXED 0
+#define G_VARIANT_MEMBER_ENDING_LAST 1
+#define G_VARIANT_MEMBER_ENDING_OFFSET 2
 
 typedef struct
 {
@@ -102,34 +101,34 @@ typedef struct
 
 /* Hard-code the base types in a constant array */
 static const GVariantTypeInfo g_variant_type_info_basic_table[24] = {
-#define fixed_aligned(x)  x, x - 1
-#define not_a_type             0,
-#define unaligned         0, 0
-#define aligned(x)        0, x - 1
-  /* 'b' */ { fixed_aligned(1) },   /* boolean */
+#define fixed_aligned(x) x, x - 1
+#define not_a_type 0,
+#define unaligned 0, 0
+#define aligned(x) 0, x - 1
+  /* 'b' */ { fixed_aligned (1) }, /* boolean */
   /* 'c' */ { not_a_type },
-  /* 'd' */ { fixed_aligned(8) },   /* double */
+  /* 'd' */ { fixed_aligned (8) }, /* double */
   /* 'e' */ { not_a_type },
   /* 'f' */ { not_a_type },
-  /* 'g' */ { unaligned        },   /* signature string */
-  /* 'h' */ { fixed_aligned(4) },   /* file handle (int32) */
-  /* 'i' */ { fixed_aligned(4) },   /* int32 */
+  /* 'g' */ { unaligned },         /* signature string */
+  /* 'h' */ { fixed_aligned (4) }, /* file handle (int32) */
+  /* 'i' */ { fixed_aligned (4) }, /* int32 */
   /* 'j' */ { not_a_type },
   /* 'k' */ { not_a_type },
   /* 'l' */ { not_a_type },
   /* 'm' */ { not_a_type },
-  /* 'n' */ { fixed_aligned(2) },   /* int16 */
-  /* 'o' */ { unaligned        },   /* object path string */
+  /* 'n' */ { fixed_aligned (2) }, /* int16 */
+  /* 'o' */ { unaligned },         /* object path string */
   /* 'p' */ { not_a_type },
-  /* 'q' */ { fixed_aligned(2) },   /* uint16 */
+  /* 'q' */ { fixed_aligned (2) }, /* uint16 */
   /* 'r' */ { not_a_type },
-  /* 's' */ { unaligned        },   /* string */
-  /* 't' */ { fixed_aligned(8) },   /* uint64 */
-  /* 'u' */ { fixed_aligned(4) },   /* uint32 */
-  /* 'v' */ { aligned(8)       },   /* variant */
+  /* 's' */ { unaligned },         /* string */
+  /* 't' */ { fixed_aligned (8) }, /* uint64 */
+  /* 'u' */ { fixed_aligned (4) }, /* uint32 */
+  /* 'v' */ { aligned (8) },       /* variant */
   /* 'w' */ { not_a_type },
-  /* 'x' */ { fixed_aligned(8) },   /* int64 */
-  /* 'y' */ { fixed_aligned(1) },   /* byte */
+  /* 'x' */ { fixed_aligned (8) }, /* int64 */
+  /* 'y' */ { fixed_aligned (1) }, /* byte */
 #undef fixed_aligned
 #undef not_a_type
 #undef unaligned
@@ -139,15 +138,15 @@ static const GVariantTypeInfo g_variant_type_info_basic_table[24] = {
 static GRecMutex g_variant_type_info_lock;
 static GHashTable *g_variant_type_info_table;
 
-static GVariantTypeInfo * g_variant_type_info_ref (GVariantTypeInfo *info);
+static GVariantTypeInfo *g_variant_type_info_ref (GVariantTypeInfo *info);
 static void g_variant_type_info_unref (GVariantTypeInfo *info);
-static GVariantTypeInfo * g_variant_type_info_get (const GVariantType *type);
+static GVariantTypeInfo *g_variant_type_info_get (const GVariantType *type);
 
 #define GV_ARRAY_INFO_CLASS 'a'
 static ArrayInfo *
 GV_ARRAY_INFO (GVariantTypeInfo *info)
 {
-  return (ArrayInfo *) info;
+  return (ArrayInfo *)info;
 }
 
 static void
@@ -156,7 +155,7 @@ array_info_free (GVariantTypeInfo *info)
   ArrayInfo *array_info;
 
   g_assert (info->container_class == GV_ARRAY_INFO_CLASS);
-  array_info = (ArrayInfo *) info;
+  array_info = (ArrayInfo *)info;
 
   g_variant_type_info_unref (array_info->element);
   g_slice_free (ArrayInfo, array_info);
@@ -174,7 +173,7 @@ array_info_new (const GVariantType *type)
   info->container.info.alignment = info->element->alignment;
   info->container.info.fixed_size = 0;
 
-  return (ContainerInfo *) info;
+  return (ContainerInfo *)info;
 }
 
 /* == tuple == */
@@ -182,7 +181,7 @@ array_info_new (const GVariantType *type)
 static TupleInfo *
 GV_TUPLE_INFO (GVariantTypeInfo *info)
 {
-  return (TupleInfo *) info;
+  return (TupleInfo *)info;
 }
 
 static void
@@ -192,20 +191,17 @@ tuple_info_free (GVariantTypeInfo *info)
   gint i;
 
   g_assert (info->container_class == GV_TUPLE_INFO_CLASS);
-  tuple_info = (TupleInfo *) info;
+  tuple_info = (TupleInfo *)info;
 
   for (i = 0; i < tuple_info->n_members; i++)
     g_variant_type_info_unref (tuple_info->members[i].type_info);
 
-  g_slice_free1 (sizeof (GVariantMemberInfo) * tuple_info->n_members,
-                 tuple_info->members);
+  g_slice_free1 (sizeof (GVariantMemberInfo) * tuple_info->n_members, tuple_info->members);
   g_slice_free (TupleInfo, tuple_info);
 }
 
 static void
-tuple_allocate_members (const GVariantType  *type,
-                        GVariantMemberInfo **members,
-                        gsize               *n_members)
+tuple_allocate_members (const GVariantType *type, GVariantMemberInfo **members, gsize *n_members)
 {
   const GVariantType *item_type;
   gsize i = 0;
@@ -237,10 +233,7 @@ tuple_allocate_members (const GVariantType  *type,
  * range and %FALSE is returned if not.
  */
 static gboolean
-tuple_get_item (TupleInfo          *info,
-                GVariantMemberInfo *item,
-                gsize              *d,
-                gsize              *e)
+tuple_get_item (TupleInfo *info, GVariantMemberInfo *item, gsize *d, gsize *e)
 {
   if (&info->members[info->n_members] == item)
     return FALSE;
@@ -268,11 +261,7 @@ tuple_get_item (TupleInfo          *info,
  * computation and more compact storage.
  */
 static void
-tuple_table_append (GVariantMemberInfo **items,
-                    gsize                i,
-                    gsize                a,
-                    gsize                b,
-                    gsize                c)
+tuple_table_append (GVariantMemberInfo **items, gsize i, gsize a, gsize b, gsize c)
 {
   GVariantMemberInfo *item = (*items)++;
 
@@ -303,9 +292,8 @@ tuple_table_append (GVariantMemberInfo **items,
    * ends up saving us 'two pointer sizes' per item in each tuple when
    * allocating using GSlice.
    */
-  a += ~b & c;    /* take the "aligned" part of 'c' and add to 'a' */
-  c &= b;         /* chop 'c' to contain only the unaligned part */
-
+  a += ~b & c; /* take the "aligned" part of 'c' and add to 'a' */
+  c &= b;      /* chop 'c' to contain only the unaligned part */
 
   /* Finally, we made one last adjustment.  Recall:
    *
@@ -362,8 +350,7 @@ tuple_table_append (GVariantMemberInfo **items,
 }
 
 static gsize
-tuple_align (gsize offset,
-             guint alignment)
+tuple_align (gsize offset, guint alignment)
 {
   return offset + ((-offset) & alignment);
 }
@@ -418,9 +405,9 @@ tuple_generate_table (TupleInfo *info)
     {
       /* align to 'd' */
       if (d <= b)
-        c = tuple_align (c, d);                   /* rule 1 */
+        c = tuple_align (c, d); /* rule 1 */
       else
-        a += tuple_align (c, b), b = d, c = 0;    /* rule 2 */
+        a += tuple_align (c, b), b = d, c = 0; /* rule 2 */
 
       /* the start of the item is at this point (ie: right after we
        * have aligned for it).  store this information in the table.
@@ -438,7 +425,7 @@ tuple_generate_table (TupleInfo *info)
         i++, a = b = c = 0;
       else
         /* fixed size */
-        c += e;                                   /* rule 3 */
+        c += e; /* rule 3 */
     }
 }
 
@@ -476,9 +463,8 @@ tuple_set_base_info (TupleInfo *info)
          * the alignment requirement (to make packing into arrays
          * easier) so we round up to that here.
          */
-        base->fixed_size =
-          tuple_align (((m->a & m->b) | m->c) + m->type_info->fixed_size,
-                       base->alignment);
+        base->fixed_size
+            = tuple_align (((m->a & m->b) | m->c) + m->type_info->fixed_size, base->alignment);
       else
         /* else, the tuple is not fixed size */
         base->fixed_size = 0;
@@ -521,12 +507,11 @@ tuple_info_new (const GVariantType *type)
   tuple_generate_table (info);
   tuple_set_base_info (info);
 
-  return (ContainerInfo *) info;
+  return (ContainerInfo *)info;
 }
 
 static const GVariantMemberInfo *
-g_variant_type_info_member_info (GVariantTypeInfo *info,
-                                 gsize             index)
+g_variant_type_info_member_info (GVariantTypeInfo *info, gsize index)
 {
   TupleInfo *tuple_info = GV_TUPLE_INFO (info);
 
@@ -547,7 +532,7 @@ g_variant_type_info_ref (GVariantTypeInfo *info)
 {
   if (info->container_class)
     {
-      ContainerInfo *container = (ContainerInfo *) info;
+      ContainerInfo *container = (ContainerInfo *)info;
 
       g_assert_cmpint (container->ref_count, >, 0);
       g_atomic_int_inc (&container->ref_count);
@@ -561,13 +546,12 @@ g_variant_type_info_unref (GVariantTypeInfo *info)
 {
   if (info->container_class)
     {
-      ContainerInfo *container = (ContainerInfo *) info;
+      ContainerInfo *container = (ContainerInfo *)info;
 
       g_rec_mutex_lock (&g_variant_type_info_lock);
       if (g_atomic_int_dec_and_test (&container->ref_count))
         {
-          g_hash_table_remove (g_variant_type_info_table,
-                               container->type_string);
+          g_hash_table_remove (g_variant_type_info_table, container->type_string);
           if (g_hash_table_size (g_variant_type_info_table) == 0)
             {
               g_hash_table_unref (g_variant_type_info_table);
@@ -598,10 +582,9 @@ g_variant_type_info_get (const GVariantType *type)
 
   type_char = g_variant_type_peek_string (type)[0];
 
-  if (type_char == G_VARIANT_TYPE_INFO_CHAR_MAYBE ||
-      type_char == G_VARIANT_TYPE_INFO_CHAR_ARRAY ||
-      type_char == G_VARIANT_TYPE_INFO_CHAR_TUPLE ||
-      type_char == G_VARIANT_TYPE_INFO_CHAR_DICT_ENTRY)
+  if (type_char == G_VARIANT_TYPE_INFO_CHAR_MAYBE || type_char == G_VARIANT_TYPE_INFO_CHAR_ARRAY
+      || type_char == G_VARIANT_TYPE_INFO_CHAR_TUPLE
+      || type_char == G_VARIANT_TYPE_INFO_CHAR_DICT_ENTRY)
     {
       GVariantTypeInfo *info;
       gchar *type_string;
@@ -611,16 +594,15 @@ g_variant_type_info_get (const GVariantType *type)
       g_rec_mutex_lock (&g_variant_type_info_lock);
 
       if (g_variant_type_info_table == NULL)
-        g_variant_type_info_table = g_hash_table_new (g_str_hash,
-                                                      g_str_equal);
+        g_variant_type_info_table = g_hash_table_new (g_str_hash, g_str_equal);
       info = g_hash_table_lookup (g_variant_type_info_table, type_string);
 
       if (info == NULL)
         {
           ContainerInfo *container;
 
-          if (type_char == G_VARIANT_TYPE_INFO_CHAR_MAYBE ||
-              type_char == G_VARIANT_TYPE_INFO_CHAR_ARRAY)
+          if (type_char == G_VARIANT_TYPE_INFO_CHAR_MAYBE
+              || type_char == G_VARIANT_TYPE_INFO_CHAR_ARRAY)
             {
               container = array_info_new (type);
             }
@@ -629,7 +611,7 @@ g_variant_type_info_get (const GVariantType *type)
               container = tuple_info_new (type);
             }
 
-          info = (GVariantTypeInfo *) container;
+          info = (GVariantTypeInfo *)container;
           container->type_string = type_string;
           container->ref_count = 1;
 
@@ -656,14 +638,12 @@ g_variant_type_info_get (const GVariantType *type)
 
       info = g_variant_type_info_basic_table + index;
 
-      return (GVariantTypeInfo *) info;
+      return (GVariantTypeInfo *)info;
     }
 }
 
 static inline void
-gvs_write_unaligned_le (guchar *bytes,
-                        gsize   value,
-                        guint   size)
+gvs_write_unaligned_le (guchar *bytes, gsize value, guint size)
 {
   union
   {
@@ -694,8 +674,7 @@ gvs_get_offset_size (gsize size)
 }
 
 static gsize
-gvs_calculate_total_size (gsize body_size,
-                          gsize offsets)
+gvs_calculate_total_size (gsize body_size, gsize offsets)
 {
   if (body_size + 1 * offsets <= G_MAXUINT8)
     return body_size + 1 * offsets;
@@ -709,14 +688,14 @@ gvs_calculate_total_size (gsize body_size,
   return body_size + 8 * offsets;
 }
 
-
 /*****************************************************************************************
  *  End of glib code
  *****************************************************************************************/
 
 typedef struct _OtVariantBuilderInfo OtVariantBuilderInfo;
 
-struct _OtVariantBuilderInfo {
+struct _OtVariantBuilderInfo
+{
   OtVariantBuilderInfo *parent;
   OtVariantBuilder *builder;
   GVariantType *type;
@@ -743,9 +722,10 @@ struct _OtVariantBuilderInfo {
    * (ie: maybe, array, variant) '0' if not (ie: tuple, dict entry)
    */
   guint uniform_item_types : 1;
-} ;
+};
 
-struct _OtVariantBuilder {
+struct _OtVariantBuilder
+{
   gint ref_count;
   int fd;
 
@@ -760,7 +740,7 @@ ot_variant_builder_info_new (OtVariantBuilder *builder, const GVariantType *type
 {
   g_assert (g_variant_type_is_container (type));
 
-  OtVariantBuilderInfo *info = (OtVariantBuilderInfo *) g_slice_new0 (OtVariantBuilderInfo);
+  OtVariantBuilderInfo *info = (OtVariantBuilderInfo *)g_slice_new0 (OtVariantBuilderInfo);
 
   info->builder = builder;
   info->type = g_variant_type_copy (type);
@@ -769,7 +749,7 @@ ot_variant_builder_info_new (OtVariantBuilder *builder, const GVariantType *type
   info->n_children = 0;
   info->child_ends = g_array_new (FALSE, TRUE, sizeof (guint64));
 
-  switch (*(const gchar *) type)
+  switch (*(const gchar *)type)
     {
     case G_VARIANT_CLASS_VARIANT:
       info->uniform_item_types = TRUE;
@@ -780,24 +760,21 @@ ot_variant_builder_info_new (OtVariantBuilder *builder, const GVariantType *type
 
     case G_VARIANT_CLASS_ARRAY:
       info->uniform_item_types = TRUE;
-      info->expected_type =
-        g_variant_type_element (info->type);
+      info->expected_type = g_variant_type_element (info->type);
       info->min_items = 0;
       info->max_items = -1;
       break;
 
     case G_VARIANT_CLASS_MAYBE:
       info->uniform_item_types = TRUE;
-      info->expected_type =
-        g_variant_type_element (info->type);
+      info->expected_type = g_variant_type_element (info->type);
       info->min_items = 0;
       info->max_items = 1;
       break;
 
     case G_VARIANT_CLASS_DICT_ENTRY:
       info->uniform_item_types = FALSE;
-      info->expected_type =
-        g_variant_type_key (info->type);
+      info->expected_type = g_variant_type_key (info->type);
       info->min_items = 2;
       info->max_items = 2;
       break;
@@ -810,8 +787,7 @@ ot_variant_builder_info_new (OtVariantBuilder *builder, const GVariantType *type
       break;
 
     case G_VARIANT_CLASS_TUPLE: /* a definite tuple type was given */
-      info->expected_type =
-        g_variant_type_first (info->type);
+      info->expected_type = g_variant_type_first (info->type);
       info->min_items = g_variant_type_n_items (type);
       info->max_items = info->min_items;
       info->uniform_item_types = FALSE;
@@ -819,7 +795,7 @@ ot_variant_builder_info_new (OtVariantBuilder *builder, const GVariantType *type
 
     default:
       g_assert_not_reached ();
-   }
+    }
 
   return info;
 }
@@ -838,12 +814,11 @@ ot_variant_builder_info_free (OtVariantBuilderInfo *info)
 }
 
 OtVariantBuilder *
-ot_variant_builder_new (const GVariantType *type,
-                        int fd)
+ot_variant_builder_new (const GVariantType *type, int fd)
 {
   g_assert (g_variant_type_is_container (type));
 
-  OtVariantBuilder *builder = (OtVariantBuilder *) g_slice_new0 (OtVariantBuilder);
+  OtVariantBuilder *builder = (OtVariantBuilder *)g_slice_new0 (OtVariantBuilder);
 
   builder->head = ot_variant_builder_info_new (builder, type);
   builder->ref_count = 1;
@@ -873,9 +848,7 @@ ot_variant_builder_ref (OtVariantBuilder *builder)
 /* This is called before adding a child to the container.  It updates
    the internal state and does the needed alignment */
 static gboolean
-ot_variant_builder_pre_add (OtVariantBuilderInfo *info,
-                            const GVariantType *type,
-                            GError         **error)
+ot_variant_builder_pre_add (OtVariantBuilderInfo *info, const GVariantType *type, GError **error)
 {
   guint alignment = 0;
 
@@ -883,12 +856,10 @@ ot_variant_builder_pre_add (OtVariantBuilderInfo *info,
     {
       /* advance our expected type pointers */
       if (info->expected_type)
-        info->expected_type =
-          g_variant_type_next (info->expected_type);
+        info->expected_type = g_variant_type_next (info->expected_type);
 
       if (info->prev_item_type)
-        info->prev_item_type =
-          g_variant_type_next (info->prev_item_type);
+        info->prev_item_type = g_variant_type_next (info->prev_item_type);
     }
   else
     {
@@ -897,8 +868,7 @@ ot_variant_builder_pre_add (OtVariantBuilderInfo *info,
       info->prev_item_type = info->prev_item_type_base;
     }
 
-  if (g_variant_type_is_tuple (info->type) ||
-      g_variant_type_is_dict_entry (info->type))
+  if (g_variant_type_is_tuple (info->type) || g_variant_type_is_dict_entry (info->type))
     {
       const GVariantMemberInfo *member_info;
 
@@ -941,15 +911,12 @@ ot_variant_builder_add_child_end (OtVariantBuilderInfo *info)
    table if needed */
 
 static gboolean
-ot_variant_builder_post_add (OtVariantBuilderInfo *info,
-                             const GVariantType *type,
-                             guint64 bytes_added,
-                             GError         **error)
+ot_variant_builder_post_add (OtVariantBuilderInfo *info, const GVariantType *type,
+                             guint64 bytes_added, GError **error)
 {
   info->offset += bytes_added;
 
-  if (g_variant_type_is_tuple (info->type) ||
-      g_variant_type_is_dict_entry (info->type))
+  if (g_variant_type_is_tuple (info->type) || g_variant_type_is_dict_entry (info->type))
     {
       const GVariantMemberInfo *member_info;
 
@@ -985,24 +952,16 @@ ot_variant_builder_post_add (OtVariantBuilderInfo *info,
 }
 
 gboolean
-ot_variant_builder_add_from_fd (OtVariantBuilder    *builder,
-                                const GVariantType  *type,
-                                int                  fd,
-                                guint64              size,
-                                GError             **error)
+ot_variant_builder_add_from_fd (OtVariantBuilder *builder, const GVariantType *type, int fd,
+                                guint64 size, GError **error)
 {
   OtVariantBuilderInfo *info = builder->head;
 
-  g_return_val_if_fail (info->n_children < info->max_items,
-                        FALSE);
-  g_return_val_if_fail (!info->expected_type ||
-                        g_variant_type_is_subtype_of (type,
-                                                      info->expected_type),
-                        FALSE);
-  g_return_val_if_fail (!info->prev_item_type ||
-                        g_variant_type_is_subtype_of (info->prev_item_type,
-                                                      type),
-                        FALSE);
+  g_return_val_if_fail (info->n_children < info->max_items, FALSE);
+  g_return_val_if_fail (
+      !info->expected_type || g_variant_type_is_subtype_of (type, info->expected_type), FALSE);
+  g_return_val_if_fail (
+      !info->prev_item_type || g_variant_type_is_subtype_of (info->prev_item_type, type), FALSE);
 
   if (!ot_variant_builder_pre_add (info, type, error))
     return FALSE;
@@ -1017,25 +976,18 @@ ot_variant_builder_add_from_fd (OtVariantBuilder    *builder,
 }
 
 gboolean
-ot_variant_builder_add_value (OtVariantBuilder *builder,
-                              GVariant        *value,
-                              GError         **error)
+ot_variant_builder_add_value (OtVariantBuilder *builder, GVariant *value, GError **error)
 {
   OtVariantBuilderInfo *info = builder->head;
   gconstpointer data;
   gsize data_size;
   /* We ref-sink value, just like g_variant_builder_add_value does */
-  g_autoptr(GVariant) keep_around_until_return G_GNUC_UNUSED = g_variant_ref_sink (value);
+  g_autoptr (GVariant) keep_around_until_return G_GNUC_UNUSED = g_variant_ref_sink (value);
 
-  g_return_val_if_fail (info->n_children < info->max_items,
+  g_return_val_if_fail (info->n_children < info->max_items, FALSE);
+  g_return_val_if_fail (!info->expected_type || g_variant_is_of_type (value, info->expected_type),
                         FALSE);
-  g_return_val_if_fail (!info->expected_type ||
-                        g_variant_is_of_type (value,
-                                              info->expected_type),
-                        FALSE);
-  g_return_val_if_fail (!info->prev_item_type ||
-                        g_variant_is_of_type (value,
-                                              info->prev_item_type),
+  g_return_val_if_fail (!info->prev_item_type || g_variant_is_of_type (value, info->prev_item_type),
                         FALSE);
 
   if (!ot_variant_builder_pre_add (info, g_variant_get_type (value), error))
@@ -1057,10 +1009,7 @@ ot_variant_builder_add_value (OtVariantBuilder *builder,
 }
 
 gboolean
-ot_variant_builder_add (OtVariantBuilder *builder,
-                        GError          **error,
-                        const gchar     *format_string,
-                        ...)
+ot_variant_builder_add (OtVariantBuilder *builder, GError **error, const gchar *format_string, ...)
 {
   GVariant *variant;
   va_list ap;
@@ -1072,21 +1021,14 @@ ot_variant_builder_add (OtVariantBuilder *builder,
   return ot_variant_builder_add_value (builder, variant, error);
 }
 
-
 gboolean
-ot_variant_builder_open (OtVariantBuilder *builder,
-                         const GVariantType *type,
-                         GError **error)
+ot_variant_builder_open (OtVariantBuilder *builder, const GVariantType *type, GError **error)
 {
   OtVariantBuilderInfo *info = builder->head;
 
   g_assert (info->n_children < info->max_items);
-  g_assert (!info->expected_type ||
-                        g_variant_type_is_subtype_of (type,
-                                                      info->expected_type));
-  g_assert (!info->prev_item_type ||
-                        g_variant_type_is_subtype_of (info->prev_item_type,
-                                                      type));
+  g_assert (!info->expected_type || g_variant_type_is_subtype_of (type, info->expected_type));
+  g_assert (!info->prev_item_type || g_variant_type_is_subtype_of (info->prev_item_type, type));
 
   if (!ot_variant_builder_pre_add (info, type, error))
     return FALSE;
@@ -1101,13 +1043,11 @@ ot_variant_builder_open (OtVariantBuilder *builder,
     {
       if (!new_info->uniform_item_types)
         /* tuples and dict entries */
-        new_info->prev_item_type =
-          g_variant_type_first (info->prev_item_type);
+        new_info->prev_item_type = g_variant_type_first (info->prev_item_type);
 
       else if (!g_variant_type_is_variant (new_info->type))
         /* maybes and arrays */
-        new_info->prev_item_type =
-          g_variant_type_element (info->prev_item_type);
+        new_info->prev_item_type = g_variant_type_element (info->prev_item_type);
     }
 
   builder->head = new_info;
@@ -1115,8 +1055,7 @@ ot_variant_builder_open (OtVariantBuilder *builder,
 }
 
 gboolean
-ot_variant_builder_close (OtVariantBuilder *builder,
-                          GError **error)
+ot_variant_builder_close (OtVariantBuilder *builder, GError **error)
 {
   OtVariantBuilderInfo *info = builder->head;
   OtVariantBuilderInfo *parent;
@@ -1140,22 +1079,18 @@ ot_variant_builder_close (OtVariantBuilder *builder,
 }
 
 gboolean
-ot_variant_builder_end (OtVariantBuilder *builder,
-                        GError **error)
+ot_variant_builder_end (OtVariantBuilder *builder, GError **error)
 {
   OtVariantBuilderInfo *info = builder->head;
   gboolean add_offset_table = FALSE;
   gboolean reverse_offset_table = FALSE;
 
-  g_return_val_if_fail (info->n_children >= info->min_items,
-                        FALSE);
-  g_return_val_if_fail (!info->uniform_item_types ||
-                        info->prev_item_type != NULL ||
-                        g_variant_type_is_definite (info->type),
+  g_return_val_if_fail (info->n_children >= info->min_items, FALSE);
+  g_return_val_if_fail (!info->uniform_item_types || info->prev_item_type != NULL
+                            || g_variant_type_is_definite (info->type),
                         FALSE);
 
-  if (g_variant_type_is_tuple (info->type) ||
-      g_variant_type_is_dict_entry (info->type))
+  if (g_variant_type_is_tuple (info->type) || g_variant_type_is_dict_entry (info->type))
     {
       add_offset_table = TRUE;
       reverse_offset_table = TRUE;

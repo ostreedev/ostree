@@ -19,10 +19,9 @@
 
 #include "config.h"
 
-#include "ot-main.h"
-#include "ot-builtins.h"
-#include "ostree.h"
 #include "ostree-cmd-private.h"
+#include "ostree.h"
+#include "ot-builtins.h"
 #include "ot-main.h"
 #include "otutil.h"
 
@@ -43,43 +42,35 @@ static char *opt_sign_name;
 static char *opt_keysfilename;
 static char *opt_keysdir;
 
-#define BUILTINPROTO(name) static gboolean ot_static_delta_builtin_ ## name (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+#define BUILTINPROTO(name) \
+  static gboolean ot_static_delta_builtin_##name (int argc, char **argv, \
+                                                  OstreeCommandInvocation *invocation, \
+                                                  GCancellable *cancellable, GError **error)
 
-BUILTINPROTO(list);
-BUILTINPROTO(show);
-BUILTINPROTO(delete);
-BUILTINPROTO(generate);
-BUILTINPROTO(apply_offline);
-BUILTINPROTO(verify);
-BUILTINPROTO(indexes);
-BUILTINPROTO(reindex);
+BUILTINPROTO (list);
+BUILTINPROTO (show);
+BUILTINPROTO (delete);
+BUILTINPROTO (generate);
+BUILTINPROTO (apply_offline);
+BUILTINPROTO (verify);
+BUILTINPROTO (indexes);
+BUILTINPROTO (reindex);
 
 #undef BUILTINPROTO
 
 static OstreeCommand static_delta_subcommands[] = {
-  { "list", OSTREE_BUILTIN_FLAG_NONE,
-    ot_static_delta_builtin_list,
-    "List static delta files" },
-  { "show", OSTREE_BUILTIN_FLAG_NONE,
-    ot_static_delta_builtin_show,
-    "Dump information on a delta" },
-  { "delete", OSTREE_BUILTIN_FLAG_NONE,
-    ot_static_delta_builtin_delete,
-    "Remove a delta" },
-  { "generate", OSTREE_BUILTIN_FLAG_NONE,
-    ot_static_delta_builtin_generate,
+  { "list", OSTREE_BUILTIN_FLAG_NONE, ot_static_delta_builtin_list, "List static delta files" },
+  { "show", OSTREE_BUILTIN_FLAG_NONE, ot_static_delta_builtin_show, "Dump information on a delta" },
+  { "delete", OSTREE_BUILTIN_FLAG_NONE, ot_static_delta_builtin_delete, "Remove a delta" },
+  { "generate", OSTREE_BUILTIN_FLAG_NONE, ot_static_delta_builtin_generate,
     "Generate static delta files" },
-  { "apply-offline", OSTREE_BUILTIN_FLAG_NONE,
-    ot_static_delta_builtin_apply_offline,
+  { "apply-offline", OSTREE_BUILTIN_FLAG_NONE, ot_static_delta_builtin_apply_offline,
     "Apply static delta file" },
-  { "verify", OSTREE_BUILTIN_FLAG_NONE,
-    ot_static_delta_builtin_verify,
+  { "verify", OSTREE_BUILTIN_FLAG_NONE, ot_static_delta_builtin_verify,
     "Verify static delta signatures" },
-  { "indexes", OSTREE_BUILTIN_FLAG_NONE,
-    ot_static_delta_builtin_indexes,
+  { "indexes", OSTREE_BUILTIN_FLAG_NONE, ot_static_delta_builtin_indexes,
     "List static delta indexes" },
-  { "reindex", OSTREE_BUILTIN_FLAG_NONE,
-    ot_static_delta_builtin_reindex,
+  { "reindex", OSTREE_BUILTIN_FLAG_NONE, ot_static_delta_builtin_reindex,
     "Regenerate static delta indexes" },
   { NULL, 0, NULL, NULL }
 };
@@ -95,55 +86,63 @@ static GOptionEntry generate_options[] = {
   { "inline", 0, 0, G_OPTION_ARG_NONE, &opt_inline, "Inline delta parts into main delta", NULL },
   { "to", 0, 0, G_OPTION_ARG_STRING, &opt_to_rev, "Create delta to revision REV", "REV" },
   { "disable-bsdiff", 0, 0, G_OPTION_ARG_NONE, &opt_disable_bsdiff, "Disable use of bsdiff", NULL },
-  { "if-not-exists", 'n', 0, G_OPTION_ARG_NONE, &opt_if_not_exists, "Only generate if a delta does not already exist", NULL },
-  { "set-endianness", 0, 0, G_OPTION_ARG_STRING, &opt_endianness, "Choose metadata endianness ('l' or 'B')", "ENDIAN" },
-  { "swap-endianness", 0, 0, G_OPTION_ARG_NONE, &opt_swap_endianness, "Swap metadata endianness from host order", NULL },
-  { "min-fallback-size", 0, 0, G_OPTION_ARG_STRING, &opt_min_fallback_size, "Minimum uncompressed size in megabytes for individual HTTP request", NULL},
-  { "max-bsdiff-size", 0, 0, G_OPTION_ARG_STRING, &opt_max_bsdiff_size, "Maximum size in megabytes to consider bsdiff compression for input files", NULL},
-  { "max-chunk-size", 0, 0, G_OPTION_ARG_STRING, &opt_max_chunk_size, "Maximum size of delta chunks in megabytes", NULL},
-  { "filename", 0, 0, G_OPTION_ARG_FILENAME, &opt_filename, "Write the delta content to PATH (a directory).  If not specified, the OSTree repository is used", "PATH"},
-  { "sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "Sign the delta with", "KEY_ID"},
-  { "sign-type", 0, 0, G_OPTION_ARG_STRING, &opt_sign_name, "Signature type to use (defaults to 'ed25519')", "NAME"},
+  { "if-not-exists", 'n', 0, G_OPTION_ARG_NONE, &opt_if_not_exists,
+    "Only generate if a delta does not already exist", NULL },
+  { "set-endianness", 0, 0, G_OPTION_ARG_STRING, &opt_endianness,
+    "Choose metadata endianness ('l' or 'B')", "ENDIAN" },
+  { "swap-endianness", 0, 0, G_OPTION_ARG_NONE, &opt_swap_endianness,
+    "Swap metadata endianness from host order", NULL },
+  { "min-fallback-size", 0, 0, G_OPTION_ARG_STRING, &opt_min_fallback_size,
+    "Minimum uncompressed size in megabytes for individual HTTP request", NULL },
+  { "max-bsdiff-size", 0, 0, G_OPTION_ARG_STRING, &opt_max_bsdiff_size,
+    "Maximum size in megabytes to consider bsdiff compression for input files", NULL },
+  { "max-chunk-size", 0, 0, G_OPTION_ARG_STRING, &opt_max_chunk_size,
+    "Maximum size of delta chunks in megabytes", NULL },
+  { "filename", 0, 0, G_OPTION_ARG_FILENAME, &opt_filename,
+    "Write the delta content to PATH (a directory).  If not specified, the OSTree repository is "
+    "used",
+    "PATH" },
+  { "sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "Sign the delta with", "KEY_ID" },
+  { "sign-type", 0, 0, G_OPTION_ARG_STRING, &opt_sign_name,
+    "Signature type to use (defaults to 'ed25519')", "NAME" },
 #if defined(HAVE_LIBSODIUM)
-  { "keys-file", 0, 0, G_OPTION_ARG_STRING, &opt_keysfilename, "Read key(s) from file", "NAME"},
+  { "keys-file", 0, 0, G_OPTION_ARG_STRING, &opt_keysfilename, "Read key(s) from file", "NAME" },
 #endif
   { NULL }
 };
 
 static GOptionEntry apply_offline_options[] = {
-  { "sign-type", 0, 0, G_OPTION_ARG_STRING, &opt_sign_name, "Signature type to use (defaults to 'ed25519')", "NAME"},
+  { "sign-type", 0, 0, G_OPTION_ARG_STRING, &opt_sign_name,
+    "Signature type to use (defaults to 'ed25519')", "NAME" },
 #if defined(HAVE_LIBSODIUM)
-  { "keys-file", 0, 0, G_OPTION_ARG_STRING, &opt_keysfilename, "Read key(s) from file", "NAME"},
-  { "keys-dir", 0, 0, G_OPTION_ARG_STRING, &opt_keysdir, "Redefine system-wide directories with public and revoked keys for verification", "NAME"},
+  { "keys-file", 0, 0, G_OPTION_ARG_STRING, &opt_keysfilename, "Read key(s) from file", "NAME" },
+  { "keys-dir", 0, 0, G_OPTION_ARG_STRING, &opt_keysdir,
+    "Redefine system-wide directories with public and revoked keys for verification", "NAME" },
 #endif
   { NULL }
 };
 
-static GOptionEntry list_options[] = {
-  { NULL }
-};
+static GOptionEntry list_options[] = { { NULL } };
 
 static GOptionEntry verify_options[] = {
-  { "sign-type", 0, 0, G_OPTION_ARG_STRING, &opt_sign_name, "Signature type to use (defaults to 'ed25519')", "NAME"},
+  { "sign-type", 0, 0, G_OPTION_ARG_STRING, &opt_sign_name,
+    "Signature type to use (defaults to 'ed25519')", "NAME" },
 #if defined(HAVE_LIBSODIUM)
-  { "keys-file", 0, 0, G_OPTION_ARG_STRING, &opt_keysfilename, "Read key(s) from file", "NAME"},
-  { "keys-dir", 0, 0, G_OPTION_ARG_STRING, &opt_keysdir, "Redefine system-wide directories with public and revoked keys for verification", "NAME"},
+  { "keys-file", 0, 0, G_OPTION_ARG_STRING, &opt_keysfilename, "Read key(s) from file", "NAME" },
+  { "keys-dir", 0, 0, G_OPTION_ARG_STRING, &opt_keysdir,
+    "Redefine system-wide directories with public and revoked keys for verification", "NAME" },
 #endif
   { NULL }
 };
 
-static GOptionEntry indexes_options[] = {
-  { NULL }
-};
+static GOptionEntry indexes_options[] = { { NULL } };
 
-static GOptionEntry reindex_options[] = {
-  { "to", 0, 0, G_OPTION_ARG_STRING, &opt_to_rev, "Only update delta index to revision REV", "REV" },
-  { NULL }
-};
+static GOptionEntry reindex_options[] = { { "to", 0, 0, G_OPTION_ARG_STRING, &opt_to_rev,
+                                            "Only update delta index to revision REV", "REV" },
+                                          { NULL } };
 
 static void
-static_delta_usage (char    **argv,
-                    gboolean  is_error)
+static_delta_usage (char **argv, gboolean is_error)
 {
   OstreeCommand *command = static_delta_subcommands;
   void (*print_func) (const gchar *format, ...);
@@ -168,15 +167,16 @@ static_delta_usage (char    **argv,
 }
 
 static gboolean
-ot_static_delta_builtin_list (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_static_delta_builtin_list (int argc, char **argv, OstreeCommandInvocation *invocation,
+                              GCancellable *cancellable, GError **error)
 {
-  g_autoptr(OstreeRepo) repo = NULL;
-  g_autoptr(GOptionContext) context = g_option_context_new ("");
-  if (!ostree_option_context_parse (context, list_options, &argc, &argv,
-                                    invocation, &repo, cancellable, error))
+  g_autoptr (OstreeRepo) repo = NULL;
+  g_autoptr (GOptionContext) context = g_option_context_new ("");
+  if (!ostree_option_context_parse (context, list_options, &argc, &argv, invocation, &repo,
+                                    cancellable, error))
     return FALSE;
 
-  g_autoptr(GPtrArray) delta_names = NULL;
+  g_autoptr (GPtrArray) delta_names = NULL;
   if (!ostree_repo_list_static_delta_names (repo, &delta_names, cancellable, error))
     return FALSE;
 
@@ -185,22 +185,23 @@ ot_static_delta_builtin_list (int argc, char **argv, OstreeCommandInvocation *in
   else
     {
       for (guint i = 0; i < delta_names->len; i++)
-        g_print ("%s\n", (char*)delta_names->pdata[i]);
+        g_print ("%s\n", (char *)delta_names->pdata[i]);
     }
 
   return TRUE;
 }
 
 static gboolean
-ot_static_delta_builtin_indexes (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_static_delta_builtin_indexes (int argc, char **argv, OstreeCommandInvocation *invocation,
+                                 GCancellable *cancellable, GError **error)
 {
-  g_autoptr(OstreeRepo) repo = NULL;
-  g_autoptr(GOptionContext) context = g_option_context_new ("");
-  if (!ostree_option_context_parse (context, indexes_options, &argc, &argv,
-                                    invocation, &repo, cancellable, error))
+  g_autoptr (OstreeRepo) repo = NULL;
+  g_autoptr (GOptionContext) context = g_option_context_new ("");
+  if (!ostree_option_context_parse (context, indexes_options, &argc, &argv, invocation, &repo,
+                                    cancellable, error))
     return FALSE;
 
-  g_autoptr(GPtrArray) indexes = NULL;
+  g_autoptr (GPtrArray) indexes = NULL;
   if (!ostree_repo_list_static_delta_indexes (repo, &indexes, cancellable, error))
     return FALSE;
 
@@ -209,19 +210,21 @@ ot_static_delta_builtin_indexes (int argc, char **argv, OstreeCommandInvocation 
   else
     {
       for (guint i = 0; i < indexes->len; i++)
-        g_print ("%s\n", (char*)indexes->pdata[i]);
+        g_print ("%s\n", (char *)indexes->pdata[i]);
     }
 
   return TRUE;
 }
 
 static gboolean
-ot_static_delta_builtin_reindex (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_static_delta_builtin_reindex (int argc, char **argv, OstreeCommandInvocation *invocation,
+                                 GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = g_option_context_new ("");
+  g_autoptr (GOptionContext) context = g_option_context_new ("");
 
-  g_autoptr(OstreeRepo) repo = NULL;
-  if (!ostree_option_context_parse (context, reindex_options, &argc, &argv, invocation, &repo, cancellable, error))
+  g_autoptr (OstreeRepo) repo = NULL;
+  if (!ostree_option_context_parse (context, reindex_options, &argc, &argv, invocation, &repo,
+                                    cancellable, error))
     return FALSE;
 
   if (!ostree_repo_static_delta_reindex (repo, 0, opt_to_rev, cancellable, error))
@@ -230,21 +233,21 @@ ot_static_delta_builtin_reindex (int argc, char **argv, OstreeCommandInvocation 
   return TRUE;
 }
 
-
 static gboolean
-ot_static_delta_builtin_show (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_static_delta_builtin_show (int argc, char **argv, OstreeCommandInvocation *invocation,
+                              GCancellable *cancellable, GError **error)
 {
 
-  g_autoptr(GOptionContext) context = g_option_context_new ("");
+  g_autoptr (GOptionContext) context = g_option_context_new ("");
 
-  g_autoptr(OstreeRepo) repo = NULL;
-  if (!ostree_option_context_parse (context, list_options, &argc, &argv, invocation, &repo, cancellable, error))
+  g_autoptr (OstreeRepo) repo = NULL;
+  if (!ostree_option_context_parse (context, list_options, &argc, &argv, invocation, &repo,
+                                    cancellable, error))
     return FALSE;
 
   if (argc < 3)
     {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "DELTA must be specified");
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "DELTA must be specified");
       return FALSE;
     }
 
@@ -257,18 +260,19 @@ ot_static_delta_builtin_show (int argc, char **argv, OstreeCommandInvocation *in
 }
 
 static gboolean
-ot_static_delta_builtin_delete (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_static_delta_builtin_delete (int argc, char **argv, OstreeCommandInvocation *invocation,
+                                GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = g_option_context_new ("");
+  g_autoptr (GOptionContext) context = g_option_context_new ("");
 
-  g_autoptr(OstreeRepo) repo = NULL;
-  if (!ostree_option_context_parse (context, list_options, &argc, &argv, invocation, &repo, cancellable, error))
+  g_autoptr (OstreeRepo) repo = NULL;
+  if (!ostree_option_context_parse (context, list_options, &argc, &argv, invocation, &repo,
+                                    cancellable, error))
     return FALSE;
 
   if (argc < 3)
     {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "DELTA must be specified");
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "DELTA must be specified");
       return FALSE;
     }
 
@@ -280,13 +284,14 @@ ot_static_delta_builtin_delete (int argc, char **argv, OstreeCommandInvocation *
   return TRUE;
 }
 
-
 static gboolean
-ot_static_delta_builtin_generate (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_static_delta_builtin_generate (int argc, char **argv, OstreeCommandInvocation *invocation,
+                                  GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = g_option_context_new ("[TO]");
-  g_autoptr(OstreeRepo) repo = NULL;
-  if (!ostree_option_context_parse (context, generate_options, &argc, &argv, invocation, &repo, cancellable, error))
+  g_autoptr (GOptionContext) context = g_option_context_new ("[TO]");
+  g_autoptr (OstreeRepo) repo = NULL;
+  if (!ostree_option_context_parse (context, generate_options, &argc, &argv, invocation, &repo,
+                                    cancellable, error))
     return FALSE;
 
   if (!ostree_ensure_repo_writable (repo, error))
@@ -297,8 +302,7 @@ ot_static_delta_builtin_generate (int argc, char **argv, OstreeCommandInvocation
 
   if (argc < 3 && opt_to_rev == NULL)
     {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "TO revision must be specified");
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "TO revision must be specified");
       return FALSE;
     }
   else
@@ -307,7 +311,7 @@ ot_static_delta_builtin_generate (int argc, char **argv, OstreeCommandInvocation
       g_autofree char *from_resolved = NULL;
       g_autofree char *to_resolved = NULL;
       g_autofree char *from_parent_str = NULL;
-      g_autoptr(GVariantBuilder) parambuilder = NULL;
+      g_autoptr (GVariantBuilder) parambuilder = NULL;
       int endianness;
 
       g_assert (opt_to_rev);
@@ -343,8 +347,11 @@ ot_static_delta_builtin_generate (int argc, char **argv, OstreeCommandInvocation
       if (opt_if_not_exists)
         {
           gboolean does_exist;
-          g_autofree char *delta_id = from_resolved ? g_strconcat (from_resolved, "-", to_resolved, NULL) : g_strdup (to_resolved);
-          if (!ostree_cmd__private__ ()->ostree_static_delta_query_exists (repo, delta_id, &does_exist, cancellable, error))
+          g_autofree char *delta_id = from_resolved
+                                          ? g_strconcat (from_resolved, "-", to_resolved, NULL)
+                                          : g_strdup (to_resolved);
+          if (!ostree_cmd__private__ ()->ostree_static_delta_query_exists (
+                  repo, delta_id, &does_exist, cancellable, error))
             return FALSE;
           if (does_exist)
             {
@@ -361,8 +368,8 @@ ot_static_delta_builtin_generate (int argc, char **argv, OstreeCommandInvocation
             endianness = G_BIG_ENDIAN;
           else
             {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Invalid endianness '%s'", opt_endianness);
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Invalid endianness '%s'",
+                           opt_endianness);
               return FALSE;
             }
         }
@@ -386,31 +393,34 @@ ot_static_delta_builtin_generate (int argc, char **argv, OstreeCommandInvocation
 
       parambuilder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
       if (opt_min_fallback_size)
-        g_variant_builder_add (parambuilder, "{sv}",
-                               "min-fallback-size", g_variant_new_uint32 (g_ascii_strtoull (opt_min_fallback_size, NULL, 10)));
+        g_variant_builder_add (
+            parambuilder, "{sv}", "min-fallback-size",
+            g_variant_new_uint32 (g_ascii_strtoull (opt_min_fallback_size, NULL, 10)));
       if (opt_max_bsdiff_size)
-        g_variant_builder_add (parambuilder, "{sv}",
-                               "max-bsdiff-size", g_variant_new_uint32 (g_ascii_strtoull (opt_max_bsdiff_size, NULL, 10)));
+        g_variant_builder_add (
+            parambuilder, "{sv}", "max-bsdiff-size",
+            g_variant_new_uint32 (g_ascii_strtoull (opt_max_bsdiff_size, NULL, 10)));
       if (opt_max_chunk_size)
-        g_variant_builder_add (parambuilder, "{sv}",
-                               "max-chunk-size", g_variant_new_uint32 (g_ascii_strtoull (opt_max_chunk_size, NULL, 10)));
+        g_variant_builder_add (
+            parambuilder, "{sv}", "max-chunk-size",
+            g_variant_new_uint32 (g_ascii_strtoull (opt_max_chunk_size, NULL, 10)));
       if (opt_disable_bsdiff)
-        g_variant_builder_add (parambuilder, "{sv}",
-                               "bsdiff-enabled", g_variant_new_boolean (FALSE));
+        g_variant_builder_add (parambuilder, "{sv}", "bsdiff-enabled",
+                               g_variant_new_boolean (FALSE));
       if (opt_inline)
-        g_variant_builder_add (parambuilder, "{sv}",
-                               "inline-parts", g_variant_new_boolean (TRUE));
+        g_variant_builder_add (parambuilder, "{sv}", "inline-parts", g_variant_new_boolean (TRUE));
       if (opt_filename)
-        g_variant_builder_add (parambuilder, "{sv}",
-                               "filename", g_variant_new_bytestring (opt_filename));
+        g_variant_builder_add (parambuilder, "{sv}", "filename",
+                               g_variant_new_bytestring (opt_filename));
 
       g_variant_builder_add (parambuilder, "{sv}", "verbose", g_variant_new_boolean (TRUE));
       if (opt_endianness || opt_swap_endianness)
-        g_variant_builder_add (parambuilder, "{sv}", "endianness", g_variant_new_uint32 (endianness));
+        g_variant_builder_add (parambuilder, "{sv}", "endianness",
+                               g_variant_new_uint32 (endianness));
 
       if (opt_key_ids || opt_keysfilename)
         {
-          g_autoptr(GPtrArray) key_ids = g_ptr_array_new ();
+          g_autoptr (GPtrArray) key_ids = g_ptr_array_new ();
 
           for (char **iter = opt_key_ids; iter != NULL && *iter != NULL; ++iter)
             g_ptr_array_add (key_ids, *iter);
@@ -424,7 +434,8 @@ ot_static_delta_builtin_generate (int argc, char **argv, OstreeCommandInvocation
               if (!g_file_test (opt_keysfilename, G_FILE_TEST_IS_REGULAR))
                 {
                   g_warning ("Can't open file '%s' with keys", opt_keysfilename);
-                  return glnx_throw (error, "File object '%s' is not a regular file", opt_keysfilename);
+                  return glnx_throw (error, "File object '%s' is not a regular file",
+                                     opt_keysfilename);
                 }
 
               keyfile = g_file_new_for_path (opt_keysfilename);
@@ -432,14 +443,15 @@ ot_static_delta_builtin_generate (int argc, char **argv, OstreeCommandInvocation
               if (key_stream_in == NULL)
                 return FALSE;
 
-              key_data_in = g_data_input_stream_new (G_INPUT_STREAM(key_stream_in));
+              key_data_in = g_data_input_stream_new (G_INPUT_STREAM (key_stream_in));
               g_assert (key_data_in != NULL);
 
               /* Use simple file format with just a list of base64 public keys per line */
               while (TRUE)
                 {
                   gsize len = 0;
-                  g_autofree char *line = g_data_input_stream_read_line (key_data_in, &len, NULL, error);
+                  g_autofree char *line
+                      = g_data_input_stream_read_line (key_data_in, &len, NULL, error);
                   g_autoptr (GVariant) sk = NULL;
 
                   if (*error != NULL)
@@ -453,8 +465,8 @@ ot_static_delta_builtin_generate (int argc, char **argv, OstreeCommandInvocation
                 }
             }
 
-          g_autoptr(GVariant) key_ids_v = g_variant_new_strv ((const char *const *)key_ids->pdata,
-                                                              key_ids->len);
+          g_autoptr (GVariant) key_ids_v
+              = g_variant_new_strv ((const char *const *)key_ids->pdata, key_ids->len);
           g_variant_builder_add (parambuilder, "{s@v}", "sign-key-ids",
                                  g_variant_new_variant (g_steal_pointer (&key_ids_v)));
         }
@@ -465,30 +477,31 @@ ot_static_delta_builtin_generate (int argc, char **argv, OstreeCommandInvocation
       g_print ("Generating static delta:\n");
       g_print ("  From: %s\n", from_resolved ? from_resolved : "empty");
       g_print ("  To:   %s\n", to_resolved);
-      { g_autoptr(GVariant) params = g_variant_ref_sink (g_variant_builder_end (parambuilder));
+      {
+        g_autoptr (GVariant) params = g_variant_ref_sink (g_variant_builder_end (parambuilder));
         if (!ostree_repo_static_delta_generate (repo, OSTREE_STATIC_DELTA_GENERATE_OPT_MAJOR,
-                                                from_resolved, to_resolved, NULL,
-                                                params,
+                                                from_resolved, to_resolved, NULL, params,
                                                 cancellable, error))
           return FALSE;
       }
-
     }
 
   return TRUE;
 }
 
 static gboolean
-ot_static_delta_builtin_apply_offline (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_static_delta_builtin_apply_offline (int argc, char **argv, OstreeCommandInvocation *invocation,
+                                       GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
-  g_autoptr(OstreeRepo) repo = NULL;
+  g_autoptr (GOptionContext) context = NULL;
+  g_autoptr (OstreeRepo) repo = NULL;
   g_autoptr (OstreeSign) sign = NULL;
   char **key_ids;
   int n_key_ids;
 
   context = g_option_context_new ("");
-  if (!ostree_option_context_parse (context, apply_offline_options, &argc, &argv, invocation, &repo, cancellable, error))
+  if (!ostree_option_context_parse (context, apply_offline_options, &argc, &argv, invocation, &repo,
+                                    cancellable, error))
     return FALSE;
 
   if (!ostree_ensure_repo_writable (repo, error))
@@ -496,8 +509,7 @@ ot_static_delta_builtin_apply_offline (int argc, char **argv, OstreeCommandInvoc
 
   if (argc < 3)
     {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "PATH must be specified");
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "PATH must be specified");
       return FALSE;
     }
 
@@ -516,8 +528,8 @@ ot_static_delta_builtin_apply_offline (int argc, char **argv, OstreeCommandInvoc
       n_key_ids = argc - 3;
       for (int i = 0; i < n_key_ids; i++)
         {
-          g_autoptr (GVariant) pk = g_variant_new_string(key_ids[i]);
-          if (!ostree_sign_add_pk(sign, pk, error))
+          g_autoptr (GVariant) pk = g_variant_new_string (key_ids[i]);
+          if (!ostree_sign_add_pk (sign, pk, error))
             return FALSE;
         }
       if ((n_key_ids == 0) || opt_keysfilename)
@@ -525,21 +537,24 @@ ot_static_delta_builtin_apply_offline (int argc, char **argv, OstreeCommandInvoc
           g_autoptr (GVariantBuilder) builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
           g_autoptr (GVariant) options = NULL;
 
-          /* Use custom directory with public and revoked keys instead of system-wide directories */
+          /* Use custom directory with public and revoked keys instead of system-wide directories
+           */
           if (opt_keysdir)
             g_variant_builder_add (builder, "{sv}", "basedir", g_variant_new_string (opt_keysdir));
           /* The last chance for verification source -- system files */
           if (opt_keysfilename)
-            g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (opt_keysfilename));
+            g_variant_builder_add (builder, "{sv}", "filename",
+                                   g_variant_new_string (opt_keysfilename));
           options = g_variant_builder_end (builder);
 
           if (!ostree_sign_load_pk (sign, options, error))
             {
-              /* If it fails to load system default public keys, consider there no signature engine */
+              /* If it fails to load system default public keys, consider there no signature engine
+               */
               if (!opt_keysdir && !opt_keysfilename)
                 {
-                  g_clear_error(error);
-                  g_clear_object(&sign);
+                  g_clear_error (error);
+                  g_clear_object (&sign);
                 }
               else
                 return FALSE;
@@ -548,12 +563,13 @@ ot_static_delta_builtin_apply_offline (int argc, char **argv, OstreeCommandInvoc
     }
 
   const char *patharg = argv[2];
-  g_autoptr(GFile) path = g_file_new_for_path (patharg);
+  g_autoptr (GFile) path = g_file_new_for_path (patharg);
 
   if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
     return FALSE;
 
-  if (!ostree_repo_static_delta_execute_offline_with_signature (repo, path, sign, FALSE, cancellable, error))
+  if (!ostree_repo_static_delta_execute_offline_with_signature (repo, path, sign, FALSE,
+                                                                cancellable, error))
     return FALSE;
 
   if (!ostree_repo_commit_transaction (repo, NULL, cancellable, error))
@@ -563,7 +579,8 @@ ot_static_delta_builtin_apply_offline (int argc, char **argv, OstreeCommandInvoc
 }
 
 static gboolean
-ot_static_delta_builtin_verify (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_static_delta_builtin_verify (int argc, char **argv, OstreeCommandInvocation *invocation,
+                                GCancellable *cancellable, GError **error)
 {
   g_autoptr (GOptionContext) context = g_option_context_new ("STATIC-DELTA-FILE [KEY-ID...]");
   g_autoptr (OstreeRepo) repo = NULL;
@@ -571,13 +588,13 @@ ot_static_delta_builtin_verify (int argc, char **argv, OstreeCommandInvocation *
   char **key_ids;
   int n_key_ids;
 
-  if (!ostree_option_context_parse (context, verify_options, &argc, &argv, invocation, &repo, cancellable, error))
+  if (!ostree_option_context_parse (context, verify_options, &argc, &argv, invocation, &repo,
+                                    cancellable, error))
     return FALSE;
 
   if (argc < 3)
     {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "DELTA must be specified");
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "DELTA must be specified");
       return FALSE;
     }
 
@@ -588,7 +605,7 @@ ot_static_delta_builtin_verify (int argc, char **argv, OstreeCommandInvocation *
   g_autoptr (OstreeSign) sign = ostree_sign_get_by_name (opt_sign_name, error);
   if (!sign)
     {
-      g_print("Sign-type not supported\n");
+      g_print ("Sign-type not supported\n");
       return FALSE;
     }
 
@@ -596,8 +613,8 @@ ot_static_delta_builtin_verify (int argc, char **argv, OstreeCommandInvocation *
   n_key_ids = argc - 3;
   for (int i = 0; i < n_key_ids; i++)
     {
-      g_autoptr (GVariant) pk = g_variant_new_string(key_ids[i]);
-      if (!ostree_sign_add_pk(sign, pk, error))
+      g_autoptr (GVariant) pk = g_variant_new_string (key_ids[i]);
+      if (!ostree_sign_add_pk (sign, pk, error))
         return FALSE;
     }
   if ((n_key_ids == 0) || opt_keysfilename)
@@ -611,7 +628,8 @@ ot_static_delta_builtin_verify (int argc, char **argv, OstreeCommandInvocation *
         g_variant_builder_add (builder, "{sv}", "basedir", g_variant_new_string (opt_keysdir));
       /* The last chance for verification source -- system files */
       if (opt_keysfilename)
-        g_variant_builder_add (builder, "{sv}", "filename", g_variant_new_string (opt_keysfilename));
+        g_variant_builder_add (builder, "{sv}", "filename",
+                               g_variant_new_string (opt_keysfilename));
       options = g_variant_builder_end (builder);
 
       if (!ostree_sign_load_pk (sign, options, error))
@@ -625,7 +643,8 @@ ot_static_delta_builtin_verify (int argc, char **argv, OstreeCommandInvocation *
 }
 
 gboolean
-ostree_builtin_static_delta (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ostree_builtin_static_delta (int argc, char **argv, OstreeCommandInvocation *invocation,
+                             GCancellable *cancellable, GError **error)
 {
   gboolean want_help = FALSE;
   const char *cmdname = NULL;

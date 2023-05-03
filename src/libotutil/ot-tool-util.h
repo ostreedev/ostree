@@ -23,19 +23,9 @@
 
 G_BEGIN_DECLS
 
-gboolean
-ot_parse_boolean (const char  *value,
-                  gboolean    *out_parsed,
-                  GError     **error);
-gboolean
-ot_parse_keyvalue (const char  *keyvalue,
-                   char       **out_key,
-                   char       **out_value,
-                   GError     **error);
-gboolean
-ot_ptr_array_find_with_equal_func (GPtrArray     *haystack,
-                                   gconstpointer  needle,
-                                   GEqualFunc     equal_func,
-                                   guint         *index_);
+gboolean ot_parse_boolean (const char *value, gboolean *out_parsed, GError **error);
+gboolean ot_parse_keyvalue (const char *keyvalue, char **out_key, char **out_value, GError **error);
+gboolean ot_ptr_array_find_with_equal_func (GPtrArray *haystack, gconstpointer needle,
+                                            GEqualFunc equal_func, guint *index_);
 
 G_END_DECLS

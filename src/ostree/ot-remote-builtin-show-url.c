@@ -29,23 +29,22 @@
  * man page (man/ostree-remote.xml) when changing the option list.
  */
 
-static GOptionEntry option_entries[] = {
-  { NULL }
-};
+static GOptionEntry option_entries[] = { { NULL } };
 
 gboolean
-ot_remote_builtin_show_url (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_remote_builtin_show_url (int argc, char **argv, OstreeCommandInvocation *invocation,
+                            GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = NULL;
-  g_autoptr(OstreeRepo) repo = NULL;
+  g_autoptr (GOptionContext) context = NULL;
+  g_autoptr (OstreeRepo) repo = NULL;
   const char *remote_name;
   g_autofree char *remote_url = NULL;
   gboolean ret = FALSE;
 
   context = g_option_context_new ("NAME");
 
-  if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
-                                    invocation, &repo, cancellable, error))
+  if (!ostree_option_context_parse (context, option_entries, &argc, &argv, invocation, &repo,
+                                    cancellable, error))
     goto out;
 
   if (argc < 2)
@@ -62,6 +61,6 @@ ot_remote_builtin_show_url (int argc, char **argv, OstreeCommandInvocation *invo
       ret = TRUE;
     }
 
- out:
+out:
   return ret;
 }

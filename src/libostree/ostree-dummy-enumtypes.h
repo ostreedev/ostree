@@ -24,6 +24,5 @@
 #include <glib-object.h>
 
 #ifndef __GI_SCANNER__
-_OSTREE_PUBLIC GType
-ostree_fetcher_config_flags_get_type (void);
+_OSTREE_PUBLIC GType ostree_fetcher_config_flags_get_type (void);
 #endif

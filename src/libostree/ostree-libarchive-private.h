@@ -26,8 +26,8 @@
 
 #include "config.h"
 
-#include <gio/gio.h>
 #include "otutil.h"
+#include <gio/gio.h>
 #ifdef HAVE_LIBARCHIVE
 #include <archive.h>
 #include <archive_entry.h>
@@ -37,11 +37,11 @@ G_BEGIN_DECLS
 
 #ifdef HAVE_LIBARCHIVE
 typedef struct archive OtAutoArchiveWrite;
-G_DEFINE_AUTOPTR_CLEANUP_FUNC(OtAutoArchiveWrite, archive_write_free)
-typedef struct archive_entry  OtArchiveEntry;
-G_DEFINE_AUTOPTR_CLEANUP_FUNC(OtArchiveEntry, archive_entry_free)
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OtAutoArchiveWrite, archive_write_free)
+typedef struct archive_entry OtArchiveEntry;
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OtArchiveEntry, archive_entry_free)
 typedef struct archive OtAutoArchiveRead;
-G_DEFINE_AUTOPTR_CLEANUP_FUNC(OtAutoArchiveRead, archive_read_free)
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OtAutoArchiveRead, archive_read_free)
 
 static inline OtAutoArchiveRead *
 ot_archive_read_new (void)
@@ -61,12 +61,12 @@ ot_archive_read_new (void)
 static inline OtAutoArchiveRead *
 ot_open_archive_read (const char *path, GError **error)
 {
-  g_autoptr(OtAutoArchiveRead) a = ot_archive_read_new ();
+  g_autoptr (OtAutoArchiveRead) a = ot_archive_read_new ();
 
   if (archive_read_open_filename (a, path, 8192) != ARCHIVE_OK)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "archive_read_open_filename: %s", archive_error_string (a));
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "archive_read_open_filename: %s",
+                   archive_error_string (a));
       return NULL;
     }
 
@@ -76,12 +76,12 @@ ot_open_archive_read (const char *path, GError **error)
 static inline OtAutoArchiveRead *
 ot_open_archive_read_fd (int fd, GError **error)
 {
-  g_autoptr(OtAutoArchiveRead) a = ot_archive_read_new ();
+  g_autoptr (OtAutoArchiveRead) a = ot_archive_read_new ();
 
   if (archive_read_open_fd (a, fd, 8192) != ARCHIVE_OK)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "archive_read_open_fd: %s", archive_error_string (a));
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "archive_read_open_fd: %s",
+                   archive_error_string (a));
       return NULL;
     }
 

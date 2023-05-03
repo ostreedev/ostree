@@ -42,20 +42,19 @@
  *
  * Private instance structure.
  */
-struct OstreeGpgVerifyResult {
+struct OstreeGpgVerifyResult
+{
   GObject parent;
 };
 
-
-typedef struct {
+typedef struct
+{
   GObjectClass parent_class;
 } OstreeGpgVerifyResultClass;
 
 static void ostree_gpg_verify_result_initable_iface_init (GInitableIface *iface);
 
-G_DEFINE_TYPE_WITH_CODE (OstreeGpgVerifyResult,
-                         ostree_gpg_verify_result,
-                         G_TYPE_OBJECT,
+G_DEFINE_TYPE_WITH_CODE (OstreeGpgVerifyResult, ostree_gpg_verify_result, G_TYPE_OBJECT,
                          G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE,
                                                 ostree_gpg_verify_result_initable_iface_init))
 
@@ -120,8 +119,7 @@ ostree_gpg_verify_result_count_valid (OstreeGpgVerifyResult *result)
  * Returns: %TRUE on success, %FALSE on failure
  **/
 gboolean
-ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result,
-                                 const gchar *key_id,
+ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result, const gchar *key_id,
                                  guint *out_signature_index)
 {
   g_critical ("%s: GPG feature is disabled in a build time", __FUNCTION__);
@@ -146,10 +144,8 @@ ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result,
  * Returns: (transfer floating): a new, floating, #GVariant tuple
  **/
 GVariant *
-ostree_gpg_verify_result_get (OstreeGpgVerifyResult *result,
-                              guint signature_index,
-                              OstreeGpgSignatureAttr *attrs,
-                              guint n_attrs)
+ostree_gpg_verify_result_get (OstreeGpgVerifyResult *result, guint signature_index,
+                              OstreeGpgSignatureAttr *attrs, guint n_attrs)
 {
   g_critical ("%s: GPG feature is disabled in a build time", __FUNCTION__);
   return NULL;
@@ -187,8 +183,7 @@ ostree_gpg_verify_result_get (OstreeGpgVerifyResult *result,
  * Returns: (transfer floating): a new, floating, #GVariant tuple
  **/
 GVariant *
-ostree_gpg_verify_result_get_all (OstreeGpgVerifyResult *result,
-                                  guint signature_index)
+ostree_gpg_verify_result_get_all (OstreeGpgVerifyResult *result, guint signature_index)
 {
   g_return_val_if_fail (OSTREE_IS_GPG_VERIFY_RESULT (result), NULL);
 
@@ -217,13 +212,11 @@ ostree_gpg_verify_result_get_all (OstreeGpgVerifyResult *result,
  * @result.
  */
 void
-ostree_gpg_verify_result_describe (OstreeGpgVerifyResult *result,
-                                   guint signature_index,
-                                   GString *output_buffer,
-                                   const gchar *line_prefix,
+ostree_gpg_verify_result_describe (OstreeGpgVerifyResult *result, guint signature_index,
+                                   GString *output_buffer, const gchar *line_prefix,
                                    OstreeGpgSignatureFormatFlags flags)
 {
-  g_autoptr(GVariant) variant = NULL;
+  g_autoptr (GVariant) variant = NULL;
 
   g_return_if_fail (OSTREE_IS_GPG_VERIFY_RESULT (result));
 
@@ -249,8 +242,7 @@ ostree_gpg_verify_result_describe (OstreeGpgVerifyResult *result,
  * ostree_gpg_verify_result_get_all().
  */
 void
-ostree_gpg_verify_result_describe_variant (GVariant *variant,
-                                           GString *output_buffer,
+ostree_gpg_verify_result_describe_variant (GVariant *variant, GString *output_buffer,
                                            const gchar *line_prefix,
                                            OstreeGpgSignatureFormatFlags flags)
 {
@@ -264,8 +256,7 @@ ostree_gpg_verify_result_describe_variant (GVariant *variant,
   type_string = g_variant_get_type_string (variant);
   g_return_if_fail (strcmp (type_string, "(bbbbbsxxsssssxx)") == 0);
 
-  g_string_append (output_buffer,
-                   "GPG feature is disabled in a build time\n");
+  g_string_append (output_buffer, "GPG feature is disabled in a build time\n");
 
   g_critical ("%s: GPG feature is disabled in a build time", __FUNCTION__);
 }
@@ -286,15 +277,13 @@ ostree_gpg_verify_result_describe_variant (GVariant *variant,
  * Since: 2016.6
  */
 gboolean
-ostree_gpg_verify_result_require_valid_signature (OstreeGpgVerifyResult *result,
-                                                  GError **error)
+ostree_gpg_verify_result_require_valid_signature (OstreeGpgVerifyResult *result, GError **error)
 {
   if (result == NULL)
     return FALSE;
 
   g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-               "'%s': GPG feature is disabled in a build time",
-               __FUNCTION__);
+               "'%s': GPG feature is disabled in a build time", __FUNCTION__);
   return FALSE;
 }
 

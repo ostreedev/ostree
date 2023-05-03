@@ -25,5 +25,5 @@
 
 #include "ostree.h"
 
-char *  ot_editor_prompt    (OstreeRepo *repo, const char *input,
-                             GCancellable *cancellable, GError **error);
+char *ot_editor_prompt (OstreeRepo *repo, const char *input, GCancellable *cancellable,
+                        GError **error);

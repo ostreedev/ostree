@@ -21,20 +21,19 @@
 
 #include <stdlib.h>
 
-#include "ot-main.h"
+#include "ostree.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
-#include "ostree.h"
+#include "ot-main.h"
 #include "otutil.h"
 
 #include "ostree-cmd-private.h"
 
-static GOptionEntry options[] = {
-  { NULL }
-};
+static GOptionEntry options[] = { { NULL } };
 
 gboolean
-ot_admin_builtin_boot_complete (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_admin_builtin_boot_complete (int argc, char **argv, OstreeCommandInvocation *invocation,
+                                GCancellable *cancellable, GError **error)
 {
   /* Just a sanity check; we shouldn't be called outside of the service though.
    */
@@ -44,14 +43,14 @@ ot_admin_builtin_boot_complete (int argc, char **argv, OstreeCommandInvocation *
   // We must have been invoked via systemd which should have set up a mount namespace.
   g_assert (getenv ("INVOCATION_ID"));
 
-  g_autoptr(GOptionContext) context = g_option_context_new ("");
-  g_autoptr(OstreeSysroot) sysroot = NULL;
+  g_autoptr (GOptionContext) context = g_option_context_new ("");
+  g_autoptr (OstreeSysroot) sysroot = NULL;
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
-                                          invocation, &sysroot, cancellable, error))
+                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER, invocation, &sysroot,
+                                          cancellable, error))
     return FALSE;
 
-  if (!ostree_cmd__private__()->ostree_boot_complete (sysroot, cancellable, error))
+  if (!ostree_cmd__private__ ()->ostree_boot_complete (sysroot, cancellable, error))
     return FALSE;
 
   return TRUE;

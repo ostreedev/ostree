@@ -27,15 +27,15 @@
 
 #include "ostree-repo-private.h"
 #include "ostree-repo-static-delta-private.h"
+#include "ot-admin-functions.h"
 #include "ot-dump.h"
 #include "otutil.h"
-#include "ot-admin-functions.h"
 
 void
 ot_dump_variant (GVariant *variant)
 {
   g_autofree char *formatted_variant = NULL;
-  g_autoptr(GVariant) byteswapped = NULL;
+  g_autoptr (GVariant) byteswapped = NULL;
 
   if (G_BYTE_ORDER != G_BIG_ENDIAN)
     {
@@ -50,9 +50,7 @@ ot_dump_variant (GVariant *variant)
 }
 
 static gchar *
-format_timestamp (guint64  timestamp,
-                  gboolean local_tz,
-                  GError **error)
+format_timestamp (guint64 timestamp, gboolean local_tz, GError **error)
 {
   GDateTime *dt;
   gchar *str;
@@ -70,7 +68,7 @@ format_timestamp (guint64  timestamp,
       /* Convert to local time and display in the locale's preferred
        * representation.
        */
-      g_autoptr(GDateTime) dt_local = g_date_time_to_local (dt);
+      g_autoptr (GDateTime) dt_local = g_date_time_to_local (dt);
       str = g_date_time_format (dt_local, "%c");
     }
   else
@@ -86,8 +84,8 @@ format_timestamp (guint64  timestamp,
 static gchar *
 uint64_secs_to_iso8601 (guint64 secs)
 {
-  g_autoptr(GDateTime) dt = g_date_time_new_from_unix_utc (secs);
-  g_autoptr(GDateTime) local = (dt != NULL) ? g_date_time_to_local (dt) : NULL;
+  g_autoptr (GDateTime) dt = g_date_time_new_from_unix_utc (secs);
+  g_autoptr (GDateTime) local = (dt != NULL) ? g_date_time_to_local (dt) : NULL;
 
   if (local != NULL)
     return g_date_time_format (local, "%FT%T%:::z");
@@ -98,7 +96,7 @@ uint64_secs_to_iso8601 (guint64 secs)
 static void
 dump_indented_lines (const gchar *data)
 {
-  const char* indent = "    ";
+  const char *indent = "    ";
   const gchar *pos;
 
   for (;;)
@@ -119,8 +117,7 @@ dump_indented_lines (const gchar *data)
 }
 
 static void
-dump_commit (GVariant            *variant,
-             OstreeDumpFlags      flags)
+dump_commit (GVariant *variant, OstreeDumpFlags flags)
 {
   const gchar *subject;
   const gchar *body;
@@ -128,11 +125,11 @@ dump_commit (GVariant            *variant,
   g_autofree char *parent = NULL;
   g_autofree char *str = NULL;
   g_autofree char *version = NULL;
-  g_autoptr(GError) local_error = NULL;
+  g_autoptr (GError) local_error = NULL;
 
   /* See OSTREE_COMMIT_GVARIANT_FORMAT */
-  g_variant_get (variant, "(a{sv}aya(say)&s&stayay)", NULL, NULL, NULL,
-                 &subject, &body, &timestamp, NULL, NULL);
+  g_variant_get (variant, "(a{sv}aya(say)&s&stayay)", NULL, NULL, NULL, &subject, &body, &timestamp,
+                 NULL, NULL);
 
   timestamp = GUINT64_FROM_BE (timestamp);
   str = format_timestamp (timestamp, FALSE, &local_error);
@@ -142,7 +139,7 @@ dump_commit (GVariant            *variant,
       errx (1, "Failed to read commit: %s", local_error->message);
     }
 
-  if ((parent = ostree_commit_get_parent(variant)))
+  if ((parent = ostree_commit_get_parent (variant)))
     {
       g_print ("Parent:  %s\n", parent);
     }
@@ -175,10 +172,8 @@ dump_commit (GVariant            *variant,
 }
 
 void
-ot_dump_object (OstreeObjectType   objtype,
-                const char        *checksum,
-                GVariant          *variant,
-                OstreeDumpFlags    flags)
+ot_dump_object (OstreeObjectType objtype, const char *checksum, GVariant *variant,
+                OstreeDumpFlags flags)
 {
   g_print ("%s %s\n", ostree_object_type_to_string (objtype), checksum);
 
@@ -194,22 +189,19 @@ ot_dump_object (OstreeObjectType   objtype,
     }
 
   switch (objtype)
-  {
+    {
     case OSTREE_OBJECT_TYPE_COMMIT:
       dump_commit (variant, flags);
       break;
     /* TODO: Others could be implemented here */
     default:
       break;
-  }
+    }
 }
 
 static void
-dump_summary_ref (const char   *collection_id,
-                  const char   *ref_name,
-                  guint64       commit_size,
-                  GVariant     *csum_v,
-                  GVariantIter *metadata)
+dump_summary_ref (const char *collection_id, const char *ref_name, guint64 commit_size,
+                  GVariant *csum_v, GVariantIter *metadata)
 {
   const guchar *csum_bytes;
   GError *csum_error = NULL;
@@ -228,7 +220,7 @@ dump_summary_ref (const char   *collection_id,
   csum_bytes = ostree_checksum_bytes_peek_validate (csum_v, &csum_error);
   if (csum_error == NULL)
     {
-      char csum[OSTREE_SHA256_STRING_LEN+1];
+      char csum[OSTREE_SHA256_STRING_LEN + 1];
 
       ostree_checksum_inplace_from_bytes (csum_bytes, csum);
       g_print ("      %s\n", csum);
@@ -268,8 +260,7 @@ dump_summary_ref (const char   *collection_id,
 }
 
 static void
-dump_summary_refs (const gchar *collection_id,
-                   GVariant    *refs)
+dump_summary_refs (const gchar *collection_id, GVariant *refs)
 {
   GVariantIter iter;
   GVariant *value;
@@ -284,12 +275,11 @@ dump_summary_refs (const gchar *collection_id,
 
       if (ref_name != NULL)
         {
-          g_autoptr(GVariant) csum_v = NULL;
-          g_autoptr(GVariantIter) metadata = NULL;
+          g_autoptr (GVariant) csum_v = NULL;
+          g_autoptr (GVariantIter) metadata = NULL;
           guint64 commit_size;
 
-          g_variant_get_child (value, 1, "(t@aya{sv})",
-                               &commit_size, &csum_v, &metadata);
+          g_variant_get_child (value, 1, "(t@aya{sv})", &commit_size, &csum_v, &metadata);
 
           dump_summary_ref (collection_id, ref_name, commit_size, csum_v, metadata);
 
@@ -301,20 +291,18 @@ dump_summary_refs (const gchar *collection_id,
 }
 
 void
-ot_dump_summary_bytes (GBytes          *summary_bytes,
-                       OstreeDumpFlags  flags)
+ot_dump_summary_bytes (GBytes *summary_bytes, OstreeDumpFlags flags)
 {
-  g_autoptr(GVariant) summary = NULL;
-  g_autoptr(GVariant) refs = NULL;
-  g_autoptr(GVariant) exts = NULL;
+  g_autoptr (GVariant) summary = NULL;
+  g_autoptr (GVariant) refs = NULL;
+  g_autoptr (GVariant) exts = NULL;
   GVariantIter iter;
   GVariant *value;
   char *key;
 
   g_return_if_fail (summary_bytes != NULL);
 
-  summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT,
-                                      summary_bytes, FALSE);
+  summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, summary_bytes, FALSE);
 
   if (flags & OSTREE_DUMP_RAW)
     {
@@ -327,7 +315,7 @@ ot_dump_summary_bytes (GBytes          *summary_bytes,
 
   /* Print the refs, including those with a collection ID specified. */
   const gchar *main_collection_id;
-  g_autoptr(GVariant) collection_map = NULL;
+  g_autoptr (GVariant) collection_map = NULL;
   const gchar *collection_id;
 
   if (!g_variant_lookup (exts, OSTREE_SUMMARY_COLLECTION_ID, "&s", &main_collection_id))
@@ -335,10 +323,11 @@ ot_dump_summary_bytes (GBytes          *summary_bytes,
 
   dump_summary_refs (main_collection_id, refs);
 
-  collection_map = g_variant_lookup_value (exts, OSTREE_SUMMARY_COLLECTION_MAP, G_VARIANT_TYPE ("a{sa(s(taya{sv}))}"));
+  collection_map = g_variant_lookup_value (exts, OSTREE_SUMMARY_COLLECTION_MAP,
+                                           G_VARIANT_TYPE ("a{sa(s(taya{sv}))}"));
   if (collection_map != NULL)
     {
-      g_autoptr(GVariant) collection_refs = NULL;
+      g_autoptr (GVariant) collection_refs = NULL;
       g_variant_iter_init (&iter, collection_map);
 
       while (g_variant_iter_loop (&iter, "{&s@a(s(taya{sv}))}", &collection_id, &collection_refs))
@@ -408,11 +397,10 @@ ot_dump_summary_bytes (GBytes          *summary_bytes,
 }
 
 static gint
-strptr_cmp (gconstpointer a,
-            gconstpointer b)
+strptr_cmp (gconstpointer a, gconstpointer b)
 {
-  const char *a_str = *((const char **) a);
-  const char *b_str = *((const char **) b);
+  const char *a_str = *((const char **)a);
+  const char *b_str = *((const char **)b);
 
   return g_strcmp0 (a_str, b_str);
 }
@@ -420,22 +408,21 @@ strptr_cmp (gconstpointer a,
 void
 ot_dump_summary_metadata_keys (GBytes *summary_bytes)
 {
-  g_autoptr(GVariant) summary = NULL;
-  g_autoptr(GVariant) metadata = NULL;
+  g_autoptr (GVariant) summary = NULL;
+  g_autoptr (GVariant) metadata = NULL;
 
-  summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT,
-                                      summary_bytes, FALSE);
+  summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, summary_bytes, FALSE);
   metadata = g_variant_get_child_value (summary, 1);
 
   GVariantIter iter;
   const char *key = NULL;
-  g_autoptr(GPtrArray) keys = g_ptr_array_new ();
+  g_autoptr (GPtrArray) keys = g_ptr_array_new ();
   g_variant_iter_init (&iter, metadata);
   while (g_variant_iter_loop (&iter, "{&s@v}", &key, NULL))
-    g_ptr_array_add (keys, (gpointer) key);
+    g_ptr_array_add (keys, (gpointer)key);
 
   g_ptr_array_sort (keys, strptr_cmp);
-  for (guint i = 0; i < keys-> len; i++)
+  for (guint i = 0; i < keys->len; i++)
     {
       key = keys->pdata[i];
       g_print ("%s\n", key);
@@ -443,22 +430,18 @@ ot_dump_summary_metadata_keys (GBytes *summary_bytes)
 }
 
 gboolean
-ot_dump_summary_metadata_key (GBytes      *summary_bytes,
-                              const char  *key,
-                              GError     **error)
+ot_dump_summary_metadata_key (GBytes *summary_bytes, const char *key, GError **error)
 {
-  g_autoptr(GVariant) summary = NULL;
-  g_autoptr(GVariant) metadata = NULL;
-  g_autoptr(GVariant) value = NULL;
+  g_autoptr (GVariant) summary = NULL;
+  g_autoptr (GVariant) metadata = NULL;
+  g_autoptr (GVariant) value = NULL;
 
-  summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT,
-                                      summary_bytes, FALSE);
+  summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, summary_bytes, FALSE);
   metadata = g_variant_get_child_value (summary, 1);
   value = g_variant_lookup_value (metadata, key, NULL);
   if (!value)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "No such metadata key '%s'", key);
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND, "No such metadata key '%s'", key);
       return FALSE;
     }
 
@@ -468,9 +451,7 @@ ot_dump_summary_metadata_key (GBytes      *summary_bytes,
 }
 
 static gboolean
-dump_gpg_subkey (GVariant  *subkey,
-                 gboolean   primary,
-                 GError   **error)
+dump_gpg_subkey (GVariant *subkey, gboolean primary, GError **error)
 {
   const gchar *fingerprint = NULL;
   gint64 created = 0;
@@ -478,64 +459,53 @@ dump_gpg_subkey (GVariant  *subkey,
   gboolean revoked = FALSE;
   gboolean expired = FALSE;
   gboolean invalid = FALSE;
-  (void) g_variant_lookup (subkey, "fingerprint", "&s", &fingerprint);
-  (void) g_variant_lookup (subkey, "created", "x", &created);
-  (void) g_variant_lookup (subkey, "expires", "x", &expires);
-  (void) g_variant_lookup (subkey, "revoked", "b", &revoked);
-  (void) g_variant_lookup (subkey, "expired", "b", &expired);
-  (void) g_variant_lookup (subkey, "invalid", "b", &invalid);
+  (void)g_variant_lookup (subkey, "fingerprint", "&s", &fingerprint);
+  (void)g_variant_lookup (subkey, "created", "x", &created);
+  (void)g_variant_lookup (subkey, "expires", "x", &expires);
+  (void)g_variant_lookup (subkey, "revoked", "b", &revoked);
+  (void)g_variant_lookup (subkey, "expired", "b", &expired);
+  (void)g_variant_lookup (subkey, "invalid", "b", &invalid);
 
   /* Convert timestamps from big endian if needed */
   created = GINT64_FROM_BE (created);
   expires = GINT64_FROM_BE (expires);
 
-  g_print ("%s: %s%s%s\n",
-           primary ? "Key" : "  Subkey",
-           fingerprint,
-           revoked ? " (revoked)" : "",
+  g_print ("%s: %s%s%s\n", primary ? "Key" : "  Subkey", fingerprint, revoked ? " (revoked)" : "",
            invalid ? " (invalid)" : "");
 
-  g_autofree gchar *created_str = format_timestamp (created, TRUE,
-                                                    error);
+  g_autofree gchar *created_str = format_timestamp (created, TRUE, error);
   if (created_str == NULL)
     return FALSE;
-  g_print ("%sCreated: %s\n",
-           primary ? "  " : "    ",
-           created_str);
+  g_print ("%sCreated: %s\n", primary ? "  " : "    ", created_str);
 
   if (expires > 0)
     {
-      g_autofree gchar *expires_str = format_timestamp (expires, TRUE,
-                                                        error);
+      g_autofree gchar *expires_str = format_timestamp (expires, TRUE, error);
       if (expires_str == NULL)
         return FALSE;
-      g_print ("%s%s: %s\n",
-               primary ? "  " : "    ",
-               expired ? "Expired" : "Expires",
-               expires_str);
+      g_print ("%s%s: %s\n", primary ? "  " : "    ", expired ? "Expired" : "Expires", expires_str);
     }
 
   return TRUE;
 }
 
 gboolean
-ot_dump_gpg_key (GVariant  *key,
-                 GError   **error)
+ot_dump_gpg_key (GVariant *key, GError **error)
 {
   if (!g_variant_is_of_type (key, OSTREE_GPG_KEY_GVARIANT_FORMAT))
     return glnx_throw (error, "GPG key variant type doesn't match '%s'",
                        OSTREE_GPG_KEY_GVARIANT_STRING);
 
-  g_autoptr(GVariant) subkeys_v = g_variant_get_child_value (key, 0);
+  g_autoptr (GVariant) subkeys_v = g_variant_get_child_value (key, 0);
   GVariantIter subkeys_iter;
   g_variant_iter_init (&subkeys_iter, subkeys_v);
 
-  g_autoptr(GVariant) primary_key = NULL;
+  g_autoptr (GVariant) primary_key = NULL;
   g_variant_iter_next (&subkeys_iter, "@a{sv}", &primary_key);
   if (!dump_gpg_subkey (primary_key, TRUE, error))
     return FALSE;
 
-  g_autoptr(GVariant) uids_v = g_variant_get_child_value (key, 1);
+  g_autoptr (GVariant) uids_v = g_variant_get_child_value (key, 1);
   GVariantIter uids_iter;
   g_variant_iter_init (&uids_iter, uids_v);
   GVariant *uid_v = NULL;
@@ -544,18 +514,15 @@ ot_dump_gpg_key (GVariant  *key,
       const gchar *uid = NULL;
       gboolean revoked = FALSE;
       gboolean invalid = FALSE;
-      (void) g_variant_lookup (uid_v, "uid", "&s", &uid);
-      (void) g_variant_lookup (uid_v, "revoked", "b", &revoked);
-      (void) g_variant_lookup (uid_v, "invalid", "b", &invalid);
-      g_print ("  UID: %s%s%s\n",
-               uid,
-               revoked ? " (revoked)" : "",
-               invalid ? " (invalid)" : "");
+      (void)g_variant_lookup (uid_v, "uid", "&s", &uid);
+      (void)g_variant_lookup (uid_v, "revoked", "b", &revoked);
+      (void)g_variant_lookup (uid_v, "invalid", "b", &invalid);
+      g_print ("  UID: %s%s%s\n", uid, revoked ? " (revoked)" : "", invalid ? " (invalid)" : "");
 
       const char *advanced_url = NULL;
       const char *direct_url = NULL;
-      (void) g_variant_lookup (uid_v, "advanced_url", "m&s", &advanced_url);
-      (void) g_variant_lookup (uid_v, "direct_url", "m&s", &direct_url);
+      (void)g_variant_lookup (uid_v, "advanced_url", "m&s", &advanced_url);
+      (void)g_variant_lookup (uid_v, "direct_url", "m&s", &direct_url);
       g_print ("  Advanced update URL: %s\n", advanced_url ?: "");
       g_print ("  Direct update URL: %s\n", direct_url ?: "");
     }

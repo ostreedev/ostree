@@ -23,17 +23,17 @@
 #include "config.h"
 
 #include <gio/gio.h>
-#include <glib.h>
 #include <glib-object.h>
+#include <glib.h>
 #include <libglnx.h>
 
 #include "ostree-autocleanups.h"
-#include "ostree-core.h"
 #include "ostree-core-private.h"
+#include "ostree-core.h"
 #include "ostree-ref.h"
 
-G_DEFINE_BOXED_TYPE (OstreeCollectionRef, ostree_collection_ref,
-                     ostree_collection_ref_dup, ostree_collection_ref_free)
+G_DEFINE_BOXED_TYPE (OstreeCollectionRef, ostree_collection_ref, ostree_collection_ref_dup,
+                     ostree_collection_ref_free)
 
 /**
  * ostree_collection_ref_new:
@@ -49,13 +49,12 @@ G_DEFINE_BOXED_TYPE (OstreeCollectionRef, ostree_collection_ref,
  * Since: 2018.6
  */
 OstreeCollectionRef *
-ostree_collection_ref_new (const gchar *collection_id,
-                           const gchar *ref_name)
+ostree_collection_ref_new (const gchar *collection_id, const gchar *ref_name)
 {
-  g_autoptr(OstreeCollectionRef) collection_ref = NULL;
+  g_autoptr (OstreeCollectionRef) collection_ref = NULL;
 
-  g_return_val_if_fail (collection_id == NULL ||
-                        ostree_validate_collection_id (collection_id, NULL), NULL);
+  g_return_val_if_fail (
+      collection_id == NULL || ostree_validate_collection_id (collection_id, NULL), NULL);
   g_return_val_if_fail (ostree_validate_rev (ref_name, NULL), NULL);
 
   collection_ref = g_new0 (OstreeCollectionRef, 1);
@@ -133,13 +132,12 @@ ostree_collection_ref_hash (gconstpointer ref)
  * Since: 2018.6
  */
 gboolean
-ostree_collection_ref_equal (gconstpointer ref1,
-                             gconstpointer ref2)
+ostree_collection_ref_equal (gconstpointer ref1, gconstpointer ref2)
 {
   const OstreeCollectionRef *_ref1 = ref1, *_ref2 = ref2;
 
-  return (g_strcmp0 (_ref1->collection_id, _ref2->collection_id) == 0 &&
-          g_strcmp0 (_ref1->ref_name, _ref2->ref_name) == 0);
+  return (g_strcmp0 (_ref1->collection_id, _ref2->collection_id) == 0
+          && g_strcmp0 (_ref1->ref_name, _ref2->ref_name) == 0);
 }
 
 /**
@@ -154,14 +152,14 @@ ostree_collection_ref_equal (gconstpointer ref1,
  * Since: 2018.6
  */
 OstreeCollectionRef **
-ostree_collection_ref_dupv (const OstreeCollectionRef * const *refs)
+ostree_collection_ref_dupv (const OstreeCollectionRef *const *refs)
 {
-  gsize i,  n_refs = g_strv_length ((gchar **) refs);  /* hack */
-  g_auto(OstreeCollectionRefv) new_refs = NULL;
+  gsize i, n_refs = g_strv_length ((gchar **)refs); /* hack */
+  g_auto (OstreeCollectionRefv) new_refs = NULL;
 
   g_return_val_if_fail (refs != NULL, NULL);
 
-  new_refs = g_new0 (OstreeCollectionRef*, n_refs + 1);
+  new_refs = g_new0 (OstreeCollectionRef *, n_refs + 1);
 
   for (i = 0; i < n_refs; i++)
     new_refs[i] = ostree_collection_ref_dup (refs[i]);

@@ -34,11 +34,11 @@ ot_test_run_libtest (const char *cmd, GError **error)
   g_assert (srcdir != NULL);
   g_assert (cmd != NULL);
 
-  g_autoptr(GPtrArray) argv = g_ptr_array_new ();
+  g_autoptr (GPtrArray) argv = g_ptr_array_new ();
   g_ptr_array_add (argv, "bash");
   g_ptr_array_add (argv, "-c");
 
-  g_autoptr(GString) cmdstr = g_string_new ("");
+  g_autoptr (GString) cmdstr = g_string_new ("");
   g_string_append (cmdstr, "set -xeuo pipefail; . ");
   g_string_append (cmdstr, srcdir);
   g_string_append (cmdstr, "/tests/libtest.sh; ");
@@ -48,8 +48,8 @@ ot_test_run_libtest (const char *cmd, GError **error)
   g_ptr_array_add (argv, NULL);
 
   int estatus;
-  if (!g_spawn_sync (NULL, (char**)argv->pdata, NULL, G_SPAWN_SEARCH_PATH,
-                     NULL, NULL, NULL, NULL, &estatus, error))
+  if (!g_spawn_sync (NULL, (char **)argv->pdata, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, NULL,
+                     &estatus, error))
     return FALSE;
   if (!g_spawn_check_exit_status (estatus, error))
     return FALSE;
@@ -58,14 +58,13 @@ ot_test_run_libtest (const char *cmd, GError **error)
 }
 
 OstreeRepo *
-ot_test_setup_repo (GCancellable *cancellable,
-                    GError **error)
+ot_test_setup_repo (GCancellable *cancellable, GError **error)
 {
   if (!ot_test_run_libtest ("setup_test_repository archive", error))
     return NULL;
 
-  g_autoptr(GFile) repo_path = g_file_new_for_path ("repo");
-  g_autoptr(OstreeRepo) ret_repo = ostree_repo_new (repo_path);
+  g_autoptr (GFile) repo_path = g_file_new_for_path ("repo");
+  g_autoptr (OstreeRepo) ret_repo = ostree_repo_new (repo_path);
   if (!ostree_repo_open (ret_repo, cancellable, error))
     return NULL;
 
@@ -74,15 +73,16 @@ ot_test_setup_repo (GCancellable *cancellable,
 
 /* Determine whether we're able to relabel files. Needed for bare tests. */
 gboolean
-ot_check_relabeling (gboolean *can_relabel,
-                     GError  **error)
+ot_check_relabeling (gboolean *can_relabel, GError **error)
 {
-  g_auto(GLnxTmpfile) tmpf = { 0, };
+  g_auto (GLnxTmpfile) tmpf = {
+    0,
+  };
   if (!glnx_open_tmpfile_linkable_at (AT_FDCWD, ".", O_RDWR | O_CLOEXEC, &tmpf, error))
     return FALSE;
 
-  g_autoptr(GError) local_error = NULL;
-  g_autoptr(GBytes) bytes = glnx_fgetxattr_bytes (tmpf.fd, "security.selinux", &local_error);
+  g_autoptr (GError) local_error = NULL;
+  g_autoptr (GBytes) bytes = glnx_fgetxattr_bytes (tmpf.fd, "security.selinux", &local_error);
   if (!bytes)
     {
       /* libglnx preserves errno. The EOPNOTSUPP case can't be part of a
@@ -115,10 +115,11 @@ ot_check_relabeling (gboolean *can_relabel,
 
 /* Determine whether the filesystem supports getting/setting user xattrs. */
 gboolean
-ot_check_user_xattrs (gboolean *has_user_xattrs,
-                      GError  **error)
+ot_check_user_xattrs (gboolean *has_user_xattrs, GError **error)
 {
-  g_auto(GLnxTmpfile) tmpf = { 0, };
+  g_auto (GLnxTmpfile) tmpf = {
+    0,
+  };
   if (!glnx_open_tmpfile_linkable_at (AT_FDCWD, ".", O_RDWR | O_CLOEXEC, &tmpf, error))
     return FALSE;
 
@@ -137,13 +138,12 @@ ot_check_user_xattrs (gboolean *has_user_xattrs,
 }
 
 OstreeSysroot *
-ot_test_setup_sysroot (GCancellable *cancellable,
-                       GError **error)
+ot_test_setup_sysroot (GCancellable *cancellable, GError **error)
 {
   if (!ot_test_run_libtest ("setup_os_repository \"archive\" \"syslinux\"", error))
     return FALSE;
 
-  g_autoptr(GString) buf = g_string_new ("mutable-deployments");
+  g_autoptr (GString) buf = g_string_new ("mutable-deployments");
 
   gboolean can_relabel = FALSE;
   if (!ot_check_relabeling (&can_relabel, error))
@@ -158,6 +158,6 @@ ot_test_setup_sysroot (GCancellable *cancellable,
   if (!g_setenv ("OSTREE_SYSROOT_DEBUG", buf->str, TRUE))
     return glnx_null_throw (error, "Failed to set environment variable OSTREE_SYSROOT_DEBUG");
 
-  g_autoptr(GFile) sysroot_path = g_file_new_for_path ("sysroot");
+  g_autoptr (GFile) sysroot_path = g_file_new_for_path ("sysroot");
   return ostree_sysroot_new (sysroot_path);
 }

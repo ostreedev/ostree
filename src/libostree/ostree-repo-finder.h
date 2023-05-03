@@ -23,8 +23,8 @@
 #pragma once
 
 #include <gio/gio.h>
-#include <glib.h>
 #include <glib-object.h>
+#include <glib.h>
 
 #include "ostree-ref.h"
 #include "ostree-remote.h"
@@ -44,48 +44,50 @@ G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 typedef struct _OstreeRepoFinder OstreeRepoFinder;
 typedef struct _OstreeRepoFinderInterface OstreeRepoFinderInterface;
 
-static inline OstreeRepoFinder *OSTREE_REPO_FINDER (gpointer ptr) { return G_TYPE_CHECK_INSTANCE_CAST (ptr, ostree_repo_finder_get_type (), OstreeRepoFinder); }
-static inline gboolean OSTREE_IS_REPO_FINDER (gpointer ptr) { return G_TYPE_CHECK_INSTANCE_TYPE (ptr, ostree_repo_finder_get_type ()); }
-static inline OstreeRepoFinderInterface *OSTREE_REPO_FINDER_GET_IFACE (gpointer ptr) { return G_TYPE_INSTANCE_GET_INTERFACE (ptr, ostree_repo_finder_get_type (), OstreeRepoFinderInterface); }
+static inline OstreeRepoFinder *
+OSTREE_REPO_FINDER (gpointer ptr)
+{
+  return G_TYPE_CHECK_INSTANCE_CAST (ptr, ostree_repo_finder_get_type (), OstreeRepoFinder);
+}
+static inline gboolean
+OSTREE_IS_REPO_FINDER (gpointer ptr)
+{
+  return G_TYPE_CHECK_INSTANCE_TYPE (ptr, ostree_repo_finder_get_type ());
+}
+static inline OstreeRepoFinderInterface *
+OSTREE_REPO_FINDER_GET_IFACE (gpointer ptr)
+{
+  return G_TYPE_INSTANCE_GET_INTERFACE (ptr, ostree_repo_finder_get_type (),
+                                        OstreeRepoFinderInterface);
+}
 G_GNUC_END_IGNORE_DEPRECATIONS
 
 struct _OstreeRepoFinderInterface
 {
   GTypeInterface g_iface;
 
-  void (*resolve_async) (OstreeRepoFinder                  *self,
-                         const OstreeCollectionRef * const *refs,
-                         OstreeRepo                        *parent_repo,
-                         GCancellable                      *cancellable,
-                         GAsyncReadyCallback                callback,
-                         gpointer                           user_data);
-  GPtrArray *(*resolve_finish) (OstreeRepoFinder  *self,
-                                GAsyncResult      *result,
-                                GError           **error);
+  void (*resolve_async) (OstreeRepoFinder *self, const OstreeCollectionRef *const *refs,
+                         OstreeRepo *parent_repo, GCancellable *cancellable,
+                         GAsyncReadyCallback callback, gpointer user_data);
+  GPtrArray *(*resolve_finish) (OstreeRepoFinder *self, GAsyncResult *result, GError **error);
 };
 
 _OSTREE_PUBLIC
-void ostree_repo_finder_resolve_async (OstreeRepoFinder                  *self,
-                                       const OstreeCollectionRef * const *refs,
-                                       OstreeRepo                        *parent_repo,
-                                       GCancellable                      *cancellable,
-                                       GAsyncReadyCallback                callback,
-                                       gpointer                           user_data);
+void ostree_repo_finder_resolve_async (OstreeRepoFinder *self,
+                                       const OstreeCollectionRef *const *refs,
+                                       OstreeRepo *parent_repo, GCancellable *cancellable,
+                                       GAsyncReadyCallback callback, gpointer user_data);
 _OSTREE_PUBLIC
-GPtrArray *ostree_repo_finder_resolve_finish (OstreeRepoFinder  *self,
-                                              GAsyncResult      *result,
-                                              GError           **error);
+GPtrArray *ostree_repo_finder_resolve_finish (OstreeRepoFinder *self, GAsyncResult *result,
+                                              GError **error);
 
 _OSTREE_PUBLIC
-void ostree_repo_finder_resolve_all_async (OstreeRepoFinder * const          *finders,
-                                           const OstreeCollectionRef * const *refs,
-                                           OstreeRepo                        *parent_repo,
-                                           GCancellable                      *cancellable,
-                                           GAsyncReadyCallback                callback,
-                                           gpointer                           user_data);
+void ostree_repo_finder_resolve_all_async (OstreeRepoFinder *const *finders,
+                                           const OstreeCollectionRef *const *refs,
+                                           OstreeRepo *parent_repo, GCancellable *cancellable,
+                                           GAsyncReadyCallback callback, gpointer user_data);
 _OSTREE_PUBLIC
-GPtrArray *ostree_repo_finder_resolve_all_finish (GAsyncResult  *result,
-                                                  GError       **error);
+GPtrArray *ostree_repo_finder_resolve_all_finish (GAsyncResult *result, GError **error);
 
 /**
  * OstreeRepoFinderResult:
@@ -152,12 +154,11 @@ _OSTREE_PUBLIC
 GType ostree_repo_finder_result_get_type (void);
 
 _OSTREE_PUBLIC
-OstreeRepoFinderResult *ostree_repo_finder_result_new (OstreeRemote     *remote,
-                                                       OstreeRepoFinder *finder,
-                                                       gint              priority,
-                                                       GHashTable       *ref_to_checksum,
-                                                       GHashTable       *ref_to_timestamp,
-                                                       guint64           summary_last_modified);
+OstreeRepoFinderResult *ostree_repo_finder_result_new (OstreeRemote *remote,
+                                                       OstreeRepoFinder *finder, gint priority,
+                                                       GHashTable *ref_to_checksum,
+                                                       GHashTable *ref_to_timestamp,
+                                                       guint64 summary_last_modified);
 _OSTREE_PUBLIC
 OstreeRepoFinderResult *ostree_repo_finder_result_dup (OstreeRepoFinderResult *result);
 _OSTREE_PUBLIC
@@ -178,7 +179,7 @@ void ostree_repo_finder_result_free (OstreeRepoFinderResult *result);
  *
  * Since: 2018.6
  */
-typedef OstreeRepoFinderResult** OstreeRepoFinderResultv;
+typedef OstreeRepoFinderResult **OstreeRepoFinderResultv;
 
 _OSTREE_PUBLIC
 void ostree_repo_finder_result_freev (OstreeRepoFinderResult **results);

@@ -21,15 +21,15 @@
 
 #include "config.h"
 
-#include "otutil.h"
-#include "ostree.h"
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
+#include "ostree.h"
+#include "otutil.h"
 
 #ifdef HAVE_LIBARCHIVE
+#include "ostree-libarchive-input-stream.h"
 #include <archive.h>
 #include <archive_entry.h>
-#include "ostree-libarchive-input-stream.h"
 #endif
 
 #include "otutil.h"
@@ -39,16 +39,13 @@
 #define DEFAULT_DIRMODE (0755 | S_IFDIR)
 
 static void
-propagate_libarchive_error (GError      **error,
-                            struct archive *a)
+propagate_libarchive_error (GError **error, struct archive *a)
 {
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-               "%s", archive_error_string (a));
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "%s", archive_error_string (a));
 }
 
 static const char *
-path_relative (const char *src,
-               GError    **error)
+path_relative (const char *src, GError **error)
 {
   /* One issue here is that some archives almost record the pathname as just a
    * string and don't need to actually encode parent/child relationships in the
@@ -92,8 +89,7 @@ path_relative (const char *src,
 }
 
 static char *
-path_relative_ostree (const char *path,
-                      GError    **error)
+path_relative_ostree (const char *path, GError **error)
 {
   path = path_relative (path, error);
   if (path == NULL)
@@ -106,8 +102,7 @@ path_relative_ostree (const char *path,
 }
 
 static void
-append_path_component (char       **path_builder,
-                       const char  *component)
+append_path_component (char **path_builder, const char *component)
 {
   g_autofree char *s = g_steal_pointer (path_builder);
   *path_builder = g_build_filename (s ?: "/", component, NULL);
@@ -127,8 +122,7 @@ squash_trailing_slashes (char *path)
  * Yes, this hack will work even if it's a hardlink to a symlink.
  */
 static void
-read_archive_entry_stat (struct archive_entry *entry,
-                         struct stat          *stbuf)
+read_archive_entry_stat (struct archive_entry *entry, struct stat *stbuf)
 {
   const struct stat *st = archive_entry_stat (entry);
 
@@ -144,57 +138,44 @@ file_info_from_archive_entry (struct archive_entry *entry)
   struct stat stbuf;
   read_archive_entry_stat (entry, &stbuf);
 
-  g_autoptr(GFileInfo) info = _ostree_stbuf_to_gfileinfo (&stbuf);
+  g_autoptr (GFileInfo) info = _ostree_stbuf_to_gfileinfo (&stbuf);
   if (S_ISLNK (stbuf.st_mode))
     {
       const char *target = archive_entry_symlink (entry);
       if (target != NULL)
-        g_file_info_set_attribute_byte_string (info, "standard::symlink-target",
-                                               target);
+        g_file_info_set_attribute_byte_string (info, "standard::symlink-target", target);
     }
 
   return g_steal_pointer (&info);
 }
 
 static gboolean
-builder_add_label (GVariantBuilder  *builder,
-                   OstreeSePolicy   *sepolicy,
-                   const char       *path,
-                   mode_t            mode,
-                   GCancellable     *cancellable,
-                   GError          **error)
+builder_add_label (GVariantBuilder *builder, OstreeSePolicy *sepolicy, const char *path,
+                   mode_t mode, GCancellable *cancellable, GError **error)
 {
   g_autofree char *label = NULL;
 
   if (!sepolicy)
     return TRUE;
 
-  if (!ostree_sepolicy_get_label (sepolicy, path, mode, &label,
-                                  cancellable, error))
+  if (!ostree_sepolicy_get_label (sepolicy, path, mode, &label, cancellable, error))
     return FALSE;
 
   if (label)
-    g_variant_builder_add (builder, "(@ay@ay)",
-                           g_variant_new_bytestring ("security.selinux"),
+    g_variant_builder_add (builder, "(@ay@ay)", g_variant_new_bytestring ("security.selinux"),
                            g_variant_new_bytestring (label));
   return TRUE;
 }
 
-
 /* Like ostree_mutable_tree_ensure_dir(), but also creates and sets dirmeta if
  * the dir has to be created. */
 static gboolean
-mtree_ensure_dir_with_meta (OstreeRepo          *repo,
-                            OstreeMutableTree   *parent,
-                            const char          *name,
-                            GFileInfo           *file_info,
-                            GVariant            *xattrs,
-                            gboolean             error_if_exist, /* XXX: remove if not needed */
-                            OstreeMutableTree  **out_dir,
-                            GCancellable        *cancellable,
-                            GError             **error)
+mtree_ensure_dir_with_meta (OstreeRepo *repo, OstreeMutableTree *parent, const char *name,
+                            GFileInfo *file_info, GVariant *xattrs,
+                            gboolean error_if_exist, /* XXX: remove if not needed */
+                            OstreeMutableTree **out_dir, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(OstreeMutableTree) dir = NULL;
+  g_autoptr (OstreeMutableTree) dir = NULL;
   g_autofree guchar *csum_raw = NULL;
   g_autofree char *csum = NULL;
 
@@ -204,8 +185,8 @@ mtree_ensure_dir_with_meta (OstreeRepo          *repo,
     {
       if (error_if_exist)
         {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Directory \"%s\" already exists", name);
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Directory \"%s\" already exists",
+                       name);
           return FALSE;
         }
     }
@@ -221,8 +202,7 @@ mtree_ensure_dir_with_meta (OstreeRepo          *repo,
         return FALSE;
     }
 
-  if (!_ostree_repo_write_directory_meta (repo, file_info, xattrs,
-                                          &csum_raw, cancellable, error))
+  if (!_ostree_repo_write_directory_meta (repo, file_info, xattrs, &csum_raw, cancellable, error))
     return FALSE;
 
   csum = ostree_checksum_from_bytes (csum_raw);
@@ -235,26 +215,26 @@ mtree_ensure_dir_with_meta (OstreeRepo          *repo,
   return TRUE;
 }
 
-typedef struct {
-  OstreeRepo                     *repo;
+typedef struct
+{
+  OstreeRepo *repo;
   OstreeRepoImportArchiveOptions *opts;
-  OstreeMutableTree              *root;
-  struct archive                 *archive;
-  struct archive_entry           *entry;
-  GHashTable                     *deferred_hardlinks;
-  OstreeRepoCommitModifier       *modifier;
+  OstreeMutableTree *root;
+  struct archive *archive;
+  struct archive_entry *entry;
+  GHashTable *deferred_hardlinks;
+  OstreeRepoCommitModifier *modifier;
 } OstreeRepoArchiveImportContext;
 
-typedef struct {
-  OstreeMutableTree  *parent;
-  char               *path;
-  guint64             size;
+typedef struct
+{
+  OstreeMutableTree *parent;
+  char *path;
+  guint64 size;
 } DeferredHardlink;
 
-static inline char*
-aic_get_final_path (OstreeRepoArchiveImportContext *ctx,
-                    const char  *path,
-                    GError     **error)
+static inline char *
+aic_get_final_path (OstreeRepoArchiveImportContext *ctx, const char *path, GError **error)
 {
   if (ctx->opts->translate_pathname)
     {
@@ -272,9 +252,8 @@ aic_get_final_path (OstreeRepoArchiveImportContext *ctx,
   return g_strdup (path_relative (path, error));
 }
 
-static inline char*
-aic_get_final_entry_pathname (OstreeRepoArchiveImportContext *ctx,
-                              GError  **error)
+static inline char *
+aic_get_final_entry_pathname (OstreeRepoArchiveImportContext *ctx, GError **error)
 {
   const char *pathname = archive_entry_pathname (ctx->entry);
   g_autofree char *final = aic_get_final_path (ctx, pathname, error);
@@ -286,7 +265,7 @@ aic_get_final_entry_pathname (OstreeRepoArchiveImportContext *ctx,
   return g_steal_pointer (&final);
 }
 
-static inline char*
+static inline char *
 aic_get_final_entry_hardlink (OstreeRepoArchiveImportContext *ctx)
 {
   GError *local_error = NULL;
@@ -306,11 +285,10 @@ aic_get_final_entry_hardlink (OstreeRepoArchiveImportContext *ctx)
 }
 
 static OstreeRepoCommitFilterResult
-aic_apply_modifier_filter (OstreeRepoArchiveImportContext *ctx,
-                           const char  *relpath,
-                           GFileInfo  **out_file_info)
+aic_apply_modifier_filter (OstreeRepoArchiveImportContext *ctx, const char *relpath,
+                           GFileInfo **out_file_info)
 {
-  g_autoptr(GFileInfo) file_info = NULL;
+  g_autoptr (GFileInfo) file_info = NULL;
   g_autofree char *abspath = NULL;
   const char *cb_path = NULL;
 
@@ -325,48 +303,40 @@ aic_apply_modifier_filter (OstreeRepoArchiveImportContext *ctx,
 
   file_info = file_info_from_archive_entry (ctx->entry);
 
-  return _ostree_repo_commit_modifier_apply (ctx->repo, ctx->modifier, cb_path,
-                                             file_info, out_file_info);
+  return _ostree_repo_commit_modifier_apply (ctx->repo, ctx->modifier, cb_path, file_info,
+                                             out_file_info);
 }
 
 static gboolean
 aic_ensure_parent_dir_with_file_info (OstreeRepoArchiveImportContext *ctx,
-                                      OstreeMutableTree   *parent,
-                                      const char          *fullpath,
-                                      GFileInfo           *file_info,
-                                      OstreeMutableTree  **out_dir,
-                                      GCancellable        *cancellable,
-                                      GError             **error)
+                                      OstreeMutableTree *parent, const char *fullpath,
+                                      GFileInfo *file_info, OstreeMutableTree **out_dir,
+                                      GCancellable *cancellable, GError **error)
 {
   const char *name = glnx_basename (fullpath);
-  g_auto(GVariantBuilder) xattrs_builder;
-  g_autoptr(GVariant) xattrs = NULL;
+  g_auto (GVariantBuilder) xattrs_builder;
+  g_autoptr (GVariant) xattrs = NULL;
 
   /* is this the root directory itself? transform into empty string */
   if (name[0] == '/' && name[1] == '\0')
     name++;
 
-  g_variant_builder_init (&xattrs_builder, (GVariantType*)"a(ayay)");
+  g_variant_builder_init (&xattrs_builder, (GVariantType *)"a(ayay)");
 
   if (ctx->modifier && ctx->modifier->sepolicy)
-    if (!builder_add_label (&xattrs_builder, ctx->modifier->sepolicy, fullpath,
-                            DEFAULT_DIRMODE, cancellable, error))
+    if (!builder_add_label (&xattrs_builder, ctx->modifier->sepolicy, fullpath, DEFAULT_DIRMODE,
+                            cancellable, error))
       return FALSE;
 
   xattrs = g_variant_ref_sink (g_variant_builder_end (&xattrs_builder));
-  return mtree_ensure_dir_with_meta (ctx->repo, parent, name, file_info,
-                                     xattrs,
-                                     FALSE /* error_if_exist */, out_dir,
-                                     cancellable, error);
+  return mtree_ensure_dir_with_meta (ctx->repo, parent, name, file_info, xattrs,
+                                     FALSE /* error_if_exist */, out_dir, cancellable, error);
 }
 
 static gboolean
-aic_ensure_parent_dir (OstreeRepoArchiveImportContext *ctx,
-                       OstreeMutableTree   *parent,
-                       const char          *fullpath,
-                       OstreeMutableTree  **out_dir,
-                       GCancellable        *cancellable,
-                       GError             **error)
+aic_ensure_parent_dir (OstreeRepoArchiveImportContext *ctx, OstreeMutableTree *parent,
+                       const char *fullpath, OstreeMutableTree **out_dir, GCancellable *cancellable,
+                       GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("ostree-tar: Failed to create parent", error);
   /* Who should own the parent dir? Since it's not in the archive, it's up to
@@ -382,31 +352,27 @@ aic_ensure_parent_dir (OstreeRepoArchiveImportContext *ctx,
   g_file_info_set_attribute_uint32 (file_info, "unix::gid", gid);
   g_file_info_set_attribute_uint32 (file_info, "unix::mode", DEFAULT_DIRMODE);
 
-  return aic_ensure_parent_dir_with_file_info (ctx, parent, fullpath, file_info,
-                                               out_dir, cancellable, error);
+  return aic_ensure_parent_dir_with_file_info (ctx, parent, fullpath, file_info, out_dir,
+                                               cancellable, error);
 }
 
 static gboolean
-aic_create_parent_dirs (OstreeRepoArchiveImportContext *ctx,
-                        GPtrArray           *components,
-                        OstreeMutableTree  **out_subdir,
-                        GCancellable        *cancellable,
-                        GError             **error)
+aic_create_parent_dirs (OstreeRepoArchiveImportContext *ctx, GPtrArray *components,
+                        OstreeMutableTree **out_subdir, GCancellable *cancellable, GError **error)
 {
   g_autofree char *fullpath = NULL;
-  g_autoptr(OstreeMutableTree) dir = NULL;
+  g_autoptr (OstreeMutableTree) dir = NULL;
 
   /* start with the root itself */
   if (!aic_ensure_parent_dir (ctx, ctx->root, "/", &dir, cancellable, error))
     return FALSE;
 
-  for (guint i = 0; i < components->len-1; i++)
+  for (guint i = 0; i < components->len - 1; i++)
     {
-      glnx_unref_object OstreeMutableTree  *subdir = NULL;
+      glnx_unref_object OstreeMutableTree *subdir = NULL;
       append_path_component (&fullpath, components->pdata[i]);
 
-      if (!aic_ensure_parent_dir (ctx, dir, fullpath, &subdir,
-                                  cancellable, error))
+      if (!aic_ensure_parent_dir (ctx, dir, fullpath, &subdir, cancellable, error))
         return FALSE;
 
       g_set_object (&dir, subdir);
@@ -417,13 +383,10 @@ aic_create_parent_dirs (OstreeRepoArchiveImportContext *ctx,
 }
 
 static gboolean
-aic_get_parent_dir (OstreeRepoArchiveImportContext *ctx,
-                    const char          *path,
-                    OstreeMutableTree  **out_dir,
-                    GCancellable        *cancellable,
-                    GError             **error)
+aic_get_parent_dir (OstreeRepoArchiveImportContext *ctx, const char *path,
+                    OstreeMutableTree **out_dir, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GPtrArray) components = NULL;
+  g_autoptr (GPtrArray) components = NULL;
   if (!ot_util_path_split_validate (path, &components, error))
     return FALSE;
 
@@ -442,28 +405,23 @@ aic_get_parent_dir (OstreeRepoArchiveImportContext *ctx,
   if (ctx->opts->autocreate_parents)
     {
       g_clear_error (error);
-      return aic_create_parent_dirs (ctx, components, out_dir,
-                                     cancellable, error);
+      return aic_create_parent_dirs (ctx, components, out_dir, cancellable, error);
     }
 
   return FALSE;
 }
 
 static gboolean
-aic_get_xattrs (OstreeRepoArchiveImportContext *ctx,
-                const char         *path,
-                GFileInfo          *file_info,
-                GVariant          **out_xattrs,
-                GCancellable       *cancellable,
-                GError            **error)
+aic_get_xattrs (OstreeRepoArchiveImportContext *ctx, const char *path, GFileInfo *file_info,
+                GVariant **out_xattrs, GCancellable *cancellable, GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("ostree-tar: Failed to get xattrs", error);
   g_autofree char *abspath = g_build_filename ("/", path, NULL);
-  g_autoptr(GVariant) xattrs = NULL;
+  g_autoptr (GVariant) xattrs = NULL;
   const char *cb_path = abspath;
 
-  gboolean no_xattrs = ctx->modifier &&
-      ctx->modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS;
+  gboolean no_xattrs
+      = ctx->modifier && ctx->modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS;
 
   if (!no_xattrs && archive_entry_xattr_count (ctx->entry) > 0)
     {
@@ -471,18 +429,14 @@ aic_get_xattrs (OstreeRepoArchiveImportContext *ctx,
       const void *value;
       size_t size;
 
-      g_autoptr(GVariantBuilder) builder =
-        ot_util_variant_builder_from_variant (xattrs,
-                                              G_VARIANT_TYPE ("a(ayay)"));
+      g_autoptr (GVariantBuilder) builder
+          = ot_util_variant_builder_from_variant (xattrs, G_VARIANT_TYPE ("a(ayay)"));
 
       archive_entry_xattr_reset (ctx->entry);
-      while (archive_entry_xattr_next (
-               ctx->entry, &name, &value, &size) == ARCHIVE_OK)
+      while (archive_entry_xattr_next (ctx->entry, &name, &value, &size) == ARCHIVE_OK)
         {
-          g_variant_builder_add (builder, "(@ay@ay)",
-                                 g_variant_new_bytestring (name),
-                                 g_variant_new_fixed_array (G_VARIANT_TYPE("y"),
-                                                            value, size, 1));
+          g_variant_builder_add (builder, "(@ay@ay)", g_variant_new_bytestring (name),
+                                 g_variant_new_fixed_array (G_VARIANT_TYPE ("y"), value, size, 1));
         }
 
       xattrs = g_variant_builder_end (builder);
@@ -503,12 +457,10 @@ aic_get_xattrs (OstreeRepoArchiveImportContext *ctx,
   if (ctx->modifier && ctx->modifier->sepolicy)
     {
       mode_t mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
-      g_autoptr(GVariantBuilder) builder =
-        ot_util_variant_builder_from_variant (xattrs, G_VARIANT_TYPE
-                                                        ("a(ayay)"));
+      g_autoptr (GVariantBuilder) builder
+          = ot_util_variant_builder_from_variant (xattrs, G_VARIANT_TYPE ("a(ayay)"));
 
-      if (!builder_add_label (builder, ctx->modifier->sepolicy, abspath, mode,
-                              cancellable, error))
+      if (!builder_add_label (builder, ctx->modifier->sepolicy, abspath, mode, cancellable, error))
         return FALSE;
 
       if (xattrs)
@@ -525,35 +477,26 @@ aic_get_xattrs (OstreeRepoArchiveImportContext *ctx,
 /* XXX: add option in ctx->opts to disallow already existing dirs? see
  * error_if_exist */
 static gboolean
-aic_handle_dir (OstreeRepoArchiveImportContext *ctx,
-                OstreeMutableTree  *parent,
-                const char         *path,
-                GFileInfo          *fi,
-                GCancellable       *cancellable,
-                GError            **error)
+aic_handle_dir (OstreeRepoArchiveImportContext *ctx, OstreeMutableTree *parent, const char *path,
+                GFileInfo *fi, GCancellable *cancellable, GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("ostree-tar: Failed to handle directory", error);
   const char *name = glnx_basename (path);
-  g_autoptr(GVariant) xattrs = NULL;
+  g_autoptr (GVariant) xattrs = NULL;
 
   if (!aic_get_xattrs (ctx, path, fi, &xattrs, cancellable, error))
     return FALSE;
 
   return mtree_ensure_dir_with_meta (ctx->repo, parent, name, fi, xattrs,
-                                     FALSE /* error_if_exist */, NULL,
-                                     cancellable, error);
+                                     FALSE /* error_if_exist */, NULL, cancellable, error);
 }
 
 static gboolean
-aic_write_file (OstreeRepoArchiveImportContext *ctx,
-                GFileInfo          *fi,
-                GVariant           *xattrs,
-                char              **out_csum,
-                GCancellable       *cancellable,
-                GError            **error)
+aic_write_file (OstreeRepoArchiveImportContext *ctx, GFileInfo *fi, GVariant *xattrs,
+                char **out_csum, GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GInputStream) archive_stream = NULL;
-  g_autoptr(GInputStream) file_object_input = NULL;
+  g_autoptr (GInputStream) archive_stream = NULL;
+  g_autoptr (GInputStream) file_object_input = NULL;
   guint64 length;
 
   g_autofree guchar *csum_raw = NULL;
@@ -561,13 +504,12 @@ aic_write_file (OstreeRepoArchiveImportContext *ctx,
   if (g_file_info_get_file_type (fi) == G_FILE_TYPE_REGULAR)
     archive_stream = _ostree_libarchive_input_stream_new (ctx->archive);
 
-  if (!ostree_raw_file_to_content_stream (archive_stream, fi, xattrs,
-                                          &file_object_input, &length,
+  if (!ostree_raw_file_to_content_stream (archive_stream, fi, xattrs, &file_object_input, &length,
                                           cancellable, error))
     return FALSE;
 
-  if (!ostree_repo_write_content (ctx->repo, NULL, file_object_input, length,
-                                  &csum_raw, cancellable, error))
+  if (!ostree_repo_write_content (ctx->repo, NULL, file_object_input, length, &csum_raw,
+                                  cancellable, error))
     return FALSE;
 
   *out_csum = ostree_checksum_from_bytes (csum_raw);
@@ -575,16 +517,12 @@ aic_write_file (OstreeRepoArchiveImportContext *ctx,
 }
 
 static gboolean
-aic_import_file (OstreeRepoArchiveImportContext *ctx,
-                 OstreeMutableTree  *parent,
-                 const char         *path,
-                 GFileInfo          *fi,
-                 GCancellable       *cancellable,
-                 GError            **error)
+aic_import_file (OstreeRepoArchiveImportContext *ctx, OstreeMutableTree *parent, const char *path,
+                 GFileInfo *fi, GCancellable *cancellable, GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("ostree-tar: Failed to import file", error);
   const char *name = glnx_basename (path);
-  g_autoptr(GVariant) xattrs = NULL;
+  g_autoptr (GVariant) xattrs = NULL;
   g_autofree char *csum = NULL;
 
   if (!aic_get_xattrs (ctx, path, fi, &xattrs, cancellable, error))
@@ -600,9 +538,8 @@ aic_import_file (OstreeRepoArchiveImportContext *ctx,
 }
 
 static void
-aic_add_deferred_hardlink (OstreeRepoArchiveImportContext *ctx,
-                           const char        *hardlink,
-                           DeferredHardlink  *dh)
+aic_add_deferred_hardlink (OstreeRepoArchiveImportContext *ctx, const char *hardlink,
+                           DeferredHardlink *dh)
 {
   gboolean new_slist;
   GSList *slist;
@@ -617,11 +554,8 @@ aic_add_deferred_hardlink (OstreeRepoArchiveImportContext *ctx,
 }
 
 static void
-aic_defer_hardlink (OstreeRepoArchiveImportContext *ctx,
-                    OstreeMutableTree  *parent,
-                    const char         *path,
-                    guint64             size,
-                    const char         *hardlink)
+aic_defer_hardlink (OstreeRepoArchiveImportContext *ctx, OstreeMutableTree *parent,
+                    const char *path, guint64 size, const char *hardlink)
 {
   DeferredHardlink *dh = g_slice_new (DeferredHardlink);
   dh->parent = g_object_ref (parent);
@@ -632,12 +566,8 @@ aic_defer_hardlink (OstreeRepoArchiveImportContext *ctx,
 }
 
 static gboolean
-aic_handle_file (OstreeRepoArchiveImportContext *ctx,
-                 OstreeMutableTree  *parent,
-                 const char         *path,
-                 GFileInfo          *fi,
-                 GCancellable       *cancellable,
-                 GError            **error)
+aic_handle_file (OstreeRepoArchiveImportContext *ctx, OstreeMutableTree *parent, const char *path,
+                 GFileInfo *fi, GCancellable *cancellable, GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("ostree-tar: Failed to handle file", error);
   /* The wonderful world of hardlinks and archives. We have to be very careful
@@ -667,12 +597,8 @@ aic_handle_file (OstreeRepoArchiveImportContext *ctx,
 }
 
 static gboolean
-aic_handle_entry (OstreeRepoArchiveImportContext *ctx,
-                  OstreeMutableTree  *parent,
-                  const char         *path,
-                  GFileInfo          *fi,
-                  GCancellable       *cancellable,
-                  GError            **error)
+aic_handle_entry (OstreeRepoArchiveImportContext *ctx, OstreeMutableTree *parent, const char *path,
+                  GFileInfo *fi, GCancellable *cancellable, GError **error)
 {
   switch (g_file_info_get_file_type (fi))
     {
@@ -686,28 +612,24 @@ aic_handle_entry (OstreeRepoArchiveImportContext *ctx,
         return TRUE;
       else
         {
-          return glnx_throw (error, "Unsupported file type for path \"%s\"",
-                            path);
+          return glnx_throw (error, "Unsupported file type for path \"%s\"", path);
         }
     }
 }
 
 static gboolean
-aic_import_entry (OstreeRepoArchiveImportContext *ctx,
-                  GCancellable  *cancellable,
-                  GError       **error)
+aic_import_entry (OstreeRepoArchiveImportContext *ctx, GCancellable *cancellable, GError **error)
 {
   g_autofree char *path = aic_get_final_entry_pathname (ctx, error);
 
   if (path == NULL)
     return FALSE;
 
-  g_autoptr(GFileInfo) fi = NULL;
-  if (aic_apply_modifier_filter (ctx, path, &fi)
-        == OSTREE_REPO_COMMIT_FILTER_SKIP)
+  g_autoptr (GFileInfo) fi = NULL;
+  if (aic_apply_modifier_filter (ctx, path, &fi) == OSTREE_REPO_COMMIT_FILTER_SKIP)
     return TRUE;
 
-  g_autoptr(OstreeMutableTree) parent = NULL;
+  g_autoptr (OstreeMutableTree) parent = NULL;
   if (!aic_get_parent_dir (ctx, path, &parent, cancellable, error))
     return FALSE;
 
@@ -715,16 +637,14 @@ aic_import_entry (OstreeRepoArchiveImportContext *ctx,
 }
 
 static gboolean
-aic_import_from_hardlink (OstreeRepoArchiveImportContext *ctx,
-                          const char        *target,
-                          DeferredHardlink  *dh,
-                          GError           **error)
+aic_import_from_hardlink (OstreeRepoArchiveImportContext *ctx, const char *target,
+                          DeferredHardlink *dh, GError **error)
 {
   g_autofree char *csum = NULL;
   const char *name = glnx_basename (target);
   const char *name_dh = glnx_basename (dh->path);
-  g_autoptr(GPtrArray) components = NULL;
-  g_autoptr(OstreeMutableTree) parent = NULL;
+  g_autoptr (GPtrArray) components = NULL;
+  g_autoptr (OstreeMutableTree) parent = NULL;
 
   if (!ostree_mutable_tree_lookup (dh->parent, name_dh, &csum, NULL, error))
     return FALSE;
@@ -744,16 +664,14 @@ aic_import_from_hardlink (OstreeRepoArchiveImportContext *ctx,
 }
 
 static gboolean
-aic_lookup_file_csum (OstreeRepoArchiveImportContext *ctx,
-                      const char    *target,
-                      char         **out_csum,
-                      GError       **error)
+aic_lookup_file_csum (OstreeRepoArchiveImportContext *ctx, const char *target, char **out_csum,
+                      GError **error)
 {
   g_autofree char *csum = NULL;
   const char *name = glnx_basename (target);
-  g_autoptr(OstreeMutableTree) parent = NULL;
-  g_autoptr(OstreeMutableTree) subdir = NULL;
-  g_autoptr(GPtrArray) components = NULL;
+  g_autoptr (OstreeMutableTree) parent = NULL;
+  g_autoptr (OstreeMutableTree) subdir = NULL;
+  g_autoptr (GPtrArray) components = NULL;
 
   if (!ot_util_path_split_validate (target, &components, error))
     return FALSE;
@@ -768,7 +686,8 @@ aic_lookup_file_csum (OstreeRepoArchiveImportContext *ctx,
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Expected hardlink file target at \"%s\" but found a "
-                   "directory", target);
+                   "directory",
+                   target);
       return FALSE;
     }
 
@@ -777,17 +696,15 @@ aic_lookup_file_csum (OstreeRepoArchiveImportContext *ctx,
 }
 
 static gboolean
-aic_import_deferred_hardlinks_for (OstreeRepoArchiveImportContext *ctx,
-                                   const char    *target,
-                                   GSList        *hardlinks,
-                                   GError       **error)
+aic_import_deferred_hardlinks_for (OstreeRepoArchiveImportContext *ctx, const char *target,
+                                   GSList *hardlinks, GError **error)
 {
   GSList *payload = hardlinks;
   g_autofree char *csum = NULL;
 
   /* find node with the payload, if any (if none, then they're all hardlinks to
    * a zero sized target, and there's no rewrite required) */
-  while (payload && ((DeferredHardlink*)payload->data)->size == 0)
+  while (payload && ((DeferredHardlink *)payload->data)->size == 0)
     payload = g_slist_next (payload);
 
   /* rewrite the target so it points to the csum of the payload hardlink */
@@ -815,11 +732,10 @@ aic_import_deferred_hardlinks_for (OstreeRepoArchiveImportContext *ctx,
 }
 
 static gboolean
-aic_import_deferred_hardlinks (OstreeRepoArchiveImportContext *ctx,
-                               GCancellable  *cancellable,
-                               GError       **error)
+aic_import_deferred_hardlinks (OstreeRepoArchiveImportContext *ctx, GCancellable *cancellable,
+                               GError **error)
 {
-  GLNX_HASH_TABLE_FOREACH_KV (ctx->deferred_hardlinks, const char*, target, GSList*, links)
+  GLNX_HASH_TABLE_FOREACH_KV (ctx->deferred_hardlinks, const char *, target, GSList *, links)
     {
       if (!aic_import_deferred_hardlinks_for (ctx, target, links, error))
         return glnx_prefix_error (error, "ostree-tar: Processing deferred hardlink %s", target);
@@ -858,29 +774,23 @@ deferred_hardlinks_list_free (void *data)
  * file structure to @mtree.
  */
 gboolean
-ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
-                                     OstreeRepoImportArchiveOptions  *opts,
-                                     void                         *archive,
-                                     OstreeMutableTree            *mtree,
-                                     OstreeRepoCommitModifier     *modifier,
-                                     GCancellable                 *cancellable,
-                                     GError                      **error)
+ostree_repo_import_archive_to_mtree (OstreeRepo *self, OstreeRepoImportArchiveOptions *opts,
+                                     void *archive, OstreeMutableTree *mtree,
+                                     OstreeRepoCommitModifier *modifier, GCancellable *cancellable,
+                                     GError **error)
 {
 #ifdef HAVE_LIBARCHIVE
   gboolean ret = FALSE;
   struct archive *a = archive;
-  g_autoptr(GHashTable) deferred_hardlinks =
-    g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-                           deferred_hardlinks_list_free);
+  g_autoptr (GHashTable) deferred_hardlinks
+      = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, deferred_hardlinks_list_free);
 
-  OstreeRepoArchiveImportContext aictx = {
-    .repo = self,
-    .opts = opts,
-    .root = mtree,
-    .archive = archive,
-    .deferred_hardlinks = deferred_hardlinks,
-    .modifier = modifier
-  };
+  OstreeRepoArchiveImportContext aictx = { .repo = self,
+                                           .opts = opts,
+                                           .root = mtree,
+                                           .archive = archive,
+                                           .deferred_hardlinks = deferred_hardlinks,
+                                           .modifier = modifier };
 
   _ostree_repo_setup_generate_sizes (self, modifier);
 
@@ -910,29 +820,24 @@ ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
    * useful primarily when importing Docker image layers, which can
    * just be metadata.
    */
-  if (opts->autocreate_parents &&
-      ostree_mutable_tree_get_metadata_checksum (mtree) == NULL)
+  if (opts->autocreate_parents && ostree_mutable_tree_get_metadata_checksum (mtree) == NULL)
     {
       /* _ostree_stbuf_to_gfileinfo() only looks at these fields,
        * but we use it to ensure it sets all of the relevant GFileInfo
        * properties.
        */
-      struct stat stbuf = { .st_mode = DEFAULT_DIRMODE,
-                            .st_uid = 0,
-                            .st_gid = 0 };
-      g_autoptr(GFileInfo) fi = _ostree_stbuf_to_gfileinfo (&stbuf);
+      struct stat stbuf = { .st_mode = DEFAULT_DIRMODE, .st_uid = 0, .st_gid = 0 };
+      g_autoptr (GFileInfo) fi = _ostree_stbuf_to_gfileinfo (&stbuf);
 
-      g_autoptr(GFileInfo) mfi = NULL;
-      (void)_ostree_repo_commit_modifier_apply (self, modifier, "/",
-                                                fi, &mfi);
+      g_autoptr (GFileInfo) mfi = NULL;
+      (void)_ostree_repo_commit_modifier_apply (self, modifier, "/", fi, &mfi);
 
-      if (!aic_ensure_parent_dir_with_file_info (&aictx, mtree, "/", mfi, NULL,
-                                                 cancellable, error))
+      if (!aic_ensure_parent_dir_with_file_info (&aictx, mtree, "/", mfi, NULL, cancellable, error))
         goto out;
     }
 
   ret = TRUE;
- out:
+out:
   return ret;
 #else
   g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
@@ -943,20 +848,19 @@ ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
 
 #ifdef HAVE_LIBARCHIVE
 static gboolean
-write_archive_to_mtree (OstreeRepo                *self,
-                        OtAutoArchiveRead         *archive,
-                        OstreeMutableTree         *mtree,
-                        OstreeRepoCommitModifier  *modifier,
-                        gboolean                   autocreate_parents,
-                        GCancellable              *cancellable,
-                        GError                   **error)
+write_archive_to_mtree (OstreeRepo *self, OtAutoArchiveRead *archive, OstreeMutableTree *mtree,
+                        OstreeRepoCommitModifier *modifier, gboolean autocreate_parents,
+                        GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  OstreeRepoImportArchiveOptions opts = { 0, };
+  OstreeRepoImportArchiveOptions opts = {
+    0,
+  };
 
   opts.autocreate_parents = !!autocreate_parents;
 
-  if (!ostree_repo_import_archive_to_mtree (self, &opts, archive, mtree, modifier, cancellable, error))
+  if (!ostree_repo_import_archive_to_mtree (self, &opts, archive, mtree, modifier, cancellable,
+                                            error))
     goto out;
 
   if (archive_read_close (archive) != ARCHIVE_OK)
@@ -966,7 +870,7 @@ write_archive_to_mtree (OstreeRepo                *self,
     }
 
   ret = TRUE;
- out:
+out:
   (void)archive_read_close (archive);
   return ret;
 }
@@ -986,18 +890,15 @@ write_archive_to_mtree (OstreeRepo                *self,
  * file structure to @mtree.
  */
 gboolean
-ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
-                                    GFile                     *archive,
-                                    OstreeMutableTree         *mtree,
-                                    OstreeRepoCommitModifier  *modifier,
-                                    gboolean                   autocreate_parents,
-                                    GCancellable              *cancellable,
-                                    GError                   **error)
+ostree_repo_write_archive_to_mtree (OstreeRepo *self, GFile *archive, OstreeMutableTree *mtree,
+                                    OstreeRepoCommitModifier *modifier, gboolean autocreate_parents,
+                                    GCancellable *cancellable, GError **error)
 {
 #ifdef HAVE_LIBARCHIVE
-  g_autoptr(OtAutoArchiveRead) a = ot_open_archive_read (gs_file_get_path_cached (archive), error);
+  g_autoptr (OtAutoArchiveRead) a = ot_open_archive_read (gs_file_get_path_cached (archive), error);
   if (a)
-    return write_archive_to_mtree (self, a, mtree, modifier, autocreate_parents, cancellable, error);
+    return write_archive_to_mtree (self, a, mtree, modifier, autocreate_parents, cancellable,
+                                   error);
 
   return FALSE;
 #else
@@ -1021,18 +922,16 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
  * its file structure to @mtree.
  */
 gboolean
-ostree_repo_write_archive_to_mtree_from_fd (OstreeRepo                *self,
-                                            int                        fd,
-                                            OstreeMutableTree         *mtree,
-                                            OstreeRepoCommitModifier  *modifier,
-                                            gboolean                   autocreate_parents,
-                                            GCancellable              *cancellable,
-                                            GError                   **error)
+ostree_repo_write_archive_to_mtree_from_fd (OstreeRepo *self, int fd, OstreeMutableTree *mtree,
+                                            OstreeRepoCommitModifier *modifier,
+                                            gboolean autocreate_parents, GCancellable *cancellable,
+                                            GError **error)
 {
 #ifdef HAVE_LIBARCHIVE
-  g_autoptr(OtAutoArchiveRead) a = ot_open_archive_read_fd (fd, error);
+  g_autoptr (OtAutoArchiveRead) a = ot_open_archive_read_fd (fd, error);
   if (a)
-    return write_archive_to_mtree (self, a, mtree, modifier, autocreate_parents, cancellable, error);
+    return write_archive_to_mtree (self, a, mtree, modifier, autocreate_parents, cancellable,
+                                   error);
 
   return FALSE;
 #else
@@ -1045,17 +944,13 @@ ostree_repo_write_archive_to_mtree_from_fd (OstreeRepo                *self,
 #ifdef HAVE_LIBARCHIVE
 
 static gboolean
-file_to_archive_entry_common (GFile         *root,
-                              OstreeRepoExportArchiveOptions *opts,
-                              GFile         *path,
-                              GFileInfo  *file_info,
-                              struct archive_entry *entry,
-                              GError            **error)
+file_to_archive_entry_common (GFile *root, OstreeRepoExportArchiveOptions *opts, GFile *path,
+                              GFileInfo *file_info, struct archive_entry *entry, GError **error)
 {
   gboolean ret = FALSE;
   g_autofree char *pathstr = g_file_get_relative_path (root, path);
-  g_autoptr(GVariant) xattrs = NULL;
-  time_t ts = (time_t) opts->timestamp_secs;
+  g_autoptr (GVariant) xattrs = NULL;
+  time_t ts = (time_t)opts->timestamp_secs;
 
   if (opts->path_prefix && opts->path_prefix[0])
     {
@@ -1077,7 +972,7 @@ file_to_archive_entry_common (GFile         *root,
   archive_entry_set_gid (entry, g_file_info_get_attribute_uint32 (file_info, "unix::gid"));
   archive_entry_set_mode (entry, g_file_info_get_attribute_uint32 (file_info, "unix::mode"));
 
-  if (!ostree_repo_file_get_xattrs ((OstreeRepoFile*)path, &xattrs, NULL, error))
+  if (!ostree_repo_file_get_xattrs ((OstreeRepoFile *)path, &xattrs, NULL, error))
     goto out;
 
   if (!opts->disable_xattrs)
@@ -1087,28 +982,25 @@ file_to_archive_entry_common (GFile         *root,
       n = g_variant_n_children (xattrs);
       for (i = 0; i < n; i++)
         {
-          const guint8* name;
-          g_autoptr(GVariant) value = NULL;
-          const guint8* value_data;
+          const guint8 *name;
+          g_autoptr (GVariant) value = NULL;
+          const guint8 *value_data;
           gsize value_len;
 
           g_variant_get_child (xattrs, i, "(^&ay@ay)", &name, &value);
           value_data = g_variant_get_fixed_array (value, &value_len, 1);
 
-          archive_entry_xattr_add_entry (entry, (char*)name,
-                                         (char*) value_data, value_len);
+          archive_entry_xattr_add_entry (entry, (char *)name, (char *)value_data, value_len);
         }
     }
 
   ret = TRUE;
- out:
+out:
   return ret;
 }
 
 static gboolean
-write_header_free_entry (struct archive *a,
-                         struct archive_entry **entryp,
-                         GError **error)
+write_header_free_entry (struct archive *a, struct archive_entry **entryp, GError **error)
 {
   struct archive_entry *entry = *entryp;
   gboolean ret = FALSE;
@@ -1120,28 +1012,23 @@ write_header_free_entry (struct archive *a,
     }
 
   ret = TRUE;
- out:
+out:
   archive_entry_free (entry);
   *entryp = NULL;
   return ret;
 }
 
 static gboolean
-write_directory_to_libarchive_recurse (OstreeRepo               *self,
-                                       OstreeRepoExportArchiveOptions *opts,
-                                       GFile                    *root,
-                                       GFile                    *dir,
-                                       struct archive           *a,
-                                       GCancellable             *cancellable,
-                                       GError                  **error)
+write_directory_to_libarchive_recurse (OstreeRepo *self, OstreeRepoExportArchiveOptions *opts,
+                                       GFile *root, GFile *dir, struct archive *a,
+                                       GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GFileInfo) dir_info = NULL;
-  g_autoptr(GFileEnumerator) dir_enum = NULL;
+  g_autoptr (GFileInfo) dir_info = NULL;
+  g_autoptr (GFileEnumerator) dir_enum = NULL;
   struct archive_entry *entry = NULL;
 
-  dir_info = g_file_query_info (dir, OSTREE_GIO_FAST_QUERYINFO,
-                                G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+  dir_info = g_file_query_info (dir, OSTREE_GIO_FAST_QUERYINFO, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                 cancellable, error);
   if (!dir_info)
     goto out;
@@ -1153,8 +1040,7 @@ write_directory_to_libarchive_recurse (OstreeRepo               *self,
     goto out;
 
   dir_enum = g_file_enumerate_children (dir, OSTREE_GIO_FAST_QUERYINFO,
-                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        cancellable, error);
+                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable, error);
   if (!dir_enum)
     goto out;
 
@@ -1163,8 +1049,7 @@ write_directory_to_libarchive_recurse (OstreeRepo               *self,
       GFileInfo *file_info;
       GFile *path;
 
-      if (!g_file_enumerator_iterate (dir_enum, &file_info, &path,
-                                      cancellable, error))
+      if (!g_file_enumerator_iterate (dir_enum, &file_info, &path, cancellable, error))
         goto out;
       if (file_info == NULL)
         break;
@@ -1172,8 +1057,8 @@ write_directory_to_libarchive_recurse (OstreeRepo               *self,
       /* First, handle directories recursively */
       if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
         {
-          if (!write_directory_to_libarchive_recurse (self, opts, root, path, a,
-                                                      cancellable, error))
+          if (!write_directory_to_libarchive_recurse (self, opts, root, path, a, cancellable,
+                                                      error))
             goto out;
 
           /* Go to the next entry */
@@ -1198,11 +1083,11 @@ write_directory_to_libarchive_recurse (OstreeRepo               *self,
         case G_FILE_TYPE_REGULAR:
           {
             guint8 buf[8192];
-            g_autoptr(GInputStream) file_in = NULL;
-            g_autoptr(GFileInfo) regular_file_info = NULL;
+            g_autoptr (GInputStream) file_in = NULL;
+            g_autoptr (GFileInfo) regular_file_info = NULL;
             const char *checksum;
 
-            checksum = ostree_repo_file_get_checksum ((OstreeRepoFile*)path);
+            checksum = ostree_repo_file_get_checksum ((OstreeRepoFile *)path);
 
             if (!ostree_repo_load_file (self, checksum, &file_in, &regular_file_info, NULL,
                                         cancellable, error))
@@ -1218,18 +1103,22 @@ write_directory_to_libarchive_recurse (OstreeRepo               *self,
 
             while (TRUE)
               {
-                gssize bytes_read = g_input_stream_read (file_in, buf, sizeof (buf),
-                                                         cancellable, error);
+                gssize bytes_read
+                    = g_input_stream_read (file_in, buf, sizeof (buf), cancellable, error);
                 if (bytes_read < 0)
                   goto out;
                 if (bytes_read == 0)
                   break;
 
-                { ssize_t r = archive_write_data (a, buf, bytes_read);
+                {
+                  ssize_t r = archive_write_data (a, buf, bytes_read);
                   if (r != bytes_read)
                     {
                       propagate_libarchive_error (error, a);
-                      g_prefix_error (error, "Failed to write %" G_GUINT64_FORMAT " bytes (code %" G_GUINT64_FORMAT"): ", (guint64)bytes_read, (guint64)r);
+                      g_prefix_error (error,
+                                      "Failed to write %" G_GUINT64_FORMAT
+                                      " bytes (code %" G_GUINT64_FORMAT "): ",
+                                      (guint64)bytes_read, (guint64)r);
                       goto out;
                     }
                 }
@@ -1251,7 +1140,7 @@ write_directory_to_libarchive_recurse (OstreeRepo               *self,
     }
 
   ret = TRUE;
- out:
+out:
   if (entry)
     archive_entry_free (entry);
   return ret;
@@ -1263,7 +1152,8 @@ write_directory_to_libarchive_recurse (OstreeRepo               *self,
  * @self: An #OstreeRepo
  * @opts: Options controlling conversion
  * @root: An #OstreeRepoFile for the base directory
- * @archive: A `struct archive`, but specified as void to avoid a dependency on the libarchive headers
+ * @archive: A `struct archive`, but specified as void to avoid a dependency on the libarchive
+ * headers
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -1271,23 +1161,20 @@ write_directory_to_libarchive_recurse (OstreeRepo               *self,
  * file structure to @mtree.
  */
 gboolean
-ostree_repo_export_tree_to_archive (OstreeRepo                *self,
-                                    OstreeRepoExportArchiveOptions *opts,
-                                    OstreeRepoFile            *root,
-                                    void                      *archive,
-                                    GCancellable             *cancellable,
-                                    GError                  **error)
+ostree_repo_export_tree_to_archive (OstreeRepo *self, OstreeRepoExportArchiveOptions *opts,
+                                    OstreeRepoFile *root, void *archive, GCancellable *cancellable,
+                                    GError **error)
 {
 #ifdef HAVE_LIBARCHIVE
   gboolean ret = FALSE;
   struct archive *a = archive;
 
-  if (!write_directory_to_libarchive_recurse (self, opts, (GFile*)root, (GFile*)root,
-                                              a, cancellable, error))
+  if (!write_directory_to_libarchive_recurse (self, opts, (GFile *)root, (GFile *)root, a,
+                                              cancellable, error))
     goto out;
 
   ret = TRUE;
- out:
+out:
   return ret;
 #else
   g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,

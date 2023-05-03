@@ -29,32 +29,19 @@ G_BEGIN_DECLS
 
 typedef struct _OtVariantBuilder OtVariantBuilder;
 
-OtVariantBuilder *ot_variant_builder_new         (const GVariantType  *type,
-                                                  int                  fd);
-void              ot_variant_builder_unref       (OtVariantBuilder    *builder);
-OtVariantBuilder *ot_variant_builder_ref         (OtVariantBuilder    *builder);
-gboolean          ot_variant_builder_end         (OtVariantBuilder    *builder,
-                                                  GError             **error);
-gboolean          ot_variant_builder_open        (OtVariantBuilder    *builder,
-                                                  const GVariantType  *type,
-                                                  GError             **error);
-gboolean          ot_variant_builder_close       (OtVariantBuilder    *builder,
-                                                  GError             **error);
-gboolean          ot_variant_builder_add_from_fd (OtVariantBuilder    *builder,
-                                                  const GVariantType  *type,
-                                                  int                  fd,
-                                                  guint64              size,
-                                                  GError             **error);
-gboolean          ot_variant_builder_add_value   (OtVariantBuilder    *builder,
-                                                  GVariant            *value,
-                                                  GError             **error);
-gboolean          ot_variant_builder_add         (OtVariantBuilder    *builder,
-                                                  GError             **error,
-                                                  const gchar         *format_string,
-                                                  ...);
-void              ot_variant_builder_add_parsed  (OtVariantBuilder    *builder,
-                                                  const gchar         *format,
-                                                  ...);
+OtVariantBuilder *ot_variant_builder_new (const GVariantType *type, int fd);
+void ot_variant_builder_unref (OtVariantBuilder *builder);
+OtVariantBuilder *ot_variant_builder_ref (OtVariantBuilder *builder);
+gboolean ot_variant_builder_end (OtVariantBuilder *builder, GError **error);
+gboolean ot_variant_builder_open (OtVariantBuilder *builder, const GVariantType *type,
+                                  GError **error);
+gboolean ot_variant_builder_close (OtVariantBuilder *builder, GError **error);
+gboolean ot_variant_builder_add_from_fd (OtVariantBuilder *builder, const GVariantType *type,
+                                         int fd, guint64 size, GError **error);
+gboolean ot_variant_builder_add_value (OtVariantBuilder *builder, GVariant *value, GError **error);
+gboolean ot_variant_builder_add (OtVariantBuilder *builder, GError **error,
+                                 const gchar *format_string, ...);
+void ot_variant_builder_add_parsed (OtVariantBuilder *builder, const gchar *format, ...);
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OtVariantBuilder, ot_variant_builder_unref)
 

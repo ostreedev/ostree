@@ -21,8 +21,8 @@
 
 #include "config.h"
 
-#include "ostree-sysroot-private.h"
 #include "ostree-bootloader-uboot.h"
+#include "ostree-sysroot-private.h"
 #include "otutil.h"
 
 #include <string.h>
@@ -31,27 +31,27 @@ static const char uboot_config_path[] = "boot/loader/uEnv.txt";
 
 struct _OstreeBootloaderUboot
 {
-  GObject       parent_instance;
+  GObject parent_instance;
 
-  OstreeSysroot  *sysroot;
+  OstreeSysroot *sysroot;
 };
 
 typedef GObjectClass OstreeBootloaderUbootClass;
 
 static void _ostree_bootloader_uboot_bootloader_iface_init (OstreeBootloaderInterface *iface);
 G_DEFINE_TYPE_WITH_CODE (OstreeBootloaderUboot, _ostree_bootloader_uboot, G_TYPE_OBJECT,
-                         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_BOOTLOADER, _ostree_bootloader_uboot_bootloader_iface_init));
+                         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_BOOTLOADER,
+                                                _ostree_bootloader_uboot_bootloader_iface_init));
 
 static gboolean
-_ostree_bootloader_uboot_query (OstreeBootloader *bootloader,
-                                gboolean         *out_is_active,
-                                GCancellable     *cancellable,
-                                GError          **error)
+_ostree_bootloader_uboot_query (OstreeBootloader *bootloader, gboolean *out_is_active,
+                                GCancellable *cancellable, GError **error)
 {
   OstreeBootloaderUboot *self = OSTREE_BOOTLOADER_UBOOT (bootloader);
   struct stat stbuf;
 
-  if (!glnx_fstatat_allow_noent (self->sysroot->sysroot_fd, uboot_config_path, &stbuf, AT_SYMLINK_NOFOLLOW, error))
+  if (!glnx_fstatat_allow_noent (self->sysroot->sysroot_fd, uboot_config_path, &stbuf,
+                                 AT_SYMLINK_NOFOLLOW, error))
     return FALSE;
   *out_is_active = (errno == 0);
   return TRUE;
@@ -65,14 +65,11 @@ _ostree_bootloader_uboot_get_name (OstreeBootloader *bootloader)
 
 /* Append system's uEnv.txt, if it exists in $deployment/usr/lib/ostree-boot/ */
 static gboolean
-append_system_uenv (OstreeBootloaderUboot   *self,
-                    const char              *bootargs,
-                    GPtrArray               *new_lines,
-                    GCancellable            *cancellable,
-                    GError                 **error)
+append_system_uenv (OstreeBootloaderUboot *self, const char *bootargs, GPtrArray *new_lines,
+                    GCancellable *cancellable, GError **error)
 {
   glnx_autofd int uenv_fd = -1;
-  g_autoptr(OstreeKernelArgs) kargs = NULL;
+  g_autoptr (OstreeKernelArgs) kargs = NULL;
   const char *uenv_path = NULL;
   const char *ostree_arg = NULL;
 
@@ -102,13 +99,11 @@ append_system_uenv (OstreeBootloaderUboot   *self,
 }
 
 static gboolean
-create_config_from_boot_loader_entries (OstreeBootloaderUboot     *self,
-                                        int                    bootversion,
-                                        GPtrArray             *new_lines,
-                                        GCancellable          *cancellable,
-                                        GError               **error)
+create_config_from_boot_loader_entries (OstreeBootloaderUboot *self, int bootversion,
+                                        GPtrArray *new_lines, GCancellable *cancellable,
+                                        GError **error)
 {
-  g_autoptr(GPtrArray) boot_loader_configs = NULL;
+  g_autoptr (GPtrArray) boot_loader_configs = NULL;
   OstreeBootconfigParser *config;
   const char *val;
 
@@ -122,7 +117,7 @@ create_config_from_boot_loader_entries (OstreeBootloaderUboot     *self,
       if (i == 0)
         index_suffix = g_strdup ("");
       else
-        index_suffix = g_strdup_printf ("%d", i+1);
+        index_suffix = g_strdup_printf ("%d", i + 1);
       config = boot_loader_configs->pdata[i];
 
       val = ostree_bootconfig_parser_get (config, "linux");
@@ -160,32 +155,27 @@ create_config_from_boot_loader_entries (OstreeBootloaderUboot     *self,
 }
 
 static gboolean
-_ostree_bootloader_uboot_write_config (OstreeBootloader *bootloader,
-                                       int               bootversion,
-                                       GPtrArray        *new_deployments,
-                                       GCancellable     *cancellable,
-                                       GError          **error)
+_ostree_bootloader_uboot_write_config (OstreeBootloader *bootloader, int bootversion,
+                                       GPtrArray *new_deployments, GCancellable *cancellable,
+                                       GError **error)
 {
   OstreeBootloaderUboot *self = OSTREE_BOOTLOADER_UBOOT (bootloader);
 
   /* This should follow the symbolic link to the current bootversion. */
-  g_autofree char *config_contents =
-    glnx_file_get_contents_utf8_at (self->sysroot->sysroot_fd, uboot_config_path, NULL,
-                                    cancellable, error);
+  g_autofree char *config_contents = glnx_file_get_contents_utf8_at (
+      self->sysroot->sysroot_fd, uboot_config_path, NULL, cancellable, error);
   if (!config_contents)
     return FALSE;
 
-  g_autoptr(GPtrArray) new_lines = g_ptr_array_new_with_free_func (g_free);
-  if (!create_config_from_boot_loader_entries (self, bootversion, new_lines,
-                                               cancellable, error))
+  g_autoptr (GPtrArray) new_lines = g_ptr_array_new_with_free_func (g_free);
+  if (!create_config_from_boot_loader_entries (self, bootversion, new_lines, cancellable, error))
     return FALSE;
 
   g_autofree char *new_config_path = g_strdup_printf ("boot/loader.%d/uEnv.txt", bootversion);
   g_autofree char *new_config_contents = _ostree_sysroot_join_lines (new_lines);
   if (!glnx_file_replace_contents_at (self->sysroot->sysroot_fd, new_config_path,
-                                      (guint8*)new_config_contents, strlen (new_config_contents),
-                                      GLNX_FILE_REPLACE_DATASYNC_NEW,
-                                      cancellable, error))
+                                      (guint8 *)new_config_contents, strlen (new_config_contents),
+                                      GLNX_FILE_REPLACE_DATASYNC_NEW, cancellable, error))
     return FALSE;
 
   return TRUE;

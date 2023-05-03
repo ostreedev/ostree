@@ -20,16 +20,16 @@
 #include "config.h"
 #include "libglnx.h"
 #include "ostree-mutable-tree.h"
+#include "ot-unix-utils.h"
+#include <gio/gio.h>
 #include <glib.h>
 #include <stdlib.h>
-#include <gio/gio.h>
 #include <string.h>
-#include "ot-unix-utils.h"
 
 static void
 test_metadata_checksum (void)
 {
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GError) error = NULL;
   const char *checksum = "12345678901234567890123456789012";
   glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
 
@@ -45,20 +45,16 @@ test_metadata_checksum (void)
   g_assert (ostree_mutable_tree_ensure_dir (tree, "subdir", &subdir, &error));
   g_assert_nonnull (subdir);
 
-  ostree_mutable_tree_set_contents_checksum (
-      subdir, "11111111111111111111111111111111");
-  ostree_mutable_tree_set_metadata_checksum (
-      subdir, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-  ostree_mutable_tree_set_contents_checksum (
-      tree, "abcdefabcdefabcdefabcdefabcdefab");
+  ostree_mutable_tree_set_contents_checksum (subdir, "11111111111111111111111111111111");
+  ostree_mutable_tree_set_metadata_checksum (subdir, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+  ostree_mutable_tree_set_contents_checksum (tree, "abcdefabcdefabcdefabcdefabcdefab");
 
   g_assert_cmpstr (ostree_mutable_tree_get_contents_checksum (tree), ==,
-      "abcdefabcdefabcdefabcdefabcdefab");
-  ostree_mutable_tree_set_metadata_checksum (
-      subdir, "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+                   "abcdefabcdefabcdefabcdefabcdefab");
+  ostree_mutable_tree_set_metadata_checksum (subdir, "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
   g_assert_null (ostree_mutable_tree_get_contents_checksum (tree));
   g_assert_cmpstr (ostree_mutable_tree_get_contents_checksum (subdir), ==,
-      "11111111111111111111111111111111");
+                   "11111111111111111111111111111111");
 }
 
 static void
@@ -66,16 +62,14 @@ test_mutable_tree_walk (void)
 {
   glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
   glnx_unref_object OstreeMutableTree *parent = NULL;
-  g_autoptr(GPtrArray) split_path = NULL;
+  g_autoptr (GPtrArray) split_path = NULL;
   GError *error = NULL;
   const char *pathname = "a/b/c/d/e/f/g/i";
   const char *checksum = "01234567890123456789012345678901";
 
   g_assert (ot_util_path_split_validate (pathname, &split_path, &error));
 
-  g_assert (ostree_mutable_tree_ensure_parent_dirs (tree, split_path,
-                                                    checksum, &parent,
-                                                    &error));
+  g_assert (ostree_mutable_tree_ensure_parent_dirs (tree, split_path, checksum, &parent, &error));
   {
     glnx_unref_object OstreeMutableTree *subdir = NULL;
     g_assert (ostree_mutable_tree_walk (tree, split_path, 0, &subdir, &error));
@@ -106,8 +100,8 @@ test_ensure_parent_dirs (void)
 {
   glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
   glnx_unref_object OstreeMutableTree *parent = NULL;
-  g_autoptr(GPtrArray) split_path = NULL;
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GPtrArray) split_path = NULL;
+  g_autoptr (GError) error = NULL;
   const char *pathname = "/foo/bar/baz";
   const char *checksum = "01234567890123456789012345678901";
   g_autofree char *source_checksum = NULL;
@@ -117,15 +111,12 @@ test_ensure_parent_dirs (void)
 
   g_assert (ot_util_path_split_validate (pathname, &split_path, &error));
 
-  g_assert (ostree_mutable_tree_ensure_parent_dirs (tree, split_path,
-                                                    checksum, &parent,
-                                                    &error));
+  g_assert (ostree_mutable_tree_ensure_parent_dirs (tree, split_path, checksum, &parent, &error));
 
-  g_assert (ostree_mutable_tree_lookup (tree, "foo", &source_checksum,
-                                        &source_subdir, &error));
+  g_assert (ostree_mutable_tree_lookup (tree, "foo", &source_checksum, &source_subdir, &error));
 
-  g_assert_false (ostree_mutable_tree_lookup (tree, "bar", &source_checksum2,
-                                              &source_subdir2, &error));
+  g_assert_false (
+      ostree_mutable_tree_lookup (tree, "bar", &source_checksum2, &source_subdir2, &error));
   g_clear_error (&error);
 }
 
@@ -134,7 +125,7 @@ test_ensure_dir (void)
 {
   glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
   glnx_unref_object OstreeMutableTree *parent = NULL;
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GError) error = NULL;
   const char *dirname = "foo";
   const char *filename = "bar";
   const char *checksum = "01234567890123456789012345678901";
@@ -153,7 +144,7 @@ static void
 test_replace_file (void)
 {
   glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GError) error = NULL;
   const char *filename = "bar";
   const char *checksum = "01234567890123456789012345678901";
   const char *checksum2 = "ABCDEF01234567890123456789012345";
@@ -195,7 +186,8 @@ test_contents_checksum (void)
   g_assert_null (ostree_mutable_tree_get_contents_checksum (tree));
 }
 
-int main (int argc, char **argv)
+int
+main (int argc, char **argv)
 {
   g_test_init (&argc, &argv, NULL);
   g_test_add_func ("/mutable-tree/metadata-checksum", test_metadata_checksum);
@@ -204,5 +196,5 @@ int main (int argc, char **argv)
   g_test_add_func ("/mutable-tree/walk", test_mutable_tree_walk);
   g_test_add_func ("/mutable-tree/ensure-dir", test_ensure_dir);
   g_test_add_func ("/mutable-tree/replace-file", test_replace_file);
-  return g_test_run();
+  return g_test_run ();
 }

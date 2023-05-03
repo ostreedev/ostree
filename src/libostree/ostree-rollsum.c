@@ -22,14 +22,14 @@
 #include <string.h>
 #include <zlib.h>
 
-#include "ostree-rollsum.h"
-#include "libglnx.h"
 #include "bupsplit.h"
+#include "libglnx.h"
+#include "ostree-rollsum.h"
 
-#define ROLLSUM_BLOB_MAX (8192*4)
+#define ROLLSUM_BLOB_MAX (8192 * 4)
 
 static GHashTable *
-rollsum_chunks_crc32 (GBytes           *bytes)
+rollsum_chunks_crc32 (GBytes *bytes)
 {
   gsize start = 0;
   gboolean rollsum_end = FALSE;
@@ -49,26 +49,27 @@ rollsum_chunks_crc32 (GBytes           *bytes)
 
       if (!rollsum_end)
         {
-          offset = bupsplit_find_ofs (buf + start, MIN(G_MAXINT32, remaining), &bits);
+          offset = bupsplit_find_ofs (buf + start, MIN (G_MAXINT32, remaining), &bits);
           if (offset == 0)
             {
               rollsum_end = TRUE;
-              offset = MIN(ROLLSUM_BLOB_MAX, remaining);
+              offset = MIN (ROLLSUM_BLOB_MAX, remaining);
             }
           else if (offset > ROLLSUM_BLOB_MAX)
             offset = ROLLSUM_BLOB_MAX;
         }
       else
-        offset = MIN(ROLLSUM_BLOB_MAX, remaining);
+        offset = MIN (ROLLSUM_BLOB_MAX, remaining);
 
       /* Use zlib's crc32 */
-      { guint32 crc = crc32 (0L, NULL, 0);
+      {
+        guint32 crc = crc32 (0L, NULL, 0);
         GVariant *val;
         GPtrArray *matches;
 
         crc = crc32 (crc, buf, offset);
 
-        val = g_variant_ref_sink (g_variant_new ("(utt)", crc, (guint64) start, (guint64)offset));
+        val = g_variant_ref_sink (g_variant_new ("(utt)", crc, (guint64)start, (guint64)offset));
         matches = g_hash_table_lookup (ret_rollsums, GUINT_TO_POINTER (crc));
         if (!matches)
           {
@@ -86,12 +87,11 @@ rollsum_chunks_crc32 (GBytes           *bytes)
 }
 
 static gint
-compare_matches (const void *app,
-                 const void *bpp)
+compare_matches (const void *app, const void *bpp)
 {
-  GVariant **avpp = (GVariant**)app;
+  GVariant **avpp = (GVariant **)app;
   GVariant *a = *avpp;
-  GVariant **bvpp = (GVariant**)bpp;
+  GVariant **bvpp = (GVariant **)bpp;
   GVariant *b = *bvpp;
   guint64 a_start, b_start;
 
@@ -106,13 +106,12 @@ compare_matches (const void *app,
 }
 
 OstreeRollsumMatches *
-_ostree_compute_rollsum_matches (GBytes                           *from,
-                                 GBytes                           *to)
+_ostree_compute_rollsum_matches (GBytes *from, GBytes *to)
 {
   OstreeRollsumMatches *ret_rollsum = NULL;
-  g_autoptr(GHashTable) from_rollsum = NULL;
-  g_autoptr(GHashTable) to_rollsum = NULL;
-  g_autoptr(GPtrArray) matches = NULL;
+  g_autoptr (GHashTable) from_rollsum = NULL;
+  g_autoptr (GHashTable) to_rollsum = NULL;
+  g_autoptr (GPtrArray) matches = NULL;
   const guint8 *from_buf;
   gsize from_len;
   const guint8 *to_buf;
@@ -171,7 +170,8 @@ _ostree_compute_rollsum_matches (GBytes                           *from,
                    */
                   if (memcmp (from_buf + from_start, to_buf + to_start, to_offset) == 0)
                     {
-                      GVariant *match = g_variant_new ("(uttt)", fromcrc, to_offset, to_start, from_start);
+                      GVariant *match
+                          = g_variant_new ("(uttt)", fromcrc, to_offset, to_start, from_start);
                       ret_rollsum->bufmatches++;
                       ret_rollsum->match_size += to_offset;
                       g_ptr_array_add (matches, g_variant_ref_sink (match));
@@ -186,9 +186,12 @@ _ostree_compute_rollsum_matches (GBytes                           *from,
 
   g_ptr_array_sort (matches, compare_matches);
 
-  ret_rollsum->from_rollsums = from_rollsum; from_rollsum = NULL;
-  ret_rollsum->to_rollsums = to_rollsum; to_rollsum = NULL;
-  ret_rollsum->matches = matches; matches = NULL;
+  ret_rollsum->from_rollsums = from_rollsum;
+  from_rollsum = NULL;
+  ret_rollsum->to_rollsums = to_rollsum;
+  to_rollsum = NULL;
+  ret_rollsum->matches = matches;
+  matches = NULL;
 
   return ret_rollsum;
 }

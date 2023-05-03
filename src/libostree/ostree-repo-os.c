@@ -17,16 +17,16 @@
 
 #include "config.h"
 
-#include <sys/types.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <gio/gfiledescriptorbased.h>
-#include <gio/gunixinputstream.h>
 #include "libglnx.h"
-#include "ostree.h"
 #include "ostree-core-private.h"
 #include "ostree-repo-os.h"
+#include "ostree.h"
 #include "otutil.h"
+#include <gio/gfiledescriptorbased.h>
+#include <gio/gunixinputstream.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
 
 /**
  * ostree_commit_metadata_for_bootable:
@@ -38,13 +38,12 @@
  */
 _OSTREE_PUBLIC
 gboolean
-ostree_commit_metadata_for_bootable (GFile *root, GVariantDict *dict, GCancellable *cancellable, GError **error)
+ostree_commit_metadata_for_bootable (GFile *root, GVariantDict *dict, GCancellable *cancellable,
+                                     GError **error)
 {
-  g_autoptr(GFile) modules = g_file_resolve_relative_path (root, "usr/lib/modules");
-  g_autoptr(GFileEnumerator) dir_enum
-    = g_file_enumerate_children (modules, OSTREE_GIO_FAST_QUERYINFO,
-                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                 cancellable, error);
+  g_autoptr (GFile) modules = g_file_resolve_relative_path (root, "usr/lib/modules");
+  g_autoptr (GFileEnumerator) dir_enum = g_file_enumerate_children (
+      modules, OSTREE_GIO_FAST_QUERYINFO, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable, error);
   if (!dir_enum)
     return glnx_prefix_error (error, "Opening usr/lib/modules");
 
@@ -53,15 +52,14 @@ ostree_commit_metadata_for_bootable (GFile *root, GVariantDict *dict, GCancellab
     {
       GFileInfo *child_info;
       GFile *child_path;
-      if (!g_file_enumerator_iterate (dir_enum, &child_info, &child_path,
-                                      cancellable, error))
+      if (!g_file_enumerator_iterate (dir_enum, &child_info, &child_path, cancellable, error))
         return FALSE;
       if (child_info == NULL)
         break;
       if (g_file_info_get_file_type (child_info) != G_FILE_TYPE_DIRECTORY)
         continue;
 
-      g_autoptr(GFile) kernel_path = g_file_resolve_relative_path (child_path, "vmlinuz");
+      g_autoptr (GFile) kernel_path = g_file_resolve_relative_path (child_path, "vmlinuz");
       if (!g_file_query_exists (kernel_path, NULL))
         continue;
 

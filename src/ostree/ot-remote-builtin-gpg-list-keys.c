@@ -21,8 +21,8 @@
 
 #include "otutil.h"
 
-#include "ot-main.h"
 #include "ot-dump.h"
+#include "ot-main.h"
 #include "ot-remote-builtins.h"
 
 /* ATTENTION:
@@ -30,28 +30,22 @@
  * man page (man/ostree-remote.xml) when changing the option list.
  */
 
-static GOptionEntry option_entries[] = {
-  { NULL }
-};
+static GOptionEntry option_entries[] = { { NULL } };
 
 gboolean
-ot_remote_builtin_list_gpg_keys (int                       argc,
-                                 char                    **argv,
-                                 OstreeCommandInvocation  *invocation,
-                                 GCancellable             *cancellable,
-                                 GError                  **error)
+ot_remote_builtin_list_gpg_keys (int argc, char **argv, OstreeCommandInvocation *invocation,
+                                 GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = g_option_context_new ("NAME");
-  g_autoptr(OstreeRepo) repo = NULL;
-  if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
-                                    invocation, &repo, cancellable, error))
+  g_autoptr (GOptionContext) context = g_option_context_new ("NAME");
+  g_autoptr (OstreeRepo) repo = NULL;
+  if (!ostree_option_context_parse (context, option_entries, &argc, &argv, invocation, &repo,
+                                    cancellable, error))
     return FALSE;
 
   const char *remote_name = (argc > 1) ? argv[1] : NULL;
 
-  g_autoptr(GPtrArray) keys = NULL;
-  if (!ostree_repo_remote_get_gpg_keys (repo, remote_name, NULL, &keys,
-                                        cancellable, error))
+  g_autoptr (GPtrArray) keys = NULL;
+  if (!ostree_repo_remote_get_gpg_keys (repo, remote_name, NULL, &keys, cancellable, error))
     return FALSE;
 
   for (guint i = 0; i < keys->len; i++)

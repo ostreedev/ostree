@@ -20,38 +20,32 @@
 
 #include "config.h"
 
-
+#include "ostree-libarchive-input-stream.h"
 #include <archive.h>
 #include <gio/gio.h>
-#include "ostree-libarchive-input-stream.h"
 
-enum {
+enum
+{
   PROP_0,
   PROP_ARCHIVE
 };
 
-struct _OstreeLibarchiveInputStreamPrivate {
+struct _OstreeLibarchiveInputStreamPrivate
+{
   struct archive *archive;
 };
 
-G_DEFINE_TYPE_WITH_PRIVATE (OstreeLibarchiveInputStream, _ostree_libarchive_input_stream, G_TYPE_INPUT_STREAM)
+G_DEFINE_TYPE_WITH_PRIVATE (OstreeLibarchiveInputStream, _ostree_libarchive_input_stream,
+                            G_TYPE_INPUT_STREAM)
 
-static void     ostree_libarchive_input_stream_set_property (GObject              *object,
-						  guint                 prop_id,
-						  const GValue         *value,
-						  GParamSpec           *pspec);
-static void     ostree_libarchive_input_stream_get_property (GObject              *object,
-						  guint                 prop_id,
-						  GValue               *value,
-						  GParamSpec           *pspec);
-static gssize   ostree_libarchive_input_stream_read         (GInputStream         *stream,
-						  void                 *buffer,
-						  gsize                 count,
-						  GCancellable         *cancellable,
-						  GError              **error);
-static gboolean ostree_libarchive_input_stream_close        (GInputStream         *stream,
-						  GCancellable         *cancellable,
-						  GError              **error);
+static void ostree_libarchive_input_stream_set_property (GObject *object, guint prop_id,
+                                                         const GValue *value, GParamSpec *pspec);
+static void ostree_libarchive_input_stream_get_property (GObject *object, guint prop_id,
+                                                         GValue *value, GParamSpec *pspec);
+static gssize ostree_libarchive_input_stream_read (GInputStream *stream, void *buffer, gsize count,
+                                                   GCancellable *cancellable, GError **error);
+static gboolean ostree_libarchive_input_stream_close (GInputStream *stream,
+                                                      GCancellable *cancellable, GError **error);
 
 static void
 ostree_libarchive_input_stream_finalize (GObject *object)
@@ -77,21 +71,15 @@ _ostree_libarchive_input_stream_class_init (OstreeLibarchiveInputStreamClass *kl
    *
    * The archive that the stream reads from.
    */
-  g_object_class_install_property (gobject_class,
-				   PROP_ARCHIVE,
-				   g_param_spec_pointer ("archive",
-							 "", "",
-							 G_PARAM_READWRITE |
-							 G_PARAM_CONSTRUCT_ONLY |
-							 G_PARAM_STATIC_STRINGS));
-
+  g_object_class_install_property (
+      gobject_class, PROP_ARCHIVE,
+      g_param_spec_pointer ("archive", "", "",
+                            G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 
 static void
-ostree_libarchive_input_stream_set_property (GObject         *object,
-					     guint            prop_id,
-					     const GValue    *value,
-					     GParamSpec      *pspec)
+ostree_libarchive_input_stream_set_property (GObject *object, guint prop_id, const GValue *value,
+                                             GParamSpec *pspec)
 {
   OstreeLibarchiveInputStream *self;
 
@@ -109,10 +97,8 @@ ostree_libarchive_input_stream_set_property (GObject         *object,
 }
 
 static void
-ostree_libarchive_input_stream_get_property (GObject    *object,
-					     guint       prop_id,
-					     GValue     *value,
-					     GParamSpec *pspec)
+ostree_libarchive_input_stream_get_property (GObject *object, guint prop_id, GValue *value,
+                                             GParamSpec *pspec)
 {
   OstreeLibarchiveInputStream *self;
 
@@ -139,19 +125,14 @@ _ostree_libarchive_input_stream_new (struct archive *a)
 {
   OstreeLibarchiveInputStream *stream;
 
-  stream = g_object_new (OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM,
-			 "archive", a,
-			 NULL);
+  stream = g_object_new (OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM, "archive", a, NULL);
 
   return G_INPUT_STREAM (stream);
 }
 
 static gssize
-ostree_libarchive_input_stream_read (GInputStream  *stream,
-				     void          *buffer,
-				     gsize          count,
-				     GCancellable  *cancellable,
-				     GError       **error)
+ostree_libarchive_input_stream_read (GInputStream *stream, void *buffer, gsize count,
+                                     GCancellable *cancellable, GError **error)
 {
   OstreeLibarchiveInputStream *self;
   gssize res = -1;
@@ -164,17 +145,16 @@ ostree_libarchive_input_stream_read (GInputStream  *stream,
   res = archive_read_data (self->priv->archive, buffer, count);
   if (res < 0)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "%s", archive_error_string (self->priv->archive));
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "%s",
+                   archive_error_string (self->priv->archive));
     }
 
   return res;
 }
 
 static gboolean
-ostree_libarchive_input_stream_close (GInputStream  *stream,
-				      GCancellable  *cancellable,
-				      GError       **error)
+ostree_libarchive_input_stream_close (GInputStream *stream, GCancellable *cancellable,
+                                      GError **error)
 {
   return TRUE;
 }

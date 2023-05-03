@@ -32,16 +32,16 @@ void
 _ostree_fetcher_uri_free (OstreeFetcherURI *uri)
 {
   if (uri)
-    g_uri_unref ((GUri*)uri);
+    g_uri_unref ((GUri *)uri);
 }
 
 OstreeFetcherURI *
-_ostree_fetcher_uri_parse (const char       *str,
-                           GError          **error)
+_ostree_fetcher_uri_parse (const char *str, GError **error)
 {
   GUri *uri = NULL;
 #if GLIB_CHECK_VERSION(2, 68, 0)
-  uri = g_uri_parse (str, G_URI_FLAGS_HAS_PASSWORD | G_URI_FLAGS_ENCODED | G_URI_FLAGS_SCHEME_NORMALIZE, error);
+  uri = g_uri_parse (
+      str, G_URI_FLAGS_HAS_PASSWORD | G_URI_FLAGS_ENCODED | G_URI_FLAGS_SCHEME_NORMALIZE, error);
 #else
   /* perform manual scheme normalization for older glib */
   uri = g_uri_parse (str, G_URI_FLAGS_HAS_PASSWORD | G_URI_FLAGS_ENCODED, error);
@@ -50,42 +50,36 @@ _ostree_fetcher_uri_parse (const char       *str,
       GUri *nuri = NULL;
       switch (g_uri_get_port (uri))
         {
-          case 21:
-            if (!strcmp (g_uri_get_scheme (uri), "ftp"))
-              break;
-            return (OstreeFetcherURI*)uri;
-          case 80:
-            if (!strcmp (g_uri_get_scheme (uri), "http"))
-              break;
-            return (OstreeFetcherURI*)uri;
-          case 443:
-            if (!strcmp (g_uri_get_scheme (uri), "https"))
-              break;
-            return (OstreeFetcherURI*)uri;
-          default:
-            return (OstreeFetcherURI*)uri;
+        case 21:
+          if (!strcmp (g_uri_get_scheme (uri), "ftp"))
+            break;
+          return (OstreeFetcherURI *)uri;
+        case 80:
+          if (!strcmp (g_uri_get_scheme (uri), "http"))
+            break;
+          return (OstreeFetcherURI *)uri;
+        case 443:
+          if (!strcmp (g_uri_get_scheme (uri), "https"))
+            break;
+          return (OstreeFetcherURI *)uri;
+        default:
+          return (OstreeFetcherURI *)uri;
         }
-      nuri = g_uri_build_with_user (g_uri_get_flags (uri), "http",
-                                    g_uri_get_user (uri),
-                                    g_uri_get_password (uri),
-                                    NULL,
-                                    g_uri_get_host (uri), -1,
-                                    g_uri_get_path (uri),
-                                    g_uri_get_query (uri),
+      nuri = g_uri_build_with_user (g_uri_get_flags (uri), "http", g_uri_get_user (uri),
+                                    g_uri_get_password (uri), NULL, g_uri_get_host (uri), -1,
+                                    g_uri_get_path (uri), g_uri_get_query (uri),
                                     g_uri_get_fragment (uri));
       g_uri_unref (uri);
       uri = nuri;
     }
 #endif
-  return (OstreeFetcherURI*)uri;
+  return (OstreeFetcherURI *)uri;
 }
 
 static OstreeFetcherURI *
-_ostree_fetcher_uri_new_path_internal (OstreeFetcherURI *uri,
-                                       gboolean          extend,
-                                       const char       *path)
+_ostree_fetcher_uri_new_path_internal (OstreeFetcherURI *uri, gboolean extend, const char *path)
 {
-  GUri *guri = (GUri*)uri;
+  GUri *guri = (GUri *)uri;
   const char *opath = g_uri_get_path (guri);
   g_autofree char *newpath = NULL;
   if (path)
@@ -100,28 +94,20 @@ _ostree_fetcher_uri_new_path_internal (OstreeFetcherURI *uri,
           opath = path;
         }
     }
-  return (OstreeFetcherURI*)g_uri_build_with_user (g_uri_get_flags (guri),
-                                                   g_uri_get_scheme (guri),
-                                                   g_uri_get_user (guri),
-                                                   g_uri_get_password (guri),
-                                                   NULL,
-                                                   g_uri_get_host (guri),
-                                                   g_uri_get_port (guri),
-                                                   opath,
-                                                   g_uri_get_query (guri),
-                                                   g_uri_get_fragment (guri));
+  return (OstreeFetcherURI *)g_uri_build_with_user (
+      g_uri_get_flags (guri), g_uri_get_scheme (guri), g_uri_get_user (guri),
+      g_uri_get_password (guri), NULL, g_uri_get_host (guri), g_uri_get_port (guri), opath,
+      g_uri_get_query (guri), g_uri_get_fragment (guri));
 }
 
 OstreeFetcherURI *
-_ostree_fetcher_uri_new_path (OstreeFetcherURI *uri,
-                              const char       *path)
+_ostree_fetcher_uri_new_path (OstreeFetcherURI *uri, const char *path)
 {
   return _ostree_fetcher_uri_new_path_internal (uri, FALSE, path);
 }
 
 OstreeFetcherURI *
-_ostree_fetcher_uri_new_subpath (OstreeFetcherURI *uri,
-                                 const char       *subpath)
+_ostree_fetcher_uri_new_subpath (OstreeFetcherURI *uri, const char *subpath)
 {
   return _ostree_fetcher_uri_new_path_internal (uri, TRUE, subpath);
 }
@@ -135,21 +121,20 @@ _ostree_fetcher_uri_clone (OstreeFetcherURI *uri)
 char *
 _ostree_fetcher_uri_get_scheme (OstreeFetcherURI *uri)
 {
-  return g_strdup (g_uri_get_scheme ((GUri*)uri));
+  return g_strdup (g_uri_get_scheme ((GUri *)uri));
 }
 
 char *
 _ostree_fetcher_uri_get_path (OstreeFetcherURI *uri)
 {
-  return g_strdup (g_uri_get_path ((GUri*)uri));
+  return g_strdup (g_uri_get_path ((GUri *)uri));
 }
 
 char *
 _ostree_fetcher_uri_to_string (OstreeFetcherURI *uri)
 {
-  return g_uri_to_string_partial ((GUri*)uri, G_URI_HIDE_PASSWORD);
+  return g_uri_to_string_partial ((GUri *)uri, G_URI_HIDE_PASSWORD);
 }
-
 
 /* Only accept http, https, and file; particularly curl has a ton of other
  * backends like sftp that we don't want, and this also gracefully filters
@@ -158,9 +143,10 @@ _ostree_fetcher_uri_to_string (OstreeFetcherURI *uri)
 gboolean
 _ostree_fetcher_uri_validate (OstreeFetcherURI *uri, GError **error)
 {
-  const char *scheme = g_uri_get_scheme ((GUri*)uri);
+  const char *scheme = g_uri_get_scheme ((GUri *)uri);
   // TODO only allow file if explicitly requested by a higher level
-  if (!(g_str_equal (scheme, "http") || g_str_equal (scheme, "https") || g_str_equal (scheme, "file")))
+  if (!(g_str_equal (scheme, "http") || g_str_equal (scheme, "https")
+        || g_str_equal (scheme, "file")))
     {
       g_autofree char *s = _ostree_fetcher_uri_to_string (uri);
       return glnx_throw (error, "Invalid URI scheme in %s", s);

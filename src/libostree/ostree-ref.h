@@ -23,8 +23,8 @@
 #pragma once
 
 #include <gio/gio.h>
-#include <glib.h>
 #include <glib-object.h>
+#include <glib.h>
 
 #include "ostree-types.h"
 
@@ -44,16 +44,15 @@ G_BEGIN_DECLS
  */
 typedef struct
 {
-  gchar *collection_id;  /* (nullable) */
-  gchar *ref_name;  /* (not nullable) */
+  gchar *collection_id; /* (nullable) */
+  gchar *ref_name;      /* (not nullable) */
 } OstreeCollectionRef;
 
 _OSTREE_PUBLIC
 GType ostree_collection_ref_get_type (void);
 
 _OSTREE_PUBLIC
-OstreeCollectionRef *ostree_collection_ref_new (const gchar *collection_id,
-                                                const gchar *ref_name);
+OstreeCollectionRef *ostree_collection_ref_new (const gchar *collection_id, const gchar *ref_name);
 _OSTREE_PUBLIC
 OstreeCollectionRef *ostree_collection_ref_dup (const OstreeCollectionRef *ref);
 _OSTREE_PUBLIC
@@ -62,11 +61,10 @@ void ostree_collection_ref_free (OstreeCollectionRef *ref);
 _OSTREE_PUBLIC
 guint ostree_collection_ref_hash (gconstpointer ref);
 _OSTREE_PUBLIC
-gboolean ostree_collection_ref_equal (gconstpointer ref1,
-                                      gconstpointer ref2);
+gboolean ostree_collection_ref_equal (gconstpointer ref1, gconstpointer ref2);
 
 _OSTREE_PUBLIC
-OstreeCollectionRef **ostree_collection_ref_dupv (const OstreeCollectionRef * const *refs);
+OstreeCollectionRef **ostree_collection_ref_dupv (const OstreeCollectionRef *const *refs);
 _OSTREE_PUBLIC
 void ostree_collection_ref_freev (OstreeCollectionRef **refs);
 
@@ -82,6 +80,6 @@ void ostree_collection_ref_freev (OstreeCollectionRef **refs);
  *
  * Since: 2018.6
  */
-typedef OstreeCollectionRef** OstreeCollectionRefv;
+typedef OstreeCollectionRef **OstreeCollectionRefv;
 
 G_END_DECLS

@@ -24,22 +24,21 @@
 #include "otutil.h"
 
 #include <gio/gio.h>
-#include <glib/gstdio.h>
 #include <gio/gunixoutputstream.h>
+#include <glib/gstdio.h>
 
+#include <errno.h>
+#include <fcntl.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
-#include <fcntl.h>
 #include <unistd.h>
-#include <stdlib.h>
-#include <errno.h>
 
 /* Ensure that a pathname component @name does not contain the special Unix
  * entries `.` or `..`, and does not contain `/`.
  */
 gboolean
-ot_util_filename_validate (const char *name,
-                           GError    **error)
+ot_util_filename_validate (const char *name, GError **error)
 {
   if (name == NULL)
     return glnx_throw (error, "Invalid NULL filename");
@@ -55,25 +54,26 @@ ot_util_filename_validate (const char *name,
 }
 
 static GPtrArray *
-ot_split_string_ptrarray (const char *str,
-                          char        c)
+ot_split_string_ptrarray (const char *str, char c)
 {
   GPtrArray *ret = g_ptr_array_new_with_free_func (g_free);
 
   const char *p;
-  do {
-    p = strchr (str, '/');
-    if (!p)
-      {
-        g_ptr_array_add (ret, g_strdup (str));
-        str = NULL;
-      }
-    else
-      {
-        g_ptr_array_add (ret, g_strndup (str, p - str));
-        str = p + 1;
-      }
-  } while (str && *str);
+  do
+    {
+      p = strchr (str, '/');
+      if (!p)
+        {
+          g_ptr_array_add (ret, g_strdup (str));
+          str = NULL;
+        }
+      else
+        {
+          g_ptr_array_add (ret, g_strndup (str, p - str));
+          str = p + 1;
+        }
+    }
+  while (str && *str);
 
   return ret;
 }
@@ -82,17 +82,15 @@ ot_split_string_ptrarray (const char *str,
  * validating that it does not have backreferences (`..`) etc.
  */
 gboolean
-ot_util_path_split_validate (const char *path,
-                             GPtrArray **out_components,
-                             GError    **error)
+ot_util_path_split_validate (const char *path, GPtrArray **out_components, GError **error)
 {
   if (strlen (path) > PATH_MAX)
     return glnx_throw (error, "Path '%s' is too long", path);
 
-  g_autoptr(GPtrArray) ret_components = ot_split_string_ptrarray (path, '/');
+  g_autoptr (GPtrArray) ret_components = ot_split_string_ptrarray (path, '/');
 
   /* Canonicalize by removing '.' and '', throw an error on .. */
-  for (int i = ret_components->len-1; i >= 0; i--)
+  for (int i = ret_components->len - 1; i >= 0; i--)
     {
       const char *name = ret_components->pdata[i];
       if (strcmp (name, "..") == 0)
@@ -101,6 +99,6 @@ ot_util_path_split_validate (const char *path,
         g_ptr_array_remove_index (ret_components, i);
     }
 
-  ot_transfer_out_value(out_components, &ret_components);
+  ot_transfer_out_value (out_components, &ret_components);
   return TRUE;
 }

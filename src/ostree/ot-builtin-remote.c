@@ -21,48 +21,31 @@
 
 #include "config.h"
 
-#include "ot-main.h"
 #include "ot-builtins.h"
+#include "ot-main.h"
 #include "ot-remote-builtins.h"
 
 static OstreeCommand remote_subcommands[] = {
-  { "add", OSTREE_BUILTIN_FLAG_NO_REPO,
-    ot_remote_builtin_add,
-    "Add a remote repository" },
-  { "delete", OSTREE_BUILTIN_FLAG_NO_REPO,
-    ot_remote_builtin_delete,
-    "Delete a remote repository" },
-  { "show-url", OSTREE_BUILTIN_FLAG_NONE,
-    ot_remote_builtin_show_url,
+  { "add", OSTREE_BUILTIN_FLAG_NO_REPO, ot_remote_builtin_add, "Add a remote repository" },
+  { "delete", OSTREE_BUILTIN_FLAG_NO_REPO, ot_remote_builtin_delete, "Delete a remote repository" },
+  { "show-url", OSTREE_BUILTIN_FLAG_NONE, ot_remote_builtin_show_url,
     "Show remote repository URL" },
-  { "list", OSTREE_BUILTIN_FLAG_NONE,
-    ot_remote_builtin_list,
-    "List remote repository names" },
+  { "list", OSTREE_BUILTIN_FLAG_NONE, ot_remote_builtin_list, "List remote repository names" },
 #ifndef OSTREE_DISABLE_GPGME
-  { "gpg-import", OSTREE_BUILTIN_FLAG_NONE,
-    ot_remote_builtin_gpg_import,
-    "Import GPG keys" },
-  { "gpg-list-keys", OSTREE_BUILTIN_FLAG_NONE,
-    ot_remote_builtin_list_gpg_keys,
+  { "gpg-import", OSTREE_BUILTIN_FLAG_NONE, ot_remote_builtin_gpg_import, "Import GPG keys" },
+  { "gpg-list-keys", OSTREE_BUILTIN_FLAG_NONE, ot_remote_builtin_list_gpg_keys,
     "Show remote GPG keys" },
 #endif /* OSTREE_DISABLE_GPGME */
 #ifdef HAVE_LIBCURL_OR_LIBSOUP
-  { "add-cookie", OSTREE_BUILTIN_FLAG_NONE,
-    ot_remote_builtin_add_cookie,
+  { "add-cookie", OSTREE_BUILTIN_FLAG_NONE, ot_remote_builtin_add_cookie,
     "Add a cookie to remote" },
-  { "delete-cookie", OSTREE_BUILTIN_FLAG_NONE,
-    ot_remote_builtin_delete_cookie,
+  { "delete-cookie", OSTREE_BUILTIN_FLAG_NONE, ot_remote_builtin_delete_cookie,
     "Remove one cookie from remote" },
-  { "list-cookies", OSTREE_BUILTIN_FLAG_NONE,
-    ot_remote_builtin_list_cookies,
+  { "list-cookies", OSTREE_BUILTIN_FLAG_NONE, ot_remote_builtin_list_cookies,
     "Show remote repository cookies" },
 #endif
-  { "refs", OSTREE_BUILTIN_FLAG_NONE,
-    ot_remote_builtin_refs,
-    "List remote refs" },
-  { "summary", OSTREE_BUILTIN_FLAG_NONE,
-    ot_remote_builtin_summary,
-    "Show remote summary" },
+  { "refs", OSTREE_BUILTIN_FLAG_NONE, ot_remote_builtin_refs, "List remote refs" },
+  { "summary", OSTREE_BUILTIN_FLAG_NONE, ot_remote_builtin_summary, "Show remote summary" },
   { NULL, 0, NULL, NULL }
 };
 
@@ -72,7 +55,7 @@ remote_option_context_new_with_commands (void)
   OstreeCommand *subcommand = remote_subcommands;
   GOptionContext *context = g_option_context_new ("COMMAND");
 
-  g_autoptr(GString) summary = g_string_new ("Builtin \"remote\" Commands:");
+  g_autoptr (GString) summary = g_string_new ("Builtin \"remote\" Commands:");
 
   while (subcommand->name != NULL)
     {
@@ -91,10 +74,11 @@ remote_option_context_new_with_commands (void)
 }
 
 gboolean
-ostree_builtin_remote (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ostree_builtin_remote (int argc, char **argv, OstreeCommandInvocation *invocation,
+                       GCancellable *cancellable, GError **error)
 {
   const char *subcommand_name = NULL;
-  int in,out;
+  int in, out;
   for (in = 1, out = 1; in < argc; in++, out++)
     {
       /* The non-option is the command, take it out of the arguments */
@@ -128,14 +112,13 @@ ostree_builtin_remote (int argc, char **argv, OstreeCommandInvocation *invocatio
 
   if (!subcommand->name)
     {
-      g_autoptr(GOptionContext) context = NULL;
+      g_autoptr (GOptionContext) context = NULL;
       g_autofree char *help = NULL;
 
       context = remote_option_context_new_with_commands ();
 
       /* This will not return for some options (e.g. --version). */
-      if (ostree_option_context_parse (context, NULL, &argc, &argv,
-                                       invocation, NULL, cancellable,
+      if (ostree_option_context_parse (context, NULL, &argc, &argv, invocation, NULL, cancellable,
                                        error))
         {
           if (subcommand_name == NULL)

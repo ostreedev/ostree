@@ -17,8 +17,8 @@
 
 #include "config.h"
 
-#include "ostree-sysroot-private.h"
 #include "ostree-bootloader-grub2.h"
+#include "ostree-sysroot-private.h"
 #include "otutil.h"
 #include <gio/gfiledescriptorbased.h>
 #include <gio/gunixoutputstream.h>
@@ -32,7 +32,7 @@
  * Allow us to override this at build time if we're
  * using a modern GRUB installation.
  */
-#if !defined(WITH_MODERN_GRUB) && ( defined(__i386__) || defined(__x86_64__) )
+#if !defined(WITH_MODERN_GRUB) && (defined(__i386__) || defined(__x86_64__))
 #define GRUB2_SUFFIX "16"
 #else
 #define GRUB2_SUFFIX ""
@@ -53,49 +53,48 @@
 
 struct _OstreeBootloaderGrub2
 {
-  GObject       parent_instance;
+  GObject parent_instance;
 
-  OstreeSysroot  *sysroot;
-  GFile          *config_path_bios_1;
-  GFile          *config_path_bios_2;
-  GFile          *config_path_efi;
-  gboolean        is_efi;
+  OstreeSysroot *sysroot;
+  GFile *config_path_bios_1;
+  GFile *config_path_bios_2;
+  GFile *config_path_efi;
+  gboolean is_efi;
 };
 
 typedef GObjectClass OstreeBootloaderGrub2Class;
 
 static void _ostree_bootloader_grub2_bootloader_iface_init (OstreeBootloaderInterface *iface);
 G_DEFINE_TYPE_WITH_CODE (OstreeBootloaderGrub2, _ostree_bootloader_grub2, G_TYPE_OBJECT,
-                         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_BOOTLOADER, _ostree_bootloader_grub2_bootloader_iface_init));
+                         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_BOOTLOADER,
+                                                _ostree_bootloader_grub2_bootloader_iface_init));
 
 static gboolean
-_ostree_bootloader_grub2_query (OstreeBootloader *bootloader,
-                                gboolean         *out_is_active,
-                                GCancellable     *cancellable,
-                                GError          **error)
+_ostree_bootloader_grub2_query (OstreeBootloader *bootloader, gboolean *out_is_active,
+                                GCancellable *cancellable, GError **error)
 {
   OstreeBootloaderGrub2 *self = OSTREE_BOOTLOADER_GRUB2 (bootloader);
 
   /* Look for the BIOS path first */
-  if (g_file_query_exists (self->config_path_bios_1, NULL) ||
-      g_file_query_exists (self->config_path_bios_2, NULL))
+  if (g_file_query_exists (self->config_path_bios_1, NULL)
+      || g_file_query_exists (self->config_path_bios_2, NULL))
     {
       /* If we found it, we're done */
       *out_is_active = TRUE;
       return TRUE;
     }
 
-  g_autoptr(GFile) efi_basedir = g_file_resolve_relative_path (self->sysroot->path, "boot/efi/EFI");
+  g_autoptr (GFile) efi_basedir
+      = g_file_resolve_relative_path (self->sysroot->path, "boot/efi/EFI");
 
   g_clear_object (&self->config_path_efi);
 
   if (g_file_query_exists (efi_basedir, NULL))
     {
-      g_autoptr(GFileEnumerator) direnum = NULL;
+      g_autoptr (GFileEnumerator) direnum = NULL;
 
       direnum = g_file_enumerate_children (efi_basedir, OSTREE_GIO_FAST_QUERYINFO,
-                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                           cancellable, error);
+                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable, error);
       if (!direnum)
         return FALSE;
 
@@ -104,8 +103,7 @@ _ostree_bootloader_grub2_query (OstreeBootloader *bootloader,
           GFileInfo *file_info;
           const char *fname;
 
-          if (!g_file_enumerator_iterate (direnum, &file_info, NULL,
-                                          cancellable, error))
+          if (!g_file_enumerator_iterate (direnum, &file_info, NULL, cancellable, error))
             return FALSE;
           if (file_info == NULL)
             break;
@@ -117,8 +115,8 @@ _ostree_bootloader_grub2_query (OstreeBootloader *bootloader,
           if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_DIRECTORY)
             continue;
 
-          g_autofree char *subdir_grub_cfg =
-            g_build_filename (gs_file_get_path_cached (efi_basedir), fname, "grub.cfg", NULL);
+          g_autofree char *subdir_grub_cfg
+              = g_build_filename (gs_file_get_path_cached (efi_basedir), fname, "grub.cfg", NULL);
 
           if (g_file_test (subdir_grub_cfg, G_FILE_TEST_EXISTS))
             {
@@ -152,20 +150,15 @@ _ostree_bootloader_grub2_get_name (OstreeBootloader *bootloader)
  * https://github.com/ostreedev/ostree/issues/717
  */
 gboolean
-_ostree_bootloader_grub2_generate_config (OstreeSysroot                 *sysroot,
-                                          int                            bootversion,
-                                          int                            target_fd,
-                                          GCancellable                  *cancellable,
-                                          GError                       **error)
+_ostree_bootloader_grub2_generate_config (OstreeSysroot *sysroot, int bootversion, int target_fd,
+                                          GCancellable *cancellable, GError **error)
 {
   /* So... yeah.  Just going to hardcode these. */
   static const char hardcoded_video[] = "load_video\n"
-    "set gfxpayload=keep\n";
+                                        "set gfxpayload=keep\n";
   static const char hardcoded_insmods[] = "insmod gzio\n";
-  const char *grub2_boot_device_id =
-    g_getenv ("GRUB2_BOOT_DEVICE_ID");
-  const char *grub2_prepare_root_cache =
-    g_getenv ("GRUB2_PREPARE_ROOT_CACHE");
+  const char *grub2_boot_device_id = g_getenv ("GRUB2_BOOT_DEVICE_ID");
+  const char *grub2_prepare_root_cache = g_getenv ("GRUB2_PREPARE_ROOT_CACHE");
 
   /* We must have been called via the wrapper script */
   g_assert (grub2_boot_device_id != NULL);
@@ -174,15 +167,14 @@ _ostree_bootloader_grub2_generate_config (OstreeSysroot                 *sysroot
   /* Passed from the parent */
   gboolean is_efi = g_getenv ("_OSTREE_GRUB2_IS_EFI") != NULL;
 
-  g_autoptr(GOutputStream) out_stream = g_unix_output_stream_new (target_fd, FALSE);
+  g_autoptr (GOutputStream) out_stream = g_unix_output_stream_new (target_fd, FALSE);
 
-  g_autoptr(GPtrArray) loader_configs = NULL;
-  if (!_ostree_sysroot_read_boot_loader_configs (sysroot, bootversion,
-                                                 &loader_configs,
-                                                 cancellable, error))
+  g_autoptr (GPtrArray) loader_configs = NULL;
+  if (!_ostree_sysroot_read_boot_loader_configs (sysroot, bootversion, &loader_configs, cancellable,
+                                                 error))
     return FALSE;
 
-  g_autoptr(GString) output = g_string_new ("");
+  g_autoptr (GString) output = g_string_new ("");
   for (guint i = 0; i < loader_configs->len; i++)
     {
       OstreeBootconfigParser *config = loader_configs->pdata[i];
@@ -204,7 +196,9 @@ _ostree_bootloader_grub2_generate_config (OstreeSysroot                 *sysroot
       quoted_title = g_shell_quote (title);
       uuid = g_strdup_printf ("ostree-%u-%s", (guint)i, grub2_boot_device_id);
       quoted_uuid = g_shell_quote (uuid);
-      g_string_append_printf (output, "menuentry %s --class gnu-linux --class gnu --class os --unrestricted %s {\n", quoted_title, quoted_uuid);
+      g_string_append_printf (
+          output, "menuentry %s --class gnu-linux --class gnu --class os --unrestricted %s {\n",
+          quoted_title, quoted_uuid);
       g_free (uuid);
       g_free (quoted_title);
       g_free (quoted_uuid);
@@ -259,14 +253,15 @@ _ostree_bootloader_grub2_generate_config (OstreeSysroot                 *sysroot
     }
 
   gsize bytes_written;
-  if (!g_output_stream_write_all (out_stream, output->str, output->len,
-                                  &bytes_written, cancellable, error))
+  if (!g_output_stream_write_all (out_stream, output->str, output->len, &bytes_written, cancellable,
+                                  error))
     return FALSE;
 
   return TRUE;
 }
 
-typedef struct {
+typedef struct
+{
   const char *root;
   const char *bootversion_str;
   gboolean is_efi;
@@ -302,7 +297,7 @@ grub2_child_setup (gpointer user_data)
       _exit (1);
     }
 
-  if (mount (NULL, "/", "none", MS_REC|MS_PRIVATE, NULL) < 0)
+  if (mount (NULL, "/", "none", MS_REC | MS_PRIVATE, NULL) < 0)
     {
       perror ("Failed to make / a private mount");
       _exit (1);
@@ -329,15 +324,14 @@ grub2_child_setup (gpointer user_data)
 
 /* Main entrypoint for writing GRUB configuration. */
 static gboolean
-_ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
-                                       int                    bootversion,
-                                       GPtrArray             *new_deployments,
-                                       GCancellable          *cancellable,
-                                       GError               **error)
+_ostree_bootloader_grub2_write_config (OstreeBootloader *bootloader, int bootversion,
+                                       GPtrArray *new_deployments, GCancellable *cancellable,
+                                       GError **error)
 {
   OstreeBootloaderGrub2 *self = OSTREE_BOOTLOADER_GRUB2 (bootloader);
 
-  /* Autotests can set this envvar to select which code path to test, useful for OS installers as well */
+  /* Autotests can set this envvar to select which code path to test, useful for OS installers as
+   * well */
   gboolean use_system_grub2_mkconfig = TRUE;
 #ifdef USE_BUILTIN_GRUB2_MKCONFIG
   use_system_grub2_mkconfig = FALSE;
@@ -351,14 +345,15 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
         use_system_grub2_mkconfig = FALSE;
     }
   else
-    grub_exec = use_system_grub2_mkconfig ? GRUB2_MKCONFIG_PATH : TARGET_PREFIX "/lib/ostree/ostree-grub-generator";
+    grub_exec = use_system_grub2_mkconfig ? GRUB2_MKCONFIG_PATH
+                                          : TARGET_PREFIX "/lib/ostree/ostree-grub-generator";
 
   g_autofree char *grub2_mkconfig_chroot = NULL;
   if (use_system_grub2_mkconfig && ostree_sysroot_get_booted_deployment (self->sysroot) == NULL
       && g_file_has_parent (self->sysroot->path, NULL))
     {
       OstreeDeployment *tool_deployment;
-      g_autoptr(GFile) tool_deployment_root = NULL;
+      g_autoptr (GFile) tool_deployment_root = NULL;
 
       g_assert_cmpint (new_deployments->len, >, 0);
       tool_deployment = new_deployments->pdata[0];
@@ -372,14 +367,15 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
        * This all only applies if we're not using the builtin
        * generator, which handles being run outside of the root.
        */
-      tool_deployment_root = ostree_sysroot_get_deployment_directory (self->sysroot, tool_deployment);
+      tool_deployment_root
+          = ostree_sysroot_get_deployment_directory (self->sysroot, tool_deployment);
       grub2_mkconfig_chroot = g_file_get_path (tool_deployment_root);
     }
 
   g_debug ("Using grub2-mkconfig chroot: %s\n", grub2_mkconfig_chroot);
 
-  g_autoptr(GFile) new_config_path = NULL;
-  g_autoptr(GFile) config_path_efi_dir = NULL;
+  g_autoptr (GFile) new_config_path = NULL;
+  g_autoptr (GFile) config_path_efi_dir = NULL;
   if (self->is_efi)
     {
       config_path_efi_dir = g_file_get_parent (self->config_path_efi);
@@ -390,12 +386,14 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
     }
   else
     {
-      new_config_path = ot_gfile_resolve_path_printf (self->sysroot->path, "boot/loader.%d/grub.cfg",
-                                                      bootversion);
+      new_config_path = ot_gfile_resolve_path_printf (self->sysroot->path,
+                                                      "boot/loader.%d/grub.cfg", bootversion);
     }
 
-  const char *grub_argv[4] = { NULL, "-o", NULL, NULL};
-  Grub2ChildSetupData cdata = { NULL, };
+  const char *grub_argv[4] = { NULL, "-o", NULL, NULL };
+  Grub2ChildSetupData cdata = {
+    NULL,
+  };
   grub_argv[0] = grub_exec;
   grub_argv[2] = gs_file_get_path_cached (new_config_path);
 
@@ -415,9 +413,8 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
      Upstream is fixed though.
   */
   int grub2_estatus;
-  if (!g_spawn_sync (NULL, (char**)grub_argv, NULL, grub_spawnflags,
-                     grub2_child_setup, &cdata, NULL, NULL,
-                     &grub2_estatus, error))
+  if (!g_spawn_sync (NULL, (char **)grub_argv, NULL, grub_spawnflags, grub2_child_setup, &cdata,
+                     NULL, NULL, &grub2_estatus, error))
     return FALSE;
   if (!g_spawn_check_exit_status (grub2_estatus, error))
     {
@@ -426,8 +423,10 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
     }
 
   /* Now let's fdatasync() for the new file */
-  { glnx_autofd int new_config_fd = -1;
-    if (!glnx_openat_rdonly (AT_FDCWD, gs_file_get_path_cached (new_config_path), TRUE, &new_config_fd, error))
+  {
+    glnx_autofd int new_config_fd = -1;
+    if (!glnx_openat_rdonly (AT_FDCWD, gs_file_get_path_cached (new_config_path), TRUE,
+                             &new_config_fd, error))
       return FALSE;
 
     if (fdatasync (new_config_fd) < 0)
@@ -436,13 +435,14 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
 
   if (self->is_efi)
     {
-      g_autoptr(GFile) config_path_efi_old = g_file_get_child (config_path_efi_dir, "grub.cfg.old");
+      g_autoptr (GFile) config_path_efi_old
+          = g_file_get_child (config_path_efi_dir, "grub.cfg.old");
 
       /* copy current to old */
       if (!ot_gfile_ensure_unlinked (config_path_efi_old, cancellable, error))
         return FALSE;
-      if (!g_file_copy (self->config_path_efi, config_path_efi_old,
-                        G_FILE_COPY_OVERWRITE, cancellable, NULL, NULL, error))
+      if (!g_file_copy (self->config_path_efi, config_path_efi_old, G_FILE_COPY_OVERWRITE,
+                        cancellable, NULL, NULL, error))
         return FALSE;
 
       /* NOTE: NON-ATOMIC REPLACEMENT; WE can't do anything else on FAT;
@@ -450,7 +450,9 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
        */
       if (!ot_gfile_ensure_unlinked (self->config_path_efi, cancellable, error))
         return FALSE;
-      if (rename (gs_file_get_path_cached (new_config_path), gs_file_get_path_cached (self->config_path_efi)) < 0)
+      if (rename (gs_file_get_path_cached (new_config_path),
+                  gs_file_get_path_cached (self->config_path_efi))
+          < 0)
         return glnx_throw_errno_prefix (error, "rename");
     }
 
@@ -458,7 +460,7 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
 }
 
 static gboolean
-_ostree_bootloader_grub2_is_atomic (OstreeBootloader      *bootloader)
+_ostree_bootloader_grub2_is_atomic (OstreeBootloader *bootloader)
 {
   OstreeBootloaderGrub2 *self = OSTREE_BOOTLOADER_GRUB2 (bootloader);
   return !self->is_efi;
@@ -505,8 +507,10 @@ _ostree_bootloader_grub2_new (OstreeSysroot *sysroot)
   OstreeBootloaderGrub2 *self = g_object_new (OSTREE_TYPE_BOOTLOADER_GRUB2, NULL);
   self->sysroot = g_object_ref (sysroot);
   /* Used by (at least) Debian */
-  self->config_path_bios_1 = g_file_resolve_relative_path (self->sysroot->path, "boot/grub/grub.cfg");
+  self->config_path_bios_1
+      = g_file_resolve_relative_path (self->sysroot->path, "boot/grub/grub.cfg");
   /* Used by (at least) Fedora */
-  self->config_path_bios_2 = g_file_resolve_relative_path (self->sysroot->path, "boot/grub2/grub.cfg");
+  self->config_path_bios_2
+      = g_file_resolve_relative_path (self->sysroot->path, "boot/grub2/grub.cfg");
   return self;
 }

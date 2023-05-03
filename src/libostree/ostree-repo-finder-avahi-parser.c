@@ -25,23 +25,19 @@
 #include "config.h"
 
 #include <avahi-common/strlst.h>
-#include <glib.h>
 #include <glib-object.h>
+#include <glib.h>
 #include <libglnx.h>
 #include <string.h>
 
 #include "ostree-autocleanups.h"
-#include "ostree-repo-finder-avahi.h"
 #include "ostree-repo-finder-avahi-private.h"
+#include "ostree-repo-finder-avahi.h"
 
 /* Reference: RFC 6763, §6. */
 static gboolean
-parse_txt_record (const guint8  *txt,
-                  gsize          txt_len,
-                  const gchar  **key,
-                  gsize         *key_len,
-                  const guint8 **value,
-                  gsize         *value_len)
+parse_txt_record (const guint8 *txt, gsize txt_len, const gchar **key, gsize *key_len,
+                  const guint8 **value, gsize *value_len)
 {
   gsize i;
 
@@ -54,7 +50,7 @@ parse_txt_record (const guint8  *txt,
   if (txt_len > 8900)
     return FALSE;
 
-  *key = (const gchar *) txt;
+  *key = (const gchar *)txt;
   *key_len = 0;
   *value = NULL;
   *value_len = 0;
@@ -92,9 +88,9 @@ GHashTable *
 _ostree_txt_records_parse (AvahiStringList *txt_list)
 {
   AvahiStringList *l;
-  g_autoptr(GHashTable) out = NULL;
+  g_autoptr (GHashTable) out = NULL;
 
-  out = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify) g_bytes_unref);
+  out = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_bytes_unref);
 
   for (l = txt_list; l != NULL; l = avahi_string_list_get_next (l))
     {
@@ -104,15 +100,14 @@ _ostree_txt_records_parse (AvahiStringList *txt_list)
       const guint8 *value;
       gsize key_len, value_len;
       g_autofree gchar *key_allocated = NULL;
-      g_autoptr(GBytes) value_allocated = NULL;
+      g_autoptr (GBytes) value_allocated = NULL;
 
       txt = avahi_string_list_get_text (l);
       txt_len = avahi_string_list_get_size (l);
 
       if (!parse_txt_record (txt, txt_len, &key, &key_len, &value, &value_len))
         {
-          g_debug ("Ignoring invalid TXT record of length %" G_GSIZE_FORMAT,
-                   txt_len);
+          g_debug ("Ignoring invalid TXT record of length %" G_GSIZE_FORMAT, txt_len);
           continue;
         }
 
@@ -130,7 +125,8 @@ _ostree_txt_records_parse (AvahiStringList *txt_list)
       if (value != NULL)
         value_allocated = g_bytes_new_static (value, value_len);
 
-      g_hash_table_insert (out, g_steal_pointer (&key_allocated), g_steal_pointer (&value_allocated));
+      g_hash_table_insert (out, g_steal_pointer (&key_allocated),
+                           g_steal_pointer (&value_allocated));
     }
 
   return g_steal_pointer (&out);

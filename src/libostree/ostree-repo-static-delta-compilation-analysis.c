@@ -19,17 +19,17 @@
 
 #include "config.h"
 
-#include <string.h>
 #include <gio/gunixoutputstream.h>
+#include <string.h>
 
 #include "ostree-core-private.h"
-#include "ostree-repo-private.h"
-#include "ostree-lzma-compressor.h"
-#include "ostree-repo-static-delta-private.h"
 #include "ostree-diff.h"
+#include "ostree-lzma-compressor.h"
+#include "ostree-repo-private.h"
+#include "ostree-repo-static-delta-private.h"
 #include "ostree-rollsum.h"
-#include "otutil.h"
 #include "ostree-varint.h"
+#include "otutil.h"
 
 void
 _ostree_delta_content_sizenames_free (gpointer v)
@@ -41,19 +41,16 @@ _ostree_delta_content_sizenames_free (gpointer v)
 }
 
 static gboolean
-build_content_sizenames_recurse (OstreeRepo                     *repo,
-                                 OstreeRepoCommitTraverseIter   *iter,
-                                 GHashTable                     *sizenames_map,
-                                 GHashTable                     *include_only_objects,
-                                 GCancellable                   *cancellable,
-                                 GError                        **error)
+build_content_sizenames_recurse (OstreeRepo *repo, OstreeRepoCommitTraverseIter *iter,
+                                 GHashTable *sizenames_map, GHashTable *include_only_objects,
+                                 GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
 
   while (TRUE)
     {
-      OstreeRepoCommitIterResult iterres =
-        ostree_repo_commit_traverse_iter_next (iter, cancellable, error);
+      OstreeRepoCommitIterResult iterres
+          = ostree_repo_commit_traverse_iter_next (iter, cancellable, error);
 
       if (iterres == OSTREE_REPO_COMMIT_ITER_RESULT_ERROR)
         goto out;
@@ -73,11 +70,9 @@ build_content_sizenames_recurse (OstreeRepo                     *repo,
           csizenames = g_hash_table_lookup (sizenames_map, checksum);
           if (!csizenames)
             {
-              g_autoptr(GFileInfo) finfo = NULL;
+              g_autoptr (GFileInfo) finfo = NULL;
 
-              if (!ostree_repo_load_file (repo, checksum,
-                                          NULL, &finfo, NULL,
-                                          cancellable, error))
+              if (!ostree_repo_load_file (repo, checksum, NULL, &finfo, NULL, cancellable, error))
                 goto out;
 
               if (g_file_info_get_file_type (finfo) != G_FILE_TYPE_REGULAR)
@@ -98,24 +93,22 @@ build_content_sizenames_recurse (OstreeRepo                     *repo,
           char *name;
           char *content_checksum;
           char *meta_checksum;
-          g_autoptr(GVariant) dirtree = NULL;
-          ostree_cleanup_repo_commit_traverse_iter
-            OstreeRepoCommitTraverseIter subiter = { 0, };
+          g_autoptr (GVariant) dirtree = NULL;
+          ostree_cleanup_repo_commit_traverse_iter OstreeRepoCommitTraverseIter subiter = {
+            0,
+          };
 
           ostree_repo_commit_traverse_iter_get_dir (iter, &name, &content_checksum, &meta_checksum);
 
-          if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_DIR_TREE,
-                                         content_checksum, &dirtree,
-                                         error))
+          if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_DIR_TREE, content_checksum,
+                                         &dirtree, error))
             goto out;
 
-          if (!ostree_repo_commit_traverse_iter_init_dirtree (&subiter, repo, dirtree,
-                                                              OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE,
-                                                              error))
+          if (!ostree_repo_commit_traverse_iter_init_dirtree (
+                  &subiter, repo, dirtree, OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE, error))
             goto out;
 
-          if (!build_content_sizenames_recurse (repo, &subiter,
-                                                sizenames_map, include_only_objects,
+          if (!build_content_sizenames_recurse (repo, &subiter, sizenames_map, include_only_objects,
                                                 cancellable, error))
             goto out;
         }
@@ -123,16 +116,15 @@ build_content_sizenames_recurse (OstreeRepo                     *repo,
         g_assert_not_reached ();
     }
   ret = TRUE;
- out:
+out:
   return ret;
 }
 
 static int
-compare_sizenames (const void  *a,
-                   const void  *b)
+compare_sizenames (const void *a, const void *b)
 {
-  OstreeDeltaContentSizeNames *sn_a = *(OstreeDeltaContentSizeNames**)(void*)a;
-  OstreeDeltaContentSizeNames *sn_b = *(OstreeDeltaContentSizeNames**)(void*)b;
+  OstreeDeltaContentSizeNames *sn_a = *(OstreeDeltaContentSizeNames **)(void *)a;
+  OstreeDeltaContentSizeNames *sn_b = *(OstreeDeltaContentSizeNames **)(void *)b;
 
   return sn_a->size - sn_b->size;
 }
@@ -142,31 +134,29 @@ compare_sizenames (const void  *a,
  * for regular file content.
  */
 static gboolean
-build_content_sizenames_filtered (OstreeRepo              *repo,
-                                  GVariant                *commit,
-                                  GHashTable              *include_only_objects,
-                                  GPtrArray              **out_sizenames,
-                                  GCancellable            *cancellable,
-                                  GError                 **error)
+build_content_sizenames_filtered (OstreeRepo *repo, GVariant *commit,
+                                  GHashTable *include_only_objects, GPtrArray **out_sizenames,
+                                  GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GPtrArray) ret_sizenames =
-    g_ptr_array_new_with_free_func (_ostree_delta_content_sizenames_free);
-  g_autoptr(GHashTable) sizenames_map =
-    g_hash_table_new_full (g_str_hash, g_str_equal, NULL, _ostree_delta_content_sizenames_free);
-  ostree_cleanup_repo_commit_traverse_iter
-    OstreeRepoCommitTraverseIter iter = { 0, };
+  g_autoptr (GPtrArray) ret_sizenames
+      = g_ptr_array_new_with_free_func (_ostree_delta_content_sizenames_free);
+  g_autoptr (GHashTable) sizenames_map
+      = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, _ostree_delta_content_sizenames_free);
+  ostree_cleanup_repo_commit_traverse_iter OstreeRepoCommitTraverseIter iter = {
+    0,
+  };
 
   if (!ostree_repo_commit_traverse_iter_init_commit (&iter, repo, commit,
-                                                     OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE,
-                                                     error))
+                                                     OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE, error))
     goto out;
 
   if (!build_content_sizenames_recurse (repo, &iter, sizenames_map, include_only_objects,
                                         cancellable, error))
     goto out;
 
-  { GHashTableIter hashiter;
+  {
+    GHashTableIter hashiter;
     gpointer hkey, hvalue;
 
     g_hash_table_iter_init (&hashiter, sizenames_map);
@@ -182,14 +172,12 @@ build_content_sizenames_filtered (OstreeRepo              *repo,
   ret = TRUE;
   if (out_sizenames)
     *out_sizenames = g_steal_pointer (&ret_sizenames);
- out:
+out:
   return ret;
 }
 
 static gboolean
-string_array_nonempty_intersection (GPtrArray    *a,
-                                    GPtrArray    *b,
-                                    gboolean      fuzzy)
+string_array_nonempty_intersection (GPtrArray *a, GPtrArray *b, gboolean fuzzy)
 {
   guint i;
   for (i = 0; i < a->len; i++)
@@ -238,7 +226,7 @@ sizename_is_delta_candidate (OstreeDeltaContentSizeNames *sizename)
       const char *dot = strrchr (name, '.');
       if (!dot)
         continue;
-      const char *extension = dot+1;
+      const char *extension = dot + 1;
       /* Don't add .gz here, see above */
       if (g_str_equal (extension, "xz") || g_str_equal (extension, "bz2"))
         return FALSE;
@@ -262,31 +250,25 @@ sizename_is_delta_candidate (OstreeDeltaContentSizeNames *sizename)
  * a cost for each one, then pick the best.
  */
 gboolean
-_ostree_delta_compute_similar_objects (OstreeRepo                 *repo,
-                                       GVariant                   *from_commit,
-                                       GVariant                   *to_commit,
-                                       GHashTable                 *new_reachable_regfile_content,
-                                       guint                       similarity_percent_threshold,
-                                       GHashTable                **out_modified_regfile_content,
-                                       GCancellable               *cancellable,
-                                       GError                    **error)
+_ostree_delta_compute_similar_objects (OstreeRepo *repo, GVariant *from_commit, GVariant *to_commit,
+                                       GHashTable *new_reachable_regfile_content,
+                                       guint similarity_percent_threshold,
+                                       GHashTable **out_modified_regfile_content,
+                                       GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GHashTable) ret_modified_regfile_content =
-    g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-  g_autoptr(GPtrArray) from_sizes = NULL;
-  g_autoptr(GPtrArray) to_sizes = NULL;
+  g_autoptr (GHashTable) ret_modified_regfile_content
+      = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  g_autoptr (GPtrArray) from_sizes = NULL;
+  g_autoptr (GPtrArray) to_sizes = NULL;
   guint i, j;
   guint lower;
   guint upper;
 
-  if (!build_content_sizenames_filtered (repo, from_commit, NULL,
-                                         &from_sizes,
-                                         cancellable, error))
+  if (!build_content_sizenames_filtered (repo, from_commit, NULL, &from_sizes, cancellable, error))
     goto out;
 
-  if (!build_content_sizenames_filtered (repo, to_commit, new_reachable_regfile_content,
-                                         &to_sizes,
+  if (!build_content_sizenames_filtered (repo, to_commit, new_reachable_regfile_content, &to_sizes,
                                          cancellable, error))
     goto out;
 
@@ -303,10 +285,10 @@ _ostree_delta_compute_similar_objects (OstreeRepo                 *repo,
       int fuzzy;
       gboolean found = FALSE;
       OstreeDeltaContentSizeNames *to_sizenames = to_sizes->pdata[i];
-      const guint64 min_threshold = to_sizenames->size *
-        (1.0-similarity_percent_threshold/100.0);
-      const guint64 max_threshold = to_sizenames->size *
-        (1.0+similarity_percent_threshold/100.0);
+      const guint64 min_threshold
+          = to_sizenames->size * (1.0 - similarity_percent_threshold / 100.0);
+      const guint64 max_threshold
+          = to_sizenames->size * (1.0 + similarity_percent_threshold / 100.0);
 
       if (!sizename_is_delta_candidate (to_sizenames))
         continue;
@@ -329,15 +311,13 @@ _ostree_delta_compute_similar_objects (OstreeRepo                 *repo,
                 break;
 
               if (!string_array_nonempty_intersection (from_sizenames->basenames,
-                                                       to_sizenames->basenames,
-                                                       fuzzy == 1))
+                                                       to_sizenames->basenames, fuzzy == 1))
                 {
                   continue;
                 }
 
               /* Only one candidate right now */
-              g_hash_table_insert (ret_modified_regfile_content,
-                                   g_strdup (to_sizenames->checksum),
+              g_hash_table_insert (ret_modified_regfile_content, g_strdup (to_sizenames->checksum),
                                    g_strdup (from_sizenames->checksum));
               found = TRUE;
               break;
@@ -348,6 +328,6 @@ _ostree_delta_compute_similar_objects (OstreeRepo                 *repo,
   ret = TRUE;
   if (out_modified_regfile_content)
     *out_modified_regfile_content = g_steal_pointer (&ret_modified_regfile_content);
- out:
+out:
   return ret;
 }

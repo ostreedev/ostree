@@ -29,7 +29,8 @@ void ot_bin2hex (char *out_buf, const guint8 *inbuf, gsize len);
 
 guchar *ot_csum_from_gchecksum (GChecksum *checksum);
 
-struct OtChecksum {
+struct OtChecksum
+{
   gboolean initialized;
   guint uints[2];
   gpointer data[2];
@@ -48,53 +49,32 @@ typedef struct OtChecksum OtChecksum;
 #endif
 
 void ot_checksum_init (OtChecksum *checksum);
-void ot_checksum_update (OtChecksum *checksum,
-                         const guint8   *buf,
-                         size_t          len);
+void ot_checksum_update (OtChecksum *checksum, const guint8 *buf, size_t len);
 static inline void
-ot_checksum_update_bytes (OtChecksum *checksum,
-                          GBytes     *buf)
+ot_checksum_update_bytes (OtChecksum *checksum, GBytes *buf)
 {
   gsize len;
   const guint8 *bufdata = g_bytes_get_data (buf, &len);
   ot_checksum_update (checksum, bufdata, len);
 }
-void ot_checksum_get_digest (OtChecksum *checksum,
-                             guint8      *buf,
-                             size_t       buflen);
-void ot_checksum_get_hexdigest (OtChecksum *checksum,
-                                char           *buf,
-                                size_t          buflen);
+void ot_checksum_get_digest (OtChecksum *checksum, guint8 *buf, size_t buflen);
+void ot_checksum_get_hexdigest (OtChecksum *checksum, char *buf, size_t buflen);
 void ot_checksum_clear (OtChecksum *checksum);
-G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(OtChecksum, ot_checksum_clear)
+G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC (OtChecksum, ot_checksum_clear)
 
-gboolean ot_gio_write_update_checksum (GOutputStream  *out,
-                                       gconstpointer   data,
-                                       gsize           len,
-                                       gsize          *out_bytes_written,
-                                       OtChecksum     *checksum,
-                                       GCancellable   *cancellable,
-                                       GError        **error);
+gboolean ot_gio_write_update_checksum (GOutputStream *out, gconstpointer data, gsize len,
+                                       gsize *out_bytes_written, OtChecksum *checksum,
+                                       GCancellable *cancellable, GError **error);
 
-gboolean ot_gio_splice_get_checksum (GOutputStream  *out,
-                                     GInputStream   *in,
-                                     guchar        **out_csum,
-                                     GCancellable   *cancellable,
-                                     GError        **error);
+gboolean ot_gio_splice_get_checksum (GOutputStream *out, GInputStream *in, guchar **out_csum,
+                                     GCancellable *cancellable, GError **error);
 
-gboolean ot_gio_splice_update_checksum (GOutputStream  *out,
-                                        GInputStream   *in,
-                                        OtChecksum     *checksum,
-                                        GCancellable   *cancellable,
-                                        GError        **error);
+gboolean ot_gio_splice_update_checksum (GOutputStream *out, GInputStream *in, OtChecksum *checksum,
+                                        GCancellable *cancellable, GError **error);
 
-char * ot_checksum_file_at (int             dfd,
-                            const char     *path,
-                            GChecksumType   checksum_type,
-                            GCancellable   *cancellable,
-                            GError        **error);
+char *ot_checksum_file_at (int dfd, const char *path, GChecksumType checksum_type,
+                           GCancellable *cancellable, GError **error);
 
-void ot_checksum_bytes (GBytes *data,
-                        guint8 out_digest[_OSTREE_SHA256_DIGEST_LEN]);
+void ot_checksum_bytes (GBytes *data, guint8 out_digest[_OSTREE_SHA256_DIGEST_LEN]);
 
 G_END_DECLS

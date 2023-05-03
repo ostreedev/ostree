@@ -37,25 +37,25 @@
 #include <avahi-glib/glib-watch.h>
 #include <netinet/in.h>
 #include <string.h>
-#endif  /* HAVE_AVAHI */
+#endif /* HAVE_AVAHI */
 
 #include <gio/gio.h>
-#include <glib.h>
 #include <glib-object.h>
+#include <glib.h>
 #include <libglnx.h>
 
 #include "ostree-autocleanups.h"
-#include "ostree-repo-finder.h"
 #include "ostree-repo-finder-avahi.h"
+#include "ostree-repo-finder.h"
 
 #ifdef HAVE_AVAHI
 #include "ostree-bloom-private.h"
 #include "ostree-remote-private.h"
+#include "ostree-repo-finder-avahi-private.h"
 #include "ostree-repo-private.h"
 #include "ostree-repo.h"
-#include "ostree-repo-finder-avahi-private.h"
 #include "otutil.h"
-#endif  /* HAVE_AVAHI */
+#endif /* HAVE_AVAHI */
 
 /**
  * SECTION:ostree-repo-finder-avahi
@@ -107,7 +107,7 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC (AvahiServiceBrowser, avahi_service_browser_free)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (AvahiServiceResolver, avahi_service_resolver_free)
 
 /* FIXME: Register this with IANA? https://tools.ietf.org/html/rfc6335#section-5.2 */
-const gchar * const OSTREE_AVAHI_SERVICE_TYPE = "_ostree_repo._tcp";
+const gchar *const OSTREE_AVAHI_SERVICE_TYPE = "_ostree_repo._tcp";
 
 static const gchar *
 ostree_avahi_client_state_to_string (AvahiClientState state)
@@ -166,7 +166,7 @@ ostree_avahi_browser_event_to_string (AvahiBrowserEvent event)
 typedef struct
 {
   gchar *uri;
-  OstreeRemote *keyring_remote;  /* (owned) */
+  OstreeRemote *keyring_remote; /* (owned) */
 } UriAndKeyring;
 
 static void
@@ -180,10 +180,9 @@ uri_and_keyring_free (UriAndKeyring *data)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (UriAndKeyring, uri_and_keyring_free)
 
 static UriAndKeyring *
-uri_and_keyring_new (const gchar  *uri,
-                     OstreeRemote *keyring_remote)
+uri_and_keyring_new (const gchar *uri, OstreeRemote *keyring_remote)
 {
-  g_autoptr(UriAndKeyring) data = NULL;
+  g_autoptr (UriAndKeyring) data = NULL;
 
   data = g_new0 (UriAndKeyring, 1);
   data->uri = g_strdup (uri);
@@ -201,13 +200,12 @@ uri_and_keyring_hash (gconstpointer key)
 }
 
 static gboolean
-uri_and_keyring_equal (gconstpointer a,
-                       gconstpointer b)
+uri_and_keyring_equal (gconstpointer a, gconstpointer b)
 {
   const UriAndKeyring *_a = a, *_b = b;
 
-  return (g_str_equal (_a->uri, _b->uri) &&
-          g_str_equal (_a->keyring_remote->keyring, _b->keyring_remote->keyring));
+  return (g_str_equal (_a->uri, _b->uri)
+          && g_str_equal (_a->keyring_remote->keyring, _b->keyring_remote->keyring));
 }
 
 /* This must return a valid remote name (suitable for use in a refspec). */
@@ -215,7 +213,8 @@ static gchar *
 uri_and_keyring_to_name (UriAndKeyring *data)
 {
   g_autofree gchar *escaped_uri = g_uri_escape_string (data->uri, NULL, FALSE);
-  g_autofree gchar *escaped_keyring = g_uri_escape_string (data->keyring_remote->keyring, NULL, FALSE);
+  g_autofree gchar *escaped_keyring
+      = g_uri_escape_string (data->keyring_remote->keyring, NULL, FALSE);
 
   /* FIXME: Need a better separator than `_`, since it’s not escaped in the input. */
   g_autofree gchar *out = g_strdup_printf ("%s_%s", escaped_uri, escaped_keyring);
@@ -261,8 +260,7 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeAvahiService, ostree_avahi_service_free)
  * (See https://en.wikipedia.org/wiki/IPv6_address#Link-local_addresses_and_zone_indices and
  * https://github.com/lathiat/avahi/issues/110.) */
 static gchar *
-address_to_string (const AvahiAddress *address,
-                   AvahiIfIndex        interface)
+address_to_string (const AvahiAddress *address, AvahiIfIndex interface)
 {
   char address_string[AVAHI_ADDRESS_STR_MAX];
 
@@ -271,8 +269,7 @@ address_to_string (const AvahiAddress *address,
   switch (address->proto)
     {
     case AVAHI_PROTO_INET6:
-      if (IN6_IS_ADDR_LINKLOCAL (address->data.data) ||
-          IN6_IS_ADDR_LOOPBACK (address->data.data))
+      if (IN6_IS_ADDR_LINKLOCAL (address->data.data) || IN6_IS_ADDR_LOOPBACK (address->data.data))
         return g_strdup_printf ("%s%%%d", address_string, interface);
       /* else fall through */
     case AVAHI_PROTO_INET:
@@ -283,14 +280,10 @@ address_to_string (const AvahiAddress *address,
 }
 
 static OstreeAvahiService *
-ostree_avahi_service_new (const gchar        *name,
-                          const gchar        *domain,
-                          const AvahiAddress *address,
-                          AvahiIfIndex        interface,
-                          guint16             port,
-                          AvahiStringList    *txt)
+ostree_avahi_service_new (const gchar *name, const gchar *domain, const AvahiAddress *address,
+                          AvahiIfIndex interface, guint16 port, AvahiStringList *txt)
 {
-  g_autoptr(OstreeAvahiService) service = NULL;
+  g_autoptr (OstreeAvahiService) service = NULL;
 
   g_return_val_if_fail (name != NULL, NULL);
   g_return_val_if_fail (domain != NULL, NULL);
@@ -328,12 +321,11 @@ str_is_lowercase (const gchar *str)
  * is of the wrong type or is not in normal form, %NULL is returned. @key must
  * be lowercase in order to match reliably. */
 static GVariant *
-_ostree_txt_records_lookup_variant (GHashTable         *attributes,
-                                    const gchar        *key,
+_ostree_txt_records_lookup_variant (GHashTable *attributes, const gchar *key,
                                     const GVariantType *value_type)
 {
   GBytes *value;
-  g_autoptr(GVariant) variant = NULL;
+  g_autoptr (GVariant) variant = NULL;
 
   g_return_val_if_fail (attributes != NULL, NULL);
   g_return_val_if_fail (str_is_lowercase (key), NULL);
@@ -360,8 +352,7 @@ _ostree_txt_records_lookup_variant (GHashTable         *attributes,
 
 /* Bloom hash function family for #OstreeCollectionRef, parameterised by @k. */
 static guint64
-ostree_collection_ref_bloom_hash (gconstpointer element,
-                                  guint8        k)
+ostree_collection_ref_bloom_hash (gconstpointer element, guint8 k)
 {
   const OstreeCollectionRef *ref = element;
 
@@ -373,18 +364,17 @@ ostree_collection_ref_bloom_hash (gconstpointer element,
  * %NULL-terminated. If there is an error decoding the bloom filter (invalid
  * type, zero length, unknown hash function), %NULL will be returned. */
 static GPtrArray *
-bloom_refs_intersection (GVariant                          *bloom_encoded,
-                         const OstreeCollectionRef * const *refs)
+bloom_refs_intersection (GVariant *bloom_encoded, const OstreeCollectionRef *const *refs)
 {
-  g_autoptr(OstreeBloom) bloom = NULL;
-  g_autoptr(GVariant) bloom_variant = NULL;
+  g_autoptr (OstreeBloom) bloom = NULL;
+  g_autoptr (GVariant) bloom_variant = NULL;
   guint8 k, hash_id;
   OstreeBloomHashFunc hash_func;
   const guint8 *bloom_bytes;
   gsize n_bloom_bytes;
-  g_autoptr(GBytes) bytes = NULL;
+  g_autoptr (GBytes) bytes = NULL;
   gsize i;
-  g_autoptr(GPtrArray) possible_refs = NULL;  /* (element-type OstreeCollectionRef) */
+  g_autoptr (GPtrArray) possible_refs = NULL; /* (element-type OstreeCollectionRef) */
 
   g_variant_get (bloom_encoded, "(yy@ay)", &k, &hash_id, &bloom_variant);
 
@@ -409,7 +399,7 @@ bloom_refs_intersection (GVariant                          *bloom_encoded,
   for (i = 0; refs[i] != NULL; i++)
     {
       if (ostree_bloom_maybe_contains (bloom, refs[i]))
-        g_ptr_array_add (possible_refs, (gpointer) refs[i]);
+        g_ptr_array_add (possible_refs, (gpointer)refs[i]);
     }
 
   return g_steal_pointer (&possible_refs);
@@ -422,19 +412,17 @@ bloom_refs_intersection (GVariant                          *bloom_encoded,
  * The @summary_map is validated as it’s iterated over; on error, @error will be
  * set and @refs_and_checksums will be left in an undefined state. */
 static gboolean
-fill_refs_and_checksums_from_summary_map (GVariantIter  *summary_map,
-                                          const gchar   *collection_id,
-                                          GHashTable    *refs_and_checksums  /* (element-type OstreeCollectionRef utf8) */,
-                                          GError       **error)
+fill_refs_and_checksums_from_summary_map (
+    GVariantIter *summary_map, const gchar *collection_id,
+    GHashTable *refs_and_checksums /* (element-type OstreeCollectionRef utf8) */, GError **error)
 {
   g_autofree gchar *ref_name = NULL;
-  g_autoptr(GVariant) checksum_variant = NULL;
+  g_autoptr (GVariant) checksum_variant = NULL;
 
-  while (g_variant_iter_loop (summary_map, "(s(t@aya{sv}))",
-                              (gpointer *) &ref_name, NULL,
-                              (gpointer *) &checksum_variant, NULL))
+  while (g_variant_iter_loop (summary_map, "(s(t@aya{sv}))", (gpointer *)&ref_name, NULL,
+                              (gpointer *)&checksum_variant, NULL))
     {
-      const OstreeCollectionRef ref = { (gchar *) collection_id, ref_name };
+      const OstreeCollectionRef ref = { (gchar *)collection_id, ref_name };
 
       if (!ostree_validate_rev (ref_name, error))
         return FALSE;
@@ -445,8 +433,7 @@ fill_refs_and_checksums_from_summary_map (GVariantIter  *summary_map,
         {
           g_autofree gchar *checksum_string = ostree_checksum_from_bytes_v (checksum_variant);
 
-          g_hash_table_replace (refs_and_checksums,
-                                ostree_collection_ref_dup (&ref),
+          g_hash_table_replace (refs_and_checksums, ostree_collection_ref_dup (&ref),
                                 g_steal_pointer (&checksum_string));
         }
     }
@@ -461,16 +448,16 @@ fill_refs_and_checksums_from_summary_map (GVariantIter  *summary_map,
  * The @summary is validated as it’s explored; on error, @error will be
  * set and @refs_and_checksums will be left in an undefined state. */
 static gboolean
-fill_refs_and_checksums_from_summary (GVariant    *summary,
-                                      GHashTable  *refs_and_checksums  /* (element-type OstreeCollectionRef utf8) */,
-                                      GError     **error)
+fill_refs_and_checksums_from_summary (
+    GVariant *summary, GHashTable *refs_and_checksums /* (element-type OstreeCollectionRef utf8) */,
+    GError **error)
 {
-  g_autoptr(GVariant) ref_map_v = NULL;
-  g_autoptr(GVariant) additional_metadata_v = NULL;
-  g_autoptr(GVariantIter) ref_map = NULL;
-  g_auto(GVariantDict) additional_metadata = OT_VARIANT_BUILDER_INITIALIZER;
+  g_autoptr (GVariant) ref_map_v = NULL;
+  g_autoptr (GVariant) additional_metadata_v = NULL;
+  g_autoptr (GVariantIter) ref_map = NULL;
+  g_auto (GVariantDict) additional_metadata = OT_VARIANT_BUILDER_INITIALIZER;
   const gchar *collection_id;
-  g_autoptr(GVariantIter) collection_map = NULL;
+  g_autoptr (GVariantIter) collection_map = NULL;
 
   ref_map_v = g_variant_get_child_value (summary, 0);
   additional_metadata_v = g_variant_get_child_value (summary, 1);
@@ -482,24 +469,28 @@ fill_refs_and_checksums_from_summary (GVariant    *summary,
    * ref map), use that to start matching against the queried refs. Otherwise,
    * it might specify all its refs in a collection-map; or the summary format is
    * old and unsuitable for P2P redistribution and we should bail. */
-  if (g_variant_dict_lookup (&additional_metadata, OSTREE_SUMMARY_COLLECTION_ID, "&s", &collection_id))
+  if (g_variant_dict_lookup (&additional_metadata, OSTREE_SUMMARY_COLLECTION_ID, "&s",
+                             &collection_id))
     {
       if (!ostree_validate_collection_id (collection_id, error))
         return FALSE;
-      if (!fill_refs_and_checksums_from_summary_map (ref_map, collection_id, refs_and_checksums, error))
+      if (!fill_refs_and_checksums_from_summary_map (ref_map, collection_id, refs_and_checksums,
+                                                     error))
         return FALSE;
     }
 
   g_clear_pointer (&ref_map, g_variant_iter_free);
 
   /* Repeat for the other collections listed in the summary. */
-  if (g_variant_dict_lookup (&additional_metadata, OSTREE_SUMMARY_COLLECTION_MAP, "a{sa(s(taya{sv}))}", &collection_map))
+  if (g_variant_dict_lookup (&additional_metadata, OSTREE_SUMMARY_COLLECTION_MAP,
+                             "a{sa(s(taya{sv}))}", &collection_map))
     {
       while (g_variant_iter_loop (collection_map, "{sa(s(taya{sv}))}", &collection_id, &ref_map))
         {
           if (!ostree_validate_collection_id (collection_id, error))
             return FALSE;
-          if (!fill_refs_and_checksums_from_summary_map (ref_map, collection_id, refs_and_checksums, error))
+          if (!fill_refs_and_checksums_from_summary_map (ref_map, collection_id, refs_and_checksums,
+                                                         error))
             return FALSE;
         }
     }
@@ -508,9 +499,7 @@ fill_refs_and_checksums_from_summary (GVariant    *summary,
 }
 
 static gboolean
-remove_null_checksum_refs_cb (gpointer key,
-                              gpointer value,
-                              gpointer user_data)
+remove_null_checksum_refs_cb (gpointer key, gpointer value, gpointer user_data)
 {
   const char *checksum = value;
 
@@ -526,24 +515,23 @@ remove_null_checksum_refs_cb (gpointer key,
  * set and %FALSE will be returned. If the intersection of the summary file refs
  * and the keys in @supported_ref_to_checksum is empty, an error is set. */
 static gboolean
-get_refs_and_checksums_from_summary (GBytes       *summary_bytes,
-                                     GHashTable   *supported_ref_to_checksum /* (element-type OstreeCollectionRef utf8) */,
-                                     OstreeRemote *remote,
-                                     GError      **error)
+get_refs_and_checksums_from_summary (
+    GBytes *summary_bytes,
+    GHashTable *supported_ref_to_checksum /* (element-type OstreeCollectionRef utf8) */,
+    OstreeRemote *remote, GError **error)
 {
-  g_autoptr(GVariant) summary = g_variant_ref_sink (g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, summary_bytes, FALSE));
+  g_autoptr (GVariant) summary = g_variant_ref_sink (
+      g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, summary_bytes, FALSE));
   guint removed_refs;
 
   if (!g_variant_is_normal_form (summary))
     {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Not normal form");
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Not normal form");
       return FALSE;
     }
   if (!g_variant_is_of_type (summary, OSTREE_SUMMARY_GVARIANT_FORMAT))
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Doesn't match variant type '%s'",
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Doesn't match variant type '%s'",
                    (char *)OSTREE_SUMMARY_GVARIANT_FORMAT);
       return FALSE;
     }
@@ -551,10 +539,12 @@ get_refs_and_checksums_from_summary (GBytes       *summary_bytes,
   if (!fill_refs_and_checksums_from_summary (summary, supported_ref_to_checksum, error))
     return FALSE;
 
-  removed_refs = g_hash_table_foreach_remove (supported_ref_to_checksum, remove_null_checksum_refs_cb, NULL);
+  removed_refs
+      = g_hash_table_foreach_remove (supported_ref_to_checksum, remove_null_checksum_refs_cb, NULL);
   if (removed_refs > 0)
-    g_debug ("Removed %d refs from the list resolved from ‘%s’ (possibly bloom filter false positives)",
-             removed_refs, remote->name);
+    g_debug (
+        "Removed %d refs from the list resolved from ‘%s’ (possibly bloom filter false positives)",
+        removed_refs, remote->name);
 
   /* If none of the refs had a non-%NULL checksum set, we can discard this peer. */
   if (g_hash_table_size (supported_ref_to_checksum) == 0)
@@ -571,21 +561,14 @@ get_refs_and_checksums_from_summary (GBytes       *summary_bytes,
  * @out_summary_bytes. This will return %TRUE and set @out_summary_bytes to %NULL
  * if the summary file does not exist. */
 static gboolean
-fetch_summary_from_remote (OstreeRepo    *repo,
-                           OstreeRemote  *remote,
-                           GBytes       **out_summary_bytes,
-                           GCancellable  *cancellable,
-                           GError       **error)
+fetch_summary_from_remote (OstreeRepo *repo, OstreeRemote *remote, GBytes **out_summary_bytes,
+                           GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GBytes) summary_bytes = NULL;
+  g_autoptr (GBytes) summary_bytes = NULL;
   gboolean remote_already_existed = _ostree_repo_add_remote (repo, remote);
-  gboolean success = ostree_repo_remote_fetch_summary_with_options (repo,
-                                                                    remote->name,
-                                                                    NULL /* options */,
-                                                                    &summary_bytes,
-                                                                    NULL /* signature */,
-                                                                    cancellable,
-                                                                    error);
+  gboolean success = ostree_repo_remote_fetch_summary_with_options (
+      repo, remote->name, NULL /* options */, &summary_bytes, NULL /* signature */, cancellable,
+      error);
 
   if (!remote_already_existed)
     _ostree_repo_remove_remote (repo, remote);
@@ -597,7 +580,7 @@ fetch_summary_from_remote (OstreeRepo    *repo,
   *out_summary_bytes = g_steal_pointer (&summary_bytes);
   return TRUE;
 }
-#endif  /* HAVE_AVAHI */
+#endif /* HAVE_AVAHI */
 
 struct _OstreeRepoFinderAvahi
 {
@@ -609,7 +592,7 @@ struct _OstreeRepoFinderAvahi
 
   /* Note: There is a ref-count loop here: each #GTask has a reference to the
    * #OstreeRepoFinderAvahi, and we have to keep a reference to the #GTask. */
-  GPtrArray *resolve_tasks;  /* (element-type (owned) GTask) */
+  GPtrArray *resolve_tasks; /* (element-type (owned) GTask) */
 
   AvahiGLibPoll *poll;
   AvahiClient *client;
@@ -627,18 +610,20 @@ struct _OstreeRepoFinderAvahi
    * could end up with more than one resolver if the same name is advertised to
    * us over multiple interfaces or protocols (for example, IPv4 and IPv6).
    * Resolve all of them just in case one doesn’t work. */
-  GHashTable *resolvers;  /* (element-type (owned) utf8 (owned) GPtrArray (element-type (owned) AvahiServiceResolver)) */
+  GHashTable *resolvers; /* (element-type (owned) utf8 (owned) GPtrArray (element-type (owned)
+                            AvahiServiceResolver)) */
 
   /* Array of #OstreeAvahiService instances representing all the services which
    * we currently think are valid. */
-  GPtrArray *found_services;  /* (element-type (owned OstreeAvahiService) */
-#endif  /* HAVE_AVAHI */
+  GPtrArray *found_services; /* (element-type (owned OstreeAvahiService) */
+#endif                       /* HAVE_AVAHI */
 };
 
 static void ostree_repo_finder_avahi_iface_init (OstreeRepoFinderInterface *iface);
 
 G_DEFINE_TYPE_WITH_CODE (OstreeRepoFinderAvahi, ostree_repo_finder_avahi, G_TYPE_OBJECT,
-                         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_REPO_FINDER, ostree_repo_finder_avahi_iface_init))
+                         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_REPO_FINDER,
+                                                ostree_repo_finder_avahi_iface_init))
 
 #ifdef HAVE_AVAHI
 
@@ -646,29 +631,23 @@ G_DEFINE_TYPE_WITH_CODE (OstreeRepoFinderAvahi, ostree_repo_finder_avahi, G_TYPE
  * @supported_ref_to_checksum hash table, given the existing refs in it as keys.
  * See get_refs_and_checksums_from_summary() for more details. */
 static gboolean
-get_checksums (OstreeRepoFinderAvahi  *finder,
-               OstreeRepo             *repo,
-               OstreeRemote           *remote,
-               GHashTable             *supported_ref_to_checksum /* (element-type OstreeCollectionRef utf8) */,
-               GError                **error)
+get_checksums (OstreeRepoFinderAvahi *finder, OstreeRepo *repo, OstreeRemote *remote,
+               GHashTable *supported_ref_to_checksum /* (element-type OstreeCollectionRef utf8) */,
+               GError **error)
 {
-  g_autoptr(GBytes) summary_bytes = NULL;
+  g_autoptr (GBytes) summary_bytes = NULL;
 
-  if (!fetch_summary_from_remote (repo,
-                                  remote,
-                                  &summary_bytes,
-                                  finder->avahi_cancellable,
-                                  error))
+  if (!fetch_summary_from_remote (repo, remote, &summary_bytes, finder->avahi_cancellable, error))
     return FALSE;
 
   if (summary_bytes == NULL)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "No summary file found on server");
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND, "No summary file found on server");
       return FALSE;
     }
 
-  return get_refs_and_checksums_from_summary (summary_bytes, supported_ref_to_checksum, remote, error);
+  return get_refs_and_checksums_from_summary (summary_bytes, supported_ref_to_checksum, remote,
+                                              error);
 }
 
 /* Build some #OstreeRepoFinderResults out of the given #OstreeAvahiService by
@@ -690,27 +669,25 @@ get_checksums (OstreeRepoFinderAvahi  *finder,
  *    hosted on the peer this is. Big endian.
  */
 static void
-ostree_avahi_service_build_repo_finder_result (OstreeAvahiService                *service,
-                                               OstreeRepoFinderAvahi             *finder,
-                                               OstreeRepo                        *parent_repo,
-                                               gint                               priority,
-                                               const OstreeCollectionRef * const *refs,
-                                               GPtrArray                         *results,
-                                               GCancellable                      *cancellable)
+ostree_avahi_service_build_repo_finder_result (OstreeAvahiService *service,
+                                               OstreeRepoFinderAvahi *finder,
+                                               OstreeRepo *parent_repo, gint priority,
+                                               const OstreeCollectionRef *const *refs,
+                                               GPtrArray *results, GCancellable *cancellable)
 {
-  g_autoptr(GHashTable) attributes = NULL;
-  g_autoptr(GVariant) version = NULL;
-  g_autoptr(GVariant) bloom = NULL;
-  g_autoptr(GVariant) summary_timestamp = NULL;
-  g_autoptr(GVariant) repo_index = NULL;
+  g_autoptr (GHashTable) attributes = NULL;
+  g_autoptr (GVariant) version = NULL;
+  g_autoptr (GVariant) bloom = NULL;
+  g_autoptr (GVariant) summary_timestamp = NULL;
+  g_autoptr (GVariant) repo_index = NULL;
   g_autofree gchar *repo_path = NULL;
-  g_autoptr(GPtrArray) possible_refs = NULL; /* (element-type OstreeCollectionRef) */
+  g_autoptr (GPtrArray) possible_refs = NULL; /* (element-type OstreeCollectionRef) */
   GUri *_uri = NULL;
   g_autofree gchar *uri = NULL;
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GError) error = NULL;
   gsize i;
-  g_autoptr(GHashTable) repo_to_refs = NULL;  /* (element-type UriAndKeyring GHashTable) */
-  GHashTable *supported_ref_to_checksum;  /* (element-type OstreeCollectionRef utf8) */
+  g_autoptr (GHashTable) repo_to_refs = NULL; /* (element-type UriAndKeyring GHashTable) */
+  GHashTable *supported_ref_to_checksum;      /* (element-type OstreeCollectionRef utf8) */
   GHashTableIter iter;
   UriAndKeyring *repo;
 
@@ -741,7 +718,8 @@ ostree_avahi_service_build_repo_finder_result (OstreeAvahiService               
   possible_refs = bloom_refs_intersection (bloom, refs);
   if (possible_refs == NULL)
     {
-      g_debug ("Wrong k parameter or hash id in rb (refs bloom) attribute in TXT record. Ignoring.");
+      g_debug (
+          "Wrong k parameter or hash id in rb (refs bloom) attribute in TXT record. Ignoring.");
       return;
     }
   if (possible_refs->len == 0)
@@ -770,28 +748,28 @@ ostree_avahi_service_build_repo_finder_result (OstreeAvahiService               
   /* Create a new result for each keyring needed by @possible_refs. Typically,
    * there will be a separate keyring per collection, but some might be shared. */
   repo_to_refs = g_hash_table_new_full (uri_and_keyring_hash, uri_and_keyring_equal,
-                                        (GDestroyNotify) uri_and_keyring_free, (GDestroyNotify) g_hash_table_unref);
+                                        (GDestroyNotify)uri_and_keyring_free,
+                                        (GDestroyNotify)g_hash_table_unref);
 
-  _uri = g_uri_build (G_URI_FLAGS_ENCODED, "http", NULL, service->address, service->port, repo_path, NULL, NULL);
+  _uri = g_uri_build (G_URI_FLAGS_ENCODED, "http", NULL, service->address, service->port, repo_path,
+                      NULL, NULL);
   uri = g_uri_to_string (_uri);
   g_uri_unref (_uri);
 
   for (i = 0; i < possible_refs->len; i++)
     {
       const OstreeCollectionRef *ref = g_ptr_array_index (possible_refs, i);
-      g_autoptr(UriAndKeyring) resolved_repo = NULL;
-      g_autoptr(OstreeRemote) keyring_remote = NULL;
+      g_autoptr (UriAndKeyring) resolved_repo = NULL;
+      g_autoptr (OstreeRemote) keyring_remote = NULL;
 
       /* Look up the GPG keyring for this ref. */
-      keyring_remote = ostree_repo_resolve_keyring_for_collection (parent_repo,
-                                                                   ref->collection_id,
+      keyring_remote = ostree_repo_resolve_keyring_for_collection (parent_repo, ref->collection_id,
                                                                    cancellable, &error);
 
       if (keyring_remote == NULL)
         {
           g_debug ("Ignoring ref (%s, %s) on host ‘%s’ due to missing keyring: %s",
-                   ref->collection_id, refs[i]->ref_name, service->address,
-                   error->message);
+                   ref->collection_id, refs[i]->ref_name, service->address, error->message);
           g_clear_error (&error);
           continue;
         }
@@ -808,23 +786,23 @@ ostree_avahi_service_build_repo_finder_result (OstreeAvahiService               
 
       if (supported_ref_to_checksum == NULL)
         {
-          supported_ref_to_checksum = g_hash_table_new_full (ostree_collection_ref_hash,
-                                                             ostree_collection_ref_equal,
-                                                             NULL, g_free);
-          g_hash_table_insert (repo_to_refs, g_steal_pointer (&resolved_repo), supported_ref_to_checksum  /* transfer */);
+          supported_ref_to_checksum = g_hash_table_new_full (
+              ostree_collection_ref_hash, ostree_collection_ref_equal, NULL, g_free);
+          g_hash_table_insert (repo_to_refs, g_steal_pointer (&resolved_repo),
+                               supported_ref_to_checksum /* transfer */);
         }
 
       /* Add a placeholder to @supported_ref_to_checksum for this ref. It will
        * be filled out by the get_checksums() call below. */
-      g_hash_table_insert (supported_ref_to_checksum, (gpointer) ref, NULL);
+      g_hash_table_insert (supported_ref_to_checksum, (gpointer)ref, NULL);
     }
 
   /* Aggregate the results. */
   g_hash_table_iter_init (&iter, repo_to_refs);
 
-  while (g_hash_table_iter_next (&iter, (gpointer *) &repo, (gpointer *) &supported_ref_to_checksum))
+  while (g_hash_table_iter_next (&iter, (gpointer *)&repo, (gpointer *)&supported_ref_to_checksum))
     {
-      g_autoptr(OstreeRemote) remote = NULL;
+      g_autoptr (OstreeRemote) remote = NULL;
 
       /* Build an #OstreeRemote. Use the escaped URI, since remote->name
        * is used in file paths, so needs to not contain special characters. */
@@ -847,16 +825,17 @@ ostree_avahi_service_build_repo_finder_result (OstreeAvahiService               
           continue;
         }
 
-      g_ptr_array_add (results, ostree_repo_finder_result_new (remote, OSTREE_REPO_FINDER (finder),
-                                                               priority, supported_ref_to_checksum, NULL,
-                                                               GUINT64_FROM_BE (g_variant_get_uint64 (summary_timestamp))));
+      g_ptr_array_add (results,
+                       ostree_repo_finder_result_new (
+                           remote, OSTREE_REPO_FINDER (finder), priority, supported_ref_to_checksum,
+                           NULL, GUINT64_FROM_BE (g_variant_get_uint64 (summary_timestamp))));
     }
 }
 
 typedef struct
 {
-  OstreeCollectionRef **refs;  /* (owned) (array zero-terminated=1) */
-  OstreeRepo *parent_repo;  /* (owned) */
+  OstreeCollectionRef **refs; /* (owned) (array zero-terminated=1) */
+  OstreeRepo *parent_repo;    /* (owned) */
 } ResolveData;
 
 static void
@@ -870,10 +849,9 @@ resolve_data_free (ResolveData *data)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (ResolveData, resolve_data_free)
 
 static ResolveData *
-resolve_data_new (const OstreeCollectionRef * const *refs,
-                  OstreeRepo                        *parent_repo)
+resolve_data_new (const OstreeCollectionRef *const *refs, OstreeRepo *parent_repo)
 {
-  g_autoptr(ResolveData) data = NULL;
+  g_autoptr (ResolveData) data = NULL;
 
   data = g_new0 (ResolveData, 1);
   data->refs = ostree_collection_ref_dupv (refs);
@@ -882,27 +860,20 @@ resolve_data_new (const OstreeCollectionRef * const *refs,
   return g_steal_pointer (&data);
 }
 
-static void
-fail_all_pending_tasks (OstreeRepoFinderAvahi *self,
-                        GQuark                 domain,
-                        gint                   code,
-                        const gchar           *format,
-                        ...) G_GNUC_PRINTF(4, 5);
+static void fail_all_pending_tasks (OstreeRepoFinderAvahi *self, GQuark domain, gint code,
+                                    const gchar *format, ...) G_GNUC_PRINTF (4, 5);
 
 /* Executed in @self->avahi_context.
  *
  * Return the given error from all the pending resolve tasks in
  * self->resolve_tasks. */
 static void
-fail_all_pending_tasks (OstreeRepoFinderAvahi *self,
-                        GQuark                 domain,
-                        gint                   code,
-                        const gchar           *format,
+fail_all_pending_tasks (OstreeRepoFinderAvahi *self, GQuark domain, gint code, const gchar *format,
                         ...)
 {
   gsize i;
   va_list args;
-  g_autoptr(GError) error = NULL;
+  g_autoptr (GError) error = NULL;
 
   g_assert (g_main_context_is_owner (self->avahi_context));
 
@@ -920,11 +891,10 @@ fail_all_pending_tasks (OstreeRepoFinderAvahi *self,
 }
 
 static gint
-results_compare_cb (gconstpointer a,
-                    gconstpointer b)
+results_compare_cb (gconstpointer a, gconstpointer b)
 {
-  const OstreeRepoFinderResult *result_a = *((const OstreeRepoFinderResult **) a);
-  const OstreeRepoFinderResult *result_b = *((const OstreeRepoFinderResult **) b);
+  const OstreeRepoFinderResult *result_a = *((const OstreeRepoFinderResult **)a);
+  const OstreeRepoFinderResult *result_b = *((const OstreeRepoFinderResult **)b);
 
   return ostree_repo_finder_result_compare (result_a, result_b);
 }
@@ -938,8 +908,9 @@ static void
 complete_all_pending_tasks (OstreeRepoFinderAvahi *self)
 {
   gsize i;
-  const gint priority = 60;  /* arbitrarily chosen */
-  g_autoptr(GPtrArray) results_for_tasks = g_ptr_array_new_full (self->resolve_tasks->len, (GDestroyNotify)g_ptr_array_unref);
+  const gint priority = 60; /* arbitrarily chosen */
+  g_autoptr (GPtrArray) results_for_tasks
+      = g_ptr_array_new_full (self->resolve_tasks->len, (GDestroyNotify)g_ptr_array_unref);
   gboolean cancelled = FALSE;
 
   g_assert (g_main_context_is_owner (self->avahi_context));
@@ -947,24 +918,23 @@ complete_all_pending_tasks (OstreeRepoFinderAvahi *self)
 
   for (i = 0; i < self->resolve_tasks->len; i++)
     {
-      g_autoptr(GPtrArray) results = NULL;
+      g_autoptr (GPtrArray) results = NULL;
       GTask *task;
       ResolveData *data;
-      const OstreeCollectionRef * const *refs;
+      const OstreeCollectionRef *const *refs;
       gsize j;
 
       task = G_TASK (g_ptr_array_index (self->resolve_tasks, i));
       data = g_task_get_task_data (task);
-      refs = (const OstreeCollectionRef * const *) data->refs;
-      results = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_repo_finder_result_free);
+      refs = (const OstreeCollectionRef *const *)data->refs;
+      results = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_repo_finder_result_free);
 
       for (j = 0; j < self->found_services->len; j++)
         {
           OstreeAvahiService *service = g_ptr_array_index (self->found_services, j);
 
-          ostree_avahi_service_build_repo_finder_result (service, self, data->parent_repo,
-                                                         priority, refs, results,
-                                                         self->avahi_cancellable);
+          ostree_avahi_service_build_repo_finder_result (service, self, data->parent_repo, priority,
+                                                         refs, results, self->avahi_cancellable);
           if (g_cancellable_is_cancelled (self->avahi_cancellable))
             {
               cancelled = TRUE;
@@ -986,9 +956,8 @@ complete_all_pending_tasks (OstreeRepoFinderAvahi *self)
 
           g_ptr_array_sort (results, results_compare_cb);
 
-          g_task_return_pointer (task,
-                                 g_ptr_array_ref (results),
-                                 (GDestroyNotify) g_ptr_array_unref);
+          g_task_return_pointer (task, g_ptr_array_ref (results),
+                                 (GDestroyNotify)g_ptr_array_unref);
         }
 
       g_ptr_array_set_size (self->resolve_tasks, 0);
@@ -1008,41 +977,34 @@ maybe_complete_all_pending_tasks (OstreeRepoFinderAvahi *self)
   g_debug ("%s: client_state: %s, browser_failed: %u, cancelled: %u, "
            "browser_all_for_now: %u, n_resolvers: %u",
            G_STRFUNC, ostree_avahi_client_state_to_string (self->client_state),
-           self->browser_failed,
-           g_cancellable_is_cancelled (self->avahi_cancellable),
+           self->browser_failed, g_cancellable_is_cancelled (self->avahi_cancellable),
            self->browser_all_for_now, g_hash_table_size (self->resolvers));
 
   if (self->client_state == AVAHI_CLIENT_FAILURE)
-    fail_all_pending_tasks (self, G_IO_ERROR, G_IO_ERROR_FAILED,
-                            "Avahi client error: %s",
+    fail_all_pending_tasks (self, G_IO_ERROR, G_IO_ERROR_FAILED, "Avahi client error: %s",
                             avahi_strerror (avahi_client_errno (self->client)));
   else if (self->browser_failed)
-    fail_all_pending_tasks (self, G_IO_ERROR, G_IO_ERROR_FAILED,
-                            "Avahi browser error: %s",
+    fail_all_pending_tasks (self, G_IO_ERROR, G_IO_ERROR_FAILED, "Avahi browser error: %s",
                             avahi_strerror (avahi_client_errno (self->client)));
   else if (g_cancellable_is_cancelled (self->avahi_cancellable))
     fail_all_pending_tasks (self, G_IO_ERROR, G_IO_ERROR_CANCELLED,
                             "Avahi service resolution cancelled.");
-  else if (self->browser_all_for_now &&
-           g_hash_table_size (self->resolvers) == 0)
+  else if (self->browser_all_for_now && g_hash_table_size (self->resolvers) == 0)
     complete_all_pending_tasks (self);
 }
 
 /* Executed in @self->avahi_context. */
 static void
-client_cb (AvahiClient      *client,
-           AvahiClientState  state,
-           void             *finder_ptr)
+client_cb (AvahiClient *client, AvahiClientState state, void *finder_ptr)
 {
   /* Completing the pending tasks might drop the final reference to @self. */
-  g_autoptr(OstreeRepoFinderAvahi) self = g_object_ref (finder_ptr);
+  g_autoptr (OstreeRepoFinderAvahi) self = g_object_ref (finder_ptr);
 
   /* self->client will be NULL if client_cb() is called from
    * ostree_repo_finder_avahi_start(). */
   g_assert (self->client == NULL || g_main_context_is_owner (self->avahi_context));
 
-  g_debug ("%s: Entered state ‘%s’.",
-           G_STRFUNC, ostree_avahi_client_state_to_string (state));
+  g_debug ("%s: Entered state ‘%s’.", G_STRFUNC, ostree_avahi_client_state_to_string (state));
 
   /* We only care about entering and leaving %AVAHI_CLIENT_FAILURE. */
   self->client_state = state;
@@ -1052,29 +1014,20 @@ client_cb (AvahiClient      *client,
 
 /* Executed in @self->avahi_context. */
 static void
-resolve_cb (AvahiServiceResolver   *resolver,
-            AvahiIfIndex            interface,
-            AvahiProtocol           protocol,
-            AvahiResolverEvent      event,
-            const char             *name,
-            const char             *type,
-            const char             *domain,
-            const char             *host_name,
-            const AvahiAddress     *address,
-            uint16_t                port,
-            AvahiStringList        *txt,
-            AvahiLookupResultFlags  flags,
-            void                   *finder_ptr)
+resolve_cb (AvahiServiceResolver *resolver, AvahiIfIndex interface, AvahiProtocol protocol,
+            AvahiResolverEvent event, const char *name, const char *type, const char *domain,
+            const char *host_name, const AvahiAddress *address, uint16_t port, AvahiStringList *txt,
+            AvahiLookupResultFlags flags, void *finder_ptr)
 {
   /* Completing the pending tasks might drop the final reference to @self. */
-  g_autoptr(OstreeRepoFinderAvahi) self = g_object_ref (finder_ptr);
-  g_autoptr(OstreeAvahiService) service = NULL;
+  g_autoptr (OstreeRepoFinderAvahi) self = g_object_ref (finder_ptr);
+  g_autoptr (OstreeAvahiService) service = NULL;
   GPtrArray *resolvers;
 
   g_assert (g_main_context_is_owner (self->avahi_context));
 
-  g_debug ("%s: Resolve event ‘%s’ for name ‘%s’.",
-           G_STRFUNC, ostree_avahi_resolver_event_to_string (event), name);
+  g_debug ("%s: Resolve event ‘%s’ for name ‘%s’.", G_STRFUNC,
+           ostree_avahi_resolver_event_to_string (event), name);
 
   /* Track the resolvers active for this @name. There may be several,
    * as @name might appear to us over several interfaces or protocols. Most
@@ -1100,8 +1053,7 @@ resolve_cb (AvahiServiceResolver   *resolver,
   switch (event)
     {
     case AVAHI_RESOLVER_FOUND:
-      service = ostree_avahi_service_new (name, domain, address, interface,
-                                          port, txt);
+      service = ostree_avahi_service_new (name, domain, address, interface, port, txt);
       g_ptr_array_add (self->found_services, g_steal_pointer (&service));
       break;
     case AVAHI_RESOLVER_FAILURE:
@@ -1116,28 +1068,16 @@ resolve_cb (AvahiServiceResolver   *resolver,
 
 /* Executed in @self->avahi_context. */
 static void
-browse_new (OstreeRepoFinderAvahi *self,
-            AvahiIfIndex           interface,
-            AvahiProtocol          protocol,
-            const gchar           *name,
-            const gchar           *type,
-            const gchar           *domain)
+browse_new (OstreeRepoFinderAvahi *self, AvahiIfIndex interface, AvahiProtocol protocol,
+            const gchar *name, const gchar *type, const gchar *domain)
 {
-  g_autoptr(AvahiServiceResolver) resolver = NULL;
-  GPtrArray *resolvers;  /* (element-type AvahiServiceResolver) */
+  g_autoptr (AvahiServiceResolver) resolver = NULL;
+  GPtrArray *resolvers; /* (element-type AvahiServiceResolver) */
 
   g_assert (g_main_context_is_owner (self->avahi_context));
 
-  resolver = avahi_service_resolver_new (self->client,
-                                         interface,
-                                         protocol,
-                                         name,
-                                         type,
-                                         domain,
-                                         AVAHI_PROTO_UNSPEC,
-                                         0,
-                                         resolve_cb,
-                                         self);
+  resolver = avahi_service_resolver_new (self->client, interface, protocol, name, type, domain,
+                                         AVAHI_PROTO_UNSPEC, 0, resolve_cb, self);
   if (resolver == NULL)
     {
       g_warning ("Failed to resolve service ‘%s’: %s", name,
@@ -1146,15 +1086,15 @@ browse_new (OstreeRepoFinderAvahi *self,
     }
 
   g_debug ("Found name service %s on the network; type: %s, domain: %s, "
-           "protocol: %u, interface: %u", name, type, domain, protocol,
-           interface);
+           "protocol: %u, interface: %u",
+           name, type, domain, protocol, interface);
 
   /* Start a resolver for this (interface, protocol, name, type, domain)
    * combination. */
   resolvers = g_hash_table_lookup (self->resolvers, name);
   if (resolvers == NULL)
     {
-      resolvers = g_ptr_array_new_with_free_func ((GDestroyNotify) avahi_service_resolver_free);
+      resolvers = g_ptr_array_new_with_free_func ((GDestroyNotify)avahi_service_resolver_free);
       g_hash_table_insert (self->resolvers, g_strdup (name), resolvers);
     }
 
@@ -1163,8 +1103,7 @@ browse_new (OstreeRepoFinderAvahi *self,
 
 /* Executed in @self->avahi_context. Caller must call maybe_complete_all_pending_tasks(). */
 static void
-browse_remove (OstreeRepoFinderAvahi *self,
-               const char            *name)
+browse_remove (OstreeRepoFinderAvahi *self, const char *name)
 {
   gsize i;
   gboolean removed = FALSE;
@@ -1190,23 +1129,17 @@ browse_remove (OstreeRepoFinderAvahi *self,
 
 /* Executed in @self->avahi_context. */
 static void
-browse_cb (AvahiServiceBrowser    *browser,
-           AvahiIfIndex            interface,
-           AvahiProtocol           protocol,
-           AvahiBrowserEvent       event,
-           const char             *name,
-           const char             *type,
-           const char             *domain,
-           AvahiLookupResultFlags  flags,
-           void                   *finder_ptr)
+browse_cb (AvahiServiceBrowser *browser, AvahiIfIndex interface, AvahiProtocol protocol,
+           AvahiBrowserEvent event, const char *name, const char *type, const char *domain,
+           AvahiLookupResultFlags flags, void *finder_ptr)
 {
   /* Completing the pending tasks might drop the final reference to @self. */
-  g_autoptr(OstreeRepoFinderAvahi) self = g_object_ref (finder_ptr);
+  g_autoptr (OstreeRepoFinderAvahi) self = g_object_ref (finder_ptr);
 
   g_assert (g_main_context_is_owner (self->avahi_context));
 
-  g_debug ("%s: Browse event ‘%s’ for name ‘%s’.",
-           G_STRFUNC, ostree_avahi_browser_event_to_string (event), name);
+  g_debug ("%s: Browse event ‘%s’ for name ‘%s’.", G_STRFUNC,
+           ostree_avahi_browser_event_to_string (event), name);
 
   self->browser_failed = FALSE;
 
@@ -1242,18 +1175,16 @@ browse_cb (AvahiServiceBrowser    *browser,
 }
 
 static gboolean add_resolve_task_cb (gpointer user_data);
-#endif  /* HAVE_AVAHI */
+#endif /* HAVE_AVAHI */
 
 static void
-ostree_repo_finder_avahi_resolve_async (OstreeRepoFinder                  *finder,
-                                        const OstreeCollectionRef * const *refs,
-                                        OstreeRepo                        *parent_repo,
-                                        GCancellable                      *cancellable,
-                                        GAsyncReadyCallback                callback,
-                                        gpointer                           user_data)
+ostree_repo_finder_avahi_resolve_async (OstreeRepoFinder *finder,
+                                        const OstreeCollectionRef *const *refs,
+                                        OstreeRepo *parent_repo, GCancellable *cancellable,
+                                        GAsyncReadyCallback callback, gpointer user_data)
 {
   OstreeRepoFinderAvahi *self = OSTREE_REPO_FINDER_AVAHI (finder);
-  g_autoptr(GTask) task = NULL;
+  g_autoptr (GTask) task = NULL;
 
   g_debug ("%s: Starting resolving", G_STRFUNC);
 
@@ -1261,14 +1192,15 @@ ostree_repo_finder_avahi_resolve_async (OstreeRepoFinder                  *finde
   g_task_set_source_tag (task, ostree_repo_finder_avahi_resolve_async);
 
 #ifdef HAVE_AVAHI
-  g_task_set_task_data (task, resolve_data_new (refs, parent_repo), (GDestroyNotify) resolve_data_free);
+  g_task_set_task_data (task, resolve_data_new (refs, parent_repo),
+                        (GDestroyNotify)resolve_data_free);
 
   /* Move @task to the @avahi_context where it can be processed. */
   g_main_context_invoke (self->avahi_context, add_resolve_task_cb, g_steal_pointer (&task));
 #else  /* if !HAVE_AVAHI */
   g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
                            "Avahi support was not compiled in to libostree");
-#endif  /* !HAVE_AVAHI */
+#endif /* !HAVE_AVAHI */
 }
 
 #ifdef HAVE_AVAHI
@@ -1276,7 +1208,7 @@ ostree_repo_finder_avahi_resolve_async (OstreeRepoFinder                  *finde
 static gboolean
 add_resolve_task_cb (gpointer user_data)
 {
-  g_autoptr(GTask) task = G_TASK (user_data);
+  g_autoptr (GTask) task = G_TASK (user_data);
   OstreeRepoFinderAvahi *self = g_task_get_source_object (task);
 
   g_assert (g_main_context_is_owner (self->avahi_context));
@@ -1289,12 +1221,11 @@ add_resolve_task_cb (gpointer user_data)
 
   return G_SOURCE_REMOVE;
 }
-#endif  /* HAVE_AVAHI */
+#endif /* HAVE_AVAHI */
 
 static GPtrArray *
-ostree_repo_finder_avahi_resolve_finish (OstreeRepoFinder  *finder,
-                                         GAsyncResult      *result,
-                                         GError           **error)
+ostree_repo_finder_avahi_resolve_finish (OstreeRepoFinder *finder, GAsyncResult *result,
+                                         GError **error)
 {
   g_return_val_if_fail (g_task_is_valid (result, finder), NULL);
   return g_task_propagate_pointer (G_TASK (result), error);
@@ -1318,7 +1249,7 @@ ostree_repo_finder_avahi_dispose (GObject *obj)
   g_clear_pointer (&self->found_services, g_ptr_array_unref);
   g_clear_pointer (&self->resolvers, g_hash_table_unref);
   g_clear_object (&self->avahi_cancellable);
-#endif  /* HAVE_AVAHI */
+#endif /* HAVE_AVAHI */
 
   /* Chain up. */
   G_OBJECT_CLASS (ostree_repo_finder_avahi_parent_class)->dispose (obj);
@@ -1343,12 +1274,13 @@ static void
 ostree_repo_finder_avahi_init (OstreeRepoFinderAvahi *self)
 {
 #ifdef HAVE_AVAHI
-  self->resolve_tasks = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
+  self->resolve_tasks = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
   self->avahi_cancellable = g_cancellable_new ();
   self->client_state = AVAHI_CLIENT_S_REGISTERING;
-  self->resolvers = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify) g_ptr_array_unref);
-  self->found_services = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_avahi_service_free);
-#endif  /* HAVE_AVAHI */
+  self->resolvers
+      = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
+  self->found_services = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_avahi_service_free);
+#endif /* HAVE_AVAHI */
 }
 
 /**
@@ -1372,7 +1304,7 @@ ostree_repo_finder_avahi_init (OstreeRepoFinderAvahi *self)
 OstreeRepoFinderAvahi *
 ostree_repo_finder_avahi_new (GMainContext *context)
 {
-  g_autoptr(OstreeRepoFinderAvahi) finder = NULL;
+  g_autoptr (OstreeRepoFinderAvahi) finder = NULL;
 
   finder = g_object_new (OSTREE_TYPE_REPO_FINDER_AVAHI, NULL);
 
@@ -1389,7 +1321,7 @@ ostree_repo_finder_avahi_new (GMainContext *context)
    * *also* use Avahi API itself. */
   avahi_set_allocator (avahi_glib_allocator ());
   finder->poll = avahi_glib_poll_new (finder->avahi_context, G_PRIORITY_DEFAULT);
-#endif  /* HAVE_AVAHI */
+#endif /* HAVE_AVAHI */
 
   return g_steal_pointer (&finder);
 }
@@ -1419,15 +1351,14 @@ ostree_repo_finder_avahi_new (GMainContext *context)
  * Since: 2018.6
  */
 void
-ostree_repo_finder_avahi_start (OstreeRepoFinderAvahi  *self,
-                                GError                **error)
+ostree_repo_finder_avahi_start (OstreeRepoFinderAvahi *self, GError **error)
 {
   g_return_if_fail (OSTREE_IS_REPO_FINDER_AVAHI (self));
   g_return_if_fail (error == NULL || *error == NULL);
 
 #ifdef HAVE_AVAHI
-  g_autoptr(AvahiClient) client = NULL;
-  g_autoptr(AvahiServiceBrowser) browser = NULL;
+  g_autoptr (AvahiClient) client = NULL;
+  g_autoptr (AvahiServiceBrowser) browser = NULL;
   int failure = 0;
 
   if (g_cancellable_set_error_if_cancelled (self->avahi_cancellable, error))
@@ -1435,37 +1366,27 @@ ostree_repo_finder_avahi_start (OstreeRepoFinderAvahi  *self,
 
   g_assert (self->client == NULL);
 
-  client = avahi_client_new (avahi_glib_poll_get (self->poll), 0,
-                             client_cb, self, &failure);
+  client = avahi_client_new (avahi_glib_poll_get (self->poll), 0, client_cb, self, &failure);
 
   if (client == NULL)
     {
       if (failure == AVAHI_ERR_NO_DAEMON)
-        g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                     "Avahi daemon is not running: %s",
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND, "Avahi daemon is not running: %s",
                      avahi_strerror (failure));
       else
-        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                     "Failed to create finder client: %s",
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Failed to create finder client: %s",
                      avahi_strerror (failure));
 
       return;
     }
 
   /* Query for the OSTree DNS-SD service on the local network. */
-  browser = avahi_service_browser_new (client,
-                                       AVAHI_IF_UNSPEC,
-                                       AVAHI_PROTO_UNSPEC,
-                                       OSTREE_AVAHI_SERVICE_TYPE,
-                                       NULL,
-                                       0,
-                                       browse_cb,
-                                       self);
+  browser = avahi_service_browser_new (client, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC,
+                                       OSTREE_AVAHI_SERVICE_TYPE, NULL, 0, browse_cb, self);
 
   if (browser == NULL)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Failed to create service browser: %s",
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Failed to create service browser: %s",
                    avahi_strerror (avahi_client_errno (client)));
       return;
     }
@@ -1476,12 +1397,12 @@ ostree_repo_finder_avahi_start (OstreeRepoFinderAvahi  *self,
 #else  /* if !HAVE_AVAHI */
   g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
                "Avahi support was not compiled in to libostree");
-#endif  /* !HAVE_AVAHI */
+#endif /* !HAVE_AVAHI */
 }
 
 #ifdef HAVE_AVAHI
 static gboolean stop_cb (gpointer user_data);
-#endif  /* HAVE_AVAHI */
+#endif /* HAVE_AVAHI */
 
 /**
  * ostree_repo_finder_avahi_stop:
@@ -1509,14 +1430,14 @@ ostree_repo_finder_avahi_stop (OstreeRepoFinderAvahi *self)
     return;
 
   g_main_context_invoke (self->avahi_context, stop_cb, g_object_ref (self));
-#endif  /* HAVE_AVAHI */
+#endif /* HAVE_AVAHI */
 }
 
 #ifdef HAVE_AVAHI
 static gboolean
 stop_cb (gpointer user_data)
 {
-  g_autoptr(OstreeRepoFinderAvahi) self = OSTREE_REPO_FINDER_AVAHI (user_data);
+  g_autoptr (OstreeRepoFinderAvahi) self = OSTREE_REPO_FINDER_AVAHI (user_data);
 
   g_cancellable_cancel (self->avahi_cancellable);
   maybe_complete_all_pending_tasks (self);
@@ -1527,4 +1448,4 @@ stop_cb (gpointer user_data)
 
   return G_SOURCE_REMOVE;
 }
-#endif  /* HAVE_AVAHI */
+#endif /* HAVE_AVAHI */

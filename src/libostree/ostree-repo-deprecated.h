@@ -24,7 +24,7 @@
 
 #ifndef __GI_SCANNER__
 #ifndef G_GNUC_DEPRECATED_FOR
-# define G_GNUC_DEPRECATED_FOR(x)
+#define G_GNUC_DEPRECATED_FOR(x)
 #endif
 #endif
 
@@ -39,7 +39,8 @@ G_BEGIN_DECLS
  * supercedes previous separate enumeration usage in
  * ostree_repo_checkout_tree().
  */
-typedef struct {
+typedef struct
+{
   OstreeRepoCheckoutMode mode;
   OstreeRepoCheckoutOverwriteMode overwrite_mode;
 
@@ -58,13 +59,10 @@ typedef struct {
 } OstreeRepoCheckoutOptions;
 
 _OSTREE_PUBLIC
-gboolean ostree_repo_checkout_tree_at (OstreeRepo                         *self,
-                                       OstreeRepoCheckoutOptions          *options,
-                                       int                                 destination_dfd,
-                                       const char                         *destination_path,
-                                       const char                         *commit,
-                                       GCancellable                       *cancellable,
-                                       GError                            **error)
-G_GNUC_DEPRECATED_FOR(ostree_repo_checkout_at);
+gboolean ostree_repo_checkout_tree_at (OstreeRepo *self, OstreeRepoCheckoutOptions *options,
+                                       int destination_dfd, const char *destination_path,
+                                       const char *commit, GCancellable *cancellable,
+                                       GError **error)
+    G_GNUC_DEPRECATED_FOR (ostree_repo_checkout_at);
 
 G_END_DECLS

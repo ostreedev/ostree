@@ -19,23 +19,17 @@
 
 #include "config.h"
 
-#include "otutil.h"
 #include "ot-tool-util.h"
+#include "otutil.h"
 
 gboolean
-ot_parse_boolean (const char  *value,
-                  gboolean    *out_parsed,
-                  GError     **error)
+ot_parse_boolean (const char *value, gboolean *out_parsed, GError **error)
 {
-#define ARG_EQ(x, y) (g_ascii_strcasecmp(x, y) == 0)
-  if (ARG_EQ(value, "1")
-      || ARG_EQ(value, "true")
-      || ARG_EQ(value, "yes"))
+#define ARG_EQ(x, y) (g_ascii_strcasecmp (x, y) == 0)
+  if (ARG_EQ (value, "1") || ARG_EQ (value, "true") || ARG_EQ (value, "yes"))
     *out_parsed = TRUE;
-  else if (ARG_EQ(value, "0")
-           || ARG_EQ(value, "false")
-           || ARG_EQ(value, "no")
-           || ARG_EQ(value, "none"))
+  else if (ARG_EQ (value, "0") || ARG_EQ (value, "false") || ARG_EQ (value, "no")
+           || ARG_EQ (value, "none"))
     *out_parsed = FALSE;
   else
     {
@@ -46,10 +40,7 @@ ot_parse_boolean (const char  *value,
 }
 
 gboolean
-ot_parse_keyvalue (const char  *keyvalue,
-                   char       **out_key,
-                   char       **out_value,
-                   GError     **error)
+ot_parse_keyvalue (const char *keyvalue, char **out_key, char **out_value, GError **error)
 {
   const char *eq = strchr (keyvalue, '=');
   if (!eq)
@@ -62,8 +53,10 @@ ot_parse_keyvalue (const char  *keyvalue,
 }
 
 /**
- * Note: temporarily copied from GLib: https://github.com/GNOME/glib/blob/a419146578a42c760cff684292465b38df855f75/glib/garray.c#L1664
- * See documentation at: https://developer.gnome.org/glib/stable/glib-Pointer-Arrays.html#g-ptr-array-find-with-equal-func
+ * Note: temporarily copied from GLib:
+ * https://github.com/GNOME/glib/blob/a419146578a42c760cff684292465b38df855f75/glib/garray.c#L1664
+ * See documentation at:
+ * https://developer.gnome.org/glib/stable/glib-Pointer-Arrays.html#g-ptr-array-find-with-equal-func
  *
  * ot_ptr_array_find_with_equal_func: (skip)
  * @haystack: pointer array to be searched
@@ -88,10 +81,8 @@ ot_parse_keyvalue (const char  *keyvalue,
  * Since: 2.54
  */
 gboolean
-ot_ptr_array_find_with_equal_func (GPtrArray     *haystack,
-                                   gconstpointer  needle,
-                                   GEqualFunc     equal_func,
-                                   guint         *index_)
+ot_ptr_array_find_with_equal_func (GPtrArray *haystack, gconstpointer needle, GEqualFunc equal_func,
+                                   guint *index_)
 {
   guint i;
 

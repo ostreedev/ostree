@@ -24,14 +24,13 @@
 
 #include <stdlib.h>
 
-#include <gio/gunixoutputstream.h>
 #include "libglnx.h"
 #include "zbase32.h"
+#include <gio/gunixoutputstream.h>
 
 /* Like glnx_throw_errno_prefix, but takes @gpg_error */
 gboolean
-ot_gpgme_throw (gpgme_error_t gpg_error, GError **error,
-                const char *fmt, ...)
+ot_gpgme_throw (gpgme_error_t gpg_error, GError **error, const char *fmt, ...)
 {
   if (error == NULL)
     return FALSE;
@@ -42,32 +41,28 @@ ot_gpgme_throw (gpgme_error_t gpg_error, GError **error,
   /* XXX This list is incomplete.  Add cases as needed. */
   switch (gpgme_err_code (gpg_error))
     {
-      /* special case - shouldn't be here */
-      case GPG_ERR_NO_ERROR:
-        g_assert_not_reached ();
+    /* special case - shouldn't be here */
+    case GPG_ERR_NO_ERROR:
+      g_assert_not_reached ();
 
-      /* special case - abort on out-of-memory */
-      case GPG_ERR_ENOMEM:
-        (void) gpg_strerror_r (gpg_error, errbuf, sizeof (errbuf));
-        errbuf[sizeof(errbuf)-1] = '\0';
-        g_error ("%s: %s",
-                 gpgme_strsource (gpg_error),
-                 errbuf);
+    /* special case - abort on out-of-memory */
+    case GPG_ERR_ENOMEM:
+      (void)gpg_strerror_r (gpg_error, errbuf, sizeof (errbuf));
+      errbuf[sizeof (errbuf) - 1] = '\0';
+      g_error ("%s: %s", gpgme_strsource (gpg_error), errbuf);
 
-      case GPG_ERR_INV_VALUE:
-        errcode = G_IO_ERROR_INVALID_ARGUMENT;
-        break;
+    case GPG_ERR_INV_VALUE:
+      errcode = G_IO_ERROR_INVALID_ARGUMENT;
+      break;
 
-      default:
-        errcode = G_IO_ERROR_FAILED;
-        break;
+    default:
+      errcode = G_IO_ERROR_FAILED;
+      break;
     }
 
-  (void) gpg_strerror_r (gpg_error, errbuf, sizeof (errbuf));
-  errbuf[sizeof(errbuf)-1] = '\0';
-  g_set_error (error, G_IO_ERROR, errcode, "%s: %s",
-               gpgme_strsource (gpg_error),
-               errbuf);
+  (void)gpg_strerror_r (gpg_error, errbuf, sizeof (errbuf));
+  errbuf[sizeof (errbuf) - 1] = '\0';
+  g_set_error (error, G_IO_ERROR, errcode, "%s: %s", gpgme_strsource (gpg_error), errbuf);
   va_list args;
   va_start (args, fmt);
   glnx_real_set_prefix_error_va (*error, fmt, args);
@@ -77,11 +72,9 @@ ot_gpgme_throw (gpgme_error_t gpg_error, GError **error,
 }
 
 gboolean
-ot_gpgme_ctx_tmp_home_dir (gpgme_ctx_t     gpgme_ctx,
-                           char          **out_tmp_home_dir,
-                           GOutputStream **out_pubring_stream,
-                           GCancellable   *cancellable,
-                           GError        **error)
+ot_gpgme_ctx_tmp_home_dir (gpgme_ctx_t gpgme_ctx, char **out_tmp_home_dir,
+                           GOutputStream **out_pubring_stream, GCancellable *cancellable,
+                           GError **error)
 {
   g_autofree char *tmp_home_dir = NULL;
   gpgme_error_t gpg_error;
@@ -105,9 +98,7 @@ ot_gpgme_ctx_tmp_home_dir (gpgme_ctx_t     gpgme_ctx,
 
   /* Not documented, but gpgme_ctx_set_engine_info() accepts NULL for
    * the executable file name, which leaves the old setting unchanged. */
-  gpg_error = gpgme_ctx_set_engine_info (gpgme_ctx,
-                                         GPGME_PROTOCOL_OpenPGP,
-                                         NULL, tmp_home_dir);
+  gpg_error = gpgme_ctx_set_engine_info (gpgme_ctx, GPGME_PROTOCOL_OpenPGP, NULL, tmp_home_dir);
   if (gpg_error != GPG_ERR_NO_ERROR)
     {
       ot_gpgme_throw (gpg_error, error, "gpgme_ctx_set_engine_info");
@@ -117,15 +108,13 @@ ot_gpgme_ctx_tmp_home_dir (gpgme_ctx_t     gpgme_ctx,
   if (out_pubring_stream != NULL)
     {
       GFileOutputStream *pubring_stream;
-      g_autoptr(GFile) pubring_file = NULL;
+      g_autoptr (GFile) pubring_file = NULL;
       g_autofree char *pubring_path = NULL;
 
       pubring_path = g_build_filename (tmp_home_dir, "pubring.gpg", NULL);
       pubring_file = g_file_new_for_path (pubring_path);
 
-      pubring_stream = g_file_create (pubring_file,
-                                      G_FILE_CREATE_NONE,
-                                      cancellable, error);
+      pubring_stream = g_file_create (pubring_file, G_FILE_CREATE_NONE, cancellable, error);
       if (pubring_stream == NULL)
         goto out;
 
@@ -142,7 +131,7 @@ out:
   if (!ret)
     {
       /* Clean up our mess on error. */
-      (void) glnx_shutil_rm_rf_at (AT_FDCWD, tmp_home_dir, NULL, NULL);
+      (void)glnx_shutil_rm_rf_at (AT_FDCWD, tmp_home_dir, NULL, NULL);
     }
 
   return ret;
@@ -159,98 +148,98 @@ set_errno_from_gio_error (GError *error)
 
   switch (error->code)
     {
-      case G_IO_ERROR_FAILED:
-        errno = EIO;
-        break;
-      case G_IO_ERROR_NOT_FOUND:
-        errno = ENOENT;
-        break;
-      case G_IO_ERROR_EXISTS:
-        errno = EEXIST;
-        break;
-      case G_IO_ERROR_IS_DIRECTORY:
-        errno = EISDIR;
-        break;
-      case G_IO_ERROR_NOT_DIRECTORY:
-        errno = ENOTDIR;
-        break;
-      case G_IO_ERROR_NOT_EMPTY:
-        errno = ENOTEMPTY;
-        break;
-      case G_IO_ERROR_NOT_REGULAR_FILE:
-      case G_IO_ERROR_NOT_SYMBOLIC_LINK:
-      case G_IO_ERROR_NOT_MOUNTABLE_FILE:
-        errno = EBADF;
-        break;
-      case G_IO_ERROR_FILENAME_TOO_LONG:
-        errno = ENAMETOOLONG;
-        break;
-      case G_IO_ERROR_INVALID_FILENAME:
-        errno = EINVAL;
-        break;
-      case G_IO_ERROR_TOO_MANY_LINKS:
-        errno = EMLINK;
-        break;
-      case G_IO_ERROR_NO_SPACE:
-        errno = ENOSPC;
-        break;
-      case G_IO_ERROR_INVALID_ARGUMENT:
-        errno = EINVAL;
-        break;
-      case G_IO_ERROR_PERMISSION_DENIED:
-        errno = EPERM;
-        break;
-      case G_IO_ERROR_NOT_SUPPORTED:
-        errno = ENOTSUP;
-        break;
-      case G_IO_ERROR_NOT_MOUNTED:
-        errno = ENOENT;
-        break;
-      case G_IO_ERROR_ALREADY_MOUNTED:
-        errno = EALREADY;
-        break;
-      case G_IO_ERROR_CLOSED:
-        errno = EBADF;
-        break;
-      case G_IO_ERROR_CANCELLED:
-        errno = EINTR;
-        break;
-      case G_IO_ERROR_PENDING:
-        errno = EALREADY;
-        break;
-      case G_IO_ERROR_READ_ONLY:
-        errno = EACCES;
-        break;
-      case G_IO_ERROR_CANT_CREATE_BACKUP:
-        errno = EIO;
-        break;
-      case G_IO_ERROR_WRONG_ETAG:
-        errno = EACCES;
-        break;
-      case G_IO_ERROR_TIMED_OUT:
-        errno = EIO;
-        break;
-      case G_IO_ERROR_WOULD_RECURSE:
-        errno = ELOOP;
-        break;
-      case G_IO_ERROR_BUSY:
-        errno = EBUSY;
-        break;
-      case G_IO_ERROR_WOULD_BLOCK:
-        errno = EWOULDBLOCK;
-        break;
-      case G_IO_ERROR_HOST_NOT_FOUND:
-        errno = EHOSTDOWN;
-        break;
-      case G_IO_ERROR_WOULD_MERGE:
-        errno = EIO;
-        break;
-      case G_IO_ERROR_FAILED_HANDLED:
-        errno = 0;
-        break;
-      default:
-        errno = EIO;
-        break;
+    case G_IO_ERROR_FAILED:
+      errno = EIO;
+      break;
+    case G_IO_ERROR_NOT_FOUND:
+      errno = ENOENT;
+      break;
+    case G_IO_ERROR_EXISTS:
+      errno = EEXIST;
+      break;
+    case G_IO_ERROR_IS_DIRECTORY:
+      errno = EISDIR;
+      break;
+    case G_IO_ERROR_NOT_DIRECTORY:
+      errno = ENOTDIR;
+      break;
+    case G_IO_ERROR_NOT_EMPTY:
+      errno = ENOTEMPTY;
+      break;
+    case G_IO_ERROR_NOT_REGULAR_FILE:
+    case G_IO_ERROR_NOT_SYMBOLIC_LINK:
+    case G_IO_ERROR_NOT_MOUNTABLE_FILE:
+      errno = EBADF;
+      break;
+    case G_IO_ERROR_FILENAME_TOO_LONG:
+      errno = ENAMETOOLONG;
+      break;
+    case G_IO_ERROR_INVALID_FILENAME:
+      errno = EINVAL;
+      break;
+    case G_IO_ERROR_TOO_MANY_LINKS:
+      errno = EMLINK;
+      break;
+    case G_IO_ERROR_NO_SPACE:
+      errno = ENOSPC;
+      break;
+    case G_IO_ERROR_INVALID_ARGUMENT:
+      errno = EINVAL;
+      break;
+    case G_IO_ERROR_PERMISSION_DENIED:
+      errno = EPERM;
+      break;
+    case G_IO_ERROR_NOT_SUPPORTED:
+      errno = ENOTSUP;
+      break;
+    case G_IO_ERROR_NOT_MOUNTED:
+      errno = ENOENT;
+      break;
+    case G_IO_ERROR_ALREADY_MOUNTED:
+      errno = EALREADY;
+      break;
+    case G_IO_ERROR_CLOSED:
+      errno = EBADF;
+      break;
+    case G_IO_ERROR_CANCELLED:
+      errno = EINTR;
+      break;
+    case G_IO_ERROR_PENDING:
+      errno = EALREADY;
+      break;
+    case G_IO_ERROR_READ_ONLY:
+      errno = EACCES;
+      break;
+    case G_IO_ERROR_CANT_CREATE_BACKUP:
+      errno = EIO;
+      break;
+    case G_IO_ERROR_WRONG_ETAG:
+      errno = EACCES;
+      break;
+    case G_IO_ERROR_TIMED_OUT:
+      errno = EIO;
+      break;
+    case G_IO_ERROR_WOULD_RECURSE:
+      errno = ELOOP;
+      break;
+    case G_IO_ERROR_BUSY:
+      errno = EBUSY;
+      break;
+    case G_IO_ERROR_WOULD_BLOCK:
+      errno = EWOULDBLOCK;
+      break;
+    case G_IO_ERROR_HOST_NOT_FOUND:
+      errno = EHOSTDOWN;
+      break;
+    case G_IO_ERROR_WOULD_MERGE:
+      errno = EIO;
+      break;
+    case G_IO_ERROR_FAILED_HANDLED:
+      errno = 0;
+      break;
+    default:
+      errno = EIO;
+      break;
     }
 }
 
@@ -263,8 +252,7 @@ data_read_cb (void *handle, void *buffer, size_t size)
 
   g_return_val_if_fail (G_IS_INPUT_STREAM (input_stream), -1);
 
-  if (!g_input_stream_read_all (input_stream, buffer, size,
-                                &bytes_read, NULL, &local_error))
+  if (!g_input_stream_read_all (input_stream, buffer, size, &bytes_read, NULL, &local_error))
     {
       set_errno_from_gio_error (local_error);
       g_clear_error (&local_error);
@@ -283,8 +271,7 @@ data_write_cb (void *handle, const void *buffer, size_t size)
 
   g_return_val_if_fail (G_IS_OUTPUT_STREAM (output_stream), -1);
 
-  if (g_output_stream_write_all (output_stream, buffer, size,
-                                 &bytes_written, NULL, &local_error))
+  if (g_output_stream_write_all (output_stream, buffer, size, &bytes_written, NULL, &local_error))
     {
       (void)g_output_stream_flush (output_stream, NULL, &local_error);
     }
@@ -308,27 +295,27 @@ data_seek_cb (void *handle, off_t offset, int whence)
   off_t position = -1;
   GError *local_error = NULL;
 
-  g_return_val_if_fail (G_IS_INPUT_STREAM (stream) ||
-                        G_IS_OUTPUT_STREAM (stream), -1);
+  g_return_val_if_fail (G_IS_INPUT_STREAM (stream) || G_IS_OUTPUT_STREAM (stream), -1);
 
-  if (!G_IS_SEEKABLE (stream)) {
-    errno = EOPNOTSUPP;
-    goto out;
-  }
+  if (!G_IS_SEEKABLE (stream))
+    {
+      errno = EOPNOTSUPP;
+      goto out;
+    }
 
   switch (whence)
     {
-      case SEEK_SET:
-        seek_type = G_SEEK_SET;
-        break;
-      case SEEK_CUR:
-        seek_type = G_SEEK_CUR;
-        break;
-      case SEEK_END:
-        seek_type = G_SEEK_END;
-        break;
-      default:
-        g_assert_not_reached ();
+    case SEEK_SET:
+      seek_type = G_SEEK_SET;
+      break;
+    case SEEK_CUR:
+      seek_type = G_SEEK_CUR;
+      break;
+    case SEEK_END:
+      seek_type = G_SEEK_END;
+      break;
+    default:
+      g_assert_not_reached ();
     }
 
   seekable = G_SEEKABLE (stream);
@@ -351,25 +338,15 @@ data_release_cb (void *handle)
 {
   GObject *stream = handle;
 
-  g_return_if_fail (G_IS_INPUT_STREAM (stream) ||
-                    G_IS_OUTPUT_STREAM (stream));
+  g_return_if_fail (G_IS_INPUT_STREAM (stream) || G_IS_OUTPUT_STREAM (stream));
 
   g_object_unref (stream);
 }
 
-static struct gpgme_data_cbs data_input_cbs = {
-  data_read_cb,
-  NULL,
-  data_seek_cb,
-  data_release_cb
-};
+static struct gpgme_data_cbs data_input_cbs = { data_read_cb, NULL, data_seek_cb, data_release_cb };
 
-static struct gpgme_data_cbs data_output_cbs = {
-  NULL,
-  data_write_cb,
-  data_seek_cb,
-  data_release_cb
-};
+static struct gpgme_data_cbs data_output_cbs
+    = { NULL, data_write_cb, data_seek_cb, data_release_cb };
 
 gpgme_data_t
 ot_gpgme_data_input (GInputStream *input_stream)
@@ -416,14 +393,13 @@ ot_gpgme_data_output (GOutputStream *output_stream)
 }
 
 gpgme_ctx_t
-ot_gpgme_new_ctx (const char *homedir,
-                  GError    **error)
+ot_gpgme_new_ctx (const char *homedir, GError **error)
 {
   gpgme_error_t err;
-  g_auto(gpgme_ctx_t) context = NULL;
+  g_auto (gpgme_ctx_t) context = NULL;
 
   if ((err = gpgme_new (&context)) != GPG_ERR_NO_ERROR)
-    return ot_gpgme_throw (err, error,  "Unable to create gpg context"), NULL;
+    return ot_gpgme_throw (err, error, "Unable to create gpg context"), NULL;
 
   if (homedir != NULL)
     {
@@ -440,9 +416,7 @@ ot_gpgme_new_ctx (const char *homedir,
 }
 
 static gboolean
-get_gnupg_version (guint *major,
-                   guint *minor,
-                   guint *patch)
+get_gnupg_version (guint *major, guint *minor, guint *patch)
 {
   g_return_val_if_fail (major != NULL, FALSE);
   g_return_val_if_fail (minor != NULL, FALSE);
@@ -452,8 +426,8 @@ get_gnupg_version (guint *major,
   gpgme_error_t err = gpgme_get_engine_info (&info);
   if (err != GPG_ERR_NO_ERROR)
     {
-      g_debug ("Failed to get GPGME engine info: %s: %s",
-               gpgme_strsource (err), gpgme_strerror (err));
+      g_debug ("Failed to get GPGME engine info: %s: %s", gpgme_strsource (err),
+               gpgme_strerror (err));
       return FALSE;
     }
 
@@ -473,7 +447,7 @@ get_gnupg_version (guint *major,
       return FALSE;
     }
 
-  g_auto(GStrv) parts = g_strsplit (gnupg_version, ".", 4);
+  g_auto (GStrv) parts = g_strsplit (gnupg_version, ".", 4);
   if (g_strv_length (parts) < 3)
     {
       g_debug ("Less than 3 components in GnuPG version \"%s\"", gnupg_version);
@@ -498,9 +472,8 @@ ot_gpgme_kill_agent (const char *homedir)
   guint gnupg_major = 0, gnupg_minor = 0, gnupg_patch = 0;
   if (get_gnupg_version (&gnupg_major, &gnupg_minor, &gnupg_patch))
     {
-      if ((gnupg_major > 2) ||
-          (gnupg_major == 2 && gnupg_minor > 1) ||
-          (gnupg_major == 2 && gnupg_minor == 1 && gnupg_patch >= 17))
+      if ((gnupg_major > 2) || (gnupg_major == 2 && gnupg_minor > 1)
+          || (gnupg_major == 2 && gnupg_minor == 1 && gnupg_patch >= 17))
         {
           /* Note early return */
           g_debug ("GnuPG >= 2.1.17, skipping gpg-agent cleanup in %s", homedir);
@@ -509,7 +482,7 @@ ot_gpgme_kill_agent (const char *homedir)
     }
 
   /* Run gpg-connect-agent killagent /bye */
-  g_autoptr(GPtrArray) argv = g_ptr_array_new ();
+  g_autoptr (GPtrArray) argv = g_ptr_array_new ();
   g_ptr_array_add (argv, "gpg-connect-agent");
   g_ptr_array_add (argv, "--homedir");
   g_ptr_array_add (argv, (gpointer)homedir);
@@ -517,13 +490,13 @@ ot_gpgme_kill_agent (const char *homedir)
   g_ptr_array_add (argv, "/bye");
   g_ptr_array_add (argv, NULL);
 
-  g_autoptr(GError) local_error = NULL;
+  g_autoptr (GError) local_error = NULL;
   GSpawnFlags flags = G_SPAWN_SEARCH_PATH | G_SPAWN_STDOUT_TO_DEV_NULL;
   gint proc_status = 0;
   g_autofree gchar *proc_stderr = NULL;
   g_debug ("Killing gpg-agent in %s", homedir);
-  if (!g_spawn_sync (NULL, (char **)argv->pdata, NULL, flags, NULL, NULL,
-                     NULL, &proc_stderr, &proc_status, &local_error))
+  if (!g_spawn_sync (NULL, (char **)argv->pdata, NULL, flags, NULL, NULL, NULL, &proc_stderr,
+                     &proc_status, &local_error))
     {
       g_debug ("Spawning gpg-connect-agent failed: %s", local_error->message);
       return;
@@ -533,8 +506,7 @@ ot_gpgme_kill_agent (const char *homedir)
       /* Dump out stderr on failures */
       g_printerr ("%s", proc_stderr);
 
-      g_debug ("Killing GPG agent with gpg-connect-agent failed: %s",
-               local_error->message);
+      g_debug ("Killing GPG agent with gpg-connect-agent failed: %s", local_error->message);
       return;
     }
 }
@@ -549,7 +521,7 @@ encode_wkd_local (const char *local)
 
   guint8 digest[20] = { 0 };
   gsize len = sizeof (digest);
-  g_autoptr(GChecksum) checksum = g_checksum_new (G_CHECKSUM_SHA1);
+  g_autoptr (GChecksum) checksum = g_checksum_new (G_CHECKSUM_SHA1);
   g_checksum_update (checksum, (const guchar *)local, -1);
   g_checksum_get_digest (checksum, digest, &len);
 
@@ -568,18 +540,15 @@ encode_wkd_local (const char *local)
  * https://datatracker.ietf.org/doc/html/draft-koch-openpgp-webkey-service
  */
 gboolean
-ot_gpg_wkd_urls (const char  *email,
-                 char       **out_advanced_url,
-                 char       **out_direct_url,
-                 GError     **error)
+ot_gpg_wkd_urls (const char *email, char **out_advanced_url, char **out_direct_url, GError **error)
 {
   g_return_val_if_fail (email != NULL, FALSE);
 
-  g_auto(GStrv) email_parts = g_strsplit (email, "@", -1);
+  g_auto (GStrv) email_parts = g_strsplit (email, "@", -1);
   if (g_strv_length (email_parts) != 2)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
-                   "Invalid email address \"%s\"", email);
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT, "Invalid email address \"%s\"",
+                   email);
       return FALSE;
     }
 
@@ -588,21 +557,17 @@ ot_gpg_wkd_urls (const char  *email,
   g_autofree char *local_encoded = encode_wkd_local (local_lowered);
   g_autofree char *local_escaped = g_uri_escape_string (email_parts[0], NULL, FALSE);
 
-  g_autofree char *advanced_url = g_strdup_printf ("https://openpgpkey.%s"
-                                                   "/.well-known/openpgpkey"
-                                                   "/%s/hu/%s?l=%s",
-                                                   email_parts[1],
-                                                   domain_lowered,
-                                                   local_encoded,
-                                                   local_escaped);
+  g_autofree char *advanced_url
+      = g_strdup_printf ("https://openpgpkey.%s"
+                         "/.well-known/openpgpkey"
+                         "/%s/hu/%s?l=%s",
+                         email_parts[1], domain_lowered, local_encoded, local_escaped);
   g_debug ("GPG UID \"%s\" advanced WKD URL: %s", email, advanced_url);
 
   g_autofree char *direct_url = g_strdup_printf ("https://%s"
                                                  "/.well-known/openpgpkey"
                                                  "/hu/%s?l=%s",
-                                                 email_parts[1],
-                                                 local_encoded,
-                                                 local_escaped);
+                                                 email_parts[1], local_encoded, local_escaped);
   g_debug ("GPG UID \"%s\" direct WKD URL: %s", email, direct_url);
 
   if (out_advanced_url != NULL)

@@ -25,27 +25,27 @@
 #include "ot-remote-builtins.h"
 
 static gboolean opt_revision;
-static char* opt_cache_dir;
+static char *opt_cache_dir;
 
 /* ATTENTION:
  * Please remember to update the bash-completion script (bash/ostree) and
  * man page (man/ostree-remote.xml) when changing the option list.
  */
 
-static GOptionEntry option_entries[] = {
-  { "revision", 'r', 0, G_OPTION_ARG_NONE, &opt_revision, "Show revisions in listing", NULL },
-  { "cache-dir", 0, 0, G_OPTION_ARG_FILENAME, &opt_cache_dir, "Use custom cache dir", NULL },
-  { NULL }
-};
+static GOptionEntry option_entries[]
+    = { { "revision", 'r', 0, G_OPTION_ARG_NONE, &opt_revision, "Show revisions in listing", NULL },
+        { "cache-dir", 0, 0, G_OPTION_ARG_FILENAME, &opt_cache_dir, "Use custom cache dir", NULL },
+        { NULL } };
 
 gboolean
-ot_remote_builtin_refs (int argc, char **argv, OstreeCommandInvocation *invocation, GCancellable *cancellable, GError **error)
+ot_remote_builtin_refs (int argc, char **argv, OstreeCommandInvocation *invocation,
+                        GCancellable *cancellable, GError **error)
 {
-  g_autoptr(GOptionContext) context = g_option_context_new ("NAME");
+  g_autoptr (GOptionContext) context = g_option_context_new ("NAME");
 
-  g_autoptr(OstreeRepo) repo = NULL;
-  if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
-                                    invocation, &repo, cancellable, error))
+  g_autoptr (OstreeRepo) repo = NULL;
+  if (!ostree_option_context_parse (context, option_entries, &argc, &argv, invocation, &repo,
+                                    cancellable, error))
     return FALSE;
 
   if (argc < 2)
@@ -61,17 +61,17 @@ ot_remote_builtin_refs (int argc, char **argv, OstreeCommandInvocation *invocati
     }
 
   const char *remote_name = argv[1];
-  g_autoptr(GHashTable) refs = NULL;
+  g_autoptr (GHashTable) refs = NULL;
 
   if (!ostree_repo_remote_list_refs (repo, remote_name, &refs, cancellable, error))
     return FALSE;
   else
     {
-      g_autoptr(GList) ordered_keys = NULL;
+      g_autoptr (GList) ordered_keys = NULL;
       GList *iter = NULL;
 
       ordered_keys = g_hash_table_get_keys (refs);
-      ordered_keys = g_list_sort (ordered_keys, (GCompareFunc) strcmp);
+      ordered_keys = g_list_sort (ordered_keys, (GCompareFunc)strcmp);
 
       for (iter = ordered_keys; iter; iter = iter->next)
         {
