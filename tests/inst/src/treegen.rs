@@ -4,11 +4,11 @@ use cap_std_ext::cap_std;
 use cap_std_ext::dirext::*;
 use cap_std_ext::rustix::fs::MetadataExt;
 use rand::Rng;
-use sh_inline::bash;
 use std::fs::File;
 use std::io::prelude::*;
 use std::os::unix::fs::FileExt as UnixFileExt;
 use std::path::Path;
+use xshell::cmd;
 
 use crate::test::*;
 
@@ -129,6 +129,7 @@ pub(crate) fn update_os_tree<P: AsRef<Path>>(
     ostref: &str,
     percentage: u32,
 ) -> Result<()> {
+    let sh = xshell::Shell::new()?;
     assert!(percentage > 0 && percentage <= 100);
     let repo_path = repo_path.as_ref();
     let tempdir = tempfile::tempdir_in(repo_path.join("tmp"))?;
@@ -149,9 +150,6 @@ pub(crate) fn update_os_tree<P: AsRef<Path>>(
     }
     assert!(mutated > 0);
     println!("Mutated ELF files: {}", mutated);
-    bash!("ostree --repo=${repo} commit --consume -b ${ostref} --base=${ostref} --tree=dir=${tempdir} --owner-uid 0 --owner-gid 0 --selinux-policy-from-base --link-checkout-speedup --no-bindings --no-xattrs",
-        repo = repo_path,
-        ostref = ostref,
-        tempdir = tempdir.path()).context("Failed to commit updated content")?;
-    Ok(())
+    let tempdir = tempdir.path();
+    cmd!(sh, "ostree --repo={repo_path} commit --consume -b {ostref} --base={ostref} --tree=dir={tempdir} --owner-uid 0 --owner-gid 0 --selinux-policy-from-base --link-checkout-speedup --no-bindings --no-xattrs").run().context("Failed to commit updated content")
 }
