@@ -465,6 +465,10 @@ gboolean ostree_repo_checkout_composefs (OstreeRepo *self, OstreeComposefsTarget
                                          OstreeRepoFile *source, GCancellable *cancellable,
                                          GError **error);
 
+gboolean ostree_repo_commit_add_composefs_metadata (OstreeRepo *self, GVariantBuilder *builder,
+                                                    OstreeRepoFile *repo_root,
+                                                    GCancellable *cancellable, GError **error);
+
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeComposefsTarget, ostree_composefs_target_unref)
 
 G_END_DECLS

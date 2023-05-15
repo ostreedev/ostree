@@ -558,3 +558,74 @@ ostree_repo_checkout_composefs (OstreeRepo *self, OstreeComposefsTarget *target,
   return FALSE;
 #endif
 }
+
+#ifdef HAVE_COMPOSEFS
+static gboolean
+ostree_repo_commit_add_composefs_sig (OstreeRepo *self, GVariantBuilder *builder,
+                                      guchar *fsverity_digest, GCancellable *cancellable,
+                                      GError **error)
+{
+  g_autofree char *certfile = NULL;
+  g_autofree char *keyfile = NULL;
+  g_autoptr (GBytes) sig = NULL;
+
+  certfile
+      = g_key_file_get_string (self->config, _OSTREE_INTEGRITY_SECTION, "composefs-certfile", NULL);
+  keyfile
+      = g_key_file_get_string (self->config, _OSTREE_INTEGRITY_SECTION, "composefs-keyfile", NULL);
+
+  if (certfile == NULL && keyfile == NULL)
+    return TRUE;
+
+  if (certfile == NULL)
+    return glnx_throw (error, "Error signing compoosefs: keyfile specified but certfile is not");
+
+  if (keyfile == NULL)
+    return glnx_throw (error, "Error signing compoosefs: certfile specified but keyfile is not");
+
+  if (!_ostree_fsverity_sign (certfile, keyfile, fsverity_digest, &sig, cancellable, error))
+    return FALSE;
+
+  g_variant_builder_add (builder, "{sv}", "ostree.composefs-sig", ot_gvariant_new_ay_bytes (sig));
+
+  return TRUE;
+}
+#endif
+
+gboolean
+ostree_repo_commit_add_composefs_metadata (OstreeRepo *self, GVariantBuilder *builder,
+                                           OstreeRepoFile *repo_root, GCancellable *cancellable,
+                                           GError **error)
+{
+  gboolean add_metadata;
+
+  if (!ot_keyfile_get_boolean_with_default (self->config, _OSTREE_INTEGRITY_SECTION,
+                                            "composefs-add-metadata", FALSE, &add_metadata, error))
+    return FALSE;
+
+  if (add_metadata)
+    {
+#ifdef HAVE_COMPOSEFS
+      /* Create a composefs image and put in deploy dir as .ostree.cfs */
+      g_autoptr (OstreeComposefsTarget) target = ostree_composefs_target_new ();
+
+      if (!ostree_repo_checkout_composefs (self, target, repo_root, cancellable, error))
+        return FALSE;
+
+      g_autofree guchar *fsverity_digest = NULL;
+      if (!ostree_composefs_target_write (target, -1, &fsverity_digest, cancellable, error))
+        return FALSE;
+
+      g_variant_builder_add (builder, "{sv}", "ostree.composefs",
+                             ot_gvariant_new_bytearray (fsverity_digest, OSTREE_SHA256_DIGEST_LEN));
+
+      if (!ostree_repo_commit_add_composefs_sig (self, builder, fsverity_digest, cancellable,
+                                                 error))
+        return FALSE;
+#else
+      return glnx_throw (error, "composefs required, but libostree compiled without support");
+#endif
+    }
+
+  return TRUE;
+}
