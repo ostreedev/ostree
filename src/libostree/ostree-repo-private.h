@@ -390,9 +390,10 @@ gboolean _ostree_repo_maybe_regenerate_summary (OstreeRepo *self, GCancellable *
 gboolean _ostree_repo_parse_fsverity_config (OstreeRepo *self, GError **error);
 
 gboolean _ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf, _OstreeFeatureSupport fsverity_requested,
-                                     gboolean *supported, GError **error);
+                                     GBytes *signature, gboolean *supported, GError **error);
 
-gboolean _ostree_tmpf_fsverity (OstreeRepo *self, GLnxTmpfile *tmpf, GError **error);
+gboolean _ostree_tmpf_fsverity (OstreeRepo *self, GLnxTmpfile *tmpf, GBytes *signature,
+                                GError **error);
 gboolean _ostree_fsverity_sign (const char *certfile, const char *keyfile,
                                 const guchar *fsverity_digest, GBytes **data_out,
                                 GCancellable *cancellable, GError **error);

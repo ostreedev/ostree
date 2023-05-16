@@ -184,7 +184,7 @@ _ostree_repo_commit_tmpf_final (OstreeRepo *self, const char *checksum, OstreeOb
   if (!_ostree_repo_ensure_loose_objdir_at (dest_dfd, tmpbuf, cancellable, error))
     return FALSE;
 
-  if (!_ostree_tmpf_fsverity (self, tmpf, error))
+  if (!_ostree_tmpf_fsverity (self, tmpf, NULL, error))
     return FALSE;
 
   if (!glnx_link_tmpfile_at (tmpf, GLNX_LINK_TMPFILE_NOREPLACE_IGNORE_EXIST, dest_dfd, tmpbuf,

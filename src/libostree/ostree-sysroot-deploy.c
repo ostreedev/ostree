@@ -163,7 +163,7 @@ install_into_boot (OstreeRepo *repo, OstreeSePolicy *sepolicy, int src_dfd, cons
   _OstreeFeatureSupport boot_verity = _OSTREE_FEATURE_NO;
   if (repo->fs_verity_wanted != _OSTREE_FEATURE_NO)
     boot_verity = _OSTREE_FEATURE_MAYBE;
-  if (!_ostree_tmpf_fsverity_core (&tmp_dest, boot_verity, NULL, error))
+  if (!_ostree_tmpf_fsverity_core (&tmp_dest, boot_verity, NULL, NULL, error))
     return FALSE;
 
   if (!glnx_link_tmpfile_at (&tmp_dest, GLNX_LINK_TMPFILE_NOREPLACE, dest_dfd, dest_subpath, error))

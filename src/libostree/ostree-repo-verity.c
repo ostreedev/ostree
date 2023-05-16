@@ -82,7 +82,7 @@ _ostree_repo_parse_fsverity_config (OstreeRepo *self, GError **error)
  * */
 gboolean
 _ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf, _OstreeFeatureSupport fsverity_requested,
-                            gboolean *supported, GError **error)
+                            GBytes *signature, gboolean *supported, GError **error)
 {
   /* Set this by default to simplify the code below */
   if (supported)
@@ -106,8 +106,8 @@ _ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf, _OstreeFeatureSupport fsverity_re
   arg.block_size = 4096;                          /* FIXME query */
   arg.salt_size = 0;                              /* TODO store salt in ostree repo config */
   arg.salt_ptr = 0;
-  arg.sig_size = 0; /* We don't currently expect use of in-kernel signature verification */
-  arg.sig_ptr = 0;
+  arg.sig_size = signature ? g_bytes_get_size (signature) : 0;
+  arg.sig_ptr = signature ? (guint64)g_bytes_get_data (signature, NULL) : 0;
 
   if (ioctl (tmpf->fd, FS_IOC_ENABLE_VERITY, &arg) < 0)
     {
@@ -133,7 +133,7 @@ _ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf, _OstreeFeatureSupport fsverity_re
  * as well as to support "opportunistic" use (requested and if filesystem supports).
  * */
 gboolean
-_ostree_tmpf_fsverity (OstreeRepo *self, GLnxTmpfile *tmpf, GError **error)
+_ostree_tmpf_fsverity (OstreeRepo *self, GLnxTmpfile *tmpf, GBytes *signature, GError **error)
 {
 #ifdef HAVE_LINUX_FSVERITY_H
   g_mutex_lock (&self->txn_lock);
@@ -156,7 +156,7 @@ _ostree_tmpf_fsverity (OstreeRepo *self, GLnxTmpfile *tmpf, GError **error)
     }
 
   gboolean supported = FALSE;
-  if (!_ostree_tmpf_fsverity_core (tmpf, fsverity_wanted, &supported, error))
+  if (!_ostree_tmpf_fsverity_core (tmpf, fsverity_wanted, signature, &supported, error))
     return FALSE;
 
   if (!supported)
