@@ -70,9 +70,11 @@ struct OstreeSysroot
   OstreeSysrootLoadState loadstate;
   gboolean mount_namespace_in_use; /* TRUE if caller has told us they used CLONE_NEWNS */
   gboolean root_is_ostree_booted;  /* TRUE if sysroot is / and we are booted via ostree */
-  /* The device/inode for /, used to detect booted deployment */
+  /* The device/inode for / and /etc, used to detect booted deployment */
   dev_t root_device;
   ino_t root_inode;
+  dev_t etc_device;
+  ino_t etc_inode;
 
   gboolean is_physical; /* TRUE if we're pointed at physical storage root and not a deployment */
   GPtrArray *deployments;

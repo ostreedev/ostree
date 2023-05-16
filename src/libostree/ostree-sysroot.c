@@ -799,14 +799,26 @@ parse_deployment (OstreeSysroot *self, const char *boot_link, OstreeDeployment *
   if (looking_for_booted_deployment)
     {
       struct stat stbuf;
+      struct stat etc_stbuf = {};
       if (!glnx_fstat (deployment_dfd, &stbuf, error))
         return FALSE;
+
+      /* We look for either the root or the etc subdir of the
+       * deployment. We need to do this, because when using composefs,
+       * the root is not a bind mount of the deploy dir, but the etc
+       * dir is.
+       */
+
+      if (!glnx_fstatat_allow_noent (deployment_dfd, "etc", &etc_stbuf, 0, error))
+        return FALSE;
+
       /* A bit ugly, we're assigning to a sysroot-owned variable from deep in
        * this parsing code. But eh, if something fails the sysroot state can't
        * be relied on anyways.
        */
       is_booted_deployment
-          = (stbuf.st_dev == self->root_device && stbuf.st_ino == self->root_inode);
+          = (stbuf.st_dev == self->root_device && stbuf.st_ino == self->root_inode)
+            || (etc_stbuf.st_dev == self->etc_device && etc_stbuf.st_ino == self->etc_inode);
     }
 
   g_autoptr (OstreeDeployment) ret_deployment
@@ -1001,6 +1013,17 @@ ostree_sysroot_initialize (OstreeSysroot *self, GError **error)
           return FALSE;
         self->root_device = root_stbuf.st_dev;
         self->root_inode = root_stbuf.st_ino;
+      }
+
+      {
+        struct stat etc_stbuf;
+        if (!glnx_fstatat_allow_noent (AT_FDCWD, "/etc", &etc_stbuf, 0, error))
+          return FALSE;
+        if (errno != ENOENT)
+          {
+            self->etc_device = etc_stbuf.st_dev;
+            self->etc_inode = etc_stbuf.st_ino;
+          }
       }
 
       struct stat self_stbuf;
