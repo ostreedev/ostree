@@ -73,11 +73,12 @@ out:
 }
 
 static inline char *
-read_proc_cmdline_ostree (void)
+read_proc_cmdline_key (const char *key)
 {
   char *cmdline = NULL;
   const char *iter;
   char *ret = NULL;
+  size_t key_len = strlen (key);
 
   cmdline = read_proc_cmdline ();
   if (!cmdline)
@@ -90,9 +91,9 @@ read_proc_cmdline_ostree (void)
       const char *next_nonspc = next;
       while (next_nonspc && *next_nonspc == ' ')
         next_nonspc += 1;
-      if (strncmp (iter, "ostree=", strlen ("ostree=")) == 0)
+      if (strncmp (iter, key, key_len) == 0 && iter[key_len] == '=')
         {
-          const char *start = iter + strlen ("ostree=");
+          const char *start = iter + key_len + 1;
           if (next)
             ret = strndup (start, next - start);
           else
