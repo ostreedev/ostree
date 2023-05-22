@@ -32,6 +32,7 @@ use std::path::Path;
 use std::time;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
+use xshell::cmd;
 
 use crate::test::*;
 
@@ -349,6 +350,7 @@ fn impl_transaction_test<M: AsRef<str>>(
     tdata: &TransactionalTestInfo,
     mark: Option<M>,
 ) -> Result<()> {
+    let sh = xshell::Shell::new()?;
     let polite_strategies = PoliteInterruptStrategy::iter().collect::<Vec<_>>();
     let force_strategies = ForceInterruptStrategy::iter().collect::<Vec<_>>();
 
@@ -397,8 +399,8 @@ fn impl_transaction_test<M: AsRef<str>>(
     // then we'll exit implicitly via the reboot, and reenter the function
     // above.
     loop {
-        // Make sure previously failed services (if any) can run.
-        bash!("systemctl reset-failed || true")?;
+        // Make sure previously failed services (if any) can run.  Ignore errors here though.
+        let _ = cmd!(sh, "systemctl reset-failed").run()?;
         // Save the previous strategy as a string so we can use it in error
         // messages below
         let prev_strategy_str = format!("{:?}", live_strategy);
@@ -421,10 +423,8 @@ fn impl_transaction_test<M: AsRef<str>>(
         // If we've reached our target iterations, exit the test successfully
         if mark.iter == ITERATIONS {
             // TODO also add ostree admin fsck to check the deployment directories
-            bash!(
-                "echo Performing final validation...
-                ostree fsck"
-            )?;
+            println!("Performing final validation...");
+            cmd!(sh, "ostree fsck").run()?;
             return Ok(());
         }
         let mut rng = rand::thread_rng();
@@ -541,6 +541,7 @@ fn impl_transaction_test<M: AsRef<str>>(
 }
 
 pub(crate) fn itest_transactionality() -> Result<()> {
+    let sh = xshell::Shell::new()?;
     testinit()?;
     let mark = get_reboot_mark()?;
     let cancellable = Some(gio::Cancellable::new());
@@ -572,19 +573,20 @@ pub(crate) fn itest_transactionality() -> Result<()> {
     };
     with_webserver_in(&srvrepo, &webserver_opts, move |addr| {
         let url = format!("http://{addr}");
-        bash!(
-            "ostree remote delete --if-exists testrepo
-             ostree remote add --set=gpg-verify=false testrepo ${url}",
-            url
-        )?;
+        cmd!(sh, "ostree remote delete --if-exists testrepo").run()?;
+        cmd!(
+            sh,
+            "ostree remote add --set=gpg-verify=false testrepo {url}"
+        )
+        .run()?;
 
         if firstrun {
             // Also disable zincati because we don't want automatic updates
             // in our reboots, and it currently fails to start.  The less
             // we have in each reboot, the faster reboots are.
-            bash!("systemctl disable --now zincati")?;
+            cmd!(sh, "systemctl disable --now zincati").run()?;
             // And prepare for updates
-            bash!("rpm-ostree cleanup -pr")?;
+            cmd!(sh, "rpm-ostree cleanup -pr").run()?;
             generate_update(&commit)?;
             // Directly set the origin, so that we're not dependent on the pending deployment.
             // FIXME: make this saner
