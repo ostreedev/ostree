@@ -117,6 +117,15 @@ include bsdiff/Makefile-bsdiff.am.inc
 EXTRA_DIST += bsdiff/Makefile-bsdiff.am
 noinst_LTLIBRARIES += libbsdiff.la
 
+COMPOSEFSDIR=$(srcdir)/composefs/libcomposefs
+LCFS_DEP_CRYPTO_CFLAGS=$(OT_DEP_CRYPTO_CFLAGS)
+LCFS_DEP_CRYPTO_LIBS=$(OT_DEP_CRYPTO_LIBS)
+include composefs/libcomposefs/Makefile-lib.am.inc
+EXTRA_DIST += composefs/libcomposefs/Makefile-lib.am
+if USE_COMPOSEFS
+noinst_LTLIBRARIES += libcomposefs.la
+endif
+
 include Makefile-otutil.am
 include Makefile-libostree.am
 include Makefile-ostree.am

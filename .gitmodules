@@ -4,3 +4,6 @@
 [submodule "bsdiff"]
 	path = bsdiff
 	url = https://github.com/mendsley/bsdiff
+[submodule "composefs"]
+	path = composefs
+	url = https://github.com/containers/composefs.git

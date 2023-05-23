@@ -280,31 +280,34 @@ AS_IF([test x$have_gpgme = xyes],
 )
 AM_CONDITIONAL(USE_GPGME, test "x$have_gpgme" = xyes)
 
-COMPOSEFS_DEPENDENCY="composefs >= 0.1.2"
-AC_ARG_WITH(composefs,
-	    AS_HELP_STRING([--without-composefs], [Do not use composefs]),
-	    :, with_composefs=maybe)
+# These are needed by libcomposefs
+AC_MSG_CHECKING([for new mount API (fsconfig)])
+AC_COMPILE_IFELSE(
+	[AC_LANG_SOURCE([[
+			#include <sys/mount.h>
+			int cmd = FSCONFIG_CMD_CREATE;
+	]])],
+	[AC_MSG_RESULT(yes)
+		 AC_DEFINE([HAVE_FSCONFIG_CMD_CREATE_SYS_MOUNT_H], 1, [Define if FSCONFIG_CMD_CREATE is available in sys/mount.h])],
+	[AC_MSG_RESULT(no)])
+AC_COMPILE_IFELSE(
+	[AC_LANG_SOURCE([[
+			/* also make sure it doesn't conflict with <sys/mount.h> since it is always used.  */
+			#include <sys/mount.h>
+			#include <linux/mount.h>
+			int cmd = FSCONFIG_CMD_CREATE;
+	]])],
+	[AC_MSG_RESULT(yes)
+		 AC_DEFINE([HAVE_FSCONFIG_CMD_CREATE_LINUX_MOUNT_H], 1, [Define if FSCONFIG_CMD_CREATE is available in linux/mount.h])],
+	[AC_MSG_RESULT(no)])
 
-AS_IF([ test x$with_composefs != xno ], [
-    AC_MSG_CHECKING([for $COMPOSEFS_DEPENDENCY])
-    PKG_CHECK_EXISTS($COMPOSEFS_DEPENDENCY, have_composefs=yes, have_composefs=no)
-    AC_MSG_RESULT([$have_composefs])
-    AS_IF([ test x$have_composefs = xno && test x$with_composefs != xmaybe ], [
-       AC_MSG_ERROR([composefs is enabled but could not be found])
-    ])
-    AS_IF([ test x$have_composefs = xyes], [
-        AC_DEFINE([HAVE_COMPOSEFS], 1, [Define if we have composefs.pc])
-	PKG_CHECK_MODULES(OT_DEP_COMPOSEFS, $COMPOSEFS_DEPENDENCY)
-        save_LIBS=$LIBS
-        LIBS=$OT_DEP_COMPOSEFS_LIBS
-        AC_CHECK_FUNCS(lcfs_node_new)
-        LIBS=$save_LIBS
-	with_composefs=yes
-    ], [
-	with_composefs=no
-    ])
-], [ with_composefs=no ])
-if test x$with_composefs != xno; then OSTREE_FEATURES="$OSTREE_FEATURES composefs"; fi
+AC_ARG_WITH(composefs,
+	    AS_HELP_STRING([--with-composefs], [Support composefs]),
+	    :, with_composefs=no)
+
+if test x$with_composefs != xno; then OSTREE_FEATURES="$OSTREE_FEATURES composefs";
+   AC_DEFINE([HAVE_COMPOSEFS], 1, [Define if we have libcomposefs])
+fi
 AM_CONDITIONAL(USE_COMPOSEFS, test $with_composefs != no)
 
 LIBSODIUM_DEPENDENCY="1.0.14"
