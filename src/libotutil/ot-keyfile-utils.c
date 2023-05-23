@@ -61,6 +61,50 @@ ot_keyfile_get_boolean_with_default (GKeyFile *keyfile, const char *section, con
 }
 
 gboolean
+ot_keyfile_get_tristate_with_default (GKeyFile *keyfile, const char *section, const char *value,
+                                      OtTristate default_value, OtTristate *out_tri, GError **error)
+{
+  g_return_val_if_fail (keyfile != NULL, FALSE);
+  g_return_val_if_fail (section != NULL, FALSE);
+  g_return_val_if_fail (value != NULL, FALSE);
+
+  GError *temp_error = NULL;
+  g_autofree char *ret_value = g_key_file_get_value (keyfile, section, value, &temp_error);
+  if (temp_error)
+    {
+      if (is_notfound (temp_error))
+        {
+          g_clear_error (&temp_error);
+          g_assert (ret_value == NULL);
+          *out_tri = default_value;
+          return TRUE;
+        }
+
+      g_propagate_error (error, temp_error);
+      return FALSE;
+    }
+
+  ret_value = g_strstrip (ret_value);
+
+  if (strcmp (ret_value, "yes") == 0 || strcmp (ret_value, "true") == 0
+      || strcmp (ret_value, "1") == 0)
+    *out_tri = OT_TRISTATE_YES;
+  else if (strcmp (ret_value, "no") == 0 || strcmp (ret_value, "false") == 0
+           || strcmp (ret_value, "0") == 0)
+    *out_tri = OT_TRISTATE_NO;
+  else if (strcmp (ret_value, "maybe") == 0)
+    *out_tri = OT_TRISTATE_MAYBE;
+  else
+    {
+      g_set_error (error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_INVALID_VALUE,
+                   "Invalid tri-state value: %s", ret_value);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+gboolean
 ot_keyfile_get_value_with_default (GKeyFile *keyfile, const char *section, const char *value,
                                    const char *default_value, char **out_value, GError **error)
 {
