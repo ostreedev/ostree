@@ -73,7 +73,7 @@ jobs:
       - name: Build
         run: |
           env NOCONFIGURE=1 ./autogen.sh &&
-          ./configure --with-curl --with-selinux --with-dracut=yesbutnoconf &&
+          ./configure --with-curl --with-selinux --with-dracut=yesbutnoconf --with-composefs &&
           make -j 4 && make install DESTDIR=$(pwd)/install && tar -c -C install --zstd -f inst.tar.zst .
       - name: Upload binary
         uses: actions/upload-artifact@v2
@@ -193,6 +193,8 @@ jobs:
             pre-checkout-setup: |
               apt-get update
               apt-get install -y git
+            configure-options: >-
+              --with-composefs
 
           # A build using libsoup3. After bookworm is released, this can
           # be switched to Debian Stable.
