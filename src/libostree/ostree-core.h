@@ -35,7 +35,7 @@ G_BEGIN_DECLS
  * objects). This is an arbitrary number intended to mitigate disk space
  * exhaustion attacks.
  */
-#define OSTREE_MAX_METADATA_SIZE (10 * 1024 * 1024)
+#define OSTREE_MAX_METADATA_SIZE (128 * 1024 * 1024)
 
 /**
  * OSTREE_MAX_METADATA_WARN_SIZE:
