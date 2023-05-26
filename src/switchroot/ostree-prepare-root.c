@@ -330,7 +330,14 @@ main (int argc, char *argv[])
             err (EXIT_FAILURE, "Failed to mount composefs");
         }
       else
-        using_composefs = 1;
+        {
+          int fd = open (_OSTREE_COMPOSEFS_ROOT_STAMP, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
+          if (fd < 0)
+            err (EXIT_FAILURE, "failed to create %s", _OSTREE_COMPOSEFS_ROOT_STAMP);
+          (void)close (fd);
+
+          using_composefs = 1;
+        }
 #else
       err (EXIT_FAILURE, "Composefs not supported");
 #endif

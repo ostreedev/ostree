@@ -95,7 +95,12 @@ main (int argc, char *argv[])
   if (mount ("none", "/sysroot", NULL, MS_REC | MS_PRIVATE, NULL) < 0)
     perror ("warning: While remounting /sysroot MS_PRIVATE");
 
-  if (path_is_on_readonly_fs ("/"))
+  bool root_is_composefs = false;
+  struct stat stbuf;
+  if (fstatat (AT_FDCWD, _OSTREE_COMPOSEFS_ROOT_STAMP, &stbuf, 0) == 0)
+    root_is_composefs = true;
+
+  if (path_is_on_readonly_fs ("/") && !root_is_composefs)
     {
       /* If / isn't writable, don't do any remounts; we don't want
        * to clear the readonly flag in that case.

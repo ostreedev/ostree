@@ -32,6 +32,7 @@
 
 #define INITRAMFS_MOUNT_VAR "/run/ostree/initramfs-mount-var"
 #define _OSTREE_SYSROOT_READONLY_STAMP "/run/ostree-sysroot-ro.stamp"
+#define _OSTREE_COMPOSEFS_ROOT_STAMP "/run/ostree-composefs-root.stamp"
 
 static inline int
 path_is_on_readonly_fs (const char *path)
