@@ -417,7 +417,7 @@ test_big_metadata (void)
   g_assert_no_error (error);
   g_assert (ret);
 
-  const size_t len = 20 * 1024 * 1024;
+  const size_t len = OSTREE_MAX_METADATA_SIZE + 1;
   g_assert_cmpint (len, >, OSTREE_MAX_METADATA_SIZE);
   g_autofree char *large_buf = g_malloc (len);
   memset (large_buf, 0x42, len);
