@@ -2910,7 +2910,6 @@ lint_deployment_fs (OstreeSysroot *self, OstreeDeployment *deployment, int deplo
   g_auto (GLnxDirFdIterator) dfd_iter = {
     0,
   };
-  glnx_autofd int dest_dfd = -1;
   gboolean exists;
 
   if (!ot_dfd_iter_init_allow_noent (deployment_dfd, "var", &dfd_iter, &exists, error))
