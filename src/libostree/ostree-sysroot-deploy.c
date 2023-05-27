@@ -2534,7 +2534,7 @@ auto_early_prune_old_deployments (OstreeSysroot *self, GPtrArray *new_deployment
           continue;
         }
 
-      guint64 bootdir_size;
+      guint64 bootdir_size = 0;
       if (!get_kernel_layout_size (self, deployment, &bootdir_size, cancellable, error))
         return FALSE;
 
