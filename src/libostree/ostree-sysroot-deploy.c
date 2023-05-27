@@ -2578,6 +2578,7 @@ auto_early_prune_old_deployments (OstreeSysroot *self, GPtrArray *new_deployment
     {
       /* Even if we auto-pruned, the new bootdirs wouldn't fit. Just let the
        * code continue and let it hit ENOSPC. */
+      g_printerr ("Disabling auto-prune optimization; insufficient space left in bootfs\n");
       return TRUE;
     }
 

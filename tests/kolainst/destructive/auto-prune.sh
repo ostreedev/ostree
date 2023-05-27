@@ -46,6 +46,7 @@ rpm-ostree rebase :modkernel1
 if OSTREE_SYSROOT_OPTS=early-prune ostree admin finalize-staged |& tee out.txt; then
     assert_not_reached "successfully wrote to filled up bootfs"
 fi
+assert_file_has_content out.txt "Disabling auto-prune optimization; insufficient space left in bootfs"
 assert_file_has_content out.txt "No space left on device"
 rm out.txt
 unconsume_bootfs_space
