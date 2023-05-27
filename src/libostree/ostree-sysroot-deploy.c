@@ -2441,6 +2441,30 @@ get_kernel_layout_size (OstreeSysroot *self, OstreeDeployment *deployment, guint
   return TRUE;
 }
 
+/* This is a roundabout but more trustworthy way of doing a space check than
+ * relying on statvfs's f_bfree when you know the size of the objects. */
+static gboolean
+dfd_fallocate_check (int dfd, __off_t len, gboolean *out_passed, GError **error)
+{
+  g_auto (GLnxTmpfile) tmpf = {
+    0,
+  };
+  if (!glnx_open_tmpfile_linkable_at (dfd, ".", O_WRONLY | O_CLOEXEC, &tmpf, error))
+    return FALSE;
+
+  *out_passed = TRUE;
+  /* There's glnx_try_fallocate, but not with the same error semantics. */
+  if (TEMP_FAILURE_RETRY (fallocate (tmpf.fd, 0, 0, len)) < 0)
+    {
+      if (G_IN_SET (errno, ENOSYS, EOPNOTSUPP))
+        return TRUE;
+      else if (errno != ENOSPC)
+        return glnx_throw_errno_prefix (error, "fallocate");
+      *out_passed = FALSE;
+    }
+  return TRUE;
+}
+
 /* Analyze /boot and figure out if the new deployments won't fit in the
  * remaining space. If they won't, check if deleting the deployments that are
  * getting rotated out (e.g. the current rollback) would free up sufficient
@@ -2553,16 +2577,17 @@ auto_early_prune_old_deployments (OstreeSysroot *self, GPtrArray *new_deployment
       net_new_bootcsum_dirs_total_size += bootdir_size;
     }
 
-  /* get bootfs free space */
-  struct statvfs stvfsbuf;
-  if (TEMP_FAILURE_RETRY (fstatvfs (self->boot_fd, &stvfsbuf)) < 0)
-    return glnx_throw_errno_prefix (error, "fstatvfs(boot)");
+  {
+    gboolean bootfs_has_space = FALSE;
+    if (!dfd_fallocate_check (self->boot_fd, net_new_bootcsum_dirs_total_size, &bootfs_has_space,
+                              error))
+      return glnx_prefix_error (error, "Checking if bootfs has space");
 
-  guint64 available_size = stvfsbuf.f_bsize * stvfsbuf.f_bfree;
-
-  /* does the bootfs have enough free space for net-new bootdirs? */
-  if (net_new_bootcsum_dirs_total_size <= available_size)
-    return TRUE; /* nothing to do! */
+    /* does the bootfs have enough free space for temporarily holding both the new
+     * and old bootdirs? */
+    if (bootfs_has_space)
+      return TRUE; /* nothing to do! */
+  }
 
   /* OK, we would fail if we tried to write the new bootdirs. Is it salvageable?
    * First, calculate how much space we could save with the bootcsums scheduled
@@ -2574,12 +2599,23 @@ auto_early_prune_old_deployments (OstreeSysroot *self, GPtrArray *new_deployment
         bootcsum_dirs_to_remove_total_size += GPOINTER_TO_UINT (sizep);
     }
 
-  if (net_new_bootcsum_dirs_total_size > (available_size + bootcsum_dirs_to_remove_total_size))
+  if (net_new_bootcsum_dirs_total_size > bootcsum_dirs_to_remove_total_size)
     {
-      /* Even if we auto-pruned, the new bootdirs wouldn't fit. Just let the
-       * code continue and let it hit ENOSPC. */
-      g_printerr ("Disabling auto-prune optimization; insufficient space left in bootfs\n");
-      return TRUE;
+      /* Check whether if we did early prune, we'd have enough space to write
+       * the new bootcsum dirs. */
+      gboolean bootfs_has_space = FALSE;
+      if (!dfd_fallocate_check (
+              self->boot_fd, net_new_bootcsum_dirs_total_size - bootcsum_dirs_to_remove_total_size,
+              &bootfs_has_space, error))
+        return glnx_prefix_error (error, "Checking if bootfs has space");
+
+      if (!bootfs_has_space)
+        {
+          /* Even if we auto-pruned, the new bootdirs wouldn't fit. Just let the
+           * code continue and let it hit ENOSPC. */
+          g_printerr ("Disabling auto-prune optimization; insufficient space left in bootfs\n");
+          return TRUE;
+        }
     }
 
   g_printerr ("Insufficient space left in bootfs; updating bootloader in two steps\n");
