@@ -2567,14 +2567,14 @@ auto_early_prune_old_deployments (OstreeSysroot *self, GPtrArray *new_deployment
   /* OK, we would fail if we tried to write the new bootdirs. Is it salvageable?
    * First, calculate how much space we could save with the bootcsums scheduled
    * for removal. */
-  guint64 size_to_remove = 0;
+  guint64 bootcsum_dirs_to_remove_total_size = 0;
   GLNX_HASH_TABLE_FOREACH_KV (current_bootcsums, const char *, bootcsum, gpointer, sizep)
     {
       if (!g_hash_table_contains (new_bootcsums, bootcsum))
-        size_to_remove += GPOINTER_TO_UINT (sizep);
+        bootcsum_dirs_to_remove_total_size += GPOINTER_TO_UINT (sizep);
     }
 
-  if (net_new_bootcsum_dirs_total_size > (available_size + size_to_remove))
+  if (net_new_bootcsum_dirs_total_size > (available_size + bootcsum_dirs_to_remove_total_size))
     {
       /* Even if we auto-pruned, the new bootdirs wouldn't fit. Just let the
        * code continue and let it hit ENOSPC. */
