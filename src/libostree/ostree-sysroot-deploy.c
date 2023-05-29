@@ -699,10 +699,21 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
       if (!glnx_fchmod (tmpf.fd, 0644, error))
         return FALSE;
 
-      if (apply_composefs_signature && metadata_composefs_sig)
-        sig = g_variant_get_data_as_bytes (metadata_composefs_sig);
+      if (metadata_composefs_sig)
+        {
+          g_autofree char *composefs_sig_path
+              = g_strdup_printf ("%s/.ostree.cfs.sig", checkout_target_name);
 
-      if (!_ostree_tmpf_fsverity (repo, &tmpf, sig, error))
+          sig = g_variant_get_data_as_bytes (metadata_composefs_sig);
+
+          /* Write signature to file so it can be applied later if needed */
+          if (!glnx_file_replace_contents_at (osdeploy_dfd, composefs_sig_path,
+                                              g_bytes_get_data (sig, NULL), g_bytes_get_size (sig),
+                                              0, cancellable, error))
+            return FALSE;
+        }
+
+      if (!_ostree_tmpf_fsverity (repo, &tmpf, apply_composefs_signature ? sig : NULL, error))
         return FALSE;
 
       if (!glnx_link_tmpfile_at (&tmpf, GLNX_LINK_TMPFILE_REPLACE, osdeploy_dfd, composefs_cfs_path,
