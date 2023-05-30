@@ -36,11 +36,16 @@
  * hardlinked chroot() targets are maintained, this one does the equivalent
  * of chroot().
  *
+ * # ostree-prepare-root.service
+ *
  * If using systemd, an excellent reference is `man bootup`.  This
  * service runs Before=initrd-root-fs.target.  At this point it's
  * assumed that the block storage and root filesystem are mounted at
  * /sysroot - i.e. /sysroot points to the *physical* root before
- * this service runs.  After, `/` is the deployment root.
+ * this service runs.  After, `/` is the deployment root, and /sysroot is
+ * the physical root.
+ *
+ * # Running as pid 1
  *
  * There is also a secondary mode for this service when an initrd isn't
  * used - instead the binary must be statically linked (and the kernel
@@ -77,6 +82,9 @@
 #define OSTREE_PREPARE_ROOT_DEPLOYMENT_MSG \
   SD_ID128_MAKE (71, 70, 33, 6a, 73, ba, 46, 01, ba, d3, 1a, f8, 88, aa, 0d, f7)
 #endif
+
+// A temporary mount point
+#define TMP_SYSROOT "/sysroot.tmp"
 
 #include "ostree-mount-util.h"
 
@@ -202,6 +210,11 @@ main (int argc, char *argv[])
       we_mounted_proc = 1;
     }
 
+  /* This is the final target where we should prepare the rootfs.  The usual
+   * case with systemd in the initramfs is that root_mountpoint = "/sysroot".
+   * In the fastboot embedded case we're pid1 and will setup / ourself, and
+   * then root_mountpoint = "/".
+   * */
   const char *root_mountpoint = realpath (root_arg, NULL);
   if (root_mountpoint == NULL)
     err (EXIT_FAILURE, "realpath(\"%s\")", root_arg);
@@ -234,15 +247,22 @@ main (int argc, char *argv[])
   if (mount (NULL, "/", NULL, MS_REC | MS_PRIVATE | MS_SILENT, NULL) < 0)
     err (EXIT_FAILURE, "failed to make \"/\" private mount");
 
-  /* Make deploy_path a bind mount, so we can move it later */
-  if (mount (deploy_path, deploy_path, NULL, MS_BIND | MS_SILENT, NULL) < 0)
-    err (EXIT_FAILURE, "failed to make initial bind mount %s", deploy_path);
+  if (mkdir (TMP_SYSROOT, 0755) < 0)
+    err (EXIT_FAILURE, "couldn't create temporary sysroot %s", TMP_SYSROOT);
 
-  /* chdir to our new root.  We need to do this after bind-mounting it over
-   * itself otherwise our cwd is still on the non-bind-mounted filesystem
-   * below. */
+  /* Run in the deploy_path dir so we can use relative paths below */
   if (chdir (deploy_path) < 0)
     err (EXIT_FAILURE, "failed to chdir to deploy_path");
+
+  /* Currently always false */
+  bool using_composefs = false;
+
+  if (!using_composefs)
+    {
+      /* The deploy root starts out bind mounted to sysroot.tmp */
+      if (mount (deploy_path, TMP_SYSROOT, NULL, MS_BIND | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to make initial bind mount %s", deploy_path);
+    }
 
   /* This will result in a system with /sysroot read-only. Thus, two additional
    * writable bind-mounts (for /etc and /var) are required later on. */
@@ -269,7 +289,7 @@ main (int argc, char *argv[])
         {
           if (snprintf (srcpath, sizeof (srcpath), "%s/boot", root_mountpoint) < 0)
             err (EXIT_FAILURE, "failed to assemble /boot path");
-          if (mount (srcpath, "boot", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+          if (mount (srcpath, TMP_SYSROOT "/boot", NULL, MS_BIND | MS_SILENT, NULL) < 0)
             err (EXIT_FAILURE, "failed to bind mount %s to boot", srcpath);
         }
     }
@@ -277,13 +297,15 @@ main (int argc, char *argv[])
   /* Prepare /etc.
    * No action required if sysroot is writable. Otherwise, a bind-mount for
    * the deployment needs to be created and remounted as read/write. */
-  if (sysroot_readonly)
+  if (sysroot_readonly || using_composefs)
     {
       /* Bind-mount /etc (at deploy path), and remount as writable. */
-      if (mount ("etc", "etc", NULL, MS_BIND | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to prepare /etc bind-mount at %s", srcpath);
-      if (mount ("etc", "etc", NULL, MS_BIND | MS_REMOUNT | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to make writable /etc bind-mount at %s", srcpath);
+      if (mount ("etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to prepare /etc bind-mount at /sysroot.tmp/etc");
+      if (mount (TMP_SYSROOT "/etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_REMOUNT | MS_SILENT,
+                 NULL)
+          < 0)
+        err (EXIT_FAILURE, "failed to make writable /etc bind-mount at /sysroot.tmp/etc");
     }
 
   /* Prepare /usr.
@@ -291,28 +313,31 @@ main (int argc, char *argv[])
   if (lstat (".usr-ovl-work", &stbuf) == 0)
     {
       /* Do we have a persistent overlayfs for /usr?  If so, mount it now. */
-      const char usr_ovl_options[] = "lowerdir=usr,upperdir=.usr-ovl-upper,workdir=.usr-ovl-work";
+      const char usr_ovl_options[]
+          = "lowerdir=" TMP_SYSROOT "/usr,upperdir=.usr-ovl-upper,workdir=.usr-ovl-work";
 
       /* Except overlayfs barfs if we try to mount it on a read-only
        * filesystem.  For this use case I think admins are going to be
        * okay if we remount the rootfs here, rather than waiting until
        * later boot and `systemd-remount-fs.service`.
        */
-      if (path_is_on_readonly_fs ("."))
+      if (path_is_on_readonly_fs (TMP_SYSROOT))
         {
-          if (mount (".", ".", NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
+          if (mount (TMP_SYSROOT, TMP_SYSROOT, NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
             err (EXIT_FAILURE, "failed to remount rootfs writable (for overlayfs)");
         }
 
-      if (mount ("overlay", "usr", "overlay", MS_SILENT, usr_ovl_options) < 0)
+      if (mount ("overlay", TMP_SYSROOT "/usr", "overlay", MS_SILENT, usr_ovl_options) < 0)
         err (EXIT_FAILURE, "failed to mount /usr overlayfs");
     }
-  else
+  else if (!using_composefs)
     {
-      /* Otherwise, a read-only bind mount for /usr */
-      if (mount ("usr", "usr", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+      /* Otherwise, a read-only bind mount for /usr. (Not needed for composefs) */
+      if (mount (TMP_SYSROOT "/usr", TMP_SYSROOT "/usr", NULL, MS_BIND | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to bind mount (class:readonly) /usr");
-      if (mount ("usr", "usr", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL) < 0)
+      if (mount (TMP_SYSROOT "/usr", TMP_SYSROOT "/usr", NULL,
+                 MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL)
+          < 0)
         err (EXIT_FAILURE, "failed to bind mount (class:readonly) /usr");
     }
 
@@ -345,7 +370,7 @@ main (int argc, char *argv[])
    */
   if (mount_var)
     {
-      if (mount ("../../var", "var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+      if (mount ("../../var", TMP_SYSROOT "/var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to bind mount ../../var to var");
     }
 
@@ -356,6 +381,9 @@ main (int argc, char *argv[])
    */
   if (!running_as_pid1)
     touch_run_ostree ();
+
+  if (chdir (TMP_SYSROOT) < 0)
+    err (EXIT_FAILURE, "failed to chdir to " TMP_SYSROOT);
 
   if (strcmp (root_mountpoint, "/") == 0)
     {
@@ -371,32 +399,22 @@ main (int argc, char *argv[])
   else
     {
       /* In this instance typically we have our ready made-up up root at
-       * /sysroot/ostree/deploy/.../ (deploy_path) and the real rootfs at
-       * /sysroot (root_mountpoint).  We want to end up with our made-up root at
-       * /sysroot/ and the real rootfs under /sysroot/sysroot as systemd will be
-       * responsible for moving /sysroot to /.
-       *
-       * We need to do this in 3 moves to avoid trying to move /sysroot under
-       * itself:
-       *
-       * 1. /sysroot/ostree/deploy/... -> /sysroot.tmp
-       * 2. /sysroot -> /sysroot.tmp/sysroot
-       * 3. /sysroot.tmp -> /sysroot
+       * /sysroot.tmp and the physical root at /sysroot (root_mountpoint).
+       * We want to end up with our deploy root at /sysroot/ and the physical
+       * root under /sysroot/sysroot as systemd will be responsible for
+       * moving /sysroot to /.
        */
-      if (mkdir ("/sysroot.tmp", 0755) < 0)
-        err (EXIT_FAILURE, "couldn't create temporary sysroot /sysroot.tmp");
-
-      if (mount (deploy_path, "/sysroot.tmp", NULL, MS_MOVE | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to MS_MOVE '%s' to '/sysroot.tmp'", deploy_path);
-
       if (mount (root_mountpoint, "sysroot", NULL, MS_MOVE | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to MS_MOVE '%s' to 'sysroot'", root_mountpoint);
 
       if (mount (".", root_mountpoint, NULL, MS_MOVE | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to MS_MOVE %s to %s", deploy_path, root_mountpoint);
+        err (EXIT_FAILURE, "failed to MS_MOVE %s to %s", ".", root_mountpoint);
 
-      if (rmdir ("/sysroot.tmp") < 0)
-        err (EXIT_FAILURE, "couldn't remove temporary sysroot /sysroot.tmp");
+      if (chdir (root_mountpoint) < 0)
+        err (EXIT_FAILURE, "failed to chdir to %s", root_mountpoint);
+
+      if (rmdir (TMP_SYSROOT) < 0)
+        err (EXIT_FAILURE, "couldn't remove temporary sysroot %s", TMP_SYSROOT);
 
       if (sysroot_readonly)
         {
