@@ -9,9 +9,9 @@ set -xeuo pipefail
 cd /root
 mkdir -p rootfs/usr/lib/modules/`uname -r`
 cp /usr/lib/modules/`uname -r`/vmlinuz rootfs/usr/lib/modules/`uname -r`
-echo 1 >> rootfs/usr/lib/modules/`uname -r`/vmlinuz
+dd if=/dev/urandom of=rootfs/usr/lib/modules/`uname -r`/vmlinuz count=1 conv=notrunc status=none
 ostree commit --base "${host_refspec}" -P --tree=dir=rootfs -b modkernel1
-echo 1 >> rootfs/usr/lib/modules/`uname -r`/vmlinuz
+dd if=/dev/urandom of=rootfs/usr/lib/modules/`uname -r`/vmlinuz count=1 conv=notrunc status=none
 ostree commit --base "${host_refspec}" -P --tree=dir=rootfs -b modkernel2
 
 assert_bootfs_has_n_bootcsum_dirs() {
@@ -25,8 +25,9 @@ assert_bootfs_has_n_bootcsum_dirs() {
 }
 
 consume_bootfs_space() {
-    local free_blocks=$(stat --file-system /boot -c '%a')
-    local block_size=$(stat --file-system /boot -c '%s')
+    local free_blocks block_size
+    free_blocks=${1:-$(stat --file-system /boot -c '%a')}
+    block_size=$(stat --file-system /boot -c '%s')
     # leave 1 block free
     unshare -m bash -c \
       "mount -o rw,remount /boot && \
@@ -46,6 +47,7 @@ rpm-ostree rebase :modkernel1
 if OSTREE_SYSROOT_OPTS=early-prune ostree admin finalize-staged |& tee out.txt; then
     assert_not_reached "successfully wrote to filled up bootfs"
 fi
+assert_file_has_content out.txt "Disabling auto-prune optimization; insufficient space left in bootfs"
 assert_file_has_content out.txt "No space left on device"
 rm out.txt
 unconsume_bootfs_space
@@ -90,5 +92,44 @@ rm out.txt
 
 assert_bootfs_has_n_bootcsum_dirs 2
 assert_not_streq "$bootloader_orig" "$(sha256sum /boot/loader/entries/*)"
+
+# This next test relies on the fact that FCOS currently uses ext4 for /boot.
+# If that ever changes, we can reprovision boot to be ext4.
+if [[ $(findmnt -no FSTYPE /boot) != ext4 ]]; then
+    assert_not_reached "/boot is not ext4"
+fi
+
+# Put modkernel2 in rollback position
+rpm-ostree rollback
+
+# Below, we test that a bootcsum dir sized below f_bfree but still large enough
+# to not actually fit (because some filesystems like ext4 include reserved
+# overhead in their f_bfree count for some reason) will still trigger the auto-
+# prune logic.
+
+unconsume_bootfs_space
+
+# Size the bigfile just right so that the kernel+initrd will be just at the max
+# limit according to f_bfree.
+unshare -m bash -c \
+  "mount -o rw,remount /boot && \
+   cp /usr/lib/modules/`uname -r`/{vmlinuz,initramfs.img} /boot"
+free_blocks=$(stat --file-system /boot -c '%f')
+unshare -m bash -c \
+  "mount -o rw,remount /boot && rm /boot/{vmlinuz,initramfs.img}"
+consume_bootfs_space "$((free_blocks))"
+
+rpm-ostree rebase :modkernel1
+if ostree admin finalize-staged |& tee out.txt; then
+    assert_not_reached "successfully wrote kernel without auto-pruning"
+fi
+assert_file_has_content out.txt "No space left on device"
+rm out.txt
+
+# now, try again but with auto-pruning enabled
+rpm-ostree rebase :modkernel1
+OSTREE_SYSROOT_OPTS=early-prune ostree admin finalize-staged |& tee out.txt
+assert_file_has_content out.txt "updating bootloader in two steps"
+rm out.txt
 
 echo "ok bootfs auto-prune"
