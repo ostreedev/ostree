@@ -66,12 +66,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/mount.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+/* We can't include both linux/fs.h and sys/mount.h, so define these directly */
+#define FS_VERITY_FL 0x00100000 /* Verity protected inode */
+#define FS_IOC_GETFLAGS _IOR ('f', 1, long)
 
 #if defined(HAVE_LIBSYSTEMD) && !defined(OSTREE_PREPARE_ROOT_STATIC)
 #define USE_LIBSYSTEMD
@@ -307,6 +312,47 @@ main (int argc, char *argv[])
         objdirs,
         1,
       };
+      int cfs_fd;
+      unsigned cfs_flags;
+
+      cfs_fd = open (".ostree.cfs", O_RDONLY);
+      if (cfs_fd < 0)
+        {
+          if (errno == ENOENT)
+            goto nocfs;
+
+          err (EXIT_FAILURE, "failed to open .ostree.cfs");
+        }
+
+      /* Check if file is already fsverity */
+      if (ioctl (cfs_fd, FS_IOC_GETFLAGS, &cfs_flags) < 0)
+        err (EXIT_FAILURE, "failed to get .ostree.cfs flags");
+
+      /* It is not, apply signature (if it exists) */
+      if ((cfs_flags & FS_VERITY_FL) == 0)
+        {
+          unsigned char *signature;
+          size_t signature_len;
+
+          signature = read_file (".ostree.cfs.sig", &signature_len);
+          if (signature != NULL)
+            {
+              /* If we're read-only we temporarily make it read-write to sign the image */
+              if (!sysroot_currently_writable
+                  && mount (root_mountpoint, root_mountpoint, NULL, MS_REMOUNT | MS_SILENT, NULL)
+                         < 0)
+                err (EXIT_FAILURE, "failed to remount rootfs writable (for signing)");
+
+              fsverity_sign (cfs_fd, signature, signature_len);
+              free (signature);
+
+              if (!sysroot_currently_writable
+                  && mount (root_mountpoint, root_mountpoint, NULL,
+                            MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL)
+                         < 0)
+                err (EXIT_FAILURE, "failed to remount rootfs back read-only (after signing)");
+            }
+        }
 
       cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
 
@@ -324,12 +370,7 @@ main (int argc, char *argv[])
           cfs_options.expected_digest = composefs_digest;
         }
 
-      if (lcfs_mount_image (".ostree.cfs", "/sysroot.tmp", &cfs_options) < 0)
-        {
-          if (composefs_mode > OSTREE_COMPOSEFS_MODE_MAYBE)
-            err (EXIT_FAILURE, "Failed to mount composefs");
-        }
-      else
+      if (lcfs_mount_fd (cfs_fd, TMP_SYSROOT, &cfs_options) == 0)
         {
           int fd = open (_OSTREE_COMPOSEFS_ROOT_STAMP, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
           if (fd < 0)
@@ -338,6 +379,10 @@ main (int argc, char *argv[])
 
           using_composefs = 1;
         }
+
+      close (cfs_fd);
+
+    nocfs:
 #else
       err (EXIT_FAILURE, "Composefs not supported");
 #endif
@@ -345,6 +390,9 @@ main (int argc, char *argv[])
 
   if (!using_composefs)
     {
+      if (composefs_mode > OSTREE_COMPOSEFS_MODE_MAYBE)
+        err (EXIT_FAILURE, "Failed to mount composefs");
+
       /* The deploy root starts out bind mounted to sysroot.tmp */
       if (mount (deploy_path, TMP_SYSROOT, NULL, MS_BIND | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to make initial bind mount %s", deploy_path);

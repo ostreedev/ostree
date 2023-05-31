@@ -24,11 +24,17 @@
 #include <err.h>
 #include <fcntl.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/statvfs.h>
 #include <unistd.h>
+
+#ifdef HAVE_LINUX_FSVERITY_H
+#include <linux/fsverity.h>
+#endif
 
 #define INITRAMFS_MOUNT_VAR "/run/ostree/initramfs-mount-var"
 #define _OSTREE_SYSROOT_READONLY_STAMP "/run/ostree-sysroot-ro.stamp"
@@ -121,6 +127,67 @@ touch_run_ostree (void)
   if (fd == -1)
     return;
   (void)close (fd);
+}
+
+static inline unsigned char *
+read_file (const char *path, size_t *out_len)
+{
+  int fd;
+
+  fd = open (path, O_RDONLY);
+  if (fd < 0)
+    {
+      if (errno == ENOENT)
+        return NULL;
+      err (EXIT_FAILURE, "failed to open %s", path);
+    }
+
+  struct stat stbuf;
+  if (fstat (fd, &stbuf))
+    err (EXIT_FAILURE, "fstat(%s) failed", path);
+
+  size_t file_size = stbuf.st_size;
+  unsigned char *buf = malloc (file_size);
+  if (buf == NULL)
+    err (EXIT_FAILURE, "Out of memory");
+
+  size_t file_read = 0;
+  while (file_read < file_size)
+    {
+      ssize_t bytes_read;
+      do
+        bytes_read = read (fd, buf + file_read, file_size - file_read);
+      while (bytes_read == -1 && errno == EINTR);
+      if (bytes_read == -1)
+        err (EXIT_FAILURE, "read_file(%s) failed", path);
+      if (bytes_read == 0)
+        break;
+
+      file_read += bytes_read;
+    }
+
+  close (fd);
+
+  *out_len = file_read;
+  return buf;
+}
+
+static inline void
+fsverity_sign (int fd, unsigned char *signature, size_t signature_len)
+{
+#ifdef HAVE_LINUX_FSVERITY_H
+  struct fsverity_enable_arg arg = {
+    0,
+  };
+  arg.version = 1;
+  arg.hash_algorithm = FS_VERITY_HASH_ALG_SHA256;
+  arg.block_size = 4096;
+  arg.sig_size = signature_len;
+  arg.sig_ptr = (uint64_t)signature;
+
+  if (ioctl (fd, FS_IOC_ENABLE_VERITY, &arg) < 0)
+    err (EXIT_FAILURE, "failed to fs-verity sign file");
+#endif
 }
 
 #endif /* __OSTREE_MOUNT_UTIL_H_ */
