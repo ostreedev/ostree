@@ -2446,6 +2446,14 @@ get_kernel_layout_size (OstreeSysroot *self, OstreeDeployment *deployment, guint
 static gboolean
 dfd_fallocate_check (int dfd, __off_t len, gboolean *out_passed, GError **error)
 {
+  /* If the requested size is 0 then return early. Passing a 0 len to
+   * fallocate results in EINVAL */
+  if (len == 0)
+    {
+      *out_passed = TRUE;
+      return TRUE;
+    }
+
   g_auto (GLnxTmpfile) tmpf = {
     0,
   };
