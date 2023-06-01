@@ -2581,7 +2581,7 @@ auto_early_prune_old_deployments (OstreeSysroot *self, GPtrArray *new_deployment
     gboolean bootfs_has_space = FALSE;
     if (!dfd_fallocate_check (self->boot_fd, net_new_bootcsum_dirs_total_size, &bootfs_has_space,
                               error))
-      return glnx_prefix_error (error, "Checking if bootfs has space");
+      return glnx_prefix_error (error, "Checking if bootfs has sufficient space");
 
     /* does the bootfs have enough free space for temporarily holding both the new
      * and old bootdirs? */
@@ -2607,7 +2607,7 @@ auto_early_prune_old_deployments (OstreeSysroot *self, GPtrArray *new_deployment
       if (!dfd_fallocate_check (
               self->boot_fd, net_new_bootcsum_dirs_total_size - bootcsum_dirs_to_remove_total_size,
               &bootfs_has_space, error))
-        return glnx_prefix_error (error, "Checking if bootfs has space");
+        return glnx_prefix_error (error, "Checking if prune would give bootfs sufficient space");
 
       if (!bootfs_has_space)
         {
