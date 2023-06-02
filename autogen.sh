@@ -35,6 +35,7 @@ fi
 # changing this, please also change Makefile.am.
 sed -e 's,$(libglnx_srcpath),libglnx,g' < libglnx/Makefile-libglnx.am >libglnx/Makefile-libglnx.am.inc
 sed -e 's,$(libbsdiff_srcpath),bsdiff,g' < bsdiff/Makefile-bsdiff.am >bsdiff/Makefile-bsdiff.am.inc
+sed -e 's,$(COMPOSEFSDIR),composefs/libcomposefs,g' < composefs/libcomposefs/Makefile-lib.am >composefs/libcomposefs/Makefile-lib.am.inc
 
 # FIXME - figure out how to get aclocal to find this by default
 ln -sf ../libglnx/libglnx.m4 buildutil/libglnx.m4

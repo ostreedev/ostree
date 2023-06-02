@@ -23,11 +23,22 @@
 
 #include <gio/gio.h>
 
+typedef enum
+{
+  OT_TRISTATE_NO,
+  OT_TRISTATE_MAYBE,
+  OT_TRISTATE_YES,
+} OtTristate;
+
 G_BEGIN_DECLS
 
 gboolean ot_keyfile_get_boolean_with_default (GKeyFile *keyfile, const char *section,
                                               const char *value, gboolean default_value,
                                               gboolean *out_bool, GError **error);
+
+gboolean ot_keyfile_get_tristate_with_default (GKeyFile *keyfile, const char *section,
+                                               const char *value, OtTristate default_value,
+                                               OtTristate *out_tri, GError **error);
 
 gboolean ot_keyfile_get_value_with_default (GKeyFile *keyfile, const char *section,
                                             const char *value, const char *default_value,

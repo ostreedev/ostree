@@ -65,6 +65,8 @@ G_BEGIN_DECLS
 #define OSTREE_COMMIT_TIMESTAMP "ostree.commit.timestamp"
 #define OSTREE_COMMIT_VERSION "ostree.commit.version"
 
+#define _OSTREE_INTEGRITY_SECTION "ex-integrity"
+
 typedef enum
 {
   OSTREE_REPO_TEST_ERROR_PRE_COMMIT = (1 << 0),
@@ -176,6 +178,8 @@ struct OstreeRepo
   gboolean txn_locked;
   _OstreeFeatureSupport fs_verity_wanted;
   _OstreeFeatureSupport fs_verity_supported;
+  OtTristate composefs_wanted;
+  gboolean composefs_supported;
 
   GMutex cache_lock;
   guint dirmeta_cache_refcount;
@@ -388,11 +392,16 @@ gboolean _ostree_repo_maybe_regenerate_summary (OstreeRepo *self, GCancellable *
                                                 GError **error);
 
 gboolean _ostree_repo_parse_fsverity_config (OstreeRepo *self, GError **error);
+gboolean _ostree_repo_parse_composefs_config (OstreeRepo *self, GError **error);
 
 gboolean _ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf, _OstreeFeatureSupport fsverity_requested,
-                                     gboolean *supported, GError **error);
+                                     GBytes *signature, gboolean *supported, GError **error);
 
-gboolean _ostree_tmpf_fsverity (OstreeRepo *self, GLnxTmpfile *tmpf, GError **error);
+gboolean _ostree_tmpf_fsverity (OstreeRepo *self, GLnxTmpfile *tmpf, GBytes *signature,
+                                GError **error);
+gboolean _ostree_fsverity_sign (const char *certfile, const char *keyfile,
+                                const guchar *fsverity_digest, GBytes **data_out,
+                                GCancellable *cancellable, GError **error);
 
 gboolean _ostree_repo_verify_bindings (const char *collection_id, const char *ref_name,
                                        GVariant *commit, GError **error);
@@ -441,5 +450,25 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeRepoAutoTransaction, _ostree_repo_auto_tran
 /* Internal function to break a circular dependency:
  * should not be made into public API, even if the rest is */
 OstreeRepoAutoTransaction *_ostree_repo_auto_transaction_new (OstreeRepo *repo);
+
+typedef struct OstreeComposefsTarget OstreeComposefsTarget;
+
+GType ostree_composefs_target_get_type (void) G_GNUC_CONST;
+OstreeComposefsTarget *ostree_composefs_target_new (void);
+OstreeComposefsTarget *ostree_composefs_target_ref (OstreeComposefsTarget *target);
+void ostree_composefs_target_unref (OstreeComposefsTarget *target);
+gboolean ostree_composefs_target_write (OstreeComposefsTarget *target, int fd,
+                                        guchar **out_fsverity_digest, GCancellable *cancellable,
+                                        GError **error);
+
+gboolean ostree_repo_checkout_composefs (OstreeRepo *self, OstreeComposefsTarget *target,
+                                         OstreeRepoFile *source, GCancellable *cancellable,
+                                         GError **error);
+
+gboolean ostree_repo_commit_add_composefs_metadata (OstreeRepo *self, GVariantBuilder *builder,
+                                                    OstreeRepoFile *repo_root,
+                                                    GCancellable *cancellable, GError **error);
+
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeComposefsTarget, ostree_composefs_target_unref)
 
 G_END_DECLS

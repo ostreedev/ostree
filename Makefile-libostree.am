@@ -87,6 +87,7 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-repo.c \
 	src/libostree/ostree-repo-checkout.c \
 	src/libostree/ostree-repo-commit.c \
+	src/libostree/ostree-repo-composefs.c \
 	src/libostree/ostree-repo-pull.c \
 	src/libostree/ostree-repo-pull-private.h \
 	src/libostree/ostree-repo-pull-verify.c \
@@ -184,7 +185,7 @@ EXTRA_DIST += \
 	$(top_srcdir)/src/libostree/libostree-released.sym \
 	$(NULL)
 
-libostree_1_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/bsdiff -I$(srcdir)/libglnx -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(builddir)/src/libostree \
+libostree_1_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/bsdiff -I$(srcdir)/libglnx -I$(srcdir)/composefs -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(builddir)/src/libostree \
 	$(OT_INTERNAL_GIO_UNIX_CFLAGS) $(OT_INTERNAL_GPGME_CFLAGS) $(OT_DEP_LZMA_CFLAGS) $(OT_DEP_ZLIB_CFLAGS) $(OT_DEP_CRYPTO_CFLAGS) \
 	-fvisibility=hidden '-D_OSTREE_PUBLIC=__attribute__((visibility("default"))) extern' \
 	-DPKGLIBEXECDIR=\"$(pkglibexecdir)\"
@@ -265,6 +266,10 @@ if USE_LIBSODIUM
 libostree_1_la_CFLAGS += $(OT_DEP_LIBSODIUM_CFLAGS)
 libostree_1_la_LIBADD += $(OT_DEP_LIBSODIUM_LIBS)
 endif # USE_LIBSODIUM
+
+if USE_COMPOSEFS
+libostree_1_la_LIBADD += libcomposefs.la
+endif # USE_COMPOSEFS
 
 # XXX: work around clang being passed -fstack-clash-protection which it doesn't understand
 # See: https://bugzilla.redhat.com/show_bug.cgi?id=1672012

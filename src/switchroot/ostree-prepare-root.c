@@ -66,12 +66,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/mount.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+/* We can't include both linux/fs.h and sys/mount.h, so define these directly */
+#define FS_VERITY_FL 0x00100000 /* Verity protected inode */
+#define FS_IOC_GETFLAGS _IOR ('f', 1, long)
 
 #if defined(HAVE_LIBSYSTEMD) && !defined(OSTREE_PREPARE_ROOT_STATIC)
 #define USE_LIBSYSTEMD
@@ -86,7 +91,20 @@
 // A temporary mount point
 #define TMP_SYSROOT "/sysroot.tmp"
 
+#ifdef HAVE_COMPOSEFS
+#include <libcomposefs/lcfs-mount.h>
+#endif
+
 #include "ostree-mount-util.h"
+
+typedef enum
+{
+  OSTREE_COMPOSEFS_MODE_OFF,    /* Never use composefs */
+  OSTREE_COMPOSEFS_MODE_MAYBE,  /* Use if supported and image exists in deploy */
+  OSTREE_COMPOSEFS_MODE_ON,     /* Always use (and fail if not working) */
+  OSTREE_COMPOSEFS_MODE_SIGNED, /* Always use and require it to be signed */
+  OSTREE_COMPOSEFS_MODE_DIGEST, /* Always use and require specific digest */
+} OstreeComposefsMode;
 
 static inline bool
 sysroot_is_configured_ro (const char *sysroot)
@@ -135,7 +153,7 @@ resolve_deploy_path (const char *root_mountpoint)
   struct stat stbuf;
   char *ostree_target, *deploy_path;
 
-  ostree_target = read_proc_cmdline_ostree ();
+  ostree_target = read_proc_cmdline_key ("ostree");
   if (!ostree_target)
     errx (EXIT_FAILURE, "No OSTree target; expected ostree=/ostree/boot.N/...");
 
@@ -227,6 +245,34 @@ main (int argc, char *argv[])
         err (EXIT_FAILURE, "failed to umount proc from /proc");
     }
 
+  OstreeComposefsMode composefs_mode = OSTREE_COMPOSEFS_MODE_MAYBE;
+  char *ot_composefs = read_proc_cmdline_key ("ot-composefs");
+  char *composefs_digest = NULL;
+  if (ot_composefs)
+    {
+      if (strcmp (ot_composefs, "off") == 0)
+        composefs_mode = OSTREE_COMPOSEFS_MODE_OFF;
+      else if (strcmp (ot_composefs, "maybe") == 0)
+        composefs_mode = OSTREE_COMPOSEFS_MODE_MAYBE;
+      else if (strcmp (ot_composefs, "on") == 0)
+        composefs_mode = OSTREE_COMPOSEFS_MODE_ON;
+      else if (strcmp (ot_composefs, "signed") == 0)
+        composefs_mode = OSTREE_COMPOSEFS_MODE_SIGNED;
+      else if (strncmp (ot_composefs, "digest=", strlen ("digest=")) == 0)
+        {
+          composefs_mode = OSTREE_COMPOSEFS_MODE_DIGEST;
+          composefs_digest = ot_composefs + strlen ("digest=");
+        }
+      else
+        err (EXIT_FAILURE, "Unsupported ot-composefs option: '%s'", ot_composefs);
+    }
+
+#ifndef HAVE_COMPOSEFS
+  if (composefs_mode == OSTREE_COMPOSEFS_MODE_MAYBE)
+    composefs_mode = OSTREE_COMPOSEFS_MODE_OFF;
+  (void)composefs_digest;
+#endif
+
   /* Query the repository configuration - this is an operating system builder
    * choice.  More info: https://github.com/ostreedev/ostree/pull/1767
    */
@@ -254,11 +300,99 @@ main (int argc, char *argv[])
   if (chdir (deploy_path) < 0)
     err (EXIT_FAILURE, "failed to chdir to deploy_path");
 
-  /* Currently always false */
   bool using_composefs = false;
+
+  /* We construct the new sysroot in /sysroot.tmp, which is either the composfs
+     mount or a bind mount of the deploy-dir */
+  if (composefs_mode != OSTREE_COMPOSEFS_MODE_OFF)
+    {
+#ifdef HAVE_COMPOSEFS
+      const char *objdirs[] = { "/sysroot/ostree/repo/objects" };
+      struct lcfs_mount_options_s cfs_options = {
+        objdirs,
+        1,
+      };
+      int cfs_fd;
+      unsigned cfs_flags;
+
+      cfs_fd = open (".ostree.cfs", O_RDONLY);
+      if (cfs_fd < 0)
+        {
+          if (errno == ENOENT)
+            goto nocfs;
+
+          err (EXIT_FAILURE, "failed to open .ostree.cfs");
+        }
+
+      /* Check if file is already fsverity */
+      if (ioctl (cfs_fd, FS_IOC_GETFLAGS, &cfs_flags) < 0)
+        err (EXIT_FAILURE, "failed to get .ostree.cfs flags");
+
+      /* It is not, apply signature (if it exists) */
+      if ((cfs_flags & FS_VERITY_FL) == 0)
+        {
+          unsigned char *signature;
+          size_t signature_len;
+
+          signature = read_file (".ostree.cfs.sig", &signature_len);
+          if (signature != NULL)
+            {
+              /* If we're read-only we temporarily make it read-write to sign the image */
+              if (!sysroot_currently_writable
+                  && mount (root_mountpoint, root_mountpoint, NULL, MS_REMOUNT | MS_SILENT, NULL)
+                         < 0)
+                err (EXIT_FAILURE, "failed to remount rootfs writable (for signing)");
+
+              fsverity_sign (cfs_fd, signature, signature_len);
+              free (signature);
+
+              if (!sysroot_currently_writable
+                  && mount (root_mountpoint, root_mountpoint, NULL,
+                            MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL)
+                         < 0)
+                err (EXIT_FAILURE, "failed to remount rootfs back read-only (after signing)");
+            }
+        }
+
+      cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
+
+      if (snprintf (srcpath, sizeof (srcpath), "%s/.ostree.mnt", deploy_path) < 0)
+        err (EXIT_FAILURE, "failed to assemble /boot/loader path");
+      cfs_options.image_mountdir = srcpath;
+
+      if (composefs_mode == OSTREE_COMPOSEFS_MODE_SIGNED)
+        {
+          cfs_options.flags |= LCFS_MOUNT_FLAGS_REQUIRE_SIGNATURE | LCFS_MOUNT_FLAGS_REQUIRE_VERITY;
+        }
+      else if (composefs_mode == OSTREE_COMPOSEFS_MODE_DIGEST)
+        {
+          cfs_options.flags |= LCFS_MOUNT_FLAGS_REQUIRE_VERITY;
+          cfs_options.expected_digest = composefs_digest;
+        }
+
+      if (lcfs_mount_fd (cfs_fd, TMP_SYSROOT, &cfs_options) == 0)
+        {
+          int fd = open (_OSTREE_COMPOSEFS_ROOT_STAMP, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
+          if (fd < 0)
+            err (EXIT_FAILURE, "failed to create %s", _OSTREE_COMPOSEFS_ROOT_STAMP);
+          (void)close (fd);
+
+          using_composefs = 1;
+        }
+
+      close (cfs_fd);
+
+    nocfs:
+#else
+      err (EXIT_FAILURE, "Composefs not supported");
+#endif
+    }
 
   if (!using_composefs)
     {
+      if (composefs_mode > OSTREE_COMPOSEFS_MODE_MAYBE)
+        err (EXIT_FAILURE, "Failed to mount composefs");
+
       /* The deploy root starts out bind mounted to sysroot.tmp */
       if (mount (deploy_path, TMP_SYSROOT, NULL, MS_BIND | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to make initial bind mount %s", deploy_path);

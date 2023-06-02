@@ -29,36 +29,75 @@
 #include <linux/fsverity.h>
 #endif
 
+#if defined(HAVE_OPENSSL)
+#include <openssl/bio.h>
+#include <openssl/engine.h>
+#include <openssl/err.h>
+#include <openssl/pem.h>
+#include <openssl/pkcs7.h>
+
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (X509, X509_free);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (EVP_PKEY, EVP_PKEY_free);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (BIO, BIO_free);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (PKCS7, PKCS7_free);
+#endif
+
 gboolean
 _ostree_repo_parse_fsverity_config (OstreeRepo *self, GError **error)
 {
   /* Currently experimental */
-  static const char fsverity_key[] = "ex-fsverity";
-  self->fs_verity_wanted = _OSTREE_FEATURE_NO;
+  OtTristate use_composefs;
+  OtTristate use_fsverity;
+
 #ifdef HAVE_LINUX_FSVERITY_H
   self->fs_verity_supported = _OSTREE_FEATURE_MAYBE;
 #else
   self->fs_verity_supported = _OSTREE_FEATURE_NO;
 #endif
-  gboolean fsverity_required = FALSE;
-  if (!ot_keyfile_get_boolean_with_default (self->config, fsverity_key, "required", FALSE,
-                                            &fsverity_required, error))
+
+  /* Composefs use implies fsverity default of maybe */
+  if (!ot_keyfile_get_tristate_with_default (self->config, _OSTREE_INTEGRITY_SECTION, "composefs",
+                                             OT_TRISTATE_NO, &use_composefs, error))
     return FALSE;
-  if (fsverity_required)
+
+  if (!ot_keyfile_get_tristate_with_default (self->config, _OSTREE_INTEGRITY_SECTION, "fsverity",
+                                             (use_composefs != OT_TRISTATE_NO) ? OT_TRISTATE_MAYBE
+                                                                               : OT_TRISTATE_NO,
+                                             &use_fsverity, error))
+    return FALSE;
+
+  if (use_fsverity != OT_TRISTATE_NO)
     {
-      self->fs_verity_wanted = _OSTREE_FEATURE_YES;
-      if (self->fs_verity_supported == _OSTREE_FEATURE_NO)
-        return glnx_throw (error, "fsverity required, but libostree compiled without support");
+      self->fs_verity_wanted = (_OstreeFeatureSupport)use_fsverity;
     }
   else
     {
-      gboolean fsverity_opportunistic = FALSE;
-      if (!ot_keyfile_get_boolean_with_default (self->config, fsverity_key, "opportunistic", FALSE,
-                                                &fsverity_opportunistic, error))
+      /* Fall back to old configuration key */
+      static const char fsverity_section[] = "ex-fsverity";
+
+      self->fs_verity_wanted = _OSTREE_FEATURE_NO;
+      gboolean fsverity_required = FALSE;
+      if (!ot_keyfile_get_boolean_with_default (self->config, fsverity_section, "required", FALSE,
+                                                &fsverity_required, error))
         return FALSE;
-      if (fsverity_opportunistic)
-        self->fs_verity_wanted = _OSTREE_FEATURE_MAYBE;
+      if (fsverity_required)
+        {
+          self->fs_verity_wanted = _OSTREE_FEATURE_YES;
+        }
+      else
+        {
+          gboolean fsverity_opportunistic = FALSE;
+          if (!ot_keyfile_get_boolean_with_default (self->config, fsverity_section, "opportunistic",
+                                                    FALSE, &fsverity_opportunistic, error))
+            return FALSE;
+          if (fsverity_opportunistic)
+            self->fs_verity_wanted = _OSTREE_FEATURE_MAYBE;
+        }
     }
+
+  if (self->fs_verity_wanted == _OSTREE_FEATURE_YES
+      && self->fs_verity_supported == _OSTREE_FEATURE_NO)
+    return glnx_throw (error, "fsverity required, but libostree compiled without support");
 
   return TRUE;
 }
@@ -69,7 +108,7 @@ _ostree_repo_parse_fsverity_config (OstreeRepo *self, GError **error)
  * */
 gboolean
 _ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf, _OstreeFeatureSupport fsverity_requested,
-                            gboolean *supported, GError **error)
+                            GBytes *signature, gboolean *supported, GError **error)
 {
   /* Set this by default to simplify the code below */
   if (supported)
@@ -93,8 +132,8 @@ _ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf, _OstreeFeatureSupport fsverity_re
   arg.block_size = 4096;                          /* FIXME query */
   arg.salt_size = 0;                              /* TODO store salt in ostree repo config */
   arg.salt_ptr = 0;
-  arg.sig_size = 0; /* We don't currently expect use of in-kernel signature verification */
-  arg.sig_ptr = 0;
+  arg.sig_size = signature ? g_bytes_get_size (signature) : 0;
+  arg.sig_ptr = signature ? (guint64)g_bytes_get_data (signature, NULL) : 0;
 
   if (ioctl (tmpf->fd, FS_IOC_ENABLE_VERITY, &arg) < 0)
     {
@@ -120,7 +159,7 @@ _ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf, _OstreeFeatureSupport fsverity_re
  * as well as to support "opportunistic" use (requested and if filesystem supports).
  * */
 gboolean
-_ostree_tmpf_fsverity (OstreeRepo *self, GLnxTmpfile *tmpf, GError **error)
+_ostree_tmpf_fsverity (OstreeRepo *self, GLnxTmpfile *tmpf, GBytes *signature, GError **error)
 {
 #ifdef HAVE_LINUX_FSVERITY_H
   g_mutex_lock (&self->txn_lock);
@@ -143,7 +182,7 @@ _ostree_tmpf_fsverity (OstreeRepo *self, GLnxTmpfile *tmpf, GError **error)
     }
 
   gboolean supported = FALSE;
-  if (!_ostree_tmpf_fsverity_core (tmpf, fsverity_wanted, &supported, error))
+  if (!_ostree_tmpf_fsverity_core (tmpf, fsverity_wanted, signature, &supported, error))
     return FALSE;
 
   if (!supported)
@@ -167,3 +206,131 @@ _ostree_tmpf_fsverity (OstreeRepo *self, GLnxTmpfile *tmpf, GError **error)
 #endif
   return TRUE;
 }
+
+#if defined(HAVE_OPENSSL)
+static gboolean
+read_pem_x509_certificate (const char *certfile, X509 **cert_ret, GError **error)
+{
+  g_autoptr (BIO) bio = NULL;
+  X509 *cert;
+
+  errno = 0;
+  bio = BIO_new_file (certfile, "r");
+  if (!bio)
+    return glnx_throw_errno_prefix (error, "Error loading composefs certfile '%s'", certfile);
+
+  cert = PEM_read_bio_X509 (bio, NULL, NULL, NULL);
+  if (!cert)
+    return glnx_throw (error, "Error parsing composefs certfile '%s'", certfile);
+
+  *cert_ret = cert;
+  return TRUE;
+}
+
+static gboolean
+read_pem_pkcs8_private_key (const char *keyfile, EVP_PKEY **pkey_ret, GError **error)
+{
+  g_autoptr (BIO) bio;
+  EVP_PKEY *pkey;
+
+  errno = 0;
+  bio = BIO_new_file (keyfile, "r");
+  if (!bio)
+    return glnx_throw_errno_prefix (error, "Error loading composefs keyfile '%s'", keyfile);
+
+  pkey = PEM_read_bio_PrivateKey (bio, NULL, NULL, NULL);
+  if (!pkey)
+    return glnx_throw (error, "Error parsing composefs keyfile '%s'", keyfile);
+
+  *pkey_ret = pkey;
+  return TRUE;
+}
+
+static gboolean
+sign_pkcs7 (const void *data_to_sign, size_t data_size, EVP_PKEY *pkey, X509 *cert,
+            const EVP_MD *md, BIO **res, GError **error)
+{
+  int pkcs7_flags = PKCS7_BINARY | PKCS7_DETACHED | PKCS7_NOATTR | PKCS7_NOCERTS | PKCS7_PARTIAL;
+  g_autoptr (BIO) bio = NULL;
+  g_autoptr (BIO) bio_res = NULL;
+  g_autoptr (PKCS7) p7 = NULL;
+
+  bio = BIO_new_mem_buf ((void *)data_to_sign, data_size);
+  if (!bio)
+    return glnx_throw (error, "Can't allocate buffer");
+
+  p7 = PKCS7_sign (NULL, NULL, NULL, bio, pkcs7_flags);
+  if (!p7)
+    return glnx_throw (error, "Can't initialize PKCS#7");
+
+  if (!PKCS7_sign_add_signer (p7, cert, pkey, md, pkcs7_flags))
+    return glnx_throw (error, "Can't add signer to PKCS#7");
+
+  if (PKCS7_final (p7, bio, pkcs7_flags) != 1)
+    return glnx_throw (error, "Can't finalize PKCS#7");
+
+  bio_res = BIO_new (BIO_s_mem ());
+  if (!bio_res)
+    return glnx_throw (error, "Can't allocate buffer");
+
+  if (i2d_PKCS7_bio (bio_res, p7) != 1)
+    return glnx_throw (error, "Can't DER-encode PKCS#7 signature object");
+
+  *res = g_steal_pointer (&bio_res);
+  return TRUE;
+}
+
+gboolean
+_ostree_fsverity_sign (const char *certfile, const char *keyfile, const guchar *fsverity_digest,
+                       GBytes **data_out, GCancellable *cancellable, GError **error)
+{
+  g_autofree struct fsverity_formatted_digest *d = NULL;
+  gsize d_size;
+  g_autoptr (X509) cert = NULL;
+  g_autoptr (EVP_PKEY) pkey = NULL;
+  g_autoptr (BIO) bio_sig = NULL;
+  const EVP_MD *md;
+  guchar *sig;
+  long sig_size;
+
+  if (certfile == NULL)
+    return glnx_throw (error, "certfile not specified");
+
+  if (keyfile == NULL)
+    return glnx_throw (error, "keyfile not specified");
+
+  if (!read_pem_x509_certificate (certfile, &cert, error))
+    return FALSE;
+
+  if (!read_pem_pkcs8_private_key (keyfile, &pkey, error))
+    return FALSE;
+
+  md = EVP_sha256 ();
+  if (md == NULL)
+    return glnx_throw (error, "No sha256 support in openssl");
+
+  d_size = sizeof (struct fsverity_formatted_digest) + OSTREE_SHA256_DIGEST_LEN;
+  d = g_malloc0 (d_size);
+
+  memcpy (d->magic, "FSVerity", 8);
+  d->digest_algorithm = GUINT16_TO_LE (FS_VERITY_HASH_ALG_SHA256);
+  d->digest_size = GUINT16_TO_LE (OSTREE_SHA256_DIGEST_LEN);
+  memcpy (d->digest, fsverity_digest, OSTREE_SHA256_DIGEST_LEN);
+
+  if (!sign_pkcs7 (d, d_size, pkey, cert, md, &bio_sig, error))
+    return FALSE;
+
+  sig_size = BIO_get_mem_data (bio_sig, &sig);
+
+  *data_out = g_bytes_new (sig, sig_size);
+
+  return TRUE;
+}
+#else
+gboolean
+_ostree_fsverity_sign (const char *certfile, const char *keyfile, const guchar *fsverity_digest,
+                       GBytes **data_out, GCancellable *cancellable, GError **error)
+{
+  return glnx_throw (error, "fsverity signature support not built");
+}
+#endif

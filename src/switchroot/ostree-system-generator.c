@@ -63,7 +63,7 @@ main (int argc, char *argv[])
    * exit so that we don't error, but at the same time work where switchroot
    * is PID 1 (and so hasn't created /run/ostree-booted).
    */
-  char *ostree_cmdline = read_proc_cmdline_ostree ();
+  char *ostree_cmdline = read_proc_cmdline_key ("ostree");
   if (!ostree_cmdline)
     exit (EXIT_SUCCESS);
 

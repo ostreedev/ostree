@@ -280,6 +280,35 @@ AS_IF([test x$have_gpgme = xyes],
 )
 AM_CONDITIONAL(USE_GPGME, test "x$have_gpgme" = xyes)
 
+# These are needed by libcomposefs
+AC_MSG_CHECKING([for new mount API (fsconfig)])
+AC_COMPILE_IFELSE(
+	[AC_LANG_SOURCE([[
+			#include <sys/mount.h>
+			int cmd = FSCONFIG_CMD_CREATE;
+	]])],
+	[AC_MSG_RESULT(yes)
+		 AC_DEFINE([HAVE_FSCONFIG_CMD_CREATE_SYS_MOUNT_H], 1, [Define if FSCONFIG_CMD_CREATE is available in sys/mount.h])],
+	[AC_MSG_RESULT(no)])
+AC_COMPILE_IFELSE(
+	[AC_LANG_SOURCE([[
+			/* also make sure it doesn't conflict with <sys/mount.h> since it is always used.  */
+			#include <sys/mount.h>
+			#include <linux/mount.h>
+			int cmd = FSCONFIG_CMD_CREATE;
+	]])],
+	[AC_MSG_RESULT(yes)
+		 AC_DEFINE([HAVE_FSCONFIG_CMD_CREATE_LINUX_MOUNT_H], 1, [Define if FSCONFIG_CMD_CREATE is available in linux/mount.h])],
+	[AC_MSG_RESULT(no)])
+
+AC_ARG_WITH(composefs,
+	    AS_HELP_STRING([--with-composefs], [Support composefs]),
+	    :, with_composefs=no)
+
+if test x$with_composefs != xno; then OSTREE_FEATURES="$OSTREE_FEATURES composefs";
+   AC_DEFINE([HAVE_COMPOSEFS], 1, [Define if we have libcomposefs])
+fi
+AM_CONDITIONAL(USE_COMPOSEFS, test $with_composefs != no)
 
 LIBSODIUM_DEPENDENCY="1.0.14"
 AC_ARG_WITH(ed25519_libsodium,
@@ -675,7 +704,8 @@ echo "
     gjs-based tests:                              $have_gjs
     dracut:                                       $with_dracut
     mkinitcpio:                                   $with_mkinitcpio
-    Static compiler for ostree-prepare-root:      $with_static_compiler"
+    Static compiler for ostree-prepare-root:      $with_static_compiler
+    Composefs:                                    $with_composefs"
 AS_IF([test x$with_builtin_grub2_mkconfig = xyes], [
     echo "    builtin grub2-mkconfig (instead of system):   $with_builtin_grub2_mkconfig"
 ], [
