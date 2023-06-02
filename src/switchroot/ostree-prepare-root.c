@@ -315,7 +315,7 @@ main (int argc, char *argv[])
       int cfs_fd;
       unsigned cfs_flags;
 
-      cfs_fd = open (".ostree.cfs", O_RDONLY);
+      cfs_fd = open (".ostree.cfs", O_RDONLY | O_CLOEXEC);
       if (cfs_fd < 0)
         {
           if (errno == ENOENT)
