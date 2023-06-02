@@ -134,7 +134,7 @@ read_file (const char *path, size_t *out_len)
 {
   int fd;
 
-  fd = open (path, O_RDONLY);
+  fd = open (path, O_RDONLY | O_CLOEXEC);
   if (fd < 0)
     {
       if (errno == ENOENT)
