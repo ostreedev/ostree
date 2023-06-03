@@ -78,6 +78,9 @@
 #define FS_VERITY_FL 0x00100000 /* Verity protected inode */
 #define FS_IOC_GETFLAGS _IOR ('f', 1, long)
 
+// The name of the composefs metadata root
+#define OSTREE_COMPOSEFS_NAME ".ostree.cfs"
+
 #if defined(HAVE_LIBSYSTEMD) && !defined(OSTREE_PREPARE_ROOT_STATIC)
 #define USE_LIBSYSTEMD
 #endif
@@ -315,26 +318,27 @@ main (int argc, char *argv[])
       int cfs_fd;
       unsigned cfs_flags;
 
-      cfs_fd = open (".ostree.cfs", O_RDONLY | O_CLOEXEC);
+      cfs_fd = open (OSTREE_COMPOSEFS_NAME, O_RDONLY | O_CLOEXEC);
       if (cfs_fd < 0)
         {
           if (errno == ENOENT)
             goto nocfs;
 
-          err (EXIT_FAILURE, "failed to open .ostree.cfs");
+          err (EXIT_FAILURE, "failed to open %s", OSTREE_COMPOSEFS_NAME);
         }
 
       /* Check if file is already fsverity */
       if (ioctl (cfs_fd, FS_IOC_GETFLAGS, &cfs_flags) < 0)
-        err (EXIT_FAILURE, "failed to get .ostree.cfs flags");
+        err (EXIT_FAILURE, "failed to get %s flags", OSTREE_COMPOSEFS_NAME);
 
       /* It is not, apply signature (if it exists) */
       if ((cfs_flags & FS_VERITY_FL) == 0)
         {
+          const char signame[] = OSTREE_COMPOSEFS_NAME ".sig";
           unsigned char *signature;
           size_t signature_len;
 
-          signature = read_file (".ostree.cfs.sig", &signature_len);
+          signature = read_file (signame, &signature_len);
           if (signature != NULL)
             {
               /* If we're read-only we temporarily make it read-write to sign the image */
@@ -351,6 +355,16 @@ main (int argc, char *argv[])
                             MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL)
                          < 0)
                 err (EXIT_FAILURE, "failed to remount rootfs back read-only (after signing)");
+
+#ifdef USE_LIBSYSTEMD
+              sd_journal_send ("MESSAGE=Applied fsverity signature %s", signame, NULL);
+#endif
+            }
+          else
+            {
+#ifdef USE_LIBSYSTEMD
+              sd_journal_send ("MESSAGE=No fsverity signature found for root", NULL);
+#endif
             }
         }
 
@@ -396,6 +410,12 @@ main (int argc, char *argv[])
       /* The deploy root starts out bind mounted to sysroot.tmp */
       if (mount (deploy_path, TMP_SYSROOT, NULL, MS_BIND | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to make initial bind mount %s", deploy_path);
+    }
+  else
+    {
+#ifdef USE_LIBSYSTEMD
+      sd_journal_send ("MESSAGE=Mounted composefs", NULL);
+#endif
     }
 
   /* This will result in a system with /sysroot read-only. Thus, two additional
