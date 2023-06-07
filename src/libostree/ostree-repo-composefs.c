@@ -178,6 +178,16 @@ _composefs_write_cb (void *file, void *buf, size_t len)
   return res;
 }
 
+#else /* HAVE_COMPOSEFS */
+
+static gboolean
+composefs_not_supported (GError **error)
+{
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+               "composefs is not supported in this ostree build");
+  return FALSE;
+}
+
 #endif
 
 /**
@@ -232,9 +242,7 @@ ostree_composefs_target_write (OstreeComposefsTarget *target, int fd, guchar **o
 
   return TRUE;
 #else
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-               "Composeefs is not supported in this ostree build");
-  return FALSE;
+  return composefs_not_supported (error);
 #endif
 }
 
@@ -500,7 +508,8 @@ ensure_lcfs_dir (struct lcfs_node_s *parent, const char *name, GError **error)
 
   return node;
 }
-#endif
+
+#endif /* HAVE_COMPOSEFS */
 
 /**
  * ostree_repo_checkout_composefs:
@@ -553,9 +562,7 @@ ostree_repo_checkout_composefs (OstreeRepo *self, OstreeComposefsTarget *target,
 
   return TRUE;
 #else
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-               "Composeefs is not supported in this ostree build");
-  return FALSE;
+  return composefs_not_supported (error);
 #endif
 }
 
@@ -623,7 +630,7 @@ ostree_repo_commit_add_composefs_metadata (OstreeRepo *self, GVariantBuilder *bu
                                                  error))
         return FALSE;
 #else
-      return glnx_throw (error, "composefs required, but libostree compiled without support");
+      return composefs_not_supported (error);
 #endif
     }
 
