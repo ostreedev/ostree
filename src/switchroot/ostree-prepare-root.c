@@ -96,6 +96,7 @@
 
 #ifdef HAVE_COMPOSEFS
 #include <libcomposefs/lcfs-mount.h>
+#include <libcomposefs/lcfs-writer.h>
 #endif
 
 #include "ostree-mount-util.h"
@@ -182,6 +183,130 @@ resolve_deploy_path (const char *root_mountpoint)
 #endif
   return deploy_path;
 }
+
+#ifdef HAVE_COMPOSEFS
+static void
+apply_digest_signature (const char *digestfile, const char *sigfile)
+{
+  unsigned char *signature;
+  size_t signature_len;
+  int digest_is_readonly;
+  int digest_fd;
+
+  signature = read_file (sigfile, &signature_len);
+  if (signature == NULL)
+    err (EXIT_FAILURE, "Missing signaure file %s", sigfile);
+
+  /* If we're read-only we temporarily make read-write bind mount to sign */
+  digest_is_readonly = path_is_on_readonly_fs (digestfile);
+  if (digest_is_readonly)
+    {
+      if (mount (digestfile, digestfile, NULL, MS_BIND | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to bind mount %s (for signing)", digestfile);
+      if (mount (digestfile, digestfile, NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to remount %s read-write (for signing)", digestfile);
+    }
+
+  /* Ensure we re-open after any bindmounts */
+  digest_fd = open (digestfile, O_RDONLY | O_CLOEXEC);
+  if (digest_fd < 0)
+    err (EXIT_FAILURE, "failed to open %s", digestfile);
+
+  fsverity_sign (digest_fd, signature, signature_len);
+
+  close (digest_fd);
+
+  if (digest_is_readonly && umount2 (digestfile, MNT_DETACH) < 0)
+    err (EXIT_FAILURE, "failed to unmount %s (after signing)", digestfile);
+
+  free (signature);
+
+#ifdef USE_LIBSYSTEMD
+  sd_journal_send ("MESSAGE=Applied fsverity signature %s to %s", sigfile, digestfile, NULL);
+#endif
+}
+
+static void
+ensure_digest_fd_is_signed (int digest_fd)
+{
+  struct fsverity_read_metadata_arg read_metadata = { 0 };
+  char sig_data[1];
+  int res;
+
+  /* We verify there is a signature by reading one byte of it. */
+
+  read_metadata.metadata_type = FS_VERITY_METADATA_TYPE_SIGNATURE;
+  read_metadata.offset = 0;
+  read_metadata.length = sizeof (sig_data);
+  read_metadata.buf_ptr = (size_t)&sig_data;
+
+  res = ioctl (digest_fd, FS_IOC_READ_VERITY_METADATA, &read_metadata);
+  if (res == -1)
+    {
+      if (errno == ENODATA)
+        err (EXIT_FAILURE, "Digest file is unexpectedly not signed");
+      else
+        err (EXIT_FAILURE, "Failed to get signature from digest file");
+    }
+}
+
+static char *
+read_signed_digest (const char *digestfile, const char *sigfile)
+{
+  unsigned fd_flags;
+  int digest_fd;
+  unsigned char buf[LCFS_DIGEST_SIZE];
+  char *digest;
+  ssize_t bytes_read;
+
+  digest_fd = open (digestfile, O_RDONLY | O_CLOEXEC);
+  if (digest_fd < 0)
+    err (EXIT_FAILURE, "failed to open %s", digestfile);
+
+  /* Check if file is already fsverity */
+  if (ioctl (digest_fd, FS_IOC_GETFLAGS, &fd_flags) < 0)
+    err (EXIT_FAILURE, "failed to get fd flags for %s", digestfile);
+
+  /* If it is not, apply signature */
+  if ((fd_flags & FS_VERITY_FL) == 0)
+    {
+      close (digest_fd);
+
+      apply_digest_signature (digestfile, sigfile);
+
+      /* Reopen */
+      digest_fd = open (digestfile, O_RDONLY | O_CLOEXEC);
+      if (digest_fd < 0)
+        err (EXIT_FAILURE, "failed to reopen %s", digestfile);
+    }
+
+  /* By now we know its fs-verify enabled, also ensure it is signed
+   * with a key in the keyring */
+  ensure_digest_fd_is_signed (digest_fd);
+
+  /* Load the expected digest */
+  do
+    bytes_read = read (digest_fd, buf, LCFS_DIGEST_SIZE);
+  while (bytes_read == -1 && errno == EINTR);
+  if (bytes_read == -1)
+    err (EXIT_FAILURE, "Failed to read digest file");
+
+  if (bytes_read != LCFS_DIGEST_SIZE)
+    err (EXIT_FAILURE, "Digest file has wrong size");
+
+  digest = malloc (LCFS_DIGEST_SIZE * 2 + 1);
+  if (digest == NULL)
+    err (EXIT_FAILURE, "Out of memory");
+
+  bin2hex (digest, buf, LCFS_DIGEST_SIZE);
+
+#ifdef USE_LIBSYSTEMD
+  sd_journal_send ("MESSAGE=Signed digest file found for root", NULL);
+#endif
+
+  return digest;
+}
+#endif
 
 static int
 pivot_root (const char *new_root, const char *put_old)
@@ -315,57 +440,12 @@ main (int argc, char *argv[])
         objdirs,
         1,
       };
-      int cfs_fd;
-      unsigned cfs_flags;
 
-      cfs_fd = open (OSTREE_COMPOSEFS_NAME, O_RDONLY | O_CLOEXEC);
-      if (cfs_fd < 0)
+      if (composefs_mode == OSTREE_COMPOSEFS_MODE_SIGNED)
         {
-          if (errno == ENOENT)
-            goto nocfs;
-
-          err (EXIT_FAILURE, "failed to open %s", OSTREE_COMPOSEFS_NAME);
-        }
-
-      /* Check if file is already fsverity */
-      if (ioctl (cfs_fd, FS_IOC_GETFLAGS, &cfs_flags) < 0)
-        err (EXIT_FAILURE, "failed to get %s flags", OSTREE_COMPOSEFS_NAME);
-
-      /* It is not, apply signature (if it exists) */
-      if ((cfs_flags & FS_VERITY_FL) == 0)
-        {
-          const char signame[] = OSTREE_COMPOSEFS_NAME ".sig";
-          unsigned char *signature;
-          size_t signature_len;
-
-          signature = read_file (signame, &signature_len);
-          if (signature != NULL)
-            {
-              /* If we're read-only we temporarily make it read-write to sign the image */
-              if (!sysroot_currently_writable
-                  && mount (root_mountpoint, root_mountpoint, NULL, MS_REMOUNT | MS_SILENT, NULL)
-                         < 0)
-                err (EXIT_FAILURE, "failed to remount rootfs writable (for signing)");
-
-              fsverity_sign (cfs_fd, signature, signature_len);
-              free (signature);
-
-              if (!sysroot_currently_writable
-                  && mount (root_mountpoint, root_mountpoint, NULL,
-                            MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL)
-                         < 0)
-                err (EXIT_FAILURE, "failed to remount rootfs back read-only (after signing)");
-
-#ifdef USE_LIBSYSTEMD
-              sd_journal_send ("MESSAGE=Applied fsverity signature %s", signame, NULL);
-#endif
-            }
-          else
-            {
-#ifdef USE_LIBSYSTEMD
-              sd_journal_send ("MESSAGE=No fsverity signature found for root", NULL);
-#endif
-            }
+          composefs_digest
+              = read_signed_digest (OSTREE_COMPOSEFS_NAME ".digest", OSTREE_COMPOSEFS_NAME ".sig");
+          composefs_mode = OSTREE_COMPOSEFS_MODE_DIGEST;
         }
 
       cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
@@ -374,17 +454,23 @@ main (int argc, char *argv[])
         err (EXIT_FAILURE, "failed to assemble /boot/loader path");
       cfs_options.image_mountdir = srcpath;
 
-      if (composefs_mode == OSTREE_COMPOSEFS_MODE_SIGNED)
-        {
-          cfs_options.flags |= LCFS_MOUNT_FLAGS_REQUIRE_SIGNATURE | LCFS_MOUNT_FLAGS_REQUIRE_VERITY;
-        }
-      else if (composefs_mode == OSTREE_COMPOSEFS_MODE_DIGEST)
+      if (composefs_mode == OSTREE_COMPOSEFS_MODE_DIGEST)
         {
           cfs_options.flags |= LCFS_MOUNT_FLAGS_REQUIRE_VERITY;
           cfs_options.expected_digest = composefs_digest;
         }
 
-      if (lcfs_mount_fd (cfs_fd, TMP_SYSROOT, &cfs_options) == 0)
+#ifdef USE_LIBSYSTEMD
+      if (composefs_mode == OSTREE_COMPOSEFS_MODE_MAYBE)
+        sd_journal_send ("MESSAGE=Trying to mount composefs rootfs", NULL);
+      else if (composefs_mode == OSTREE_COMPOSEFS_MODE_DIGEST)
+        sd_journal_send ("MESSAGE=Mounting composefs rootfs with expected digest '%s'",
+                         composefs_digest, NULL);
+      else
+        sd_journal_send ("MESSAGE=Mounting composefs rootfs", NULL);
+#endif
+
+      if (lcfs_mount_image (OSTREE_COMPOSEFS_NAME, TMP_SYSROOT, &cfs_options) == 0)
         {
           int fd = open (_OSTREE_COMPOSEFS_ROOT_STAMP, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
           if (fd < 0)
@@ -393,10 +479,19 @@ main (int argc, char *argv[])
 
           using_composefs = 1;
         }
-
-      close (cfs_fd);
-
-    nocfs:
+      else
+        {
+#ifdef USE_LIBSYSTEMD
+          if (errno == ENOVERITY)
+            sd_journal_send ("MESSAGE=No verity in composefs image", NULL);
+          else if (errno == EWRONGVERITY)
+            sd_journal_send ("MESSAGE=Wrong verity digest in composefs image", NULL);
+          else if (errno == ENOSIGNATURE)
+            sd_journal_send ("MESSAGE=Missing signature in composefs image", NULL);
+          else
+            sd_journal_send ("MESSAGE=Mounting composefs image failed: %s", strerror (errno), NULL);
+#endif
+        }
 #else
       err (EXIT_FAILURE, "Composefs not supported");
 #endif

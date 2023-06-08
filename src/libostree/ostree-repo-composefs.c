@@ -575,6 +575,7 @@ ostree_repo_commit_add_composefs_sig (OstreeRepo *self, GVariantBuilder *builder
   g_autofree char *certfile = NULL;
   g_autofree char *keyfile = NULL;
   g_autoptr (GBytes) sig = NULL;
+  guchar digest_digest[LCFS_DIGEST_SIZE];
 
   certfile
       = g_key_file_get_string (self->config, _OSTREE_INTEGRITY_SECTION, "composefs-certfile", NULL);
@@ -590,7 +591,22 @@ ostree_repo_commit_add_composefs_sig (OstreeRepo *self, GVariantBuilder *builder
   if (keyfile == NULL)
     return glnx_throw (error, "Error signing compoosefs: certfile specified but keyfile is not");
 
-  if (!_ostree_fsverity_sign (certfile, keyfile, fsverity_digest, &sig, cancellable, error))
+  /* We sign not the fs-verity of the image file itself, but rather we sign a file containing
+   * the fs-verity digest. This may seem weird, but disconnecting the signature from the
+   * actual image itself has two major advantages:
+   *  * We can read/mount the image (non-verified) even  without the public  key in
+   *    the keyring.
+   *  * We can apply fs-verity to the image during deploy without the public key in
+   *    the keyring.
+   *
+   * This is important because during an update we don't have the public key loaded until
+   * we boot into the new initrd.
+   */
+
+  if (lcfs_compute_fsverity_from_data (digest_digest, fsverity_digest, LCFS_DIGEST_SIZE) < 0)
+    return glnx_throw_errno (error);
+
+  if (!_ostree_fsverity_sign (certfile, keyfile, digest_digest, &sig, cancellable, error))
     return FALSE;
 
   g_variant_builder_add (builder, "{sv}", "ostree.composefs-sig", ot_gvariant_new_ay_bytes (sig));

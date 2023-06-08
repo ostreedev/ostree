@@ -649,7 +649,6 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
 #ifdef HAVE_COMPOSEFS
   if (repo->composefs_wanted != OT_TRISTATE_NO)
     {
-      gboolean apply_composefs_signature;
       g_autofree guchar *fsverity_digest = NULL;
       g_auto (GLnxTmpfile) tmpf = {
         0,
@@ -657,11 +656,6 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
       g_autoptr (GVariant) commit_variant = NULL;
 
       if (!ostree_repo_load_commit (repo, revision, &commit_variant, NULL, error))
-        return FALSE;
-
-      if (!ot_keyfile_get_boolean_with_default (repo->config, _OSTREE_INTEGRITY_SECTION,
-                                                "composefs-apply-sig", TRUE,
-                                                &apply_composefs_signature, error))
         return FALSE;
 
       g_autoptr (GVariant) metadata = g_variant_get_child_value (commit_variant, 0);
@@ -698,25 +692,33 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
       if (!glnx_fchmod (tmpf.fd, 0644, error))
         return FALSE;
 
-      if (metadata_composefs_sig && apply_composefs_signature)
-        {
-          /* We can't apply the signature during deploy, because the corresponding public key for
-             this commit is not loaded into the keyring. So, we delay fs-verity application to the
-             first boot. */
+      if (!_ostree_tmpf_fsverity (repo, &tmpf, NULL, error))
+        return FALSE;
 
+      if (metadata_composefs && metadata_composefs_sig)
+        {
+          g_autofree char *composefs_digest_path
+              = g_strdup_printf ("%s/.ostree.cfs.digest", checkout_target_name);
           g_autofree char *composefs_sig_path
               = g_strdup_printf ("%s/.ostree.cfs.sig", checkout_target_name);
+          g_autoptr (GBytes) digest = g_variant_get_data_as_bytes (metadata_composefs);
           g_autoptr (GBytes) sig = g_variant_get_data_as_bytes (metadata_composefs_sig);
+
+          if (!glnx_file_replace_contents_at (osdeploy_dfd, composefs_digest_path,
+                                              g_bytes_get_data (digest, NULL),
+                                              g_bytes_get_size (digest), 0, cancellable, error))
+            return FALSE;
 
           if (!glnx_file_replace_contents_at (osdeploy_dfd, composefs_sig_path,
                                               g_bytes_get_data (sig, NULL), g_bytes_get_size (sig),
                                               0, cancellable, error))
             return FALSE;
-        }
-      else
-        {
-          if (!_ostree_tmpf_fsverity (repo, &tmpf, NULL, error))
-            return FALSE;
+
+          /* The signature should be applied as a fs-verity signature to the digest file. However
+           * we can't do that until boot, because we can't guarantee that the public key is
+           * loaded into the keyring until we boot the new initrd. So the signature is applied
+           * in ostree-prepare-root on first boot.
+           */
         }
 
       if (!glnx_link_tmpfile_at (&tmpf, GLNX_LINK_TMPFILE_REPLACE, osdeploy_dfd, composefs_cfs_path,
