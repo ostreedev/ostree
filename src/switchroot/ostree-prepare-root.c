@@ -246,7 +246,7 @@ main (int argc, char *argv[])
     }
 
   OstreeComposefsMode composefs_mode = OSTREE_COMPOSEFS_MODE_MAYBE;
-  char *ot_composefs = read_proc_cmdline_key ("ot-composefs");
+  autofree char *ot_composefs = read_proc_cmdline_key ("ot-composefs");
   char *composefs_digest = NULL;
   if (ot_composefs)
     {
