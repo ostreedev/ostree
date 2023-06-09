@@ -40,6 +40,9 @@
 #define _OSTREE_SYSROOT_READONLY_STAMP "/run/ostree-sysroot-ro.stamp"
 #define _OSTREE_COMPOSEFS_ROOT_STAMP "/run/ostree-composefs-root.stamp"
 
+#define autofree __attribute__ ((cleanup (cleanup_free)))
+#define steal_pointer(pp) steal_pointer_impl ((void **)pp)
+
 static inline int
 path_is_on_readonly_fs (const char *path)
 {
@@ -79,6 +82,22 @@ out:
   return cmdline;
 }
 
+static inline void
+cleanup_free (void *p)
+{
+  void **pp = (void **)p;
+  free (*pp);
+}
+
+static inline void *
+steal_pointer_impl (void **to_steal)
+{
+  void *ret = *to_steal;
+  *to_steal = NULL;
+
+  return ret;
+}
+
 static inline char *
 read_proc_cmdline_key (const char *key)
 {
@@ -112,6 +131,34 @@ read_proc_cmdline_key (const char *key)
 
   free (cmdline);
   return ret;
+}
+
+static inline char *
+get_aboot_root_slot (void)
+{
+  autofree char *slot_suffix = read_proc_cmdline_key ("androidboot.slot_suffix");
+  if (strcmp (slot_suffix, "_a") == 0)
+    return strdup ("/ostree/root.a");
+  else if (strcmp (slot_suffix, "_b") == 0)
+    return strdup ("/ostree/root.b");
+
+  errx (EXIT_FAILURE, "androidboot.slot_suffix invalid: %s", slot_suffix);
+
+  return NULL;
+}
+
+static inline char *
+get_ostree_target (void)
+{
+  autofree char *ostree_cmdline = read_proc_cmdline_key ("ostree");
+
+  if (!ostree_cmdline)
+    errx (EXIT_FAILURE, "No ostree= cmdline");
+
+  if (strcmp (ostree_cmdline, "aboot") == 0)
+    return get_aboot_root_slot ();
+
+  return steal_pointer (&ostree_cmdline);
 }
 
 /* This is an API for other projects to determine whether or not the

@@ -154,11 +154,8 @@ resolve_deploy_path (const char *root_mountpoint)
 {
   char destpath[PATH_MAX];
   struct stat stbuf;
-  char *ostree_target, *deploy_path;
-
-  ostree_target = read_proc_cmdline_key ("ostree");
-  if (!ostree_target)
-    errx (EXIT_FAILURE, "No OSTree target; expected ostree=/ostree/boot.N/...");
+  char *deploy_path;
+  autofree char *ostree_target = get_ostree_target ();
 
   if (snprintf (destpath, sizeof (destpath), "%s/%s", root_mountpoint, ostree_target) < 0)
     err (EXIT_FAILURE, "failed to assemble ostree target path");
@@ -249,7 +246,7 @@ main (int argc, char *argv[])
     }
 
   OstreeComposefsMode composefs_mode = OSTREE_COMPOSEFS_MODE_MAYBE;
-  char *ot_composefs = read_proc_cmdline_key ("ot-composefs");
+  autofree char *ot_composefs = read_proc_cmdline_key ("ot-composefs");
   char *composefs_digest = NULL;
   if (ot_composefs)
     {
