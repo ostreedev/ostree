@@ -237,4 +237,19 @@ fsverity_sign (int fd, unsigned char *signature, size_t signature_len)
 #endif
 }
 
+static inline void
+bin2hex (char *out_buf, const unsigned char *inbuf, size_t len)
+{
+  static const char hexchars[] = "0123456789abcdef";
+  unsigned int i, j;
+
+  for (i = 0, j = 0; i < len; i++, j += 2)
+    {
+      unsigned char byte = inbuf[i];
+      out_buf[j] = hexchars[byte >> 4];
+      out_buf[j + 1] = hexchars[byte & 0xF];
+    }
+  out_buf[j] = '\0';
+}
+
 #endif /* __OSTREE_MOUNT_UTIL_H_ */
