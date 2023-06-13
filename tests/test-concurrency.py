@@ -43,10 +43,6 @@ with open('repo/config', 'a') as f:
     # it's simpler, and we don't need xattr coverage for this
     f.write('disable-xattrs=true\n')
 
-    # Make any locking errors fail quickly instead of blocking the test
-    # for 30 seconds.
-    f.write('lock-timeout-secs=5\n')
-
 def commit(v):
     tdir='tree{}'.format(v)
     cmd = ['ostree', '--repo=repo', 'commit', '--fsync=0', '-b', tdir, '--tree=dir='+tdir]
