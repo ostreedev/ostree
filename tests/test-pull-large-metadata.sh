@@ -25,10 +25,11 @@ setup_fake_remote_repo1 "archive"
 
 echo '1..1'
 
-# Overwrite the commit object with 20 M of 
+# Overwrite the commit object with 121 M of zeroes. This is based on the
+# OSTREE_MAX_METADATA_SIZE constant in src/libostree/ostree-core.h
 cd ${test_tmpdir}
 rev=$(cd ostree-srv && ${CMD_PREFIX} ostree --repo=gnomerepo rev-parse main)
-dd if=/dev/zero bs=1M count=20 of=ostree-srv/gnomerepo/objects/$(echo $rev | cut -b 1-2)/$(echo $rev | cut -b 3-).commit
+dd if=/dev/zero bs=1M count=130 of=ostree-srv/gnomerepo/objects/$(echo $rev | cut -b 1-2)/$(echo $rev | cut -b 3-).commit
 
 cd ${test_tmpdir}
 mkdir repo
