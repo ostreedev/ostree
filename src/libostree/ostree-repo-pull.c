@@ -734,11 +734,11 @@ scan_dirtree_object (OtPullData *pull_data, const char *checksum, const char *pa
 
       const guchar *tree_csum_bytes = ostree_checksum_bytes_peek_validate (tree_csum, error);
       if (tree_csum_bytes == NULL)
-        return FALSE;
+        return glnx_prefix_error (error, "Parsing dirtree %s tree child %s", checksum, dirname);
 
       const guchar *meta_csum_bytes = ostree_checksum_bytes_peek_validate (meta_csum, error);
       if (meta_csum_bytes == NULL)
-        return FALSE;
+        return glnx_prefix_error (error, "Parsing dirtree %s meta child %s", checksum, dirname);
 
       g_autofree char *subpath = g_strconcat (path, dirname, "/", NULL);
       queue_scan_one_metadata_object_c (pull_data, tree_csum_bytes, OSTREE_OBJECT_TYPE_DIR_TREE,
