@@ -243,8 +243,7 @@ AC_ARG_WITH(gpgme,
 	    [], [with_gpgme=yes])
 AS_IF([test x$with_gpgme != xno], [
     have_gpgme=yes
-    PKG_CHECK_MODULES([OT_DEP_GPGME], gpgme >= $LIBGPGME_DEPENDENCY, [], have_gpgme=no)
-    PKG_CHECK_MODULES([OT_DEP_GPG_ERROR], [gpg-error], [], have_gpgme=no)
+    PKG_CHECK_MODULES([OT_DEP_GPGME], [gpgme >= $LIBGPGME_DEPENDENCY gpg-error], [have_gpgme=yes], [have_gpgme=no])
     ]
 )
 AS_IF([test x$with_gpgme != xno && test x$have_gpgme != xyes], [
