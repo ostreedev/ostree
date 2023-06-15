@@ -1538,6 +1538,10 @@ scan_commit_object (OtPullData *pull_data, const char *checksum, guint recursion
   if (!ostree_repo_load_commit (pull_data->repo, checksum, &commit, &commitstate, error))
     return FALSE;
 
+  /* Do this early because if it's corrupt, something else is going wrong */
+  if (!ostree_validate_structureof_commit (commit, error))
+    return glnx_prefix_error (error, "Validating commit %s", checksum);
+
   if (!pull_data->disable_verify_bindings)
     {
       /* If ref is non-NULL then the commit we fetched was requested through
@@ -1590,27 +1594,17 @@ scan_commit_object (OtPullData *pull_data, const char *checksum, guint recursion
   /* If we found a legacy transaction flag, assume all commits are partial */
   gboolean is_partial = commitstate_is_partial (pull_data, commitstate);
 
-  /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
-  g_autoptr (GVariant) parent_csum = NULL;
-  const guchar *parent_csum_bytes = NULL;
-  g_variant_get_child (commit, 1, "@ay", &parent_csum);
-  if (g_variant_n_children (parent_csum) > 0)
+  if (pull_data->maxdepth == -1 || depth > 0)
     {
-      parent_csum_bytes = ostree_checksum_bytes_peek_validate (parent_csum, error);
-      if (parent_csum_bytes == NULL)
-        return FALSE;
-    }
-
-  if (parent_csum_bytes != NULL && (pull_data->maxdepth == -1 || depth > 0))
-    {
-      char parent_checksum[OSTREE_SHA256_STRING_LEN + 1];
-      ostree_checksum_inplace_from_bytes (parent_csum_bytes, parent_checksum);
-
-      int parent_depth = (depth > 0) ? depth - 1 : -1;
-      g_hash_table_insert (pull_data->commit_to_depth, g_strdup (parent_checksum),
-                           GINT_TO_POINTER (parent_depth));
-      queue_scan_one_metadata_object_c (pull_data, parent_csum_bytes, OSTREE_OBJECT_TYPE_COMMIT,
-                                        NULL, recursion_depth + 1, NULL);
+      g_autofree char *parent_checksum = ostree_commit_get_parent (commit);
+      if (parent_checksum)
+        {
+          int parent_depth = (depth > 0) ? depth - 1 : -1;
+          g_hash_table_insert (pull_data->commit_to_depth, g_strdup (parent_checksum),
+                               GINT_TO_POINTER (parent_depth));
+          queue_scan_one_metadata_object (pull_data, parent_checksum, OSTREE_OBJECT_TYPE_COMMIT,
+                                          NULL, recursion_depth + 1, NULL);
+        }
     }
 
   /* We only recurse to looking whether we need dirtree/dirmeta
