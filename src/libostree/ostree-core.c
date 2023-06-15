@@ -2152,18 +2152,18 @@ ostree_validate_structureof_commit (GVariant *commit, GError **error)
   if (n_elts > 0)
     {
       if (!ostree_validate_structureof_csum_v (parent_csum_v, error))
-        return FALSE;
+        return glnx_prefix_error (error, "Invalid commit parent");
     }
 
   g_autoptr (GVariant) content_csum_v = NULL;
   g_variant_get_child (commit, 6, "@ay", &content_csum_v);
   if (!ostree_validate_structureof_csum_v (content_csum_v, error))
-    return FALSE;
+    return glnx_prefix_error (error, "Invalid commit tree content checksum");
 
   g_autoptr (GVariant) metadata_csum_v = NULL;
   g_variant_get_child (commit, 7, "@ay", &metadata_csum_v);
   if (!ostree_validate_structureof_csum_v (metadata_csum_v, error))
-    return FALSE;
+    return glnx_prefix_error (error, "Invalid commit tree metadata checksum");
 
   return TRUE;
 }
