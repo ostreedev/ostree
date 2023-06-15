@@ -879,6 +879,12 @@ initiate_next_curl_request (FetcherRequest *req, GTask *task)
 #endif
     }
 
+  if (self->config_flags & OSTREE_FETCHER_FLAGS_DISABLE_HTTP2)
+    {
+      rc = curl_easy_setopt (req->easy, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+      g_assert_cmpint (rc, ==, CURLM_OK);
+    }
+
   rc = curl_easy_setopt (req->easy, CURLOPT_WRITEFUNCTION, write_cb);
   g_assert_cmpint (rc, ==, CURLM_OK);
   rc = curl_easy_setopt (req->easy, CURLOPT_HEADERFUNCTION, response_header_cb);
