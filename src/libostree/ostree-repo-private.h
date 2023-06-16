@@ -65,6 +65,11 @@ G_BEGIN_DECLS
 #define OSTREE_COMMIT_TIMESTAMP "ostree.commit.timestamp"
 #define OSTREE_COMMIT_VERSION "ostree.commit.version"
 
+// The metadata key for composefs
+#define OSTREE_COMPOSEFS_META_PREFIX "ostree.composefs"
+// The fs-verity digest of the composefs, version 0
+#define OSTREE_COMPOSEFS_DIGEST_KEY_V0 OSTREE_COMPOSEFS_META_PREFIX ".digest.v0"
+
 #define _OSTREE_INTEGRITY_SECTION "ex-integrity"
 
 typedef enum
@@ -399,9 +404,6 @@ gboolean _ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf, _OstreeFeatureSupport fs
 
 gboolean _ostree_tmpf_fsverity (OstreeRepo *self, GLnxTmpfile *tmpf, GBytes *signature,
                                 GError **error);
-gboolean _ostree_fsverity_sign (const char *certfile, const char *keyfile,
-                                const guchar *fsverity_digest, GBytes **data_out,
-                                GCancellable *cancellable, GError **error);
 
 gboolean _ostree_repo_verify_bindings (const char *collection_id, const char *ref_name,
                                        GVariant *commit, GError **error);
@@ -464,10 +466,6 @@ gboolean ostree_composefs_target_write (OstreeComposefsTarget *target, int fd,
 gboolean ostree_repo_checkout_composefs (OstreeRepo *self, OstreeComposefsTarget *target,
                                          OstreeRepoFile *source, GCancellable *cancellable,
                                          GError **error);
-
-gboolean ostree_repo_commit_add_composefs_metadata (OstreeRepo *self, GVariantBuilder *builder,
-                                                    OstreeRepoFile *repo_root,
-                                                    GCancellable *cancellable, GError **error);
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeComposefsTarget, ostree_composefs_target_unref)
 

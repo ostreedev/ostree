@@ -2916,9 +2916,6 @@ add_auto_metadata (OstreeRepo *self, GVariant *original_metadata, OstreeRepoFile
 
   add_size_index_to_metadata (self, builder);
 
-  if (!ostree_repo_commit_add_composefs_metadata (self, builder, repo_root, cancellable, error))
-    return NULL;
-
   return g_variant_ref_sink (g_variant_builder_end (builder));
 }
 

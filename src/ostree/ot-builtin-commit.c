@@ -70,6 +70,7 @@ static char *opt_gpg_homedir;
 static char **opt_key_ids;
 static char *opt_sign_name;
 static gboolean opt_generate_sizes;
+static gboolean opt_composefs_metadata;
 static gboolean opt_disable_fsync;
 static char *opt_timestamp;
 
@@ -161,6 +162,8 @@ static GOptionEntry options[] = {
     "Signature type to use (defaults to 'ed25519')", "NAME" },
   { "generate-sizes", 0, 0, G_OPTION_ARG_NONE, &opt_generate_sizes,
     "Generate size information along with commit metadata", NULL },
+  { "generate-composefs-metadata", 0, 0, G_OPTION_ARG_NONE, &opt_composefs_metadata,
+    "Generate composefs commit metadata", NULL },
   { "disable-fsync", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &opt_disable_fsync,
     "Do not invoke fsync()", NULL },
   { "fsync", 0, 0, G_OPTION_ARG_CALLBACK, parse_fsync_cb, "Specify how to invoke fsync()",
@@ -870,6 +873,18 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
             goto out;
 
           metadata = g_variant_ref_sink (g_variant_dict_end (&bootmeta));
+        }
+
+      if (opt_composefs_metadata)
+        {
+          g_autoptr (GVariant) old_metadata = g_steal_pointer (&metadata);
+          g_auto (GVariantDict) newmeta;
+          g_variant_dict_init (&newmeta, old_metadata);
+          if (!ostree_repo_commit_add_composefs_metadata (
+                  repo, 0, &newmeta, OSTREE_REPO_FILE (root), cancellable, error))
+            goto out;
+
+          metadata = g_variant_ref_sink (g_variant_dict_end (&newmeta));
         }
 
       if (!opt_timestamp)

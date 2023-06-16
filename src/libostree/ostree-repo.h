@@ -691,6 +691,11 @@ gboolean ostree_repo_write_mtree (OstreeRepo *self, OstreeMutableTree *mtree, GF
                                   GCancellable *cancellable, GError **error);
 
 _OSTREE_PUBLIC
+gboolean ostree_repo_commit_add_composefs_metadata (OstreeRepo *self, guint format_version,
+                                                    GVariantDict *dict, OstreeRepoFile *repo_root,
+                                                    GCancellable *cancellable, GError **error);
+
+_OSTREE_PUBLIC
 gboolean ostree_repo_write_commit (OstreeRepo *self, const char *parent, const char *subject,
                                    const char *body, GVariant *metadata, OstreeRepoFile *root,
                                    char **out_commit, GCancellable *cancellable, GError **error);
