@@ -425,7 +425,16 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
       </varlistentry>
 
     </variablelist>
+  </refsect1>
 
+  <refsect1>
+    <title>[ex-integrity] Section Options</title>
+
+    <para>
+      The "ex-" prefix here signifies experimental options.  The <literal>ex-integrity</literal> section
+      contains options related to system integrity.  Information about experimental
+      options is canonically found in upstream tracking issues.
+    </para>
   </refsect1>
 
   <refsect1>
