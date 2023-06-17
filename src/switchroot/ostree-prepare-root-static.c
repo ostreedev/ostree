@@ -27,7 +27,7 @@
  * License along with this library. If not, see <https://www.gnu.org/licenses/>.
  */
 
-/* The high level goal of ostree-prepare-root.service is to run inside
+/* The high level goal of this code is to run inside
  * the initial ram disk (if one is in use) and set up the `/` mountpoint
  * to be the deployment root, using the ostree= kernel commandline
  * argument to find the target deployment root.
@@ -36,18 +36,13 @@
  * hardlinked chroot() targets are maintained, this one does the equivalent
  * of chroot().
  *
- * # ostree-prepare-root.service
+ * This -static.c variant of ostree-prepare-root is designed for
+ * the case where an initrd isn't used - instead the binary must be statically linked (and the
+ * kernel must have mounted the rootfs itself) - then we set things up and exec the real init
+ * directly.  This can be popular in embedded systems to increase bootup speed.
  *
- * If using systemd, an excellent reference is `man bootup`.  This
- * service runs Before=initrd-root-fs.target.  At this point it's
- * assumed that the block storage and root filesystem are mounted at
- * /sysroot - i.e. /sysroot points to the *physical* root before
- * this service runs.  After, `/` is the deployment root, and /sysroot is
- * the physical root.
- *
- * # Running as pid 1
- *
- * See ostree-prepare-root-static.c for this.
+ * Note that as of lately, good tools exist for embedding an initramfs
+ * inside a kernel binary, and this can help avoid static linking.
  */
 
 #include "config.h"
@@ -70,41 +65,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-/* We can't include both linux/fs.h and sys/mount.h, so define these directly */
-#define FS_VERITY_FL 0x00100000 /* Verity protected inode */
-#define FS_IOC_GETFLAGS _IOR ('f', 1, long)
-
-// The name of the composefs metadata root
-#define OSTREE_COMPOSEFS_NAME ".ostree.cfs"
-
-#if defined(HAVE_LIBSYSTEMD) && !defined(OSTREE_PREPARE_ROOT_STATIC)
-#define USE_LIBSYSTEMD
-#endif
-
-#ifdef USE_LIBSYSTEMD
-#include <systemd/sd-journal.h>
-#define OSTREE_PREPARE_ROOT_DEPLOYMENT_MSG \
-  SD_ID128_MAKE (71, 70, 33, 6a, 73, ba, 46, 01, ba, d3, 1a, f8, 88, aa, 0d, f7)
-#endif
-
 // A temporary mount point
 #define TMP_SYSROOT "/sysroot.tmp"
 
-#ifdef HAVE_COMPOSEFS
-#include <libcomposefs/lcfs-mount.h>
-#include <libcomposefs/lcfs-writer.h>
-#endif
-
 #include "ostree-mount-util.h"
-
-typedef enum
-{
-  OSTREE_COMPOSEFS_MODE_OFF,    /* Never use composefs */
-  OSTREE_COMPOSEFS_MODE_MAYBE,  /* Use if supported and image exists in deploy */
-  OSTREE_COMPOSEFS_MODE_ON,     /* Always use (and fail if not working) */
-  OSTREE_COMPOSEFS_MODE_SIGNED, /* Always use and require it to be signed */
-  OSTREE_COMPOSEFS_MODE_DIGEST, /* Always use and require specific digest */
-} OstreeComposefsMode;
 
 static inline bool
 sysroot_is_configured_ro (const char *sysroot)
@@ -153,8 +117,6 @@ resolve_deploy_path (const char *root_mountpoint)
   struct stat stbuf;
   char *deploy_path;
   autofree char *ostree_target = get_ostree_target ();
-  if (!ostree_target)
-    errx (EXIT_FAILURE, "No ostree= cmdline");
 
   if (snprintf (destpath, sizeof (destpath), "%s/%s", root_mountpoint, ostree_target) < 0)
     err (EXIT_FAILURE, "failed to assemble ostree target path");
@@ -190,16 +152,21 @@ main (int argc, char *argv[])
 {
   char srcpath[PATH_MAX];
 
-  const char *root_arg = NULL;
-  bool we_mounted_proc = false;
-  if (argc < 2)
-    err (EXIT_FAILURE, "usage: ostree-prepare-root SYSROOT");
-  root_arg = argv[1];
-#ifdef USE_LIBSYSTEMD
-  sd_journal_send ("MESSAGE=preparing sysroot at %s", root_arg, NULL);
-#endif
+  /* If we're pid 1, that means there's no initramfs; in this situation
+   * various defaults change:
+   *
+   * - Assume that the target root is /
+   * - Quiet logging as there's no journal
+   * etc.
+   */
+  bool running_as_pid1 = (getpid () == 1);
+  assert (running_as_pid1);
+
+  const char *root_arg = "/";
+  root_arg = "/";
 
   struct stat stbuf;
+  bool we_mounted_proc = false;
   if (stat ("/proc/cmdline", &stbuf) < 0)
     {
       if (errno != ENOENT)
@@ -208,7 +175,7 @@ main (int argc, char *argv[])
        * work: */
       if (mount ("proc", "/proc", "proc", MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to mount proc on /proc");
-      we_mounted_proc = 1;
+      we_mounted_proc = true;
     }
 
   /* This is the final target where we should prepare the rootfs.  The usual
@@ -228,44 +195,11 @@ main (int argc, char *argv[])
         err (EXIT_FAILURE, "failed to umount proc from /proc");
     }
 
-  OstreeComposefsMode composefs_mode = OSTREE_COMPOSEFS_MODE_MAYBE;
-  autofree char *ot_composefs = read_proc_cmdline_key ("ot-composefs");
-  char *composefs_digest = NULL;
-  if (ot_composefs)
-    {
-      if (strcmp (ot_composefs, "off") == 0)
-        composefs_mode = OSTREE_COMPOSEFS_MODE_OFF;
-      else if (strcmp (ot_composefs, "maybe") == 0)
-        composefs_mode = OSTREE_COMPOSEFS_MODE_MAYBE;
-      else if (strcmp (ot_composefs, "on") == 0)
-        composefs_mode = OSTREE_COMPOSEFS_MODE_ON;
-      else if (strcmp (ot_composefs, "signed") == 0)
-        composefs_mode = OSTREE_COMPOSEFS_MODE_SIGNED;
-      else if (strncmp (ot_composefs, "digest=", strlen ("digest=")) == 0)
-        {
-          composefs_mode = OSTREE_COMPOSEFS_MODE_DIGEST;
-          composefs_digest = ot_composefs + strlen ("digest=");
-        }
-      else
-        err (EXIT_FAILURE, "Unsupported ot-composefs option: '%s'", ot_composefs);
-    }
-
-#ifndef HAVE_COMPOSEFS
-  if (composefs_mode == OSTREE_COMPOSEFS_MODE_MAYBE)
-    composefs_mode = OSTREE_COMPOSEFS_MODE_OFF;
-  (void)composefs_digest;
-#endif
-
   /* Query the repository configuration - this is an operating system builder
    * choice.  More info: https://github.com/ostreedev/ostree/pull/1767
    */
   const bool sysroot_readonly = sysroot_is_configured_ro (root_arg);
   const bool sysroot_currently_writable = !path_is_on_readonly_fs (root_arg);
-#ifdef USE_LIBSYSTEMD
-  sd_journal_send ("MESSAGE=filesystem at %s currently writable: %d", root_arg,
-                   (int)sysroot_currently_writable, NULL);
-  sd_journal_send ("MESSAGE=sysroot.readonly configuration value: %d", (int)sysroot_readonly, NULL);
-#endif
 
   /* Work-around for a kernel bug: for some reason the kernel
    * refuses switching root if any file systems are mounted
@@ -283,86 +217,9 @@ main (int argc, char *argv[])
   if (chdir (deploy_path) < 0)
     err (EXIT_FAILURE, "failed to chdir to deploy_path");
 
-  bool using_composefs = false;
-
-  /* We construct the new sysroot in /sysroot.tmp, which is either the composfs
-     mount or a bind mount of the deploy-dir */
-  if (composefs_mode != OSTREE_COMPOSEFS_MODE_OFF)
-    {
-#ifdef HAVE_COMPOSEFS
-      const char *objdirs[] = { "/sysroot/ostree/repo/objects" };
-      struct lcfs_mount_options_s cfs_options = {
-        objdirs,
-        1,
-      };
-
-      if (composefs_mode == OSTREE_COMPOSEFS_MODE_SIGNED)
-        errx (EXIT_FAILURE, "composefs signature not supported");
-
-      cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
-
-      if (snprintf (srcpath, sizeof (srcpath), "%s/.ostree.mnt", deploy_path) < 0)
-        err (EXIT_FAILURE, "failed to assemble /boot/loader path");
-      cfs_options.image_mountdir = srcpath;
-
-      if (composefs_mode == OSTREE_COMPOSEFS_MODE_DIGEST)
-        {
-          cfs_options.flags |= LCFS_MOUNT_FLAGS_REQUIRE_VERITY;
-          cfs_options.expected_fsverity_digest = composefs_digest;
-        }
-
-#ifdef USE_LIBSYSTEMD
-      if (composefs_mode == OSTREE_COMPOSEFS_MODE_MAYBE)
-        sd_journal_send ("MESSAGE=Trying to mount composefs rootfs", NULL);
-      else if (composefs_mode == OSTREE_COMPOSEFS_MODE_DIGEST)
-        sd_journal_send ("MESSAGE=Mounting composefs rootfs with expected digest '%s'",
-                         composefs_digest, NULL);
-      else
-        sd_journal_send ("MESSAGE=Mounting composefs rootfs", NULL);
-#endif
-
-      if (lcfs_mount_image (OSTREE_COMPOSEFS_NAME, TMP_SYSROOT, &cfs_options) == 0)
-        {
-          int fd = open (_OSTREE_COMPOSEFS_ROOT_STAMP, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
-          if (fd < 0)
-            err (EXIT_FAILURE, "failed to create %s", _OSTREE_COMPOSEFS_ROOT_STAMP);
-          (void)close (fd);
-
-          using_composefs = 1;
-        }
-      else
-        {
-#ifdef USE_LIBSYSTEMD
-          if (errno == ENOVERITY)
-            sd_journal_send ("MESSAGE=No verity in composefs image", NULL);
-          else if (errno == EWRONGVERITY)
-            sd_journal_send ("MESSAGE=Wrong verity digest in composefs image", NULL);
-          else if (errno == ENOSIGNATURE)
-            sd_journal_send ("MESSAGE=Missing signature in composefs image", NULL);
-          else
-            sd_journal_send ("MESSAGE=Mounting composefs image failed: %s", strerror (errno), NULL);
-#endif
-        }
-#else
-      err (EXIT_FAILURE, "Composefs not supported");
-#endif
-    }
-
-  if (!using_composefs)
-    {
-      if (composefs_mode > OSTREE_COMPOSEFS_MODE_MAYBE)
-        err (EXIT_FAILURE, "Failed to mount composefs");
-
-      /* The deploy root starts out bind mounted to sysroot.tmp */
-      if (mount (deploy_path, TMP_SYSROOT, NULL, MS_BIND | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to make initial bind mount %s", deploy_path);
-    }
-  else
-    {
-#ifdef USE_LIBSYSTEMD
-      sd_journal_send ("MESSAGE=Mounted composefs", NULL);
-#endif
-    }
+  /* The deploy root starts out bind mounted to sysroot.tmp */
+  if (mount (deploy_path, TMP_SYSROOT, NULL, MS_BIND | MS_SILENT, NULL) < 0)
+    err (EXIT_FAILURE, "failed to make initial bind mount %s", deploy_path);
 
   /* This will result in a system with /sysroot read-only. Thus, two additional
    * writable bind-mounts (for /etc and /var) are required later on. */
@@ -397,7 +254,7 @@ main (int argc, char *argv[])
   /* Prepare /etc.
    * No action required if sysroot is writable. Otherwise, a bind-mount for
    * the deployment needs to be created and remounted as read/write. */
-  if (sysroot_readonly || using_composefs)
+  if (sysroot_readonly)
     {
       /* Bind-mount /etc (at deploy path), and remount as writable. */
       if (mount ("etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_SILENT, NULL) < 0)
@@ -430,7 +287,7 @@ main (int argc, char *argv[])
       if (mount ("overlay", TMP_SYSROOT "/usr", "overlay", MS_SILENT, usr_ovl_options) < 0)
         err (EXIT_FAILURE, "failed to mount /usr overlayfs");
     }
-  else if (!using_composefs)
+  else
     {
       /* Otherwise, a read-only bind mount for /usr. (Not needed for composefs) */
       if (mount (TMP_SYSROOT "/usr", TMP_SYSROOT "/usr", NULL, MS_BIND | MS_SILENT, NULL) < 0)
@@ -453,16 +310,10 @@ main (int argc, char *argv[])
         err (EXIT_FAILURE, "failed to make writable /var bind-mount at %s", srcpath);
     }
 
-    /* When running under systemd, /var will be handled by a 'var.mount' unit outside
-     * of initramfs.
-     * Systemd auto-detection can be overridden by a marker file under /run. */
-#ifdef HAVE_SYSTEMD_AND_LIBMOUNT
-  bool mount_var = false;
-#else
+  /* When running under systemd, /var will be handled by a 'var.mount' unit outside
+   * of initramfs.
+   * Systemd auto-detection can be overridden by a marker file under /run. */
   bool mount_var = true;
-#endif
-  if (lstat (INITRAMFS_MOUNT_VAR, &stbuf) == 0)
-    mount_var = true;
 
   /* If required, bind-mount `/var` in the deployment to the "stateroot", which is
    *  the shared persistent directory for a set of deployments.  More info:
@@ -473,9 +324,6 @@ main (int argc, char *argv[])
       if (mount ("../../var", TMP_SYSROOT "/var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to bind mount ../../var to var");
     }
-
-  /* This can be used by other things to signal ostree is in use */
-  touch_run_ostree ();
 
   if (chdir (TMP_SYSROOT) < 0)
     err (EXIT_FAILURE, "failed to chdir to " TMP_SYSROOT);
@@ -537,5 +385,6 @@ main (int argc, char *argv[])
   if (mount ("none", "sysroot", NULL, MS_PRIVATE | MS_SILENT, NULL) < 0)
     err (EXIT_FAILURE, "remounting 'sysroot' private");
 
-  exit (EXIT_SUCCESS);
+  execl ("/sbin/init", "/sbin/init", NULL);
+  err (EXIT_FAILURE, "failed to exec init inside ostree");
 }

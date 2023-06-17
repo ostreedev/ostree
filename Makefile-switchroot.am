@@ -15,6 +15,12 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library. If not, see <https://www.gnu.org/licenses/>.
 
+ostree_prepare_root_SOURCES = \
+    src/switchroot/ostree-mount-util.h
+ostree_prepare_root_CFLAGS =
+ostree_prepare_root_CPPFLAGS = $(AM_CPPFLAGS)
+ostree_prepare_root_LDADD =
+
 if BUILDOPT_SYSTEMD
 ostree_boot_PROGRAMS += ostree-remount
 else
@@ -23,15 +29,9 @@ else
 check_PROGRAMS += ostree-remount
 endif
 
-ostree_prepare_root_SOURCES = \
-    src/switchroot/ostree-mount-util.h \
-    src/switchroot/ostree-prepare-root.c \
-    $(NULL)
-ostree_prepare_root_CFLAGS =
-ostree_prepare_root_CPPFLAGS = $(AM_CPPFLAGS)
-ostree_prepare_root_LDADD =
-
 if BUILDOPT_USE_STATIC_COMPILER
+ostree_prepare_root_SOURCES += src/switchroot/ostree-prepare-root-static.c
+
 # ostree-prepare-root can be used as init in a system without a populated /lib.
 # To support this use case we need to link statically as we will be unable to
 # locate libc.so at run time if it's not installed in /lib.
@@ -45,12 +45,15 @@ if BUILDOPT_USE_STATIC_COMPILER
 ostree_boot_SCRIPTS += ostree-prepare-root
 
 ostree-prepare-root : $(ostree_prepare_root_SOURCES)
-	$(STATIC_COMPILER) -o $@ -static $(top_srcdir)/src/switchroot/ostree-prepare-root.c $(ostree_prepare_root_CPPFLAGS) $(AM_CFLAGS) $(DEFAULT_INCLUDES) -DOSTREE_PREPARE_ROOT_STATIC=1
+	$(STATIC_COMPILER) -o $@ -static $(top_srcdir)/src/switchroot/ostree-prepare-root-static.c $(ostree_prepare_root_CPPFLAGS) $(AM_CFLAGS) $(DEFAULT_INCLUDES) -DOSTREE_PREPARE_ROOT_STATIC=1
 CLEANFILES += ostree-prepare-root
 else
 ostree_boot_PROGRAMS += ostree-prepare-root
 ostree_prepare_root_CFLAGS += $(AM_CFLAGS) -Isrc/switchroot -I$(srcdir)/composefs
-endif
+else
+ostree_prepare_root_SOURCES += src/switchroot/ostree-prepare-root.c
+endif # BUILDOPT_USE_STATIC_COMPILER
+
 
 ostree_remount_SOURCES = \
     src/switchroot/ostree-mount-util.h \
