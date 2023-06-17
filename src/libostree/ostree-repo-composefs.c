@@ -461,6 +461,9 @@ checkout_composefs_recurse (OstreeRepo *self, const char *dirtree_checksum,
                                          dname, cancellable, error))
           return FALSE;
       }
+    /* Freed by iter-loop */
+    subdirtree_csum_v = NULL;
+    subdirmeta_csum_v = NULL;
   }
 
   return TRUE;
