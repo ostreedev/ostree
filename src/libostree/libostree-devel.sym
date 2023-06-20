@@ -20,11 +20,6 @@
    - uncomment the include in Makefile-libostree.am
 */
 
-LIBOSTREE_2023.4 {
-global:
-  ostree_repo_commit_add_composefs_metadata;
-} LIBOSTREE_2023.1;
-
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the year.  This is just a copy/paste
  * source.  Replace $LASTSTABLE with the last stable version, and $NEWVERSION
