@@ -2536,7 +2536,7 @@ get_kernel_layout_size (OstreeSysroot *self, OstreeDeployment *deployment, guint
 /* This is a roundabout but more trustworthy way of doing a space check than
  * relying on statvfs's f_bfree when you know the size of the objects. */
 static gboolean
-dfd_fallocate_check (int dfd, __off_t len, gboolean *out_passed, GError **error)
+dfd_fallocate_check (int dfd, off_t len, gboolean *out_passed, GError **error)
 {
   /* If the requested size is 0 then return early. Passing a 0 len to
    * fallocate results in EINVAL */
