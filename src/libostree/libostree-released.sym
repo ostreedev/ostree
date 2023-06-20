@@ -701,6 +701,11 @@ global:
   ostree_repo_regenerate_metadata;
 } LIBOSTREE_2022.7;
 
+LIBOSTREE_2023.4 {
+global:
+  ostree_repo_commit_add_composefs_metadata;
+} LIBOSTREE_2023.1;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
