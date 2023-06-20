@@ -569,89 +569,46 @@ ostree_repo_checkout_composefs (OstreeRepo *self, OstreeComposefsTarget *target,
 #endif
 }
 
-#ifdef HAVE_COMPOSEFS
-static gboolean
-ostree_repo_commit_add_composefs_sig (OstreeRepo *self, GVariantBuilder *builder,
-                                      guchar *fsverity_digest, GCancellable *cancellable,
-                                      GError **error)
-{
-  g_autofree char *certfile = NULL;
-  g_autofree char *keyfile = NULL;
-  g_autoptr (GBytes) sig = NULL;
-  guchar digest_digest[LCFS_DIGEST_SIZE];
-
-  certfile
-      = g_key_file_get_string (self->config, _OSTREE_INTEGRITY_SECTION, "composefs-certfile", NULL);
-  keyfile
-      = g_key_file_get_string (self->config, _OSTREE_INTEGRITY_SECTION, "composefs-keyfile", NULL);
-
-  if (certfile == NULL && keyfile == NULL)
-    return TRUE;
-
-  if (certfile == NULL)
-    return glnx_throw (error, "Error signing compoosefs: keyfile specified but certfile is not");
-
-  if (keyfile == NULL)
-    return glnx_throw (error, "Error signing compoosefs: certfile specified but keyfile is not");
-
-  /* We sign not the fs-verity of the image file itself, but rather we sign a file containing
-   * the fs-verity digest. This may seem weird, but disconnecting the signature from the
-   * actual image itself has two major advantages:
-   *  * We can read/mount the image (non-verified) even  without the public  key in
-   *    the keyring.
-   *  * We can apply fs-verity to the image during deploy without the public key in
-   *    the keyring.
-   *
-   * This is important because during an update we don't have the public key loaded until
-   * we boot into the new initrd.
-   */
-
-  if (lcfs_compute_fsverity_from_data (digest_digest, fsverity_digest, LCFS_DIGEST_SIZE) < 0)
-    return glnx_throw_errno (error);
-
-  if (!_ostree_fsverity_sign (certfile, keyfile, digest_digest, &sig, cancellable, error))
-    return FALSE;
-
-  g_variant_builder_add (builder, "{sv}", "ostree.composefs-sig", ot_gvariant_new_ay_bytes (sig));
-
-  return TRUE;
-}
-#endif
-
+/**
+ * ostree_repo_commit_add_composefs_metadata:
+ * @self: Repo
+ * @format_version: Must be zero
+ * @dict: A GVariant builder of type a{sv}
+ * @repo_root: the target filesystem tree
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Compute the composefs digest for a filesystem tree
+ * and insert it into metadata for a commit object.  The composefs
+ * digest covers the entire filesystem tree and can be verified by
+ * the composefs mount tooling.
+ */
+_OSTREE_PUBLIC
 gboolean
-ostree_repo_commit_add_composefs_metadata (OstreeRepo *self, GVariantBuilder *builder,
-                                           OstreeRepoFile *repo_root, GCancellable *cancellable,
-                                           GError **error)
+ostree_repo_commit_add_composefs_metadata (OstreeRepo *self, guint format_version,
+                                           GVariantDict *dict, OstreeRepoFile *repo_root,
+                                           GCancellable *cancellable, GError **error)
 {
-  gboolean add_metadata;
+#ifdef HAVE_COMPOSEFS
+  /* For now */
+  g_assert (format_version == 0);
 
-  if (!ot_keyfile_get_boolean_with_default (self->config, _OSTREE_INTEGRITY_SECTION,
-                                            "composefs-add-metadata", FALSE, &add_metadata, error))
+  /* Create a composefs image and put in deploy dir as .ostree.cfs */
+  g_autoptr (OstreeComposefsTarget) target = ostree_composefs_target_new ();
+
+  if (!ostree_repo_checkout_composefs (self, target, repo_root, cancellable, error))
     return FALSE;
 
-  if (add_metadata)
-    {
-#ifdef HAVE_COMPOSEFS
-      /* Create a composefs image and put in deploy dir as .ostree.cfs */
-      g_autoptr (OstreeComposefsTarget) target = ostree_composefs_target_new ();
+  g_autofree guchar *fsverity_digest = NULL;
+  if (!ostree_composefs_target_write (target, -1, &fsverity_digest, cancellable, error))
+    return FALSE;
 
-      if (!ostree_repo_checkout_composefs (self, target, repo_root, cancellable, error))
-        return FALSE;
-
-      g_autofree guchar *fsverity_digest = NULL;
-      if (!ostree_composefs_target_write (target, -1, &fsverity_digest, cancellable, error))
-        return FALSE;
-
-      g_variant_builder_add (builder, "{sv}", "ostree.composefs",
-                             ot_gvariant_new_bytearray (fsverity_digest, OSTREE_SHA256_DIGEST_LEN));
-
-      if (!ostree_repo_commit_add_composefs_sig (self, builder, fsverity_digest, cancellable,
-                                                 error))
-        return FALSE;
-#else
-      return composefs_not_supported (error);
-#endif
-    }
+  g_variant_dict_insert_value (
+      dict, OSTREE_COMPOSEFS_DIGEST_KEY_V0,
+      ot_gvariant_new_bytearray (fsverity_digest, OSTREE_SHA256_DIGEST_LEN));
 
   return TRUE;
+#else
+  return composefs_not_supported (error);
+#endif
 }
