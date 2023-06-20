@@ -2,6 +2,7 @@ use anyhow::{bail, Result};
 use libtest_mimic::Trial;
 use structopt::StructOpt;
 
+mod composefs;
 mod destructive;
 mod repobin;
 mod sysroot;
@@ -28,7 +29,10 @@ const TESTS: &[StaticTest] = &[
     test!(repobin::itest_extensions),
     test!(repobin::itest_pull_basicauth),
 ];
-const DESTRUCTIVE_TESTS: &[StaticTest] = &[test!(destructive::itest_transactionality)];
+const DESTRUCTIVE_TESTS: &[StaticTest] = &[
+    test!(destructive::itest_transactionality),
+    test!(composefs::itest_composefs),
+];
 
 #[derive(Debug, StructOpt)]
 #[structopt(rename_all = "kebab-case")]
