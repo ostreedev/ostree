@@ -52,11 +52,11 @@
 
 #include "config.h"
 
-#include <assert.h>
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <libglnx.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -106,44 +106,19 @@ typedef enum
   OSTREE_COMPOSEFS_MODE_DIGEST, /* Always use and require specific digest */
 } OstreeComposefsMode;
 
-static inline bool
+static bool
 sysroot_is_configured_ro (const char *sysroot)
 {
-  char *config_path = NULL;
-  assert (asprintf (&config_path, "%s/ostree/repo/config", sysroot) != -1);
-  FILE *f = fopen (config_path, "r");
-  if (!f)
+  g_autoptr (GError) local_error = NULL;
+  g_autofree char *repo_config_path = g_build_filename (sysroot, "ostree/repo/config", NULL);
+  g_autoptr (GKeyFile) repo_config = g_key_file_new ();
+  if (!g_key_file_load_from_file (repo_config, repo_config_path, G_KEY_FILE_NONE, &local_error))
     {
-      fprintf (stderr, "Missing expected repo config: %s\n", config_path);
-      free (config_path);
+      g_printerr ("Failed to load %s: %s", repo_config_path, local_error->message);
       return false;
     }
-  free (config_path);
 
-  bool ret = false;
-  char *line = NULL;
-  size_t len = 0;
-  /* Note getline() will reuse the previous buffer */
-  bool in_sysroot = false;
-  while (getline (&line, &len, f) != -1)
-    {
-      /* This is an awful hack to avoid depending on GLib in the
-       * initramfs right now.
-       */
-      if (strstr (line, "[sysroot]") == line)
-        in_sysroot = true;
-      else if (*line == '[')
-        in_sysroot = false;
-      else if (in_sysroot && strstr (line, "readonly=true") == line)
-        {
-          ret = true;
-          break;
-        }
-    }
-
-  fclose (f);
-  free (line);
-  return ret;
+  return g_key_file_get_boolean (repo_config, "sysroot", "readonly", NULL);
 }
 
 static char *

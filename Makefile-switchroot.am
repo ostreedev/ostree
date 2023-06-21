@@ -50,8 +50,9 @@ CLEANFILES += ostree-prepare-root
 else
 ostree_boot_PROGRAMS += ostree-prepare-root
 ostree_prepare_root_CFLAGS += $(AM_CFLAGS) -Isrc/switchroot -I$(srcdir)/composefs
-else
 ostree_prepare_root_SOURCES += src/switchroot/ostree-prepare-root.c
+ostree_prepare_root_CPPFLAGS += $(OT_INTERNAL_GIO_UNIX_CFLAGS) -I $(srcdir)/libglnx
+ostree_prepare_root_LDADD += $(AM_LDFLAGS) $(OT_INTERNAL_GIO_UNIX_LIBS) libglnx.la
 endif # BUILDOPT_USE_STATIC_COMPILER
 
 
@@ -68,7 +69,7 @@ endif
 
 if BUILDOPT_SYSTEMD
 ostree_prepare_root_CPPFLAGS += -DHAVE_SYSTEMD=1
-ostree_prepare_root_LDADD += $(AM_LDFLAGS) $(LIBSYSTEMD_LIBS)
+ostree_prepare_root_LDADD += $(LIBSYSTEMD_LIBS)
 endif
 
 # This is the "new mode" of using a generator for /var; see
