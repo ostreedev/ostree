@@ -326,7 +326,7 @@ main (int argc, char *argv[])
       if (composefs_mode == OSTREE_COMPOSEFS_MODE_DIGEST)
         {
           cfs_options.flags |= LCFS_MOUNT_FLAGS_REQUIRE_VERITY;
-          cfs_options.expected_digest = composefs_digest;
+          cfs_options.expected_fsverity_digest = composefs_digest;
         }
 
 #ifdef USE_LIBSYSTEMD
