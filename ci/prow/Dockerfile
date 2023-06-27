@@ -2,6 +2,7 @@ FROM registry.ci.openshift.org/coreos/fcos-buildroot:testing-devel as builder
 WORKDIR /src
 COPY . .
 RUN env CONFIGOPTS=--with-composefs ./ci/build.sh && make install DESTDIR=/cosa/component-install
+RUN make -C tests/kolainst
 RUN make -C tests/kolainst install DESTDIR=/cosa/component-tests
 # Uncomment this to fake a build to test the code below
 #RUN mkdir -p /cosa/component-install/usr/bin && echo foo > /cosa/component-install/usr/bin/foo
