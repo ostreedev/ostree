@@ -161,7 +161,8 @@ _ostree_bootloader_aboot_post_bls_sync (OstreeBootloader *bootloader, int bootve
 
   g_autofree char *path_str = g_file_get_path (self->sysroot->path);
 
-  const char *const aboot_argv[] = { "aboot-deploy", "-r", path_str, "-c", abootcfg, aboot, NULL };
+  const char *const aboot_argv[]
+      = { "aboot-deploy", "-r", path_str, "-c", abootcfg, "-o", options, aboot, NULL };
   int estatus;
   if (!g_spawn_sync (NULL, (char **)aboot_argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, NULL,
                      &estatus, error))
