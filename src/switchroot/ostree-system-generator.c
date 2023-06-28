@@ -64,6 +64,8 @@ main (int argc, char *argv[])
    * is PID 1 (and so hasn't created /run/ostree-booted).
    */
   autofree char *ostree_target = get_ostree_target ();
+  if (!ostree_target)
+    exit (EXIT_SUCCESS);
 
   /* See comments in ostree-prepare-root.c for this.
    *
