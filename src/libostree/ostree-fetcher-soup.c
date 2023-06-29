@@ -25,6 +25,7 @@
 #include <gio/gfiledescriptorbased.h>
 #include <gio/gio.h>
 #include <gio/gunixoutputstream.h>
+#include <stdbool.h>
 #define LIBSOUP_USE_UNSTABLE_REQUEST_API
 #include <libsoup/soup-request-http.h>
 #include <libsoup/soup-requester.h>
@@ -59,6 +60,7 @@ typedef struct
 
   char *remote_name;
   int base_tmpdir_dfd;
+  bool force_anonymous;
 
   GVariant *extra_headers;
   gboolean transfer_gzip;
@@ -681,6 +683,12 @@ _ostree_fetcher_new (int tmpdir_dfd, const char *remote_name, OstreeFetcherConfi
   return self;
 }
 
+void
+_ostree_fetcher_set_force_anonymous_tmpfiles (OstreeFetcher *self)
+{
+  self->thread_closure->force_anonymous = true;
+}
+
 int
 _ostree_fetcher_get_dfd (OstreeFetcher *fetcher)
 {
@@ -888,9 +896,13 @@ on_stream_read (GObject *object, GAsyncResult *result, gpointer user_data)
     {
       if (!pending->is_membuf)
         {
-          if (!_ostree_fetcher_tmpf_from_flags (pending->flags,
-                                                pending->thread_closure->base_tmpdir_dfd,
-                                                &pending->tmpf, &local_error))
+          if (pending->thread_closure->force_anonymous)
+            {
+              if (!glnx_open_anonymous_tmpfile (O_RDWR | O_CLOEXEC, &pending->tmpf, &local_error))
+                goto out;
+            }
+          else if (!_ostree_fetcher_tmpf (pending->thread_closure->base_tmpdir_dfd, &pending->tmpf,
+                                          &local_error))
             goto out;
           pending->out_stream = g_unix_output_stream_new (pending->tmpf.fd, FALSE);
         }

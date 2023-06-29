@@ -2966,6 +2966,8 @@ _ostree_repo_remote_new_fetcher (OstreeRepo *self, const char *remote_name, gboo
   }
 
   fetcher = _ostree_fetcher_new (self->tmp_dir_fd, remote_name, fetcher_flags);
+  if (self->is_on_fuse)
+    _ostree_fetcher_set_force_anonymous_tmpfiles (fetcher);
 
   {
     g_autofree char *tls_client_cert_path = NULL;
