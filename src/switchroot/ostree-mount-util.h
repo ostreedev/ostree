@@ -153,7 +153,7 @@ get_ostree_target (void)
   autofree char *ostree_cmdline = read_proc_cmdline_key ("ostree");
 
   if (!ostree_cmdline)
-    errx (EXIT_FAILURE, "No ostree= cmdline");
+    return NULL;
 
   if (strcmp (ostree_cmdline, "aboot") == 0)
     return get_aboot_root_slot ();
