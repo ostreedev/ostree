@@ -26,6 +26,7 @@ const TESTS: &[StaticTest] = &[
     test!(sysroot::itest_tmpfiles),
     test!(repobin::itest_basic),
     test!(repobin::itest_nofifo),
+    test!(repobin::itest_mtime),
     test!(repobin::itest_extensions),
     test!(repobin::itest_pull_basicauth),
 ];

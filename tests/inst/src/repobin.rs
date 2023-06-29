@@ -42,6 +42,7 @@ pub(crate) fn itest_mtime() -> Result<()> {
 "
     )?;
     let ts = Path::new("repo").metadata()?.modified().unwrap();
+    std::thread::sleep(std::time::Duration::from_secs(1));
     bash!(r#"ostree --repo=repo commit -b test -s "bump mtime" --tree=dir=tmproot >/dev/null"#)?;
     assert_ne!(ts, Path::new("repo").metadata()?.modified().unwrap());
     Ok(())
