@@ -103,23 +103,44 @@ recording device files such as the `/dev/initctl` FIFO, but no longer
 does.  It's recommended to just patch your initramfs to create this at
 boot.
 
-## /usr/lib/passwd
+## System users and groups
 
 Unlike traditional package systems, OSTree trees contain *numeric* uid
-and gids.  Furthermore, it does not have a `%post` type mechanism
+and gids (the same is true of e.g. OCI).
+
+Furthermore, OSTree does not have a `%post` type mechanism
 where `useradd` could be invoked.  In order to ship an OS that
 contains both system users and users dynamically created on client
 machines, you will need to choose a solution for `/etc/passwd`.  The
 core problem is that if you add a user to the system for a daemon, the
 OSTree upgrade process for `/etc` will simply notice that because
 `/etc/passwd` differs from the previous default, it will keep the
-modified config file, and your new OS user will not be visible.  The
-solution chosen for the [Gnome Continuous](https://live.gnome.org/Projects/GnomeContinuous) operating
-system is to create `/usr/lib/passwd`, and to include a NSS module
-[nss-altfiles](https://github.com/aperezdc/nss-altfiles) which
-instructs glibc to read from it.  Then, the build system places all
-system users there, freeing up `/etc/passwd` to be purely a database
-of local users.  See also a more recent effort from [Systemd Stateless](http://0pointer.de/blog/projects/stateless.html)
+modified config file, and your new OS user will not be visible.  
+
+First, consider using [systemd DynamicUser=yes](https://0pointer.net/blog/dynamic-users-with-systemd.html)
+where applicable.  This entirely avoids problems with static
+allocations.
+
+### Static users and groups
+
+For users which must be allocated statically (for example, they
+are used by setuid executables in `/usr/bin`, there are two
+primary wants to handle this.
+
+The [nss-altfiles](https://github.com/aperezdc/nss-altfiles)
+was created to pair with image-based update systems like OSTree,
+and is used by many operating systems and distributions today.
+
+More recently, [nss-systemd](https://www.freedesktop.org/software/systemd/man/nss-systemd.html)
+gained support for statically allocated users and groups in
+a JSON format stored in `/usr/lib/userdb`.
+
+### sysusers.d
+
+Some users and groups can be assigned dynamically via [sysusers.d](https://www.freedesktop.org/software/systemd/man/sysusers.d.html).  This means users and groups are maintained per-machine and may drift (unless statically assigned in sysusers).
+
+But this model is suitable for users and groups which must always be present,
+but do not have file content in the image.
 
 ## Adapting existing package managers
 
