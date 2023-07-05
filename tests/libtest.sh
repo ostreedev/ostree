@@ -180,18 +180,9 @@ if test -n "${OT_TESTS_VALGRIND:-}"; then
     CMD_PREFIX="env G_SLICE=always-malloc OSTREE_SUPPRESS_SYNCFS=1 valgrind -q --error-exitcode=1 --leak-check=full --num-callers=30 --suppressions=${test_srcdir}/glib.supp --suppressions=${test_srcdir}/ostree.supp"
 fi
 
-if test -n "${OSTREE_UNINSTALLED:-}"; then
-    OSTREE_HTTPD=${OSTREE_UNINSTALLED}/ostree-trivial-httpd
-else
-    # trivial-httpd is now in $libexecdir by default, which we don't
-    # know at this point. Fortunately, libtest.sh is also in
-    # $libexecdir, so make an educated guess. If it's not found, assume
-    # it's still runnable as "ostree trivial-httpd".
-    if [ -x "${test_srcdir}/../../libostree/ostree-trivial-httpd" ]; then
-        OSTREE_HTTPD="${CMD_PREFIX} ${test_srcdir}/../../libostree/ostree-trivial-httpd"
-    else
-        OSTREE_HTTPD="${CMD_PREFIX} ostree trivial-httpd"
-    fi
+OSTREE_HTTPD="${G_TEST_BUILDDIR}/ostree-trivial-httpd"
+if ! [ -x "${OSTREE_HTTPD}" ]; then
+    fatal "Failed to find ${OSTREE_HTTPD}"
 fi
 
 files_are_hardlinked() {
