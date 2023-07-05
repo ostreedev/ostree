@@ -459,17 +459,14 @@ fn impl_transaction_test<M: AsRef<str>>(
         // Reset the target ref to booted, and perform a cleanup
         // to ensure we're re-downloading objects each time
         let testref = TESTREF;
-        bash!(
-            "
-            systemctl stop rpm-ostreed
-            systemctl stop ostree-finalize-staged
-            systemctl stop ostree-finalize-staged-hold
-            ostree reset testrepo:${testref} ${booted_commit}
-            rpm-ostree cleanup -pbrm
-            ",
-            testref,
-            booted_commit
-        )
+        (|| -> Result<()> {
+            cmd!(sh, "systemctl stop rpm-ostreed").run()?;
+            cmd!(sh, "systemctl stop ostree-finalize-staged").run()?;
+            cmd!(sh, "systemctl stop ostree-finalize-staged-hold").run()?;
+            cmd!(sh, "ostree reset testrepo:{testref} {booted_commit}").run()?;
+            cmd!(sh, "rpm-ostree cleanup -pbrm").run()?;
+            Ok(())
+        })()
         .with_context(|| {
             format!(
                 "Failed pre-upgrade cleanup (prev strategy: {})",

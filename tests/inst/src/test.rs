@@ -17,8 +17,6 @@ use hyper::{Body, Request, Response};
 use hyper_staticfile::Static;
 use tokio::runtime::Runtime;
 
-pub(crate) type TestFn = fn() -> Result<()>;
-
 /// Run command and assert that its stderr contains pat
 pub(crate) fn cmd_fails_with<C: BorrowMut<Command>>(mut c: C, pat: &str) -> Result<()> {
     let c = c.borrow_mut();
