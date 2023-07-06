@@ -311,7 +311,6 @@ AS_IF([test x$with_ed25519_libsodium != xno], [
     AS_IF([ test x$have_libsodium = xno ], [
        AC_MSG_ERROR([Need LIBSODIUM version $LIBSODIUM_DEPENDENCY or later])
     ])
-    OSTREE_FEATURES="$OSTREE_FEATURES sign-ed25519"
 ], with_ed25519_libsodium=no )
 AM_CONDITIONAL(USE_LIBSODIUM, test "x$have_libsodium" = xyes)
 
@@ -449,6 +448,11 @@ AS_IF([ test x$with_openssl != xno ], [
 if test x$with_openssl != xno; then OSTREE_FEATURES="$OSTREE_FEATURES openssl"; fi
 AM_CONDITIONAL(USE_OPENSSL, test $with_openssl != no)
 dnl end openssl
+
+if test x$with_openssl != xno || test x$with_ed25519_libsodium != xno; then
+   AC_DEFINE([HAVE_ED25519], 1, [Define if ed25519 is supported ])
+   OSTREE_FEATURES="$OSTREE_FEATURES sign-ed25519"
+fi
 
 dnl begin gnutls; in contrast to openssl this one only
 dnl supports --with-crypto=gnutls
@@ -684,6 +688,7 @@ echo "
     systemd:                                      $with_libsystemd
     libmount:                                     $with_libmount
     libsodium (ed25519 signatures):               $with_ed25519_libsodium
+    openssl (ed25519 signatures):                 $with_openssl
     libarchive (parse tar files directly):        $with_libarchive
     static deltas:                                yes (always enabled now)
     O_TMPFILE:                                    $enable_otmpfile

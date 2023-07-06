@@ -26,8 +26,17 @@
 #include "ostree-sign-ed25519.h"
 #include <libglnx.h>
 #include <ot-checksum-utils.h>
+
 #ifdef HAVE_LIBSODIUM
 #include <sodium.h>
+#define USE_LIBSODIUM
+#else
+
+#if defined(HAVE_OPENSSL)
+#include <openssl/evp.h>
+#define USE_OPENSSL
+#endif
+
 #endif
 
 #undef G_LOG_DOMAIN
@@ -99,12 +108,13 @@ _ostree_sign_ed25519_init (OstreeSignEd25519 *self)
   self->public_keys = NULL;
   self->revoked_keys = NULL;
 
-#ifdef HAVE_LIBSODIUM
+#if defined(USE_LIBSODIUM)
   if (sodium_init () < 0)
     self->state = ED25519_FAILED_INITIALIZATION;
+#elif defined(USE_OPENSSL)
 #else
   self->state = ED25519_NOT_SUPPORTED;
-#endif /* HAVE_LIBSODIUM */
+#endif
 }
 
 static gboolean
@@ -117,7 +127,7 @@ _ostree_sign_ed25519_is_initialized (OstreeSignEd25519 *self, GError **error)
     case ED25519_NOT_SUPPORTED:
       return glnx_throw (error, "ed25519: engine is not supported");
     case ED25519_FAILED_INITIALIZATION:
-      return glnx_throw (error, "ed25519: libsodium library isn't initialized properly");
+      return glnx_throw (error, "ed25519: crypto library isn't initialized properly");
     }
 
   return TRUE;
@@ -131,31 +141,46 @@ ostree_sign_ed25519_data (OstreeSign *self, GBytes *data, GBytes **signature,
   g_assert (OSTREE_IS_SIGN (self));
   OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private (OSTREE_SIGN_ED25519 (self));
 
-#ifdef HAVE_LIBSODIUM
-  guchar *sig = NULL;
-#endif
-
   if (!_ostree_sign_ed25519_is_initialized (sign, error))
     return FALSE;
 
   if (sign->secret_key == NULL)
     return glnx_throw (error, "Not able to sign: secret key is not set");
 
-#ifdef HAVE_LIBSODIUM
   unsigned long long sig_size = 0;
+  g_autofree guchar *sig = g_malloc0 (OSTREE_SIGN_ED25519_SIG_SIZE);
 
-  sig = g_malloc0 (crypto_sign_BYTES);
-
+#if defined(USE_LIBSODIUM)
   if (crypto_sign_detached (sig, &sig_size, g_bytes_get_data (data, NULL), g_bytes_get_size (data),
                             sign->secret_key))
+    sig_size = 0;
+#elif defined(USE_OPENSSL)
+  EVP_MD_CTX *ctx = EVP_MD_CTX_new ();
+  if (!ctx)
+    return glnx_throw (error, "openssl: failed to allocate context");
+  EVP_PKEY *pkey = EVP_PKEY_new_raw_private_key (EVP_PKEY_ED25519, NULL, sign->secret_key,
+                                                 OSTREE_SIGN_ED25519_SEED_SIZE);
+  if (!pkey)
     {
-      return glnx_throw (error, "Not able to sign: fail to sign the object");
+      EVP_MD_CTX_free (ctx);
+      return glnx_throw (error, "openssl: Failed to initialize ed5519 key");
     }
 
-  *signature = g_bytes_new_take (sig, sig_size);
+  size_t len;
+  if (EVP_DigestSignInit (ctx, NULL, NULL, NULL, pkey)
+      && EVP_DigestSign (ctx, sig, &len, g_bytes_get_data (data, NULL), g_bytes_get_size (data)))
+    sig_size = len;
+
+  EVP_PKEY_free (pkey);
+  EVP_MD_CTX_free (ctx);
+
+#endif
+
+  if (sig_size == 0)
+    return glnx_throw (error, "Failed to sign");
+
+  *signature = g_bytes_new_take (g_steal_pointer (&sig), sig_size);
   return TRUE;
-#endif /* HAVE_LIBSODIUM */
-  return FALSE;
 }
 
 static gint
@@ -207,6 +232,7 @@ ostree_sign_ed25519_data_verify (OstreeSign *self, GBytes *data, GVariant *signa
     {
       g_autoptr (GVariant) child = g_variant_get_child_value (signatures, i);
       g_autoptr (GBytes) signature = g_variant_get_data_as_bytes (child);
+      gboolean valid = FALSE;
 
       if (g_bytes_get_size (signature) != OSTREE_SIGN_ED25519_SIG_SIZE)
         return glnx_throw (
@@ -230,10 +256,33 @@ ostree_sign_ed25519_data_verify (OstreeSign *self, GBytes *data, GVariant *signa
               continue;
             }
 
-          if (crypto_sign_verify_detached ((guchar *)g_variant_get_data (child),
-                                           g_bytes_get_data (data, NULL), g_bytes_get_size (data),
-                                           public_key->data)
-              != 0)
+#if defined(USE_LIBSODIUM)
+          valid = crypto_sign_verify_detached ((guchar *)g_variant_get_data (child),
+                                               g_bytes_get_data (data, NULL),
+                                               g_bytes_get_size (data), public_key->data)
+                  == 0;
+#elif defined(USE_OPENSSL)
+          EVP_MD_CTX *ctx = EVP_MD_CTX_new ();
+          if (!ctx)
+            return glnx_throw (error, "openssl: failed to allocate context");
+          EVP_PKEY *pkey = EVP_PKEY_new_raw_public_key (EVP_PKEY_ED25519, NULL, public_key->data,
+                                                        OSTREE_SIGN_ED25519_PUBKEY_SIZE);
+          if (!pkey)
+            {
+              EVP_MD_CTX_free (ctx);
+              return glnx_throw (error, "openssl: Failed to initialize ed5519 key");
+            }
+
+          valid = EVP_DigestVerifyInit (ctx, NULL, NULL, NULL, pkey) != 0
+                  && EVP_DigestVerify (ctx, g_bytes_get_data (signature, NULL),
+                                       g_bytes_get_size (signature), g_bytes_get_data (data, NULL),
+                                       g_bytes_get_size (data))
+                         != 0;
+
+          EVP_PKEY_free (pkey);
+          EVP_MD_CTX_free (ctx);
+#endif
+          if (!valid)
             {
               /* Incorrect signature! */
               if (invalid_signatures == NULL)

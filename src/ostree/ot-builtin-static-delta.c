@@ -105,7 +105,7 @@ static GOptionEntry generate_options[] = {
   { "sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "Sign the delta with", "KEY_ID" },
   { "sign-type", 0, 0, G_OPTION_ARG_STRING, &opt_sign_name,
     "Signature type to use (defaults to 'ed25519')", "NAME" },
-#if defined(HAVE_LIBSODIUM)
+#if defined(HAVE_ED25519)
   { "keys-file", 0, 0, G_OPTION_ARG_STRING, &opt_keysfilename, "Read key(s) from file", "NAME" },
 #endif
   { NULL }
@@ -114,7 +114,7 @@ static GOptionEntry generate_options[] = {
 static GOptionEntry apply_offline_options[] = {
   { "sign-type", 0, 0, G_OPTION_ARG_STRING, &opt_sign_name,
     "Signature type to use (defaults to 'ed25519')", "NAME" },
-#if defined(HAVE_LIBSODIUM)
+#if defined(HAVE_ED25519)
   { "keys-file", 0, 0, G_OPTION_ARG_STRING, &opt_keysfilename, "Read key(s) from file", "NAME" },
   { "keys-dir", 0, 0, G_OPTION_ARG_STRING, &opt_keysdir,
     "Redefine system-wide directories with public and revoked keys for verification", "NAME" },
@@ -127,7 +127,7 @@ static GOptionEntry list_options[] = { { NULL } };
 static GOptionEntry verify_options[] = {
   { "sign-type", 0, 0, G_OPTION_ARG_STRING, &opt_sign_name,
     "Signature type to use (defaults to 'ed25519')", "NAME" },
-#if defined(HAVE_LIBSODIUM)
+#if defined(HAVE_ED25519)
   { "keys-file", 0, 0, G_OPTION_ARG_STRING, &opt_keysfilename, "Read key(s) from file", "NAME" },
   { "keys-dir", 0, 0, G_OPTION_ARG_STRING, &opt_keysdir,
     "Redefine system-wide directories with public and revoked keys for verification", "NAME" },
@@ -513,7 +513,7 @@ ot_static_delta_builtin_apply_offline (int argc, char **argv, OstreeCommandInvoc
       return FALSE;
     }
 
-#if defined(HAVE_LIBSODIUM)
+#if defined(HAVE_ED25519)
   /* Initialize crypto system */
   opt_sign_name = opt_sign_name ?: OSTREE_SIGN_NAME_ED25519;
 #endif
