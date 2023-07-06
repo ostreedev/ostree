@@ -193,6 +193,7 @@ struct OstreeRepo
 
   gboolean inited;
   gboolean writable;
+  gboolean is_on_fuse; /* TRUE if the repository is on a FUSE filesystem */
   OstreeRepoSysrootKind sysroot_kind;
   GError *writable_error;
   gboolean in_transaction;

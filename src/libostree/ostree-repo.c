@@ -3426,6 +3426,17 @@ ostree_repo_open (OstreeRepo *self, GCancellable *cancellable, GError **error)
       /* Note - we don't return this error yet! */
     }
 
+  {
+    struct statfs fsstbuf;
+    if (fstatfs (self->repo_dir_fd, &fsstbuf) < 0)
+      return glnx_throw_errno_prefix (error, "fstatfs");
+#ifndef FUSE_SUPER_MAGIC
+#define FUSE_SUPER_MAGIC 0x65735546
+#endif
+    self->is_on_fuse = (fsstbuf.f_type == FUSE_SUPER_MAGIC);
+    g_debug ("using fuse: %d", self->is_on_fuse);
+  }
+
   if (!glnx_fstat (self->objects_dir_fd, &stbuf, error))
     return FALSE;
   self->owner_uid = stbuf.st_uid;

@@ -88,6 +88,8 @@ GType _ostree_fetcher_get_type (void) G_GNUC_CONST;
 OstreeFetcher *_ostree_fetcher_new (int tmpdir_dfd, const char *remote_name,
                                     OstreeFetcherConfigFlags flags);
 
+void _ostree_fetcher_set_force_anonymous_tmpfiles (OstreeFetcher *fetcher);
+
 int _ostree_fetcher_get_dfd (OstreeFetcher *fetcher);
 
 void _ostree_fetcher_set_cookie_jar (OstreeFetcher *self, const char *jar_path);

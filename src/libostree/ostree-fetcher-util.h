@@ -32,17 +32,10 @@ G_BEGIN_DECLS
 #define OSTREE_FETCHER_USERAGENT_STRING (PACKAGE_NAME "/" PACKAGE_VERSION)
 
 static inline gboolean
-_ostree_fetcher_tmpf_from_flags (OstreeFetcherRequestFlags flags, int dfd, GLnxTmpfile *tmpf,
-                                 GError **error)
+_ostree_fetcher_tmpf (int dfd, GLnxTmpfile *tmpf, GError **error)
 {
-  if ((flags & OSTREE_FETCHER_REQUEST_LINKABLE) > 0)
-    {
-      if (!glnx_open_tmpfile_linkable_at (dfd, ".", O_RDWR | O_CLOEXEC, tmpf, error))
-        return FALSE;
-    }
-  else if (!glnx_open_anonymous_tmpfile (O_RDWR | O_CLOEXEC, tmpf, error))
+  if (!glnx_open_tmpfile_linkable_at (dfd, ".", O_RDWR | O_CLOEXEC, tmpf, error))
     return FALSE;
-
   if (!glnx_fchmod (tmpf->fd, 0644, error))
     return FALSE;
   return TRUE;

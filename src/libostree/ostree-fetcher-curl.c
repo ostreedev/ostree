@@ -24,6 +24,7 @@
 #include <gio/gfiledescriptorbased.h>
 #include <gio/gunixoutputstream.h>
 #include <glib-unix.h>
+#include <stdbool.h>
 
 /* These macros came from 7.43.0, but we want to check
  * for versions a bit earlier than that (to work on CentOS 7),
@@ -76,6 +77,7 @@ struct OstreeFetcher
   char *proxy;
   struct curl_slist *extra_headers;
   int tmpdir_dfd;
+  bool force_anonymous;
   char *custom_user_agent;
 
   GMainContext *mainctx;
@@ -250,6 +252,12 @@ _ostree_fetcher_new (int tmpdir_dfd, const char *remote_name, OstreeFetcherConfi
   return fetcher;
 }
 
+void
+_ostree_fetcher_set_force_anonymous_tmpfiles (OstreeFetcher *self)
+{
+  self->force_anonymous = true;
+}
+
 static void
 destroy_and_unref_source (GSource *source)
 {
@@ -271,13 +279,12 @@ request_get_uri (FetcherRequest *req, GUri *baseuri)
 static gboolean
 ensure_tmpfile (FetcherRequest *req, GError **error)
 {
-  if (!req->tmpf.initialized)
-    {
-      if (!_ostree_fetcher_tmpf_from_flags (req->flags, req->fetcher->tmpdir_dfd, &req->tmpf,
-                                            error))
-        return FALSE;
-    }
-  return TRUE;
+  if (req->tmpf.initialized)
+    return TRUE;
+  if (req->fetcher->force_anonymous)
+    return glnx_open_anonymous_tmpfile (O_RDWR | O_CLOEXEC, &req->tmpf, error);
+  else
+    return _ostree_fetcher_tmpf (req->fetcher->tmpdir_dfd, &req->tmpf, error);
 }
 
 /* Check for completed transfers, and remove their easy handles */

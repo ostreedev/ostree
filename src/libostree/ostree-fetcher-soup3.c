@@ -28,6 +28,7 @@
 #include <gio/gio.h>
 #include <gio/gunixoutputstream.h>
 #include <libsoup/soup.h>
+#include <stdbool.h>
 
 #include "libglnx.h"
 #include "ostree-enumtypes.h"
@@ -72,6 +73,7 @@ struct OstreeFetcher
   OstreeFetcherConfigFlags config_flags;
   char *remote_name;
   int tmpdir_dfd;
+  bool force_anonymous;
 
   GHashTable *sessions; /* (element-type GMainContext SoupSession ) */
   GProxyResolver *proxy_resolver;
@@ -292,6 +294,12 @@ _ostree_fetcher_new (int tmpdir_dfd, const char *remote_name, OstreeFetcherConfi
   return self;
 }
 
+void
+_ostree_fetcher_set_force_anonymous_tmpfiles (OstreeFetcher *self)
+{
+  self->force_anonymous = true;
+}
+
 int
 _ostree_fetcher_get_dfd (OstreeFetcher *self)
 {
@@ -448,8 +456,16 @@ on_stream_read (GObject *object, GAsyncResult *result, gpointer user_data)
     {
       if (!request->is_membuf)
         {
-          if (!_ostree_fetcher_tmpf_from_flags (request->flags, request->fetcher->tmpdir_dfd,
-                                                &request->tmpf, &local_error))
+          if (request->fetcher->force_anonymous)
+            {
+              if (!glnx_open_anonymous_tmpfile (O_RDWR | O_CLOEXEC, &request->tmpf, &local_error))
+                {
+                  g_task_return_error (task, local_error);
+                  return;
+                }
+            }
+          else if (!_ostree_fetcher_tmpf (request->fetcher->tmpdir_dfd, &request->tmpf,
+                                          &local_error))
             {
               g_task_return_error (task, local_error);
               return;
