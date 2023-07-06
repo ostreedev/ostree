@@ -29,12 +29,16 @@ setup_test_repository "bare-user"
 
 cd ${test_tmpdir}
 $OSTREE checkout test2 test2-co
+rm test2-co/whiteouts -rf  # This may or may not exist
+COMMIT_ARGS="--owner-uid=0 --owner-gid=0 --no-xattrs --canonical-permissions"
 $OSTREE commit ${COMMIT_ARGS} -b test-composefs --generate-composefs-metadata test2-co
-orig_composefs_digest=$($OSTREE show --print-metadata-key ostree.composefs.v0 test-composefs)
-assert_streq "${orig_composefs_digest}" '[byte 0x1f, 0x08, 0xe5, 0x8b, 0x14, 0x3b, 0x75, 0x34, 0x76, 0xb5, 0xef, 0x0c, 0x0c, 0x6e, 0xce, 0xbf, 0xde, 0xbb, 0x6d, 0x40, 0x30, 0x5e, 0x35, 0xbd, 0x6f, 0x8e, 0xc1, 0x9c, 0xd0, 0xd1, 0x5b, 0xae]'
+# If the test fails we'll dump this out
+$OSTREE ls -RCX test-composefs /
+orig_composefs_digest=$($OSTREE show --print-hex --print-metadata-key ostree.composefs.digest.v0 test-composefs)
 $OSTREE commit ${COMMIT_ARGS} -b test-composefs2 --generate-composefs-metadata test2-co
-new_composefs_digest=$($OSTREE show --print-metadata-key ostree.composefs.v0 test-composefs)
+new_composefs_digest=$($OSTREE show --print-hex --print-metadata-key ostree.composefs.digest.v0 test-composefs2)
 assert_streq "${orig_composefs_digest}" "${new_composefs_digest}"
+assert_streq "${new_composefs_digest}" "4d97f295ac9d379b7b3c42ddec49cc55b570c5b8b2a6f3f835f473854b0ad0cd"
 tap_ok "composefs metadata"
 
 tap_end
