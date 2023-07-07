@@ -40,11 +40,9 @@
 #include "ostree-autocleanups.h"
 #include "ostree-core.h"
 #include "ostree-sign-dummy.h"
+#include "ostree-sign-ed25519.h"
 #include "ostree-sign-private.h"
 #include "ostree-sign.h"
-#ifdef HAVE_LIBSODIUM
-#include "ostree-sign-ed25519.h"
-#endif
 
 #include "ostree-autocleanups.h"
 #include "ostree-repo-private.h"
@@ -59,7 +57,7 @@ typedef struct
 } _sign_type;
 
 _sign_type sign_types[] = {
-#if defined(HAVE_LIBSODIUM)
+#if defined(HAVE_ED25519)
   { OSTREE_SIGN_NAME_ED25519, 0 },
 #endif
   { "dummy", 0 }
@@ -67,7 +65,7 @@ _sign_type sign_types[] = {
 
 enum
 {
-#if defined(HAVE_LIBSODIUM)
+#if defined(HAVE_ED25519)
   SIGN_ED25519,
 #endif
   SIGN_DUMMY
@@ -535,7 +533,7 @@ ostree_sign_get_by_name (const gchar *name, GError **error)
   OstreeSign *sign = NULL;
 
   /* Get types if not initialized yet */
-#if defined(HAVE_LIBSODIUM)
+#if defined(HAVE_ED25519)
   if (sign_types[SIGN_ED25519].type == 0)
     sign_types[SIGN_ED25519].type = OSTREE_TYPE_SIGN_ED25519;
 #endif

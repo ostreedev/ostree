@@ -193,8 +193,10 @@ jobs:
             pre-checkout-setup: |
               apt-get update
               apt-get install -y git
+            extra-packages: >-
+              libssl-dev
             configure-options: >-
-              --with-composefs
+              --with-composefs --with-crypto=openssl
 
           # A build using libsoup3. After bookworm is released, this can
           # be switched to Debian Stable.
