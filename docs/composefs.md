@@ -43,7 +43,8 @@ The possible values are:
 - `maybe`: Use composefs if supported and there is a composefs image in the deployment directory
 - `on`: Require composefs
 - `digest=<sha256>`: Require the mounted composefs image to have a particular digest
-- `signed`: This option will be documented in the future; don't use it right now
+- `signed=<path>`: Require that the commit is signed as validated by the ed25519 public key specified
+   by `path` (the path is resolved in the initrd).
 
 ### Injecting composefs digests
 
@@ -51,16 +52,37 @@ When generating an OSTree commit, there is a CLI switch `--generate-composefs-me
 and a corresponding C API `ostree_repo_commit_add_composefs_metadata`.  This will
 inject the composefs digest as metadata into the ostree commit under a metadata
 key `ostree.composefs.v0`.  Because an OSTree commit can be signed, this allows
-covering the composefs fsverity digest with a signature.  
+covering the composefs fsverity digest with a signature.
 
-At the current time, ostree does not directly support verifying the signature on
-the commit object before mounting, but that is in progress.
+### Signatures
+
+If a commit is signed with a ed25519 private key (see `ostree
+--sign`), and `signed=/path/to/public.key` is specified on the
+commandline, then the initrd will find the commit being booted in the
+system repo and validate its signature against the public key. It will
+then ensure that the composefs digest being booted has an fs-verity
+digest matching the one in the commit. This allows a fully trusted
+read-only /usr.
+
+The exact usage of the signature is up to the user, but a common way
+to use it with transien keys. This is done like this:
+ * Generate a new keypair before each build
+ * Embed the public key in the initrd that is part of the commit.
+ * Ensure the kernel commandline has `ot-signed=/path/to/key`
+ * After commiting, run `ostree --sign` with the private key.
+ * Throw away the private key.
+
+When a transient key is used this way, that ties the initrd with the
+userspace part from the commit. This means each initrd can only boot
+the very same userspace it was made for. For example, if an older
+version of the OS has a security flaw, you can't boot a new fixed
+(signed) initrd and have it boot the older userspace with the flaw.
 
 ## Requirements
 
-The current default composefs integration in ostree does not have any requirements
-from the underlying kernel and filesystem other than having the following
-kernel options set:
+The current default composefs integration in ostree does not have any
+requirements from the underlying kernel and filesystem other than
+having the following kernel options set:
 
 - `CONFIG_OVERLAY_FS`
 - `CONFIG_BLK_DEV_LOOP`
