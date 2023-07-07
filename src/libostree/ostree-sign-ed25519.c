@@ -24,31 +24,15 @@
 #include "config.h"
 
 #include "ostree-sign-ed25519.h"
+#include "otcore.h"
 #include <libglnx.h>
 #include <ot-checksum-utils.h>
-
-#ifdef HAVE_LIBSODIUM
-#include <sodium.h>
-#define USE_LIBSODIUM
-#else
-
-#if defined(HAVE_OPENSSL)
-#include <openssl/evp.h>
-#define USE_OPENSSL
-#endif
-
-#endif
 
 #undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "OSTreeSign"
 
 #define OSTREE_SIGN_ED25519_NAME "ed25519"
 
-#define OSTREE_SIGN_METADATA_ED25519_KEY "ostree.sign.ed25519"
-#define OSTREE_SIGN_METADATA_ED25519_TYPE "aay"
-
-#define OSTREE_SIGN_ED25519_SIG_SIZE 64U
-#define OSTREE_SIGN_ED25519_PUBKEY_SIZE 32U
 #define OSTREE_SIGN_ED25519_SEED_SIZE 32U
 #define OSTREE_SIGN_ED25519_SECKEY_SIZE \
   (OSTREE_SIGN_ED25519_SEED_SIZE + OSTREE_SIGN_ED25519_PUBKEY_SIZE)
@@ -108,12 +92,11 @@ _ostree_sign_ed25519_init (OstreeSignEd25519 *self)
   self->public_keys = NULL;
   self->revoked_keys = NULL;
 
-#if defined(USE_LIBSODIUM)
-  if (sodium_init () < 0)
-    self->state = ED25519_FAILED_INITIALIZATION;
-#elif defined(USE_OPENSSL)
-#else
+#if !(defined(USE_OPENSSL) || defined(USE_LIBSODIUM))
   self->state = ED25519_NOT_SUPPORTED;
+#else
+  if (!otcore_ed25519_init ())
+    self->state = ED25519_FAILED_INITIALIZATION;
 #endif
 }
 
@@ -232,7 +215,6 @@ ostree_sign_ed25519_data_verify (OstreeSign *self, GBytes *data, GVariant *signa
     {
       g_autoptr (GVariant) child = g_variant_get_child_value (signatures, i);
       g_autoptr (GBytes) signature = g_variant_get_data_as_bytes (child);
-      gboolean valid = FALSE;
 
       if (g_bytes_get_size (signature) != OSTREE_SIGN_ED25519_SIG_SIZE)
         return glnx_throw (
@@ -246,7 +228,6 @@ ostree_sign_ed25519_data_verify (OstreeSign *self, GBytes *data, GVariant *signa
 
       for (GList *public_key = sign->public_keys; public_key != NULL; public_key = public_key->next)
         {
-
           /* TODO: use non-list for tons of revoked keys? */
           if (g_list_find_custom (sign->revoked_keys, public_key->data, _compare_ed25519_keys)
               != NULL)
@@ -256,32 +237,12 @@ ostree_sign_ed25519_data_verify (OstreeSign *self, GBytes *data, GVariant *signa
               continue;
             }
 
-#if defined(USE_LIBSODIUM)
-          valid = crypto_sign_verify_detached ((guchar *)g_variant_get_data (child),
-                                               g_bytes_get_data (data, NULL),
-                                               g_bytes_get_size (data), public_key->data)
-                  == 0;
-#elif defined(USE_OPENSSL)
-          EVP_MD_CTX *ctx = EVP_MD_CTX_new ();
-          if (!ctx)
-            return glnx_throw (error, "openssl: failed to allocate context");
-          EVP_PKEY *pkey = EVP_PKEY_new_raw_public_key (EVP_PKEY_ED25519, NULL, public_key->data,
-                                                        OSTREE_SIGN_ED25519_PUBKEY_SIZE);
-          if (!pkey)
-            {
-              EVP_MD_CTX_free (ctx);
-              return glnx_throw (error, "openssl: Failed to initialize ed5519 key");
-            }
-
-          valid = EVP_DigestVerifyInit (ctx, NULL, NULL, NULL, pkey) != 0
-                  && EVP_DigestVerify (ctx, g_bytes_get_data (signature, NULL),
-                                       g_bytes_get_size (signature), g_bytes_get_data (data, NULL),
-                                       g_bytes_get_size (data))
-                         != 0;
-
-          EVP_PKEY_free (pkey);
-          EVP_MD_CTX_free (ctx);
-#endif
+          bool valid = false;
+          // Wrap the pubkey in a GBytes as that's what this API wants
+          g_autoptr (GBytes) public_key_bytes
+              = g_bytes_new_static (public_key->data, OSTREE_SIGN_ED25519_PUBKEY_SIZE);
+          if (!otcore_validate_ed25519_signature (data, public_key_bytes, signature, &valid, error))
+            return FALSE;
           if (!valid)
             {
               /* Incorrect signature! */

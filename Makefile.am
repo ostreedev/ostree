@@ -127,6 +127,7 @@ noinst_LTLIBRARIES += libcomposefs.la
 endif
 
 include Makefile-otutil.am
+include Makefile-otcore.am
 include Makefile-libostree.am
 include Makefile-ostree.am
 include Makefile-switchroot.am
