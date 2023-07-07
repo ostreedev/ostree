@@ -35,6 +35,7 @@ static gboolean opt_list_metadata_keys;
 static gboolean opt_list_detached_metadata_keys;
 static gboolean opt_print_sizes;
 static gboolean opt_raw;
+static gboolean opt_print_hex;
 static gboolean opt_no_byteswap;
 static char *opt_gpg_homedir;
 static char *opt_gpg_verify_remote;
@@ -53,6 +54,15 @@ static GOptionEntry options[]
           "List the available metadata keys", NULL },
         { "print-metadata-key", 0, 0, G_OPTION_ARG_STRING, &opt_print_metadata_key,
           "Print string value of metadata key", "KEY" },
+        {
+            "print-hex",
+            0,
+            0,
+            G_OPTION_ARG_NONE,
+            &opt_print_hex,
+            "For byte array valued keys, output an unquoted hexadecimal string",
+            NULL,
+        },
         { "list-detached-metadata-keys", 0, 0, G_OPTION_ARG_NONE, &opt_list_detached_metadata_keys,
           "List the available detached metadata keys", NULL },
         { "print-detached-metadata-key", 0, 0, G_OPTION_ARG_STRING,
@@ -184,6 +194,14 @@ do_print_metadata_key (OstreeRepo *repo, const char *resolved_rev, gboolean deta
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND, "No such metadata key '%s'", key);
       return FALSE;
+    }
+
+  if (opt_print_hex && g_variant_is_of_type (value, (GVariantType *)"ay"))
+    {
+      g_autofree char *buf = g_malloc (g_variant_get_size (value) * 2 + 1);
+      ot_bin2hex (buf, g_variant_get_data (value), g_variant_get_size (value));
+      g_print ("%s\n", buf);
+      return TRUE;
     }
 
   if (opt_no_byteswap)
