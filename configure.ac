@@ -465,6 +465,10 @@ AS_IF([ test $with_crypto = gnutls ], [
 AM_CONDITIONAL(USE_GNUTLS, test $with_crypto = gnutls)
 dnl end gnutls
 
+dnl we always inject libsodium into our crypto deps in addition to openssl/gnutls
+OT_DEP_CRYPTO_CFLAGS="${OT_DEP_CRYPTO_CFLAGS} ${OT_DEP_LIBSODIUM_CFLAGS}"
+OT_DEP_CRYPTO_LIBS="${OT_DEP_CRYPTO_LIBS} ${OT_DEP_LIBSODIUM_LIBS}"
+
 dnl Avahi dependency for finding repos
 AVAHI_DEPENDENCY="avahi-client >= 0.6.31 avahi-glib >= 0.6.31"
 
