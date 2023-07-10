@@ -93,18 +93,40 @@ path_kill_slashes (char *path)
 static char *
 stateroot_from_ostree_cmdline (const char *ostree_cmdline, GError **error)
 {
+  /* The to_parse string was added to handle the aboot case, in the aboot
+   * case it has to parse something like:
+   *
+   * deploy/centos/deploy/76b0919b393aa2254dd4b72950514422bb213992c3885f2196ec9cb278c57c5a.0
+   *
+   * rather than something like:
+   *
+   * /ostree/boot.1/centos/e779b04a7445bf71d241288e92b3a3f7da0d5c4af33f3cb9dc232b6484d998eb/0
+   */
+  g_autofree char *symlink_val = NULL;
+  const char *to_parse = ostree_cmdline;
+  if (g_str_has_prefix (ostree_cmdline, "/ostree/root."))
+    {
+      symlink_val = glnx_readlinkat_malloc (-1, ostree_cmdline, NULL, error);
+      if (!symlink_val)
+        return glnx_null_throw (error, "Failed to read '%s' symlink", ostree_cmdline);
+
+      to_parse = symlink_val;
+    }
+
   static GRegex *regex;
   static gsize regex_initialized;
   if (g_once_init_enter (&regex_initialized))
     {
-      regex = g_regex_new ("^/ostree/boot.[01]/([^/]+)/", 0, 0, NULL);
+      regex = g_regex_new (symlink_val ? "^deploy/([^/]+)/" : "^/ostree/boot.[01]/([^/]+)/", 0, 0,
+                           NULL);
       g_assert (regex);
       g_once_init_leave (&regex_initialized, 1);
     }
 
   g_autoptr (GMatchInfo) match = NULL;
-  if (!g_regex_match (regex, ostree_cmdline, 0, &match))
-    return glnx_null_throw (error, "Failed to parse %s", ostree_cmdline);
+  if (!g_regex_match (regex, to_parse, 0, &match))
+    return glnx_null_throw (error, "Failed to parse '%s' with regex '%s'", to_parse,
+                            g_regex_get_pattern (regex));
 
   return g_match_info_fetch (match, 1);
 }
