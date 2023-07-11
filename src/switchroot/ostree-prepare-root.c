@@ -75,10 +75,6 @@
 
 #include "otcore.h"
 
-/* We can't include both linux/fs.h and sys/mount.h, so define these directly */
-#define FS_VERITY_FL 0x00100000 /* Verity protected inode */
-#define FS_IOC_GETFLAGS _IOR ('f', 1, long)
-
 #define OSTREE_PREPARE_ROOT_DEPLOYMENT_MSG \
   SD_ID128_MAKE (71, 70, 33, 6a, 73, ba, 46, 01, ba, d3, 1a, f8, 88, aa, 0d, f7)
 
