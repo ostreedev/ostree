@@ -79,15 +79,8 @@
 #define FS_VERITY_FL 0x00100000 /* Verity protected inode */
 #define FS_IOC_GETFLAGS _IOR ('f', 1, long)
 
-#if defined(HAVE_LIBSYSTEMD) && !defined(OSTREE_PREPARE_ROOT_STATIC)
-#define USE_LIBSYSTEMD
-#endif
-
-#ifdef USE_LIBSYSTEMD
-#include <systemd/sd-journal.h>
 #define OSTREE_PREPARE_ROOT_DEPLOYMENT_MSG \
   SD_ID128_MAKE (71, 70, 33, 6a, 73, ba, 46, 01, ba, d3, 1a, f8, 88, aa, 0d, f7)
-#endif
 
 // A temporary mount point
 #define TMP_SYSROOT "/sysroot.tmp"
@@ -144,15 +137,13 @@ resolve_deploy_path (const char *root_mountpoint)
     err (EXIT_FAILURE, "realpath(%s) failed", destpath);
   if (stat (deploy_path, &stbuf) < 0)
     err (EXIT_FAILURE, "stat(%s) failed", deploy_path);
-    /* Quiet logs if there's no journal */
-#ifdef USE_LIBSYSTEMD
+  /* Quiet logs if there's no journal */
   const char *resolved_path = deploy_path + strlen (root_mountpoint);
-  sd_journal_send ("MESSAGE=Resolved OSTree target to: %s", deploy_path,
+  ot_journal_send ("MESSAGE=Resolved OSTree target to: %s", deploy_path,
                    "MESSAGE_ID=" SD_ID128_FORMAT_STR,
                    SD_ID128_FORMAT_VAL (OSTREE_PREPARE_ROOT_DEPLOYMENT_MSG), "DEPLOYMENT_PATH=%s",
                    resolved_path, "DEPLOYMENT_DEVICE=%" PRIu64, (uint64_t)stbuf.st_dev,
                    "DEPLOYMENT_INODE=%" PRIu64, (uint64_t)stbuf.st_ino, NULL);
-#endif
   return deploy_path;
 }
 
@@ -248,9 +239,6 @@ main (int argc, char *argv[])
   if (argc < 2)
     err (EXIT_FAILURE, "usage: ostree-prepare-root SYSROOT");
   root_arg = argv[1];
-#ifdef USE_LIBSYSTEMD
-  sd_journal_send ("MESSAGE=preparing sysroot at %s", root_arg, NULL);
-#endif
 
   struct stat stbuf;
   if (stat ("/proc/cmdline", &stbuf) < 0)
@@ -319,11 +307,8 @@ main (int argc, char *argv[])
    */
   const bool sysroot_readonly = sysroot_is_configured_ro (root_arg);
   const bool sysroot_currently_writable = !path_is_on_readonly_fs (root_arg);
-#ifdef USE_LIBSYSTEMD
-  sd_journal_send ("MESSAGE=filesystem at %s currently writable: %d", root_arg,
-                   (int)sysroot_currently_writable, NULL);
-  sd_journal_send ("MESSAGE=sysroot.readonly configuration value: %d", (int)sysroot_readonly, NULL);
-#endif
+  g_print ("sysroot.readonly configuration value: %d (fs writable: %d)\n", (int)sysroot_readonly,
+           (int)sysroot_currently_writable);
 
   /* Work-around for a kernel bug: for some reason the kernel
    * refuses switching root if any file systems are mounted
@@ -380,9 +365,7 @@ main (int argc, char *argv[])
           if (!validate_signature (commit_data, signatures, (guchar *)pubkey, pubkey_size))
             errx (EXIT_FAILURE, "No valid signatures found for public key");
 
-#ifdef USE_LIBSYSTEMD
-          sd_journal_send ("MESSAGE=Validated commit signature using '%s'", composefs_pubkey, NULL);
-#endif
+          g_print ("Validated commit signature using '%s'\n", composefs_pubkey);
 
           g_autoptr (GVariant) metadata = g_variant_get_child_value (commit, 0);
           g_autoptr (GVariant) cfs_digest_v = g_variant_lookup_value (
@@ -407,15 +390,12 @@ main (int argc, char *argv[])
           cfs_options.expected_fsverity_digest = composefs_digest;
         }
 
-#ifdef USE_LIBSYSTEMD
       if (composefs_mode == OSTREE_COMPOSEFS_MODE_MAYBE)
-        sd_journal_send ("MESSAGE=Trying to mount composefs rootfs", NULL);
+        g_print ("Trying to mount composefs rootfs\n");
       else if (composefs_digest != NULL)
-        sd_journal_send ("MESSAGE=Mounting composefs rootfs with expected digest '%s'",
-                         composefs_digest, NULL);
+        g_print ("Mounting composefs rootfs with expected digest '%s'\n", composefs_digest);
       else
-        sd_journal_send ("MESSAGE=Mounting composefs rootfs", NULL);
-#endif
+        g_print ("Mounting composefs rootfs\n");
 
       if (lcfs_mount_image (OSTREE_COMPOSEFS_NAME, TMP_SYSROOT, &cfs_options) == 0)
         {
@@ -428,16 +408,14 @@ main (int argc, char *argv[])
         }
       else
         {
-#ifdef USE_LIBSYSTEMD
           if (errno == ENOVERITY)
-            sd_journal_send ("MESSAGE=No verity in composefs image", NULL);
+            g_print ("No verity in composefs image\n");
           else if (errno == EWRONGVERITY)
-            sd_journal_send ("MESSAGE=Wrong verity digest in composefs image", NULL);
+            g_print ("Wrong verity digest in composefs image\n");
           else if (errno == ENOSIGNATURE)
-            sd_journal_send ("MESSAGE=Missing signature in composefs image", NULL);
+            g_print ("Missing signature in composefs image\n");
           else
-            sd_journal_send ("MESSAGE=Mounting composefs image failed: %s", strerror (errno), NULL);
-#endif
+            g_print ("Mounting composefs image failed: %s\n", strerror (errno));
         }
 #else
       err (EXIT_FAILURE, "Composefs not supported");
@@ -455,9 +433,7 @@ main (int argc, char *argv[])
     }
   else
     {
-#ifdef USE_LIBSYSTEMD
-      sd_journal_send ("MESSAGE=Mounted composefs", NULL);
-#endif
+      g_print ("Mounted composefs\n");
     }
 
   /* This will result in a system with /sysroot read-only. Thus, two additional
