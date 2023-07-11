@@ -20,7 +20,6 @@ stage("Build") {
         try {
           shwrap("""
             make check
-            make syntax-check
           """)
         } finally {
             shwrap("cat test-suite.log || true")

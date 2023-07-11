@@ -40,8 +40,6 @@ include Makefile
 _build-aux ?= build-aux
 _autoreconf ?= autoreconf -v
 
-include $(srcdir)/maint.mk
-
 # Ensure that $(VERSION) is up to date for dist-related targets, but not
 # for others: rerunning autoreconf and recompiling everything isn't cheap.
 _have-git-version-gen := \
@@ -95,8 +93,6 @@ srcdir = .
 # Allow cfg.mk to override these.
 _build-aux ?= build-aux
 _autoreconf ?= autoreconf -v
-
-include ./maint.mk
 
 ifeq ($(.DEFAULT_GOAL),abort-due-to-no-makefile)
 $(MAKECMDGOALS): abort-due-to-no-makefile

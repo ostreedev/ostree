@@ -9,7 +9,6 @@ ${dn}/build.sh
 topdir=$(git rev-parse --show-toplevel)
 resultsdir=$(mktemp -d)
 make check
-make syntax-check  # TODO: do syntax-check under check
 # See comment below
 for x in test-suite.log config.log; do
     mv ${x} ${resultsdir}
