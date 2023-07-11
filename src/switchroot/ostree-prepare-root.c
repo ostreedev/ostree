@@ -79,9 +79,6 @@
 #define FS_VERITY_FL 0x00100000 /* Verity protected inode */
 #define FS_IOC_GETFLAGS _IOR ('f', 1, long)
 
-// The name of the composefs metadata root
-#define OSTREE_COMPOSEFS_NAME ".ostree.cfs"
-
 #if defined(HAVE_LIBSYSTEMD) && !defined(OSTREE_PREPARE_ROOT_STATIC)
 #define USE_LIBSYSTEMD
 #endif

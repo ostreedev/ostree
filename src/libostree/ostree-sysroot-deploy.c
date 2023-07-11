@@ -46,7 +46,7 @@
 #include "ostree-sepolicy-private.h"
 #include "ostree-sysroot-private.h"
 #include "ostree.h"
-#include "otutil.h"
+#include "otcore.h"
 
 #ifdef HAVE_LIBSYSTEMD
 #define OSTREE_VARRELABEL_ID \
@@ -662,7 +662,7 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
       g_autoptr (GVariant) metadata_composefs = g_variant_lookup_value (
           metadata, OSTREE_COMPOSEFS_DIGEST_KEY_V0, G_VARIANT_TYPE_BYTESTRING);
 
-      /* Create a composefs image and put in deploy dir as .ostree.cfs */
+      /* Create a composefs image and put in deploy dir */
       g_autoptr (OstreeComposefsTarget) target = ostree_composefs_target_new ();
 
       g_autoptr (GFile) commit_root = NULL;
@@ -674,7 +674,7 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
         return FALSE;
 
       g_autofree char *composefs_cfs_path
-          = g_strdup_printf ("%s/.ostree.cfs", checkout_target_name);
+          = g_strdup_printf ("%s/" OSTREE_COMPOSEFS_NAME, checkout_target_name);
 
       if (!glnx_open_tmpfile_linkable_at (osdeploy_dfd, checkout_target_name, O_WRONLY | O_CLOEXEC,
                                           &tmpf, error))

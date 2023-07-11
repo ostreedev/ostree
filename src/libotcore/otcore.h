@@ -42,3 +42,6 @@
 bool otcore_ed25519_init (void);
 gboolean otcore_validate_ed25519_signature (GBytes *data, GBytes *pubkey, GBytes *signature,
                                             bool *out_valid, GError **error);
+
+// The name of the composefs metadata root
+#define OSTREE_COMPOSEFS_NAME ".ostree.cfs"
