@@ -185,12 +185,12 @@ EXTRA_DIST += \
 	$(top_srcdir)/src/libostree/libostree-released.sym \
 	$(NULL)
 
-libostree_1_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/bsdiff -I$(srcdir)/libglnx -I$(srcdir)/composefs -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(builddir)/src/libostree \
+libostree_1_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/bsdiff -I$(srcdir)/libglnx -I$(srcdir)/composefs -I$(srcdir)/src/libotutil -I$(srcdir)/src/libotcore -I$(srcdir)/src/libostree -I$(builddir)/src/libostree \
 	$(OT_INTERNAL_GIO_UNIX_CFLAGS) $(OT_INTERNAL_GPGME_CFLAGS) $(OT_DEP_LZMA_CFLAGS) $(OT_DEP_ZLIB_CFLAGS) $(OT_DEP_CRYPTO_CFLAGS) \
 	-fvisibility=hidden '-D_OSTREE_PUBLIC=__attribute__((visibility("default"))) extern' \
 	-DPKGLIBEXECDIR=\"$(pkglibexecdir)\"
 libostree_1_la_LDFLAGS = -version-number 1:0:0 -Bsymbolic-functions $(addprefix $(wl_versionscript_arg),$(symbol_files))
-libostree_1_la_LIBADD = libotutil.la libglnx.la libbsdiff.la $(OT_INTERNAL_GIO_UNIX_LIBS) $(OT_INTERNAL_GPGME_LIBS) \
+libostree_1_la_LIBADD = libotutil.la libotcore.la libglnx.la libbsdiff.la $(OT_INTERNAL_GIO_UNIX_LIBS) $(OT_INTERNAL_GPGME_LIBS) \
                         $(OT_DEP_LZMA_LIBS) $(OT_DEP_ZLIB_LIBS) $(OT_DEP_CRYPTO_LIBS)
 # Some change between rust-1.21.0-1.fc27 and rust-1.22.1-1.fc27.x86_64
 libostree_1_la_LIBADD += $(bupsplitpath)
@@ -261,11 +261,6 @@ libostree_1_la_SOURCES += \
 	src/libostree/ostree-sign-ed25519.h \
 	src/libostree/ostree-sign-private.h \
 	$(NULL)
-
-if USE_LIBSODIUM
-libostree_1_la_CFLAGS += $(OT_DEP_LIBSODIUM_CFLAGS)
-libostree_1_la_LIBADD += $(OT_DEP_LIBSODIUM_LIBS)
-endif # USE_LIBSODIUM
 
 if USE_COMPOSEFS
 libostree_1_la_LIBADD += libcomposefs.la

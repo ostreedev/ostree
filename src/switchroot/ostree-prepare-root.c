@@ -70,6 +70,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <ostree-core.h>
+#include <ostree-repo-private.h>
+
+#include "otcore.h"
+
 /* We can't include both linux/fs.h and sys/mount.h, so define these directly */
 #define FS_VERITY_FL 0x00100000 /* Verity protected inode */
 #define FS_IOC_GETFLAGS _IOR ('f', 1, long)
@@ -160,6 +165,80 @@ pivot_root (const char *new_root, const char *put_old)
   return syscall (__NR_pivot_root, new_root, put_old);
 }
 
+#ifdef HAVE_COMPOSEFS
+static GVariant *
+load_variant (const char *root_mountpoint, const char *digest, const char *extension,
+              const GVariantType *type, GError **error)
+{
+  g_autofree char *path = NULL;
+  char *data = NULL;
+  gsize data_size;
+
+  path = g_strdup_printf ("%s/ostree/repo/objects/%.2s/%s.%s", root_mountpoint, digest, digest + 2,
+                          extension);
+
+  if (!g_file_get_contents (path, &data, &data_size, error))
+    return NULL;
+
+  return g_variant_ref_sink (g_variant_new_from_data (type, data, data_size, FALSE, g_free, data));
+}
+
+static gboolean
+load_commit_for_deploy (const char *root_mountpoint, const char *deploy_path, GVariant **commit_out,
+                        GVariant **commitmeta_out, GError **error)
+{
+  g_autoptr (GError) local_error = NULL;
+  g_autofree char *digest = g_path_get_basename (deploy_path);
+  char *dot;
+
+  dot = strchr (digest, '.');
+  if (dot != NULL)
+    *dot = 0;
+
+  g_autoptr (GVariant) commit_v
+      = load_variant (root_mountpoint, digest, "commit", OSTREE_COMMIT_GVARIANT_FORMAT, error);
+  if (commit_v == NULL)
+    return FALSE;
+
+  g_autoptr (GVariant) commitmeta_v = load_variant (root_mountpoint, digest, "commitmeta",
+                                                    G_VARIANT_TYPE ("a{sv}"), &local_error);
+  if (commitmeta_v == NULL)
+    {
+      if (g_error_matches (local_error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
+        glnx_throw (error, "No commitmeta for commit %s", digest);
+      else
+        g_propagate_error (error, g_steal_pointer (&local_error));
+      return FALSE;
+    }
+
+  *commit_out = g_steal_pointer (&commit_v);
+  *commitmeta_out = g_steal_pointer (&commitmeta_v);
+
+  return TRUE;
+}
+
+static gboolean
+validate_signature (GBytes *data, GVariant *signatures, const guchar *pubkey, size_t pubkey_size)
+{
+  g_autoptr (GBytes) pubkey_buf = g_bytes_new_static (pubkey, pubkey_size);
+
+  for (gsize i = 0; i < g_variant_n_children (signatures); i++)
+    {
+      g_autoptr (GError) local_error = NULL;
+      g_autoptr (GVariant) child = g_variant_get_child_value (signatures, i);
+      g_autoptr (GBytes) signature = g_variant_get_data_as_bytes (child);
+      bool valid = false;
+
+      if (!otcore_validate_ed25519_signature (data, pubkey_buf, signature, &valid, &local_error))
+        errx (EXIT_FAILURE, "signature verification failed: %s", local_error->message);
+      if (valid)
+        return TRUE;
+    }
+
+  return FALSE;
+}
+#endif
+
 int
 main (int argc, char *argv[])
 {
@@ -167,6 +246,8 @@ main (int argc, char *argv[])
 
   const char *root_arg = NULL;
   bool we_mounted_proc = false;
+  g_autoptr (GError) error = NULL;
+
   if (argc < 2)
     err (EXIT_FAILURE, "usage: ostree-prepare-root SYSROOT");
   root_arg = argv[1];
@@ -206,6 +287,7 @@ main (int argc, char *argv[])
   OstreeComposefsMode composefs_mode = OSTREE_COMPOSEFS_MODE_MAYBE;
   autofree char *ot_composefs = read_proc_cmdline_key ("ot-composefs");
   char *composefs_digest = NULL;
+  char *composefs_pubkey = NULL;
   if (ot_composefs)
     {
       if (strcmp (ot_composefs, "off") == 0)
@@ -214,8 +296,11 @@ main (int argc, char *argv[])
         composefs_mode = OSTREE_COMPOSEFS_MODE_MAYBE;
       else if (strcmp (ot_composefs, "on") == 0)
         composefs_mode = OSTREE_COMPOSEFS_MODE_ON;
-      else if (strcmp (ot_composefs, "signed") == 0)
-        composefs_mode = OSTREE_COMPOSEFS_MODE_SIGNED;
+      else if (strncmp (ot_composefs, "signed=", strlen ("signed=")) == 0)
+        {
+          composefs_mode = OSTREE_COMPOSEFS_MODE_SIGNED;
+          composefs_pubkey = ot_composefs + strlen ("signed=");
+        }
       else if (strncmp (ot_composefs, "digest=", strlen ("digest=")) == 0)
         {
           composefs_mode = OSTREE_COMPOSEFS_MODE_DIGEST;
@@ -229,6 +314,7 @@ main (int argc, char *argv[])
   if (composefs_mode == OSTREE_COMPOSEFS_MODE_MAYBE)
     composefs_mode = OSTREE_COMPOSEFS_MODE_OFF;
   (void)composefs_digest;
+  (void)composefs_pubkey;
 #endif
 
   /* Query the repository configuration - this is an operating system builder
@@ -266,13 +352,51 @@ main (int argc, char *argv[])
     {
 #ifdef HAVE_COMPOSEFS
       const char *objdirs[] = { "/sysroot/ostree/repo/objects" };
+      g_autofree char *cfs_digest = NULL;
       struct lcfs_mount_options_s cfs_options = {
         objdirs,
         1,
       };
 
       if (composefs_mode == OSTREE_COMPOSEFS_MODE_SIGNED)
-        errx (EXIT_FAILURE, "composefs signature not supported");
+        {
+          g_autoptr (GError) local_error = NULL;
+          g_autofree char *pubkey = NULL;
+          gsize pubkey_size;
+          g_autoptr (GVariant) commit = NULL;
+          g_autoptr (GVariant) commitmeta = NULL;
+
+          if (!g_file_get_contents (composefs_pubkey, &pubkey, &pubkey_size, &local_error))
+            errx (EXIT_FAILURE, "Failed to load public key '%s': %s", composefs_pubkey,
+                  local_error->message);
+
+          if (!load_commit_for_deploy (root_mountpoint, deploy_path, &commit, &commitmeta,
+                                       &local_error))
+            errx (EXIT_FAILURE, "Error loading signatures from repo: %s", local_error->message);
+
+          g_autoptr (GVariant) signatures
+              = g_variant_lookup_value (commitmeta, "ostree.sign.ed25519", G_VARIANT_TYPE ("aay"));
+          if (signatures == NULL)
+            errx (EXIT_FAILURE, "Signature validation requested, but no signatures in commit");
+
+          g_autoptr (GBytes) commit_data = g_variant_get_data_as_bytes (commit);
+          if (!validate_signature (commit_data, signatures, (guchar *)pubkey, pubkey_size))
+            errx (EXIT_FAILURE, "No valid signatures found for public key");
+
+#ifdef USE_LIBSYSTEMD
+          sd_journal_send ("MESSAGE=Validated commit signature using '%s'", composefs_pubkey, NULL);
+#endif
+
+          g_autoptr (GVariant) metadata = g_variant_get_child_value (commit, 0);
+          g_autoptr (GVariant) cfs_digest_v = g_variant_lookup_value (
+              metadata, OSTREE_COMPOSEFS_DIGEST_KEY_V0, G_VARIANT_TYPE_BYTESTRING);
+          if (cfs_digest_v == NULL || g_variant_get_size (cfs_digest_v) != OSTREE_SHA256_DIGEST_LEN)
+            errx (EXIT_FAILURE, "Signature validation requested, but no valid digest in commit");
+
+          composefs_digest = g_malloc (OSTREE_SHA256_STRING_LEN + 1);
+          ot_bin2hex (composefs_digest, g_variant_get_data (cfs_digest_v),
+                      g_variant_get_size (cfs_digest_v));
+        }
 
       cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
 
@@ -280,7 +404,7 @@ main (int argc, char *argv[])
         err (EXIT_FAILURE, "failed to assemble /boot/loader path");
       cfs_options.image_mountdir = srcpath;
 
-      if (composefs_mode == OSTREE_COMPOSEFS_MODE_DIGEST)
+      if (composefs_digest != NULL)
         {
           cfs_options.flags |= LCFS_MOUNT_FLAGS_REQUIRE_VERITY;
           cfs_options.expected_fsverity_digest = composefs_digest;
@@ -289,7 +413,7 @@ main (int argc, char *argv[])
 #ifdef USE_LIBSYSTEMD
       if (composefs_mode == OSTREE_COMPOSEFS_MODE_MAYBE)
         sd_journal_send ("MESSAGE=Trying to mount composefs rootfs", NULL);
-      else if (composefs_mode == OSTREE_COMPOSEFS_MODE_DIGEST)
+      else if (composefs_digest != NULL)
         sd_journal_send ("MESSAGE=Mounting composefs rootfs with expected digest '%s'",
                          composefs_digest, NULL);
       else
