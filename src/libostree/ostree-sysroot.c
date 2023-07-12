@@ -537,6 +537,8 @@ _ostree_sysroot_read_current_subbootversion (OstreeSysroot *self, int bootversio
                                              int *out_subbootversion, GCancellable *cancellable,
                                              GError **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("Reading current subbootversion", error);
+
   if (!ensure_sysroot_fd (self, error))
     return FALSE;
 
@@ -556,7 +558,7 @@ _ostree_sysroot_read_current_subbootversion (OstreeSysroot *self, int bootversio
       g_autofree char *current_subbootdir_name
           = glnx_readlinkat_malloc (self->sysroot_fd, ostree_bootdir_name, cancellable, error);
       if (!current_subbootdir_name)
-        return FALSE;
+        return glnx_prefix_error (error, "Reading %s", ostree_bootdir_name);
 
       if (g_str_has_suffix (current_subbootdir_name, ".0"))
         *out_subbootversion = 0;
