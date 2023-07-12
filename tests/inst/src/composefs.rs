@@ -1,4 +1,5 @@
 use anyhow::Result;
+use ostree_ext::glib;
 use xshell::cmd;
 
 pub(crate) fn itest_composefs() -> Result<()> {
@@ -26,6 +27,12 @@ pub(crate) fn itest_composefs() -> Result<()> {
 
     let fstype = cmd!(sh, "findmnt -n -o FSTYPE /").read()?;
     assert_eq!(fstype.as_str(), "overlay");
+
+    let metadata = std::fs::read("/run/ostree-booted")?;
+    let metadata = glib::Variant::from_bytes::<glib::VariantDict>(&glib::Bytes::from(&metadata));
+    let metadata = glib::VariantDict::new(Some(&metadata));
+
+    assert_eq!(metadata.lookup::<bool>("composefs").unwrap(), Some(true));
 
     Ok(())
 }

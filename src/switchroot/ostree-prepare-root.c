@@ -322,6 +322,8 @@ main (int argc, char *argv[])
   if (chdir (deploy_path) < 0)
     err (EXIT_FAILURE, "failed to chdir to deploy_path");
 
+  GVariantBuilder metadata_builder;
+  g_variant_builder_init (&metadata_builder, G_VARIANT_TYPE ("a{sv}"));
   bool using_composefs = false;
 
   /* We construct the new sysroot in /sysroot.tmp, which is either the composfs
@@ -362,6 +364,9 @@ main (int argc, char *argv[])
             errx (EXIT_FAILURE, "No valid signatures found for public key");
 
           g_print ("Validated commit signature using '%s'\n", composefs_pubkey);
+          g_variant_builder_add (&metadata_builder, "{sv}",
+                                 OTCORE_RUN_BOOTED_KEY_COMPOSEFS_SIGNATURE,
+                                 g_variant_new_string (composefs_pubkey));
 
           g_autoptr (GVariant) metadata = g_variant_get_child_value (commit, 0);
           g_autoptr (GVariant) cfs_digest_v = g_variant_lookup_value (
@@ -401,6 +406,8 @@ main (int argc, char *argv[])
           (void)close (fd);
 
           using_composefs = 1;
+          g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_COMPOSEFS,
+                                 g_variant_new_boolean (true));
         }
       else
         {
@@ -543,7 +550,13 @@ main (int argc, char *argv[])
     }
 
   /* This can be used by other things to signal ostree is in use */
-  touch_run_ostree ();
+  {
+    g_autoptr (GVariant) metadata = g_variant_ref_sink (g_variant_builder_end (&metadata_builder));
+    const guint8 *buf = g_variant_get_data (metadata) ?: (guint8 *)"";
+    if (!glnx_file_replace_contents_at (AT_FDCWD, OTCORE_RUN_BOOTED, buf,
+                                        g_variant_get_size (metadata), 0, NULL, &error))
+      errx (EXIT_FAILURE, "Writing %s: %s", OTCORE_RUN_BOOTED, error->message);
+  }
 
   if (chdir (TMP_SYSROOT) < 0)
     err (EXIT_FAILURE, "failed to chdir to " TMP_SYSROOT);

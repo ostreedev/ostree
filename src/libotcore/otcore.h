@@ -45,3 +45,12 @@ gboolean otcore_validate_ed25519_signature (GBytes *data, GBytes *pubkey, GBytes
 
 // The name of the composefs metadata root
 #define OSTREE_COMPOSEFS_NAME ".ostree.cfs"
+
+// The file written in the initramfs which contains an a{sv} of metadata
+// from ostree-prepare-root.
+#define OTCORE_RUN_BOOTED "/run/ostree-booted"
+// This key will be present if composefs was successfully used.
+#define OTCORE_RUN_BOOTED_KEY_COMPOSEFS "composefs"
+// This key if present contains the public key successfully used
+// to verify the signature.
+#define OTCORE_RUN_BOOTED_KEY_COMPOSEFS_SIGNATURE "composefs.signed"
