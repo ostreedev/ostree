@@ -352,8 +352,8 @@ main (int argc, char *argv[])
                                        &local_error))
             errx (EXIT_FAILURE, "Error loading signatures from repo: %s", local_error->message);
 
-          g_autoptr (GVariant) signatures
-              = g_variant_lookup_value (commitmeta, "ostree.sign.ed25519", G_VARIANT_TYPE ("aay"));
+          g_autoptr (GVariant) signatures = g_variant_lookup_value (
+              commitmeta, OSTREE_SIGN_METADATA_ED25519_KEY, G_VARIANT_TYPE ("aay"));
           if (signatures == NULL)
             errx (EXIT_FAILURE, "Signature validation requested, but no signatures in commit");
 
