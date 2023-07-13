@@ -54,3 +54,5 @@ gboolean otcore_validate_ed25519_signature (GBytes *data, GBytes *pubkey, GBytes
 // This key if present contains the public key successfully used
 // to verify the signature.
 #define OTCORE_RUN_BOOTED_KEY_COMPOSEFS_SIGNATURE "composefs.signed"
+// This key will be present if the sysroot-ro flag was found
+#define OTCORE_RUN_BOOTED_KEY_SYSROOT_RO "sysroot-ro"

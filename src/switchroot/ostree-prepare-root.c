@@ -441,12 +441,10 @@ main (int argc, char *argv[])
       if (!sysroot_currently_writable)
         errx (EXIT_FAILURE, "sysroot.readonly=true requires %s to be writable at this point",
               root_arg);
-      /* Pass on the fact that we discovered a readonly sysroot to ostree-remount.service */
-      int fd = open (_OSTREE_SYSROOT_READONLY_STAMP, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
-      if (fd < 0)
-        err (EXIT_FAILURE, "failed to create %s", _OSTREE_SYSROOT_READONLY_STAMP);
-      (void)close (fd);
     }
+  /* Pass on the state for use by ostree-prepare-root */
+  g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_SYSROOT_RO,
+                         g_variant_new_boolean (sysroot_readonly));
 
   /* Prepare /boot.
    * If /boot is on the same partition, use a bind mount to make it visible

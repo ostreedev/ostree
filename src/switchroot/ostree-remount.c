@@ -134,7 +134,9 @@ main (int argc, char *argv[])
   /* Handle remounting /sysroot; if it's explicitly marked as read-only (opt in)
    * then ensure it's readonly, otherwise mount writable, the same as /
    */
-  bool sysroot_configured_readonly = unlink (_OSTREE_SYSROOT_READONLY_STAMP) == 0;
+  gboolean sysroot_configured_readonly = FALSE;
+  g_variant_dict_lookup (ostree_run_metadata, OTCORE_RUN_BOOTED_KEY_SYSROOT_RO, "b",
+                         &sysroot_configured_readonly);
   do_remount ("/sysroot", !sysroot_configured_readonly);
 
   /* And also make sure to make /etc rw again. We make this conditional on
