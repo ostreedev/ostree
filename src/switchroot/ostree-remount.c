@@ -81,10 +81,15 @@ do_remount (const char *target, bool writable)
 int
 main (int argc, char *argv[])
 {
-  /* When systemd is in use this is normally created via the generator, but
-   * we ensure it's created here as well for redundancy.
+  /* We really expect that nowadays that everything is done in the initramfs,
+   * but historically we created this file here, so we'll continue to do be
+   * sure here it exists.  This code should be removed at some point though.
    */
-  touch_run_ostree ();
+  {
+    int fd = open (OSTREE_PATH_BOOTED, O_EXCL | O_CREAT | O_WRONLY | O_NOCTTY | O_CLOEXEC, 0640);
+    if (fd != -1)
+      (void)close (fd);
+  }
 
   /* The /sysroot mount needs to be private to avoid having a mount for e.g. /var/cache
    * also propagate to /sysroot/ostree/deploy/$stateroot/var/cache
