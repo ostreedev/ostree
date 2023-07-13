@@ -593,7 +593,6 @@ ostree_repo_commit_add_composefs_metadata (OstreeRepo *self, guint format_versio
   /* For now */
   g_assert (format_version == 0);
 
-  /* Create a composefs image and put in deploy dir as .ostree.cfs */
   g_autoptr (OstreeComposefsTarget) target = ostree_composefs_target_new ();
 
   if (!ostree_repo_checkout_composefs (self, target, repo_root, cancellable, error))
