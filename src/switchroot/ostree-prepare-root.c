@@ -400,11 +400,6 @@ main (int argc, char *argv[])
 
       if (lcfs_mount_image (OSTREE_COMPOSEFS_NAME, TMP_SYSROOT, &cfs_options) == 0)
         {
-          int fd = open (_OSTREE_COMPOSEFS_ROOT_STAMP, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
-          if (fd < 0)
-            err (EXIT_FAILURE, "failed to create %s", _OSTREE_COMPOSEFS_ROOT_STAMP);
-          (void)close (fd);
-
           using_composefs = 1;
           g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_COMPOSEFS,
                                  g_variant_new_boolean (true));

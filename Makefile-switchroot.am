@@ -60,8 +60,8 @@ ostree_remount_SOURCES = \
     src/switchroot/ostree-mount-util.h \
     src/switchroot/ostree-remount.c \
     $(NULL)
-ostree_remount_CPPFLAGS = $(AM_CPPFLAGS) $(OT_INTERNAL_GIO_UNIX_CFLAGS) -Isrc/switchroot -I$(srcdir)/libglnx
-ostree_remount_LDADD = $(AM_LDFLAGS) $(OT_INTERNAL_GIO_UNIX_LIBS) libglnx.la
+ostree_remount_CPPFLAGS = $(AM_CPPFLAGS) $(OT_INTERNAL_GIO_UNIX_CFLAGS) -Isrc/switchroot -I$(srcdir)/src/libotcore -I$(srcdir)/src/libotutil -I$(srcdir)/libglnx
+ostree_remount_LDADD = $(AM_LDFLAGS) $(OT_INTERNAL_GIO_UNIX_LIBS) libotcore.la libotutil.la libglnx.la
 
 if USE_COMPOSEFS
 ostree_prepare_root_LDADD += libcomposefs.la
