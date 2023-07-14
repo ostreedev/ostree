@@ -137,6 +137,9 @@ static inline char *
 get_aboot_root_slot (void)
 {
   autofree char *slot_suffix = read_proc_cmdline_key ("androidboot.slot_suffix");
+  if (!slot_suffix)
+    errx (EXIT_FAILURE, "Missing androidboot.slot_suffix");
+
   if (strcmp (slot_suffix, "_a") == 0)
     return strdup ("/ostree/root.a");
   else if (strcmp (slot_suffix, "_b") == 0)
