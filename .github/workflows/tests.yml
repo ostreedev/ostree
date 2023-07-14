@@ -196,7 +196,7 @@ jobs:
             extra-packages: >-
               libssl-dev
             configure-options: >-
-              --with-composefs --with-crypto=openssl
+              --with-crypto=openssl
 
           # A build using libsoup3. After bookworm is released, this can
           # be switched to Debian Stable.
