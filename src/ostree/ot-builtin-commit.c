@@ -68,6 +68,7 @@ static char **opt_gpg_key_ids;
 static char *opt_gpg_homedir;
 #endif
 static char **opt_key_ids;
+static char **opt_key_files;
 static char *opt_sign_name;
 static gboolean opt_generate_sizes;
 static gboolean opt_composefs_metadata;
@@ -158,6 +159,8 @@ static GOptionEntry options[] = {
     "GPG Homedir to use when looking for keyrings", "HOMEDIR" },
 #endif
   { "sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "Sign the commit with", "KEY_ID" },
+  { "sign-from-file", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_files,
+    "Sign the commit with key from the provided file", "PATH" },
   { "sign-type", 0, 0, G_OPTION_ARG_STRING, &opt_sign_name,
     "Signature type to use (defaults to 'ed25519')", "NAME" },
   { "generate-sizes", 0, 0, G_OPTION_ARG_NONE, &opt_generate_sizes,
@@ -918,31 +921,47 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
             goto out;
         }
 
-      if (opt_key_ids)
+      const char *sign_name = opt_sign_name ?: OSTREE_SIGN_NAME_ED25519;
+      if (opt_key_files || opt_key_ids)
         {
-          /* Initialize crypto system */
-          opt_sign_name = opt_sign_name ?: OSTREE_SIGN_NAME_ED25519;
-
-          sign = ostree_sign_get_by_name (opt_sign_name, error);
+          sign = ostree_sign_get_by_name (sign_name, error);
           if (sign == NULL)
             goto out;
-
-          char **iter;
-
-          for (iter = opt_key_ids; iter && *iter; iter++)
-            {
-              const char *keyid = *iter;
-              g_autoptr (GVariant) secret_key = NULL;
-
-              secret_key = g_variant_new_string (keyid);
-              if (!ostree_sign_set_sk (sign, secret_key, error))
-                goto out;
-
-              if (!ostree_sign_commit (sign, repo, commit_checksum, cancellable, error))
-                goto out;
-            }
         }
 
+      // Loop over the inline private keys on the command line; this should be
+      // avoided in new code in favor of --sign-from-file.
+      for (char **iter = opt_key_ids; iter && *iter; iter++)
+        {
+          const char *keyid = *iter;
+          g_autoptr (GVariant) secret_key = g_variant_new_string (keyid);
+          g_assert (sign);
+          if (!ostree_sign_set_sk (sign, secret_key, error))
+            goto out;
+
+          if (!ostree_sign_commit (sign, repo, commit_checksum, cancellable, error))
+            goto out;
+        }
+
+      // Load each base64 encoded private key in a file and sign with it.
+      for (char **iter = opt_key_files; iter && *iter; iter++)
+        {
+          const char *path = *iter;
+          g_autofree char *b64key
+              = glnx_file_get_contents_utf8_at (AT_FDCWD, path, NULL, NULL, error);
+          if (!b64key)
+            {
+              g_prefix_error (error, "Reading %s", path);
+              goto out;
+            }
+          g_autoptr (GVariant) secret_key = g_variant_new_string (b64key);
+          g_assert (sign);
+          if (!ostree_sign_set_sk (sign, secret_key, error))
+            goto out;
+
+          if (!ostree_sign_commit (sign, repo, commit_checksum, cancellable, error))
+            goto out;
+        }
 #ifndef OSTREE_DISABLE_GPGME
       if (opt_gpg_key_ids)
         {
