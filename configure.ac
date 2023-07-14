@@ -294,7 +294,7 @@ AC_COMPILE_IFELSE(
 
 AC_ARG_WITH(composefs,
 	    AS_HELP_STRING([--with-composefs], [Support composefs]),
-	    :, with_composefs=no)
+	    :, with_composefs=yes)
 
 if test x$with_composefs != xno; then OSTREE_FEATURES="$OSTREE_FEATURES composefs";
    AC_DEFINE([HAVE_COMPOSEFS], 1, [Define if we have libcomposefs])
