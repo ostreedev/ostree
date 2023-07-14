@@ -73,7 +73,15 @@
 #include <ostree-core.h>
 #include <ostree-repo-private.h>
 
+#include "ot-keyfile-utils.h"
 #include "otcore.h"
+
+// The path to the config file for this binary
+const char *config_roots[] = { "/usr/lib", "/etc" };
+#define PREPARE_ROOT_CONFIG_PATH "ostree/prepare-root.conf"
+
+#define SYSROOT_KEY "sysroot"
+#define READONLY_KEY "readonly"
 
 // The kernel argument we support to configure composefs.
 #define OT_COMPOSEFS_KARG "ot-composefs"
@@ -91,6 +99,35 @@
 
 #include "ostree-mount-util.h"
 
+// Load our config file; if it doesn't exist, we return an empty configuration.
+// NULL will be returned if we caught an error.
+static GKeyFile *
+load_config (GError **error)
+{
+  g_autoptr (GKeyFile) ret = g_key_file_new ();
+
+  for (guint i = 0; i < G_N_ELEMENTS (config_roots); i++)
+    {
+      glnx_autofd int fd = -1;
+      g_autofree char *path = g_build_filename (config_roots[i], PREPARE_ROOT_CONFIG_PATH, NULL);
+      if (!ot_openat_ignore_enoent (AT_FDCWD, path, &fd, error))
+        return NULL;
+      /* If the config file doesn't exist, that's OK */
+      if (fd == -1)
+        continue;
+
+      g_print ("Loading %s\n", path);
+
+      g_autofree char *buf = glnx_fd_readall_utf8 (fd, NULL, NULL, error);
+      if (!buf)
+        return NULL;
+      if (!g_key_file_load_from_data (ret, buf, -1, 0, error))
+        return NULL;
+    }
+
+  return g_steal_pointer (&ret);
+}
+
 static bool
 sysroot_is_configured_ro (const char *sysroot)
 {
@@ -103,7 +140,7 @@ sysroot_is_configured_ro (const char *sysroot)
       return false;
     }
 
-  return g_key_file_get_boolean (repo_config, "sysroot", "readonly", NULL);
+  return g_key_file_get_boolean (repo_config, SYSROOT_KEY, READONLY_KEY, NULL);
 }
 
 static inline char *
@@ -302,6 +339,15 @@ main (int argc, char *argv[])
     err (EXIT_FAILURE, "usage: ostree-prepare-root SYSROOT");
   root_arg = argv[1];
 
+  g_autoptr (GKeyFile) config = load_config (&error);
+  if (!config)
+    errx (EXIT_FAILURE, "Failed to parse config: %s", error->message);
+
+  gboolean sysroot_readonly = FALSE;
+  if (!ot_keyfile_get_boolean_with_default (config, SYSROOT_KEY, READONLY_KEY, FALSE,
+                                            &sysroot_readonly, &error))
+    errx (EXIT_FAILURE, "Failed to parse sysroot.readonly value: %s", error->message);
+
   /* This is the final target where we should prepare the rootfs.  The usual
    * case with systemd in the initramfs is that root_mountpoint = "/sysroot".
    * In the fastboot embedded case we're pid1 and will setup / ourself, and
@@ -317,10 +363,18 @@ main (int argc, char *argv[])
   if (mkdirat (AT_FDCWD, OTCORE_RUN_OSTREE_PRIVATE, 0) < 0)
     err (EXIT_FAILURE, "Failed to create %s", OTCORE_RUN_OSTREE_PRIVATE);
 
-  /* Query the repository configuration - this is an operating system builder
-   * choice.  More info: https://github.com/ostreedev/ostree/pull/1767
+  /* Fall back to querying the repository configuration in the target disk.
+   * This is an operating system builder choice.  More info:
+   * https://github.com/ostreedev/ostree/pull/1767
    */
-  const bool sysroot_readonly = sysroot_is_configured_ro (root_arg);
+  if (!sysroot_readonly)
+    {
+      sysroot_readonly = sysroot_is_configured_ro (root_arg);
+      // Encourage porting to the new config file
+      if (sysroot_readonly)
+        g_print ("Found legacy sysroot.readonly flag, not configured in %s\n",
+                 PREPARE_ROOT_CONFIG_PATH);
+    }
   const bool sysroot_currently_writable = !path_is_on_readonly_fs (root_arg);
   g_print ("sysroot.readonly configuration value: %d (fs writable: %d)\n", (int)sysroot_readonly,
            (int)sysroot_currently_writable);
