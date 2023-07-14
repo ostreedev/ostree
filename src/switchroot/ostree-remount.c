@@ -36,10 +36,8 @@
 #include <sys/statvfs.h>
 #include <unistd.h>
 
-#include <glib.h>
-
-#include "glnx-backport-autocleanups.h"
 #include "ostree-mount-util.h"
+#include "otcore.h"
 
 static void
 do_remount (const char *target, bool writable)
@@ -81,10 +79,36 @@ do_remount (const char *target, bool writable)
 int
 main (int argc, char *argv[])
 {
-  /* When systemd is in use this is normally created via the generator, but
-   * we ensure it's created here as well for redundancy.
-   */
-  touch_run_ostree ();
+  g_autoptr (GError) error = NULL;
+  g_autoptr (GVariant) ostree_run_metadata_v = NULL;
+  {
+    glnx_autofd int fd = open (OTCORE_RUN_BOOTED, O_RDONLY | O_CLOEXEC);
+    if (fd < 0)
+      {
+        /* We really expect that nowadays that everything is done in the initramfs,
+         * but historically we created this file here, so we'll continue to do be
+         * sure here it exists.  This code should be removed at some point though.
+         */
+        if (errno == ENOENT)
+          {
+            int subfd = open (OTCORE_RUN_BOOTED, O_EXCL | O_CREAT | O_WRONLY | O_NOCTTY | O_CLOEXEC,
+                              0640);
+            if (subfd != -1)
+              (void)close (subfd);
+          }
+        else
+          {
+            err (EXIT_FAILURE, "failed to open %s", OTCORE_RUN_BOOTED);
+          }
+      }
+    else
+      {
+        if (!ot_variant_read_fd (fd, 0, G_VARIANT_TYPE_VARDICT, TRUE, &ostree_run_metadata_v,
+                                 &error))
+          errx (EXIT_FAILURE, "failed to read %s: %s", OTCORE_RUN_BOOTED, error->message);
+      }
+  }
+  g_autoptr (GVariantDict) ostree_run_metadata = g_variant_dict_new (ostree_run_metadata_v);
 
   /* The /sysroot mount needs to be private to avoid having a mount for e.g. /var/cache
    * also propagate to /sysroot/ostree/deploy/$stateroot/var/cache
@@ -95,10 +119,9 @@ main (int argc, char *argv[])
   if (mount ("none", "/sysroot", NULL, MS_REC | MS_PRIVATE, NULL) < 0)
     perror ("warning: While remounting /sysroot MS_PRIVATE");
 
-  bool root_is_composefs = false;
-  struct stat stbuf;
-  if (fstatat (AT_FDCWD, _OSTREE_COMPOSEFS_ROOT_STAMP, &stbuf, 0) == 0)
-    root_is_composefs = true;
+  gboolean root_is_composefs = FALSE;
+  g_variant_dict_lookup (ostree_run_metadata, OTCORE_RUN_BOOTED_KEY_COMPOSEFS, "b",
+                         &root_is_composefs);
 
   if (path_is_on_readonly_fs ("/") && !root_is_composefs)
     {
@@ -111,7 +134,9 @@ main (int argc, char *argv[])
   /* Handle remounting /sysroot; if it's explicitly marked as read-only (opt in)
    * then ensure it's readonly, otherwise mount writable, the same as /
    */
-  bool sysroot_configured_readonly = unlink (_OSTREE_SYSROOT_READONLY_STAMP) == 0;
+  gboolean sysroot_configured_readonly = FALSE;
+  g_variant_dict_lookup (ostree_run_metadata, OTCORE_RUN_BOOTED_KEY_SYSROOT_RO, "b",
+                         &sysroot_configured_readonly);
   do_remount ("/sysroot", !sysroot_configured_readonly);
 
   /* And also make sure to make /etc rw again. We make this conditional on

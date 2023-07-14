@@ -322,6 +322,8 @@ main (int argc, char *argv[])
   if (chdir (deploy_path) < 0)
     err (EXIT_FAILURE, "failed to chdir to deploy_path");
 
+  GVariantBuilder metadata_builder;
+  g_variant_builder_init (&metadata_builder, G_VARIANT_TYPE ("a{sv}"));
   bool using_composefs = false;
 
   /* We construct the new sysroot in /sysroot.tmp, which is either the composfs
@@ -352,8 +354,8 @@ main (int argc, char *argv[])
                                        &local_error))
             errx (EXIT_FAILURE, "Error loading signatures from repo: %s", local_error->message);
 
-          g_autoptr (GVariant) signatures
-              = g_variant_lookup_value (commitmeta, "ostree.sign.ed25519", G_VARIANT_TYPE ("aay"));
+          g_autoptr (GVariant) signatures = g_variant_lookup_value (
+              commitmeta, OSTREE_SIGN_METADATA_ED25519_KEY, G_VARIANT_TYPE ("aay"));
           if (signatures == NULL)
             errx (EXIT_FAILURE, "Signature validation requested, but no signatures in commit");
 
@@ -362,6 +364,9 @@ main (int argc, char *argv[])
             errx (EXIT_FAILURE, "No valid signatures found for public key");
 
           g_print ("Validated commit signature using '%s'\n", composefs_pubkey);
+          g_variant_builder_add (&metadata_builder, "{sv}",
+                                 OTCORE_RUN_BOOTED_KEY_COMPOSEFS_SIGNATURE,
+                                 g_variant_new_string (composefs_pubkey));
 
           g_autoptr (GVariant) metadata = g_variant_get_child_value (commit, 0);
           g_autoptr (GVariant) cfs_digest_v = g_variant_lookup_value (
@@ -395,12 +400,9 @@ main (int argc, char *argv[])
 
       if (lcfs_mount_image (OSTREE_COMPOSEFS_NAME, TMP_SYSROOT, &cfs_options) == 0)
         {
-          int fd = open (_OSTREE_COMPOSEFS_ROOT_STAMP, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
-          if (fd < 0)
-            err (EXIT_FAILURE, "failed to create %s", _OSTREE_COMPOSEFS_ROOT_STAMP);
-          (void)close (fd);
-
           using_composefs = 1;
+          g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_COMPOSEFS,
+                                 g_variant_new_boolean (true));
         }
       else
         {
@@ -439,12 +441,10 @@ main (int argc, char *argv[])
       if (!sysroot_currently_writable)
         errx (EXIT_FAILURE, "sysroot.readonly=true requires %s to be writable at this point",
               root_arg);
-      /* Pass on the fact that we discovered a readonly sysroot to ostree-remount.service */
-      int fd = open (_OSTREE_SYSROOT_READONLY_STAMP, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
-      if (fd < 0)
-        err (EXIT_FAILURE, "failed to create %s", _OSTREE_SYSROOT_READONLY_STAMP);
-      (void)close (fd);
     }
+  /* Pass on the state for use by ostree-prepare-root */
+  g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_SYSROOT_RO,
+                         g_variant_new_boolean (sysroot_readonly));
 
   /* Prepare /boot.
    * If /boot is on the same partition, use a bind mount to make it visible
@@ -543,7 +543,13 @@ main (int argc, char *argv[])
     }
 
   /* This can be used by other things to signal ostree is in use */
-  touch_run_ostree ();
+  {
+    g_autoptr (GVariant) metadata = g_variant_ref_sink (g_variant_builder_end (&metadata_builder));
+    const guint8 *buf = g_variant_get_data (metadata) ?: (guint8 *)"";
+    if (!glnx_file_replace_contents_at (AT_FDCWD, OTCORE_RUN_BOOTED, buf,
+                                        g_variant_get_size (metadata), 0, NULL, &error))
+      errx (EXIT_FAILURE, "Writing %s: %s", OTCORE_RUN_BOOTED, error->message);
+  }
 
   if (chdir (TMP_SYSROOT) < 0)
     err (EXIT_FAILURE, "failed to chdir to " TMP_SYSROOT);
