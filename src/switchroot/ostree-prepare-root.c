@@ -137,12 +137,6 @@ resolve_deploy_path (const char *root_mountpoint)
   return deploy_path;
 }
 
-static int
-pivot_root (const char *new_root, const char *put_old)
-{
-  return syscall (__NR_pivot_root, new_root, put_old);
-}
-
 #ifdef HAVE_COMPOSEFS
 static GVariant *
 load_variant (const char *root_mountpoint, const char *digest, const char *extension,
@@ -596,50 +590,36 @@ main (int argc, char *argv[])
   if (chdir (TMP_SYSROOT) < 0)
     err (EXIT_FAILURE, "failed to chdir to " TMP_SYSROOT);
 
-  if (strcmp (root_mountpoint, "/") == 0)
+  /* Now we have our ready made-up up root at
+   * /sysroot.tmp and the physical root at /sysroot (root_mountpoint).
+   * We want to end up with our deploy root at /sysroot/ and the physical
+   * root under /sysroot/sysroot as systemd will be responsible for
+   * moving /sysroot to /.
+   */
+  if (mount (root_mountpoint, "sysroot", NULL, MS_MOVE | MS_SILENT, NULL) < 0)
+    err (EXIT_FAILURE, "failed to MS_MOVE '%s' to 'sysroot'", root_mountpoint);
+
+  if (mount (".", root_mountpoint, NULL, MS_MOVE | MS_SILENT, NULL) < 0)
+    err (EXIT_FAILURE, "failed to MS_MOVE %s to %s", ".", root_mountpoint);
+
+  if (chdir (root_mountpoint) < 0)
+    err (EXIT_FAILURE, "failed to chdir to %s", root_mountpoint);
+
+  if (rmdir (TMP_SYSROOT) < 0)
+    err (EXIT_FAILURE, "couldn't remove temporary sysroot %s", TMP_SYSROOT);
+
+  if (sysroot_readonly)
     {
-      /* pivot_root rotates two mount points around.  In this instance . (the
-       * deploy location) becomes / and the existing / becomes /sysroot.  We
-       * have to use pivot_root rather than mount --move in this instance
-       * because our deploy location is mounted as a subdirectory of the real
-       * sysroot, so moving sysroot would also move the deploy location.   In
-       * reality attempting mount --move would fail with EBUSY. */
-      if (pivot_root (".", "sysroot") < 0)
-        err (EXIT_FAILURE, "failed to pivot_root to deployment");
-    }
-  else
-    {
-      /* In this instance typically we have our ready made-up up root at
-       * /sysroot.tmp and the physical root at /sysroot (root_mountpoint).
-       * We want to end up with our deploy root at /sysroot/ and the physical
-       * root under /sysroot/sysroot as systemd will be responsible for
-       * moving /sysroot to /.
+      if (mount ("sysroot", "sysroot", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL)
+          < 0)
+        err (EXIT_FAILURE, "failed to make /sysroot read-only");
+
+      /* TODO(lucab): This will make the final '/' read-only.
+       * Stabilize read-only '/sysroot' first, then enable this additional hardening too.
+       *
+       * if (mount (".", ".", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL) < 0)
+       *   err (EXIT_FAILURE, "failed to make / read-only");
        */
-      if (mount (root_mountpoint, "sysroot", NULL, MS_MOVE | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to MS_MOVE '%s' to 'sysroot'", root_mountpoint);
-
-      if (mount (".", root_mountpoint, NULL, MS_MOVE | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to MS_MOVE %s to %s", ".", root_mountpoint);
-
-      if (chdir (root_mountpoint) < 0)
-        err (EXIT_FAILURE, "failed to chdir to %s", root_mountpoint);
-
-      if (rmdir (TMP_SYSROOT) < 0)
-        err (EXIT_FAILURE, "couldn't remove temporary sysroot %s", TMP_SYSROOT);
-
-      if (sysroot_readonly)
-        {
-          if (mount ("sysroot", "sysroot", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL)
-              < 0)
-            err (EXIT_FAILURE, "failed to make /sysroot read-only");
-
-          /* TODO(lucab): This will make the final '/' read-only.
-           * Stabilize read-only '/sysroot' first, then enable this additional hardening too.
-           *
-           * if (mount (".", ".", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL) < 0)
-           *   err (EXIT_FAILURE, "failed to make / read-only");
-           */
-        }
     }
 
   /* The /sysroot mount needs to be private to avoid having a mount for e.g. /var/cache
