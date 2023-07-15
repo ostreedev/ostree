@@ -75,6 +75,9 @@
 
 #include "otcore.h"
 
+// The kernel argument we support to configure composefs.
+#define OT_COMPOSEFS_KARG "ot-composefs"
+
 #define OSTREE_PREPARE_ROOT_DEPLOYMENT_MSG \
   SD_ID128_MAKE (71, 70, 33, 6a, 73, ba, 46, 01, ba, d3, 1a, f8, 88, aa, 0d, f7)
 
@@ -87,15 +90,6 @@
 #endif
 
 #include "ostree-mount-util.h"
-
-typedef enum
-{
-  OSTREE_COMPOSEFS_MODE_OFF,    /* Never use composefs */
-  OSTREE_COMPOSEFS_MODE_MAYBE,  /* Use if supported and image exists in deploy */
-  OSTREE_COMPOSEFS_MODE_ON,     /* Always use (and fail if not working) */
-  OSTREE_COMPOSEFS_MODE_SIGNED, /* Always use and require it to be signed */
-  OSTREE_COMPOSEFS_MODE_DIGEST, /* Always use and require specific digest */
-} OstreeComposefsMode;
 
 static bool
 sysroot_is_configured_ro (const char *sysroot)
@@ -223,6 +217,61 @@ validate_signature (GBytes *data, GVariant *signatures, const guchar *pubkey, si
 }
 #endif
 
+typedef struct
+{
+  OtTristate enabled;
+  char *signature_pubkey;
+  char *expected_digest;
+} ComposefsConfig;
+
+static void
+free_composefs_config (ComposefsConfig *config)
+{
+  free (config->signature_pubkey);
+  free (config->expected_digest);
+  free (config);
+}
+
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (ComposefsConfig, free_composefs_config)
+
+static ComposefsConfig *
+load_composefs_config (GError **error)
+{
+  GLNX_AUTO_PREFIX_ERROR ("Loading composefs config", error);
+  g_autoptr (ComposefsConfig) ret = g_new0 (ComposefsConfig, 1);
+  ret->enabled = OT_TRISTATE_MAYBE;
+
+  // TODO: Drop this kernel argument in favor of just the config file in the initramfs
+  autofree char *ot_composefs = read_proc_cmdline_key (OT_COMPOSEFS_KARG);
+  if (ot_composefs)
+    {
+      if (strcmp (ot_composefs, "off") == 0)
+        ret->enabled = OT_TRISTATE_NO;
+      else if (strcmp (ot_composefs, "maybe") == 0)
+        ret->enabled = OT_TRISTATE_MAYBE;
+      else if (strcmp (ot_composefs, "on") == 0)
+        ret->enabled = OT_TRISTATE_YES;
+      else if (g_str_has_prefix (ot_composefs, "signed="))
+        {
+          ret->enabled = OT_TRISTATE_YES;
+          ret->signature_pubkey = g_strdup (ot_composefs + strlen ("signed="));
+        }
+      else if (g_str_has_prefix (ot_composefs, "digest="))
+        {
+          ret->enabled = OT_TRISTATE_YES;
+          ret->expected_digest = g_strdup (ot_composefs + strlen ("digest="));
+        }
+      else
+        return glnx_null_throw (error, "Unsupported %s option: '%s'", OT_COMPOSEFS_KARG,
+                                ot_composefs);
+      // In theory it's OK to have both a signature and an expected digest,
+      // but since there's no valid reason to do both, let's not support it.
+      g_assert (!(ret->signature_pubkey && ret->expected_digest));
+    }
+
+  return g_steal_pointer (&ret);
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -265,39 +314,6 @@ main (int argc, char *argv[])
         err (EXIT_FAILURE, "failed to umount proc from /proc");
     }
 
-  OstreeComposefsMode composefs_mode = OSTREE_COMPOSEFS_MODE_MAYBE;
-  autofree char *ot_composefs = read_proc_cmdline_key ("ot-composefs");
-  char *composefs_digest = NULL;
-  char *composefs_pubkey = NULL;
-  if (ot_composefs)
-    {
-      if (strcmp (ot_composefs, "off") == 0)
-        composefs_mode = OSTREE_COMPOSEFS_MODE_OFF;
-      else if (strcmp (ot_composefs, "maybe") == 0)
-        composefs_mode = OSTREE_COMPOSEFS_MODE_MAYBE;
-      else if (strcmp (ot_composefs, "on") == 0)
-        composefs_mode = OSTREE_COMPOSEFS_MODE_ON;
-      else if (strncmp (ot_composefs, "signed=", strlen ("signed=")) == 0)
-        {
-          composefs_mode = OSTREE_COMPOSEFS_MODE_SIGNED;
-          composefs_pubkey = ot_composefs + strlen ("signed=");
-        }
-      else if (strncmp (ot_composefs, "digest=", strlen ("digest=")) == 0)
-        {
-          composefs_mode = OSTREE_COMPOSEFS_MODE_DIGEST;
-          composefs_digest = ot_composefs + strlen ("digest=");
-        }
-      else
-        err (EXIT_FAILURE, "Unsupported ot-composefs option: '%s'", ot_composefs);
-    }
-
-#ifndef HAVE_COMPOSEFS
-  if (composefs_mode == OSTREE_COMPOSEFS_MODE_MAYBE)
-    composefs_mode = OSTREE_COMPOSEFS_MODE_OFF;
-  (void)composefs_digest;
-  (void)composefs_pubkey;
-#endif
-
   /* Query the repository configuration - this is an operating system builder
    * choice.  More info: https://github.com/ostreedev/ostree/pull/1767
    */
@@ -324,11 +340,18 @@ main (int argc, char *argv[])
 
   GVariantBuilder metadata_builder;
   g_variant_builder_init (&metadata_builder, G_VARIANT_TYPE ("a{sv}"));
+
+  // We always parse the composefs config, because we want to detect and error
+  // out if it's enabled, but not supported at compile time.
+  g_autoptr (ComposefsConfig) composefs_config = load_composefs_config (&error);
+  if (!composefs_config)
+    errx (EXIT_FAILURE, "%s", error->message);
+  // Tracks if we did successfully enable it at runtime
   bool using_composefs = false;
 
   /* We construct the new sysroot in /sysroot.tmp, which is either the composfs
      mount or a bind mount of the deploy-dir */
-  if (composefs_mode != OSTREE_COMPOSEFS_MODE_OFF)
+  if (composefs_config->enabled != OT_TRISTATE_NO)
     {
 #ifdef HAVE_COMPOSEFS
       const char *objdirs[] = { "/sysroot/ostree/repo/objects" };
@@ -338,8 +361,12 @@ main (int argc, char *argv[])
         1,
       };
 
-      if (composefs_mode == OSTREE_COMPOSEFS_MODE_SIGNED)
+      g_autofree char *expected_digest_owned = NULL;
+      const char *expected_digest = expected_digest_owned;
+      if (composefs_config->signature_pubkey)
         {
+          g_assert (expected_digest == NULL);
+          const char *composefs_pubkey = composefs_config->signature_pubkey;
           g_autoptr (GError) local_error = NULL;
           g_autofree char *pubkey = NULL;
           gsize pubkey_size;
@@ -363,7 +390,7 @@ main (int argc, char *argv[])
           if (!validate_signature (commit_data, signatures, (guchar *)pubkey, pubkey_size))
             errx (EXIT_FAILURE, "No valid signatures found for public key");
 
-          g_print ("Validated commit signature using '%s'\n", composefs_pubkey);
+          g_print ("composefs+ostree: Validated commit signature using '%s'\n", composefs_pubkey);
           g_variant_builder_add (&metadata_builder, "{sv}",
                                  OTCORE_RUN_BOOTED_KEY_COMPOSEFS_SIGNATURE,
                                  g_variant_new_string (composefs_pubkey));
@@ -374,9 +401,10 @@ main (int argc, char *argv[])
           if (cfs_digest_v == NULL || g_variant_get_size (cfs_digest_v) != OSTREE_SHA256_DIGEST_LEN)
             errx (EXIT_FAILURE, "Signature validation requested, but no valid digest in commit");
 
-          composefs_digest = g_malloc (OSTREE_SHA256_STRING_LEN + 1);
-          ot_bin2hex (composefs_digest, g_variant_get_data (cfs_digest_v),
+          expected_digest_owned = g_malloc (OSTREE_SHA256_STRING_LEN + 1);
+          ot_bin2hex (expected_digest_owned, g_variant_get_data (cfs_digest_v),
                       g_variant_get_size (cfs_digest_v));
+          expected_digest = expected_digest_owned;
         }
 
       cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
@@ -385,53 +413,67 @@ main (int argc, char *argv[])
         err (EXIT_FAILURE, "failed to assemble /boot/loader path");
       cfs_options.image_mountdir = srcpath;
 
-      if (composefs_digest != NULL)
+      if (expected_digest != NULL)
         {
           cfs_options.flags |= LCFS_MOUNT_FLAGS_REQUIRE_VERITY;
-          cfs_options.expected_fsverity_digest = composefs_digest;
+          g_print ("composefs: Verifying digest: %s\n", expected_digest);
+          cfs_options.expected_fsverity_digest = expected_digest;
         }
-
-      if (composefs_mode == OSTREE_COMPOSEFS_MODE_MAYBE)
-        g_print ("Trying to mount composefs rootfs\n");
-      else if (composefs_digest != NULL)
-        g_print ("Mounting composefs rootfs with expected digest '%s'\n", composefs_digest);
       else
-        g_print ("Mounting composefs rootfs\n");
+        {
+          // If we're not verifying a digest, then we *must* also have signatures disabled.
+          // Or stated in reverse: if signature verification is enabled, then digest verification
+          // must also be.
+          g_assert (!composefs_config->signature_pubkey);
+          g_print ("composefs: Mounting with no digest or signature check\n");
+        }
 
       if (lcfs_mount_image (OSTREE_COMPOSEFS_NAME, TMP_SYSROOT, &cfs_options) == 0)
         {
-          using_composefs = 1;
+          using_composefs = true;
           g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_COMPOSEFS,
                                  g_variant_new_boolean (true));
+          g_print ("composefs: mounted successfully");
         }
       else
         {
-          if (errno == ENOVERITY)
-            g_print ("No verity in composefs image\n");
-          else if (errno == EWRONGVERITY)
-            g_print ("Wrong verity digest in composefs image\n");
-          else if (errno == ENOSIGNATURE)
-            g_print ("Missing signature in composefs image\n");
+          int errsv = errno;
+          const char *errmsg;
+          switch (errsv)
+            {
+            case ENOVERITY:
+              errmsg = "fsverity not enabled on composefs image";
+              break;
+            case EWRONGVERITY:
+              errmsg = "Wrong fsverity digest in composefs image";
+              break;
+            case ENOSIGNATURE:
+              errmsg = "Missing signature for fsverity in composefs image";
+              break;
+            default:
+              errmsg = strerror (errno);
+              break;
+            }
+          if (composefs_config->enabled == OT_TRISTATE_MAYBE)
+            {
+              g_print ("composefs: optional support failed: %s\n", errmsg);
+            }
           else
-            g_print ("Mounting composefs image failed: %s\n", strerror (errno));
+            {
+              g_assert (composefs_config->enabled == OT_TRISTATE_YES);
+              errx (EXIT_FAILURE, "composefs: failed to mount: %s", errmsg);
+            }
         }
 #else
-      err (EXIT_FAILURE, "Composefs not supported");
+      errx (EXIT_FAILURE, "composefs: enabled at runtime, but support is not compiled in");
 #endif
     }
 
   if (!using_composefs)
     {
-      if (composefs_mode > OSTREE_COMPOSEFS_MODE_MAYBE)
-        err (EXIT_FAILURE, "Failed to mount composefs");
-
       /* The deploy root starts out bind mounted to sysroot.tmp */
       if (mount (deploy_path, TMP_SYSROOT, NULL, MS_BIND | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to make initial bind mount %s", deploy_path);
-    }
-  else
-    {
-      g_print ("Mounted composefs\n");
     }
 
   /* This will result in a system with /sysroot read-only. Thus, two additional
