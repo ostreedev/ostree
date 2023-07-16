@@ -157,8 +157,9 @@ gen_ed25519_keys
 PUBLIC=${ED25519PUBLIC}
 SEED=${ED25519SEED}
 SECRET=${ED25519SECRET}
-
-COMMIT_ARGS="--sign=${SECRET} --sign-type=ed25519"
+# Other tests verify --sign, we will verify --sign-from-file here
+echo ${ED25519SECRET} > key
+COMMIT_ARGS="--sign-from-file=key --sign-type=ed25519"
 
 repo_init --set=sign-verify=true
 ${CMD_PREFIX} ostree --repo=repo config set 'remote "origin"'.verification-ed25519-key "${PUBLIC}"
