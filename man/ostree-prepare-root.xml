@@ -1,0 +1,122 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+    "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<!--
+SPDX-License-Identifier: LGPL-2.0+
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library. If not, see <https://www.gnu.org/licenses/>.
+-->
+
+<refentry id="ostree">
+
+    <refentryinfo>
+        <title>ostree prepare-root</title>
+        <productname>OSTree</productname>
+
+        <authorgroup>
+            <author>
+                <contrib>Developer</contrib>
+                <firstname>Colin</firstname>
+                <surname>Walters</surname>
+                <email>walters@verbum.org</email>
+            </author>
+        </authorgroup>g
+    </refentryinfo>
+
+    <refmeta>
+        <refentrytitle>ostree prepare-root</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv>
+        <refname>ostree-prepare-root</refname>
+        <refpurpose>Change the view of a mounted root filesystem to an ostree deployment</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv>
+            <cmdsynopsis>
+                <command>ostree prepare-root</command> <arg choice="req">TARGET</arg>
+            </cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1>
+        <title>Description</title>
+
+        <para>
+            At its core, ostree operates on an existing mounted filesystem.  Tooling such
+            as <literal>ostree admin deploy</literal> will create a new directory that can be
+            used as a bootable target.  This tool is designed to run in an initramfs and
+            set up "remapping" mounts as a view into that filesystem.
+        </para>
+
+        <para>
+            As of more recently, this tool also has optional support for composefs, which
+            creates a distinct mount point layered on top of the underlying filesystem.
+        </para>
+
+        <para>
+            The most common pattern today is to use systemd in an initramfs.  The systemd
+            unit shipped upstream is ordered in this way:
+
+            <literal>After=sysroot.mount</literal> and <literal>Before=initrd-root-fs.target</literal>
+        </para>
+
+        <para>
+            When it runs, the mounted filesystem at the provided <literal>TARGET</literal> (usually <literal>/sysroot</literal>)
+            will be changed such that what appears at <literal>/sysroot</literal> is actually the
+            "deployment root" - i.e. a particular versioned subdirectory.  What was formerly the
+            "physical root" i.e. the real root of the filesystem will appear as <literal>/sysroot/sysroot</literal>.
+        </para>
+
+        <para>
+            For <literal>/var</literal>, by default a bind mount is created from the deployment root to <literal>/sysroot/var</literal>.
+        </para>
+
+        <para>
+            A read-only bind mount is created over <literal>/sysroot/usr</literal>.  The immutable bit is set on the deployment
+            root, so this provides basic protection for filesystem mutation.  If the <literal>sysroot.readonly</literal>
+            option is enabled, instead a writable bind mount for <literal>/sysroot/etc</literal>, and everything else
+            is mounted read-only.
+        </para>
+
+        <para>
+            Finally, when higher level tooling such as systemd performs a switch-root operation, what
+            was <literal>/sysroot</literal> becomes <literal>/</literal> and after the transition into
+            the real root, the system will be booted into the "deployment", which is a versioned immutable
+            filesystem tree.  The ostree tooling running in the real root thereafter performs further changes
+            by operating on <literal>/sysroot</literal> which is now the "physical root".
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title>systemd</title>
+
+        <para>
+            As mentioned above, this tool comes with a systemd unit file <literal>ostree-prepare-root.service</literal>
+            and it is primarily expected to be invoked this way.
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title>Composefs</title>
+
+        <para>
+            The default for ostree is to create a plain hardlinked filesystem tree.
+            composefs support is currently experimental; see the upstream <literal>doc/composefs.md</literal>
+            for more information on using it.
+        </para>
+    </refsect1>
+
+</refentry>

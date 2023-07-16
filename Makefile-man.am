@@ -36,7 +36,7 @@ ostree-config.1 ostree-diff.1 ostree-find-remotes.1 ostree-fsck.1 \
 ostree-init.1 ostree-log.1 ostree-ls.1 ostree-prune.1 ostree-pull-local.1 \
 ostree-pull.1 ostree-refs.1 ostree-remote.1 ostree-reset.1 \
 ostree-rev-parse.1 ostree-show.1 ostree-sign.1 ostree-summary.1 \
-ostree-static-delta.1
+ostree-static-delta.1 ostree-prepare-root.1
 
 if BUILDOPT_FUSE
 man1_files += rofiles-fuse.1
