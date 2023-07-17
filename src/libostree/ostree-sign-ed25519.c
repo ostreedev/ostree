@@ -101,6 +101,16 @@ _ostree_sign_ed25519_init (OstreeSignEd25519 *self)
 }
 
 static gboolean
+validate_length (gsize found, gsize expected, GError **error)
+{
+  if (found == expected)
+    return TRUE;
+  return glnx_throw (
+      error, "Ill-formed input: expected %" G_GSIZE_FORMAT " bytes, got %" G_GSIZE_FORMAT " bytes",
+      found, expected);
+}
+
+static gboolean
 _ostree_sign_ed25519_is_initialized (OstreeSignEd25519 *self, GError **error)
 {
   switch (self->state)
@@ -216,11 +226,8 @@ ostree_sign_ed25519_data_verify (OstreeSign *self, GBytes *data, GVariant *signa
       g_autoptr (GVariant) child = g_variant_get_child_value (signatures, i);
       g_autoptr (GBytes) signature = g_variant_get_data_as_bytes (child);
 
-      if (g_bytes_get_size (signature) != OSTREE_SIGN_ED25519_SIG_SIZE)
-        return glnx_throw (
-            error,
-            "Invalid signature length of %" G_GSIZE_FORMAT " bytes, expected %" G_GSIZE_FORMAT,
-            (gsize)g_bytes_get_size (signature), (gsize)OSTREE_SIGN_ED25519_SIG_SIZE);
+      if (!validate_length (g_bytes_get_size (signature), OSTREE_SIGN_ED25519_SIG_SIZE, error))
+        return glnx_prefix_error (error, "Invalid signature");
 
       g_autofree char *hex = g_malloc0 (OSTREE_SIGN_ED25519_PUBKEY_SIZE * 2 + 1);
 
@@ -370,8 +377,8 @@ ostree_sign_ed25519_set_sk (OstreeSign *self, GVariant *secret_key, GError **err
       return glnx_throw (error, "Unknown ed25519 secret key type");
     }
 
-  if (n_elements != OSTREE_SIGN_ED25519_SECKEY_SIZE)
-    return glnx_throw (error, "Incorrect ed25519 secret key");
+  if (!validate_length (n_elements, OSTREE_SIGN_ED25519_SECKEY_SIZE, error))
+    return glnx_prefix_error (error, "Invalid ed25519 secret key");
 
   return TRUE;
 }
@@ -422,8 +429,8 @@ ostree_sign_ed25519_add_pk (OstreeSign *self, GVariant *public_key, GError **err
       return glnx_throw (error, "Unknown ed25519 public key type");
     }
 
-  if (n_elements != OSTREE_SIGN_ED25519_PUBKEY_SIZE)
-    return glnx_throw (error, "Incorrect ed25519 public key");
+  if (!validate_length (n_elements, OSTREE_SIGN_ED25519_PUBKEY_SIZE, error))
+    return glnx_prefix_error (error, "Invalid ed25519 public key");
 
   g_autofree char *hex = g_malloc0 (OSTREE_SIGN_ED25519_PUBKEY_SIZE * 2 + 1);
   ot_bin2hex (hex, key, n_elements);
@@ -453,10 +460,8 @@ _ed25519_add_revoked (OstreeSign *self, GVariant *revoked_key, GError **error)
   gsize n_elements = 0;
   gpointer key = g_base64_decode (rk_ascii, &n_elements);
 
-  if (n_elements != OSTREE_SIGN_ED25519_PUBKEY_SIZE)
-    {
-      return glnx_throw (error, "Incorrect ed25519 revoked key");
-    }
+  if (!validate_length (n_elements, OSTREE_SIGN_ED25519_PUBKEY_SIZE, error))
+    return glnx_prefix_error (error, "Incorrect ed25519 revoked key");
 
   g_autofree char *hex = g_malloc0 (OSTREE_SIGN_ED25519_PUBKEY_SIZE * 2 + 1);
   ot_bin2hex (hex, key, n_elements);
