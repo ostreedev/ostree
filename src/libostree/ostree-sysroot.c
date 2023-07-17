@@ -720,9 +720,10 @@ load_origin (OstreeSysroot *self, OstreeDeployment *deployment, GCancellable *ca
   return TRUE;
 }
 
-static gboolean
-parse_bootlink (const char *bootlink, int *out_entry_bootversion, char **out_osname,
-                char **out_bootcsum, int *out_treebootserial, GError **error)
+// Parse the kernel argument ostree=
+gboolean
+_ostree_sysroot_parse_bootlink (const char *bootlink, int *out_entry_bootversion, char **out_osname,
+                                char **out_bootcsum, int *out_treebootserial, GError **error)
 {
   static gsize regex_initialized;
   static GRegex *regex;
@@ -742,10 +743,14 @@ parse_bootlink (const char *bootlink, int *out_entry_bootversion, char **out_osn
 
   g_autofree char *bootversion_str = g_match_info_fetch (match, 1);
   g_autofree char *treebootserial_str = g_match_info_fetch (match, 4);
-  *out_entry_bootversion = (int)g_ascii_strtoll (bootversion_str, NULL, 10);
-  *out_osname = g_match_info_fetch (match, 2);
-  *out_bootcsum = g_match_info_fetch (match, 3);
-  *out_treebootserial = (int)g_ascii_strtoll (treebootserial_str, NULL, 10);
+  if (out_entry_bootversion)
+    *out_entry_bootversion = (int)g_ascii_strtoll (bootversion_str, NULL, 10);
+  if (out_osname)
+    *out_osname = g_match_info_fetch (match, 2);
+  if (out_bootcsum)
+    *out_bootcsum = g_match_info_fetch (match, 3);
+  if (out_treebootserial)
+    *out_treebootserial = (int)g_ascii_strtoll (treebootserial_str, NULL, 10);
   return TRUE;
 }
 
@@ -768,7 +773,8 @@ parse_deployment (OstreeSysroot *self, const char *boot_link, OstreeDeployment *
   g_autofree char *osname = NULL;
   g_autofree char *bootcsum = NULL;
   int treebootserial = -1;
-  if (!parse_bootlink (boot_link, &entry_boot_version, &osname, &bootcsum, &treebootserial, error))
+  if (!_ostree_sysroot_parse_bootlink (boot_link, &entry_boot_version, &osname, &bootcsum,
+                                       &treebootserial, error))
     return FALSE;
 
   g_autofree char *errprefix
