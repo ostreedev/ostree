@@ -90,7 +90,6 @@ newrev=$(${CMD_PREFIX} ostree --repo=repo rev-parse test)
 # Test ostree sign with 'ed25519' module
 gen_ed25519_keys
 PUBLIC=${ED25519PUBLIC}
-SEED=${ED25519SEED}
 SECRET=${ED25519SECRET}
 WRONG_PUBLIC="$(gen_ed25519_random_public)"
 
@@ -240,7 +239,6 @@ echo 'ok verified with ed25519 (keyfile - file)'
 # Test ostree sign with multiple 'ed25519' keys
 gen_ed25519_keys
 PUBLIC2=${ED25519PUBLIC}
-SEED2=${ED25519SEED}
 SECRET2=${ED25519SECRET}
 
 echo ${SECRET2} >> ${SECRETKEYS}

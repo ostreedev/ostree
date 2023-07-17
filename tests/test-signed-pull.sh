@@ -155,7 +155,6 @@ fi
 # Test ostree sign with 'ed25519' module
 gen_ed25519_keys
 PUBLIC=${ED25519PUBLIC}
-SEED=${ED25519SEED}
 SECRET=${ED25519SECRET}
 # Other tests verify --sign, we will verify --sign-from-file here
 echo ${ED25519SECRET} > key
