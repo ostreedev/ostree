@@ -41,7 +41,6 @@
 #define _OSTREE_COMPOSEFS_ROOT_STAMP "/run/ostree-composefs-root.stamp"
 
 #define autofree __attribute__ ((cleanup (cleanup_free)))
-#define steal_pointer(pp) steal_pointer_impl ((void **)pp)
 
 static inline int
 path_is_on_readonly_fs (const char *path)
@@ -87,15 +86,6 @@ cleanup_free (void *p)
 {
   void **pp = (void **)p;
   free (*pp);
-}
-
-static inline void *
-steal_pointer_impl (void **to_steal)
-{
-  void *ret = *to_steal;
-  *to_steal = NULL;
-
-  return ret;
 }
 
 static inline char *
