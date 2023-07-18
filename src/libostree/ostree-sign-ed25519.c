@@ -48,9 +48,9 @@ struct _OstreeSignEd25519
 {
   GObject parent;
   ed25519_state state;
-  guchar *secret_key;
-  GList *public_keys;
-  GList *revoked_keys;
+  guchar *secret_key;  /* malloc'd buffer of length OSTREE_SIGN_ED25519_SECKEY_SIZE */
+  GList *public_keys;  /* malloc'd buffer of length OSTREE_SIGN_ED25519_PUBKEY_SIZE */
+  GList *revoked_keys; /* malloc'd buffer of length OSTREE_SIGN_ED25519_PUBKEY_SIZE */
 };
 
 #ifdef G_DEFINE_AUTOPTR_CLEANUP_FUNC
