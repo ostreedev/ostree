@@ -48,9 +48,9 @@ struct _OstreeSignEd25519
 {
   GObject parent;
   ed25519_state state;
-  guchar *secret_key;
-  GList *public_keys;
-  GList *revoked_keys;
+  guchar *secret_key;  /* malloc'd buffer of length OSTREE_SIGN_ED25519_SECKEY_SIZE */
+  GList *public_keys;  /* malloc'd buffer of length OSTREE_SIGN_ED25519_PUBKEY_SIZE */
+  GList *revoked_keys; /* malloc'd buffer of length OSTREE_SIGN_ED25519_PUBKEY_SIZE */
 };
 
 #ifdef G_DEFINE_AUTOPTR_CLEANUP_FUNC
@@ -98,6 +98,16 @@ _ostree_sign_ed25519_init (OstreeSignEd25519 *self)
   if (!otcore_ed25519_init ())
     self->state = ED25519_FAILED_INITIALIZATION;
 #endif
+}
+
+static gboolean
+validate_length (gsize found, gsize expected, GError **error)
+{
+  if (found == expected)
+    return TRUE;
+  return glnx_throw (
+      error, "Ill-formed input: expected %" G_GSIZE_FORMAT " bytes, got %" G_GSIZE_FORMAT " bytes",
+      found, expected);
 }
 
 static gboolean
@@ -216,11 +226,8 @@ ostree_sign_ed25519_data_verify (OstreeSign *self, GBytes *data, GVariant *signa
       g_autoptr (GVariant) child = g_variant_get_child_value (signatures, i);
       g_autoptr (GBytes) signature = g_variant_get_data_as_bytes (child);
 
-      if (g_bytes_get_size (signature) != OSTREE_SIGN_ED25519_SIG_SIZE)
-        return glnx_throw (
-            error,
-            "Invalid signature length of %" G_GSIZE_FORMAT " bytes, expected %" G_GSIZE_FORMAT,
-            (gsize)g_bytes_get_size (signature), (gsize)OSTREE_SIGN_ED25519_SIG_SIZE);
+      if (!validate_length (g_bytes_get_size (signature), OSTREE_SIGN_ED25519_SIG_SIZE, error))
+        return glnx_prefix_error (error, "Invalid signature");
 
       g_autofree char *hex = g_malloc0 (OSTREE_SIGN_ED25519_PUBKEY_SIZE * 2 + 1);
 
@@ -355,14 +362,15 @@ ostree_sign_ed25519_set_sk (OstreeSign *self, GVariant *secret_key, GError **err
 
   gsize n_elements = 0;
 
+  g_autofree guchar *secret_key_buf = NULL;
   if (g_variant_is_of_type (secret_key, G_VARIANT_TYPE_STRING))
     {
       const gchar *sk_ascii = g_variant_get_string (secret_key, NULL);
-      sign->secret_key = g_base64_decode (sk_ascii, &n_elements);
+      secret_key_buf = g_base64_decode (sk_ascii, &n_elements);
     }
   else if (g_variant_is_of_type (secret_key, G_VARIANT_TYPE_BYTESTRING))
     {
-      sign->secret_key
+      secret_key_buf
           = (guchar *)g_variant_get_fixed_array (secret_key, &n_elements, sizeof (guchar));
     }
   else
@@ -370,8 +378,10 @@ ostree_sign_ed25519_set_sk (OstreeSign *self, GVariant *secret_key, GError **err
       return glnx_throw (error, "Unknown ed25519 secret key type");
     }
 
-  if (n_elements != OSTREE_SIGN_ED25519_SECKEY_SIZE)
-    return glnx_throw (error, "Incorrect ed25519 secret key");
+  if (!validate_length (n_elements, OSTREE_SIGN_ED25519_SECKEY_SIZE, error))
+    return glnx_prefix_error (error, "Invalid ed25519 secret key");
+
+  sign->secret_key = g_steal_pointer (&secret_key_buf);
 
   return TRUE;
 }
@@ -422,8 +432,8 @@ ostree_sign_ed25519_add_pk (OstreeSign *self, GVariant *public_key, GError **err
       return glnx_throw (error, "Unknown ed25519 public key type");
     }
 
-  if (n_elements != OSTREE_SIGN_ED25519_PUBKEY_SIZE)
-    return glnx_throw (error, "Incorrect ed25519 public key");
+  if (!validate_length (n_elements, OSTREE_SIGN_ED25519_PUBKEY_SIZE, error))
+    return glnx_prefix_error (error, "Invalid ed25519 public key");
 
   g_autofree char *hex = g_malloc0 (OSTREE_SIGN_ED25519_PUBKEY_SIZE * 2 + 1);
   ot_bin2hex (hex, key, n_elements);
@@ -453,10 +463,8 @@ _ed25519_add_revoked (OstreeSign *self, GVariant *revoked_key, GError **error)
   gsize n_elements = 0;
   gpointer key = g_base64_decode (rk_ascii, &n_elements);
 
-  if (n_elements != OSTREE_SIGN_ED25519_PUBKEY_SIZE)
-    {
-      return glnx_throw (error, "Incorrect ed25519 revoked key");
-    }
+  if (!validate_length (n_elements, OSTREE_SIGN_ED25519_PUBKEY_SIZE, error))
+    return glnx_prefix_error (error, "Incorrect ed25519 revoked key");
 
   g_autofree char *hex = g_malloc0 (OSTREE_SIGN_ED25519_PUBKEY_SIZE * 2 + 1);
   ot_bin2hex (hex, key, n_elements);

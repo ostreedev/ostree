@@ -75,12 +75,10 @@ fi
 # Test ostree sign with 'ed25519' module
 gen_ed25519_keys
 PUBLIC=${ED25519PUBLIC}
-SEED=${ED25519SEED}
 SECRET=${ED25519SECRET}
 
 WRONG_PUBLIC="$(gen_ed25519_random_public)"
 
-echo "SEED = $SEED"
 echo "PUBLIC = $PUBLIC"
 
 echo "Signed commit with ed25519: ${SECRET}" >> file.txt
