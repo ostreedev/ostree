@@ -112,7 +112,7 @@ resolve_deploy_path (const char *root_mountpoint)
   char destpath[PATH_MAX];
   struct stat stbuf;
   char *deploy_path;
-  autofree char *ostree_target = get_ostree_target ();
+  g_autofree char *ostree_target = get_ostree_target ();
   if (!ostree_target)
     errx (EXIT_FAILURE, "No ostree= cmdline");
 
@@ -236,7 +236,7 @@ load_composefs_config (GError **error)
   ret->enabled = OT_TRISTATE_MAYBE;
 
   // TODO: Drop this kernel argument in favor of just the config file in the initramfs
-  autofree char *ot_composefs = read_proc_cmdline_key (OT_COMPOSEFS_KARG);
+  g_autofree char *ot_composefs = read_proc_cmdline_key (OT_COMPOSEFS_KARG);
   if (ot_composefs)
     {
       if (strcmp (ot_composefs, "off") == 0)

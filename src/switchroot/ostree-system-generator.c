@@ -63,7 +63,7 @@ main (int argc, char *argv[])
    * exit so that we don't error, but at the same time work where switchroot
    * is PID 1 (and so hasn't created /run/ostree-booted).
    */
-  autofree char *ostree_target = get_ostree_target ();
+  g_autofree char *ostree_target = get_ostree_target ();
   if (!ostree_target)
     exit (EXIT_SUCCESS);
 

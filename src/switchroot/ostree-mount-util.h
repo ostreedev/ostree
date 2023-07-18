@@ -23,6 +23,7 @@
 
 #include <err.h>
 #include <fcntl.h>
+#include <glib.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -39,8 +40,6 @@
 #define INITRAMFS_MOUNT_VAR "/run/ostree/initramfs-mount-var"
 #define _OSTREE_SYSROOT_READONLY_STAMP "/run/ostree-sysroot-ro.stamp"
 #define _OSTREE_COMPOSEFS_ROOT_STAMP "/run/ostree-composefs-root.stamp"
-
-#define autofree __attribute__ ((cleanup (cleanup_free)))
 
 static inline int
 path_is_on_readonly_fs (const char *path)
@@ -79,13 +78,6 @@ out:
   if (f)
     fclose (f);
   return cmdline;
-}
-
-static inline void
-cleanup_free (void *p)
-{
-  void **pp = (void **)p;
-  free (*pp);
 }
 
 static inline char *
@@ -139,7 +131,7 @@ get_aboot_root_slot (const char *slot_suffix)
 static inline char *
 get_ostree_target (void)
 {
-  autofree char *slot_suffix = read_proc_cmdline_key ("androidboot.slot_suffix");
+  g_autofree char *slot_suffix = read_proc_cmdline_key ("androidboot.slot_suffix");
   if (slot_suffix)
     return get_aboot_root_slot (slot_suffix);
 
