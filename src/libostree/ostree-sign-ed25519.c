@@ -362,14 +362,15 @@ ostree_sign_ed25519_set_sk (OstreeSign *self, GVariant *secret_key, GError **err
 
   gsize n_elements = 0;
 
+  g_autofree guchar *secret_key_buf = NULL;
   if (g_variant_is_of_type (secret_key, G_VARIANT_TYPE_STRING))
     {
       const gchar *sk_ascii = g_variant_get_string (secret_key, NULL);
-      sign->secret_key = g_base64_decode (sk_ascii, &n_elements);
+      secret_key_buf = g_base64_decode (sk_ascii, &n_elements);
     }
   else if (g_variant_is_of_type (secret_key, G_VARIANT_TYPE_BYTESTRING))
     {
-      sign->secret_key
+      secret_key_buf
           = (guchar *)g_variant_get_fixed_array (secret_key, &n_elements, sizeof (guchar));
     }
   else
@@ -379,6 +380,8 @@ ostree_sign_ed25519_set_sk (OstreeSign *self, GVariant *secret_key, GError **err
 
   if (!validate_length (n_elements, OSTREE_SIGN_ED25519_SECKEY_SIZE, error))
     return glnx_prefix_error (error, "Invalid ed25519 secret key");
+
+  sign->secret_key = g_steal_pointer (&secret_key_buf);
 
   return TRUE;
 }
