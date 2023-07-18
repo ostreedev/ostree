@@ -32,6 +32,7 @@
 
 #include "ostree-cmd-private.h"
 #include "ostree-core-private.h"
+#include "ostree-sysroot-private.h"
 #include "ostree.h"
 
 #ifdef HAVE_LIBMOUNT
@@ -85,29 +86,6 @@ path_kill_slashes (char *path)
   return path;
 }
 
-/* Written by ostree-sysroot-deploy.c. We parse out the stateroot here since we
- * need to know it to mount /var. Unfortunately we can't easily use the
- * libostree API to find the booted deployment since /boot might not have been
- * mounted yet.
- */
-static char *
-stateroot_from_ostree_cmdline (const char *ostree_cmdline, GError **error)
-{
-  static GRegex *regex;
-  static gsize regex_initialized;
-  if (g_once_init_enter (&regex_initialized))
-    {
-      regex = g_regex_new ("^/ostree/boot.[01]/([^/]+)/", 0, 0, NULL);
-      g_assert (regex);
-      g_once_init_leave (&regex_initialized, 1);
-    }
-
-  g_autoptr (GMatchInfo) match = NULL;
-  if (!g_regex_match (regex, ostree_cmdline, 0, &match))
-    return glnx_null_throw (error, "Failed to parse %s", ostree_cmdline);
-
-  return g_match_info_fetch (match, 1);
-}
 #endif
 
 /* Forcibly enable our internal units, since we detected ostree= on the kernel cmdline */
@@ -159,10 +137,14 @@ fstab_generator (const char *ostree_cmdline, const char *normal_dir, const char 
   static const char fstab_path[] = "/etc/fstab";
   static const char var_path[] = "/var";
 
-  /* ostree-prepare-root was patched to write the stateroot to this file */
-  g_autofree char *stateroot = stateroot_from_ostree_cmdline (ostree_cmdline, error);
-  if (!stateroot)
-    return FALSE;
+  /* Written by ostree-sysroot-deploy.c. We parse out the stateroot here since we
+   * need to know it to mount /var. Unfortunately we can't easily use the
+   * libostree API to find the booted deployment since /boot might not have been
+   * mounted yet.
+   */
+  g_autofree char *stateroot = NULL;
+  if (!_ostree_sysroot_parse_bootlink (ostree_cmdline, NULL, &stateroot, NULL, NULL, error))
+    return glnx_prefix_error (error, "Parsing stateroot");
 
   /* Load /etc/fstab if it exists, and look for a /var mount */
   g_autoptr (OtLibMountFile) fstab = setmntent (fstab_path, "re");
