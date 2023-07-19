@@ -270,26 +270,14 @@ int
 main (int argc, char *argv[])
 {
   char srcpath[PATH_MAX];
+  struct stat stbuf;
 
   const char *root_arg = NULL;
-  bool we_mounted_proc = false;
   g_autoptr (GError) error = NULL;
 
   if (argc < 2)
     err (EXIT_FAILURE, "usage: ostree-prepare-root SYSROOT");
   root_arg = argv[1];
-
-  struct stat stbuf;
-  if (stat ("/proc/cmdline", &stbuf) < 0)
-    {
-      if (errno != ENOENT)
-        err (EXIT_FAILURE, "stat(\"/proc/cmdline\") failed");
-      /* We need /proc mounted for /proc/cmdline and realpath (on musl) to
-       * work: */
-      if (mount ("proc", "/proc", "proc", MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to mount proc on /proc");
-      we_mounted_proc = 1;
-    }
 
   /* This is the final target where we should prepare the rootfs.  The usual
    * case with systemd in the initramfs is that root_mountpoint = "/sysroot".
@@ -300,13 +288,6 @@ main (int argc, char *argv[])
   if (root_mountpoint == NULL)
     err (EXIT_FAILURE, "realpath(\"%s\")", root_arg);
   char *deploy_path = resolve_deploy_path (root_mountpoint);
-
-  if (we_mounted_proc)
-    {
-      /* Leave the filesystem in the state that we found it: */
-      if (umount ("/proc"))
-        err (EXIT_FAILURE, "failed to umount proc from /proc");
-    }
 
   /* Query the repository configuration - this is an operating system builder
    * choice.  More info: https://github.com/ostreedev/ostree/pull/1767
