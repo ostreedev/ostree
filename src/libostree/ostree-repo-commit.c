@@ -1584,7 +1584,7 @@ static const char *
 devino_cache_lookup (OstreeRepo           *self,
                      OstreeRepoCommitModifier *modifier,
                      guint32               device,
-                     guint32               inode)
+                     guint64               inode)
 {
   OstreeDevIno dev_ino_key;
   OstreeDevIno *dev_ino_val;
