@@ -119,29 +119,6 @@ read_proc_cmdline_key (const char *key)
   return ret;
 }
 
-static inline char *
-get_aboot_root_slot (const char *slot_suffix)
-{
-  if (strcmp (slot_suffix, "_a") == 0)
-    return strdup ("/ostree/root.a");
-  else if (strcmp (slot_suffix, "_b") == 0)
-    return strdup ("/ostree/root.b");
-
-  errx (EXIT_FAILURE, "androidboot.slot_suffix invalid: %s", slot_suffix);
-
-  return NULL;
-}
-
-static inline char *
-get_ostree_target (void)
-{
-  autofree char *slot_suffix = read_proc_cmdline_key ("androidboot.slot_suffix");
-  if (slot_suffix)
-    return get_aboot_root_slot (slot_suffix);
-
-  return read_proc_cmdline_key ("ostree");
-}
-
 /* This is an API for other projects to determine whether or not the
  * currently running system is ostree-controlled.
  */

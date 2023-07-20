@@ -63,8 +63,8 @@ main (int argc, char *argv[])
    * exit so that we don't error, but at the same time work where switchroot
    * is PID 1 (and so hasn't created /run/ostree-booted).
    */
-  autofree char *ostree_target = get_ostree_target ();
-  if (!ostree_target)
+  autofree char *ostree_cmdline = read_proc_cmdline_key ("ostree");
+  if (!ostree_cmdline)
     exit (EXIT_SUCCESS);
 
   /* See comments in ostree-prepare-root.c for this.
@@ -77,7 +77,7 @@ main (int argc, char *argv[])
 
   {
     g_autoptr (GError) local_error = NULL;
-    if (!ostree_cmd__private__ ()->ostree_system_generator (ostree_target, arg_dest, NULL,
+    if (!ostree_cmd__private__ ()->ostree_system_generator (ostree_cmdline, arg_dest, NULL,
                                                             arg_dest_late, &local_error))
       errx (EXIT_FAILURE, "%s", local_error->message);
   }
