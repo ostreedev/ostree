@@ -82,7 +82,10 @@ AM_COND_IF([BUILDOPT_TSAN],
 LT_PREREQ([2.2.4])
 LT_INIT([disable-static])
 
-OSTREE_FEATURES=""
+dnl We have an always-on feature now to signify the fix for 
+dnl https://github.com/ostreedev/ostree/pull/2874/commits/de6fddc6adee09a93901243dc7074090828a1912
+dnl "commit: fix ostree deployment on 64-bit inode fs"
+OSTREE_FEATURES="inode64"
 AC_SUBST([OSTREE_FEATURES])
 
 GLIB_TESTS
