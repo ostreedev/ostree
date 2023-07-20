@@ -116,9 +116,9 @@ resolve_deploy_path (const char *root_mountpoint)
   char destpath[PATH_MAX];
   struct stat stbuf;
   char *deploy_path;
-  autofree char *ostree_target = get_ostree_target ();
+  autofree char *ostree_cmdline = read_proc_cmdline_key ("ostree");
 
-  if (snprintf (destpath, sizeof (destpath), "%s/%s", root_mountpoint, ostree_target) < 0)
+  if (snprintf (destpath, sizeof (destpath), "%s/%s", root_mountpoint, ostree_cmdline) < 0)
     err (EXIT_FAILURE, "failed to assemble ostree target path");
   if (lstat (destpath, &stbuf) < 0)
     err (EXIT_FAILURE, "Couldn't find specified OSTree root '%s'", destpath);

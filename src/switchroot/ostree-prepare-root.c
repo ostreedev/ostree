@@ -106,6 +106,29 @@ sysroot_is_configured_ro (const char *sysroot)
   return g_key_file_get_boolean (repo_config, "sysroot", "readonly", NULL);
 }
 
+static inline char *
+get_aboot_root_slot (const char *slot_suffix)
+{
+  if (strcmp (slot_suffix, "_a") == 0)
+    return strdup ("/ostree/root.a");
+  else if (strcmp (slot_suffix, "_b") == 0)
+    return strdup ("/ostree/root.b");
+
+  errx (EXIT_FAILURE, "androidboot.slot_suffix invalid: %s", slot_suffix);
+
+  return NULL;
+}
+
+static inline char *
+get_ostree_target (void)
+{
+  autofree char *slot_suffix = read_proc_cmdline_key ("androidboot.slot_suffix");
+  if (slot_suffix)
+    return get_aboot_root_slot (slot_suffix);
+
+  return read_proc_cmdline_key ("ostree");
+}
+
 static char *
 resolve_deploy_path (const char *root_mountpoint)
 {
@@ -114,7 +137,7 @@ resolve_deploy_path (const char *root_mountpoint)
   char *deploy_path;
   autofree char *ostree_target = get_ostree_target ();
   if (!ostree_target)
-    errx (EXIT_FAILURE, "No ostree= cmdline");
+    errx (EXIT_FAILURE, "No ostree target");
 
   if (snprintf (destpath, sizeof (destpath), "%s/%s", root_mountpoint, ostree_target) < 0)
     err (EXIT_FAILURE, "failed to assemble ostree target path");
