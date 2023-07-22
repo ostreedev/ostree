@@ -1,3 +1,6 @@
+use std::os::unix::fs::MetadataExt;
+use std::path::Path;
+
 use anyhow::Result;
 use ostree_ext::glib;
 use xshell::cmd;
@@ -33,6 +36,15 @@ pub(crate) fn itest_composefs() -> Result<()> {
     let metadata = glib::VariantDict::new(Some(&metadata));
 
     assert_eq!(metadata.lookup::<bool>("composefs").unwrap(), Some(true));
+
+    let private_dir = Path::new("/run/ostree/.private");
+    assert_eq!(
+        std::fs::symlink_metadata(private_dir)?.mode() & !libc::S_IFMT,
+        0
+    );
+    assert!(std::fs::read_dir(private_dir.join("cfsroot-lower"))?
+        .next()
+        .is_none());
 
     Ok(())
 }
