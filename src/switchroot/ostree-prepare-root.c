@@ -82,6 +82,7 @@ const char *config_roots[] = { "/usr/lib", "/etc" };
 
 #define SYSROOT_KEY "sysroot"
 #define READONLY_KEY "readonly"
+#define ETC_KEY "etc" // Possible values = "persistent" "transient"
 
 // The kernel argument we support to configure composefs.
 #define OT_COMPOSEFS_KARG "ot-composefs"
@@ -324,6 +325,34 @@ load_composefs_config (GError **error)
     }
 
   return g_steal_pointer (&ret);
+}
+
+static gboolean
+find_etc (const char **out_path, GError **error)
+{
+  // Look for /etc
+  if (fstatat (AT_FDCWD, "etc") == 0)
+    {
+      *out_path = "etc";
+      return TRUE;
+    }
+  else if (errno != ENOENT)
+    {
+      return glnx_throw_errno_prefix (error, "failed to stat etc");
+    }
+
+  // Look for /usr/etc
+  if (fstatat (AT_FDCWD, "usr/etc") == 0)
+    {
+      *out_path = "usr/etc";
+      return TRUE;
+    }
+  else if (errno != ENOENT)
+    {
+      return glnx_throw_errno_prefix (error, "failed to stat etc");
+    }
+  *out_path = NULL;
+  return TRUE;
 }
 
 int
@@ -569,18 +598,58 @@ main (int argc, char *argv[])
         }
     }
 
+  g_autofree char *etc_config = NULL;
+  if (!ot_keyfile_get_value_with_default (config, SYSROOT_KEY, ETC_KEY, "persistent", &etc_config,
+                                          error))
+    errx (EXIT_FAILURE, "failed to parse %s.%s: %s", SYSROOT_KEY, ETC_KEY, error->message);
+  bool etc_transient = FALSE;
+  if (g_str_equal (etc_config, "persistent"))
+    etc_transient = false;
+  else if (g_str_equal (etc_config, "transient"))
+    etc_transient = true;
+  else
+    errx (EXIT_FAILURE, "Invalid %s.%s: %s", SYSROOT_KEY, ETC_KEY, etc_config);
+
+  // In theory these could be distinct, but no reason to try to support it.
+  if (etc_transient && !sysroot_readonly)
+    errx (EXIT_FAILURE, "Must specify %s.%s for %s.%s=transient", SYSROOT_KEY, READONLY_KEY,
+          SYSROOT_KEY, ETC_KEY);
+
   /* Prepare /etc.
    * No action required if sysroot is writable. Otherwise, a bind-mount for
    * the deployment needs to be created and remounted as read/write. */
   if (sysroot_readonly || using_composefs)
     {
-      /* Bind-mount /etc (at deploy path), and remount as writable. */
-      if (mount ("etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to prepare /etc bind-mount at /sysroot.tmp/etc");
-      if (mount (TMP_SYSROOT "/etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_REMOUNT | MS_SILENT,
-                 NULL)
-          < 0)
-        err (EXIT_FAILURE, "failed to make writable /etc bind-mount at /sysroot.tmp/etc");
+      if (etc_transient)
+        {
+          /* Do we have a persistent overlayfs for /usr?  If so, mount it now. */
+          g_autofree char *etc_ovldir
+              = g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "etc-transient", NULL);
+          if (mkdirat (AT_FDCWD, etc_ovldir, 0700) < 0)
+            err (EXIT_FAILURE, "Failed to create %s", etc_ovldir);
+          g_autofree char *upper = g_build_filename (etc_ovldir, "upper", NULL);
+          g_autofree char *work = g_build_filename (etc_ovldir, "work", NULL);
+
+          const char *etc_lower = NULL;
+          if (!find_etc (&etc_lower, &error))
+            errx (EXIT_FAILURE, "Failed to find etc: %s", error->message);
+
+          if (etc_lower)
+            {
+              g_autofree char etc_ovl_options
+                = g_strdup_printf ("lowerdir=%s,upperdir=%s,workdir=%s", etc_lower, upper, work);
+              if (g_str_equal (""))
+        }
+      else
+        {
+          /* Bind-mount /etc (at deploy path), and remount as writable. */
+          if (mount ("etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+            err (EXIT_FAILURE, "failed to prepare /etc bind-mount at /sysroot.tmp/etc");
+          if (mount (TMP_SYSROOT "/etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_REMOUNT | MS_SILENT,
+                     NULL)
+              < 0)
+            err (EXIT_FAILURE, "failed to make writable /etc bind-mount at /sysroot.tmp/etc");
+        }
     }
 
   /* Prepare /usr.
