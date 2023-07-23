@@ -25,27 +25,6 @@
 G_BEGIN_DECLS
 
 typedef struct _OstreeKernelArgs OstreeKernelArgs;
-typedef struct _OstreeKernelArgsEntry OstreeKernelArgsEntry;
-
-GHashTable *_ostree_kernel_arg_get_kargs_table (OstreeKernelArgs *kargs);
-
-GPtrArray *_ostree_kernel_arg_get_key_array (OstreeKernelArgs *kargs);
-
-char *_ostree_kernel_args_entry_get_key (const OstreeKernelArgsEntry *e);
-
-char *_ostree_kernel_args_entry_get_value (const OstreeKernelArgsEntry *e);
-
-void _ostree_kernel_args_entry_set_key (OstreeKernelArgsEntry *e, char *key);
-
-void _ostree_kernel_args_entry_set_value (OstreeKernelArgsEntry *e, char *value);
-
-char *_ostree_kernel_args_get_key_index (const OstreeKernelArgs *kargs, int i);
-
-char *_ostree_kernel_args_get_value_index (const OstreeKernelArgs *kargs, int i);
-
-OstreeKernelArgsEntry *_ostree_kernel_args_entry_new (void);
-
-void _ostree_kernel_args_entry_value_free (OstreeKernelArgsEntry *e);
 
 _OSTREE_PUBLIC
 void ostree_kernel_args_free (OstreeKernelArgs *kargs);
