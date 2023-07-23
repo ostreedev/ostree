@@ -344,8 +344,18 @@ main (int argc, char *argv[])
     errx (EXIT_FAILURE, "Failed to parse config: %s", error->message);
 
   gboolean sysroot_readonly = FALSE;
-  if (!ot_keyfile_get_boolean_with_default (config, SYSROOT_KEY, READONLY_KEY, FALSE,
-                                            &sysroot_readonly, &error))
+
+  // We always parse the composefs config, because we want to detect and error
+  // out if it's enabled, but not supported at compile time.
+  g_autoptr (ComposefsConfig) composefs_config = load_composefs_config (&error);
+  if (!composefs_config)
+    errx (EXIT_FAILURE, "%s", error->message);
+
+  // If composefs is enabled, that also implies sysroot.readonly=true because it's
+  // the new default we want to use (not because it's actually required)
+  const bool sysroot_readonly_default = composefs_config->enabled == OT_TRISTATE_YES;
+  if (!ot_keyfile_get_boolean_with_default (config, SYSROOT_KEY, READONLY_KEY,
+                                            sysroot_readonly_default, &sysroot_readonly, &error))
     errx (EXIT_FAILURE, "Failed to parse sysroot.readonly value: %s", error->message);
 
   /* This is the final target where we should prepare the rootfs.  The usual
@@ -398,11 +408,6 @@ main (int argc, char *argv[])
   GVariantBuilder metadata_builder;
   g_variant_builder_init (&metadata_builder, G_VARIANT_TYPE ("a{sv}"));
 
-  // We always parse the composefs config, because we want to detect and error
-  // out if it's enabled, but not supported at compile time.
-  g_autoptr (ComposefsConfig) composefs_config = load_composefs_config (&error);
-  if (!composefs_config)
-    errx (EXIT_FAILURE, "%s", error->message);
   // Tracks if we did successfully enable it at runtime
   bool using_composefs = false;
 
