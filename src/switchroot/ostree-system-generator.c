@@ -67,14 +67,6 @@ main (int argc, char *argv[])
   if (!ostree_cmdline)
     exit (EXIT_SUCCESS);
 
-  /* See comments in ostree-prepare-root.c for this.
-   *
-   * It's a lot easier for various bits of userspace to check for
-   * a file versus parsing the kernel cmdline.  So let's ensure
-   * the stamp file is created here too.
-   */
-  touch_run_ostree ();
-
   {
     g_autoptr (GError) local_error = NULL;
     if (!ostree_cmd__private__ ()->ostree_system_generator (ostree_cmdline, arg_dest, NULL,
