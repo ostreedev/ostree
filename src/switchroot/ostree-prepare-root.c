@@ -376,8 +376,10 @@ main (int argc, char *argv[])
   /* Fall back to querying the repository configuration in the target disk.
    * This is an operating system builder choice.  More info:
    * https://github.com/ostreedev/ostree/pull/1767
+   * However, we only do this if composefs is not enabled, because we don't
+   * want to parse the target root filesystem before verifying its integrity.
    */
-  if (!sysroot_readonly)
+  if (!sysroot_readonly && composefs_config->enabled != OT_TRISTATE_YES)
     {
       sysroot_readonly = sysroot_is_configured_ro (root_arg);
       // Encourage porting to the new config file
