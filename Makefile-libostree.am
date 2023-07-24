@@ -186,6 +186,7 @@ EXTRA_DIST += \
 	$(NULL)
 
 libostree_1_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/bsdiff -I$(srcdir)/libglnx -I$(srcdir)/composefs -I$(srcdir)/src/libotutil -I$(srcdir)/src/libotcore -I$(srcdir)/src/libostree -I$(builddir)/src/libostree \
+    -I$(srcdir)/src/switchroot \
 	$(OT_INTERNAL_GIO_UNIX_CFLAGS) $(OT_INTERNAL_GPGME_CFLAGS) $(OT_DEP_LZMA_CFLAGS) $(OT_DEP_ZLIB_CFLAGS) $(OT_DEP_CRYPTO_CFLAGS) \
 	-fvisibility=hidden '-D_OSTREE_PUBLIC=__attribute__((visibility("default"))) extern' \
 	-DPKGLIBEXECDIR=\"$(pkglibexecdir)\"

@@ -32,6 +32,7 @@
 
 #include "ostree-cmd-private.h"
 #include "ostree-core-private.h"
+#include "ostree-mount-util.h"
 #include "ostree-sysroot-private.h"
 #include "ostree.h"
 
@@ -242,9 +243,23 @@ fstab_generator (const char *ostree_cmdline, const char *normal_dir, const char 
 
 /* Implementation of ostree-system-generator */
 gboolean
-_ostree_impl_system_generator (const char *ostree_cmdline, const char *normal_dir,
-                               const char *early_dir, const char *late_dir, GError **error)
+_ostree_impl_system_generator (const char *normal_dir, const char *early_dir, const char *late_dir,
+                               GError **error)
 {
+  /* We conflict with the magic ostree-mount-deployment-var file for ostree-prepare-root.
+   * If this file is present, we have nothing to do! */
+  if (unlinkat (AT_FDCWD, INITRAMFS_MOUNT_VAR, 0) == 0)
+    return TRUE;
+
+  /* If we're installed on a system which isn't using OSTree for boot (e.g.
+   * package installed as a dependency for flatpak or whatever), silently
+   * exit so that we don't error, but at the same time work where switchroot
+   * is PID 1 (and so hasn't created /run/ostree-booted).
+   */
+  autofree char *ostree_cmdline = read_proc_cmdline_key ("ostree");
+  if (!ostree_cmdline)
+    return TRUE;
+
   if (!require_internal_units (normal_dir, early_dir, late_dir, error))
     return FALSE;
   if (!fstab_generator (ostree_cmdline, normal_dir, early_dir, late_dir, error))
