@@ -964,6 +964,8 @@ ostree_sysroot_load (OstreeSysroot *self, GCancellable *cancellable, GError **er
 static gboolean
 ensure_repo (OstreeSysroot *self, GError **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("Opening sysroot repo", error);
+
   if (self->repo != NULL)
     return TRUE;
   if (!ensure_sysroot_fd (self, error))
@@ -1002,6 +1004,8 @@ ensure_repo (OstreeSysroot *self, GError **error)
 gboolean
 ostree_sysroot_initialize (OstreeSysroot *self, GError **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("Initializing sysroot", error);
+
   if (!ensure_sysroot_fd (self, error))
     return FALSE;
 
