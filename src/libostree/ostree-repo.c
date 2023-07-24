@@ -2838,8 +2838,9 @@ static gboolean
 append_one_remote_config (OstreeRepo *self, GFile *path, GCancellable *cancellable, GError **error)
 {
   g_autoptr (GKeyFile) remotedata = g_key_file_new ();
-  if (!g_key_file_load_from_file (remotedata, gs_file_get_path_cached (path), 0, error))
-    return FALSE;
+  const char *pathname = gs_file_get_path_cached (path);
+  if (!g_key_file_load_from_file (remotedata, pathname, 0, error))
+    return glnx_prefix_error (error, "Failed to parse %s", pathname);
 
   return add_remotes_from_keyfile (self, remotedata, path, error);
 }
@@ -3245,6 +3246,7 @@ reload_core_config (OstreeRepo *self, GCancellable *cancellable, GError **error)
 static gboolean
 reload_remote_config (OstreeRepo *self, GCancellable *cancellable, GError **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("Reloading remotes", error);
 
   g_mutex_lock (&self->remotes_lock);
   g_hash_table_remove_all (self->remotes);
