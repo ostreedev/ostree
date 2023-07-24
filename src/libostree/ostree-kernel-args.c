@@ -18,7 +18,7 @@
 #include "config.h"
 
 #include "libglnx.h"
-#include "ostree-kernel-args.h"
+#include "ostree-kernel-args-private.h"
 #include "otutil.h"
 
 #include <string.h>
