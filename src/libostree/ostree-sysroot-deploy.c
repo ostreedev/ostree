@@ -696,13 +696,6 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
       if (!glnx_link_tmpfile_at (&tmpf, GLNX_LINK_TMPFILE_REPLACE, osdeploy_dfd, composefs_cfs_path,
                                  error))
         return FALSE;
-
-      /* This is where the erofs image will be temporarily mounted */
-      g_autofree char *composefs_mnt_path
-          = g_strdup_printf ("%s/.ostree.mnt", checkout_target_name);
-
-      if (!glnx_shutil_mkdir_p_at (osdeploy_dfd, composefs_mnt_path, 0775, cancellable, error))
-        return FALSE;
     }
 #endif
 

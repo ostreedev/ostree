@@ -312,6 +312,11 @@ main (int argc, char *argv[])
     err (EXIT_FAILURE, "realpath(\"%s\")", root_arg);
   char *deploy_path = resolve_deploy_path (root_mountpoint);
 
+  if (mkdirat (AT_FDCWD, OTCORE_RUN_OSTREE, 0755) < 0)
+    err (EXIT_FAILURE, "Failed to create %s", OTCORE_RUN_OSTREE);
+  if (mkdirat (AT_FDCWD, OTCORE_RUN_OSTREE_PRIVATE, 0) < 0)
+    err (EXIT_FAILURE, "Failed to create %s", OTCORE_RUN_OSTREE_PRIVATE);
+
   /* Query the repository configuration - this is an operating system builder
    * choice.  More info: https://github.com/ostreedev/ostree/pull/1767
    */
@@ -406,10 +411,9 @@ main (int argc, char *argv[])
         }
 
       cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
-
-      if (snprintf (srcpath, sizeof (srcpath), "%s/.ostree.mnt", deploy_path) < 0)
-        err (EXIT_FAILURE, "failed to assemble /boot/loader path");
-      cfs_options.image_mountdir = srcpath;
+      cfs_options.image_mountdir = OSTREE_COMPOSEFS_LOWERMNT;
+      if (mkdirat (AT_FDCWD, OSTREE_COMPOSEFS_LOWERMNT, 0700) < 0)
+        err (EXIT_FAILURE, "Failed to create %s", OSTREE_COMPOSEFS_LOWERMNT);
 
       if (expected_digest != NULL)
         {

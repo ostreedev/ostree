@@ -43,8 +43,19 @@ bool otcore_ed25519_init (void);
 gboolean otcore_validate_ed25519_signature (GBytes *data, GBytes *pubkey, GBytes *signature,
                                             bool *out_valid, GError **error);
 
+// Our directory with transient state (eventually /run/ostree-booted should be a link to
+// /run/ostree/booted)
+#define OTCORE_RUN_OSTREE "/run/ostree"
+// This sub-directory is transient state that should not be visible to other processes in general;
+// we make it with mode 0 (which requires CAP_DAC_OVERRIDE to pass through).
+#define OTCORE_RUN_OSTREE_PRIVATE "/run/ostree/.private"
+
 // The name of the composefs metadata root
 #define OSTREE_COMPOSEFS_NAME ".ostree.cfs"
+// The temporary directory used for the EROFS mount; it's in the .private directory
+// to help ensure that at least unprivileged code can't transiently see the underlying
+// EROFS mount if we somehow leaked it (but it *should* be unmounted always).
+#define OSTREE_COMPOSEFS_LOWERMNT OTCORE_RUN_OSTREE_PRIVATE "/cfsroot-lower"
 
 // The file written in the initramfs which contains an a{sv} of metadata
 // from ostree-prepare-root.
