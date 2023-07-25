@@ -110,7 +110,7 @@ the `/etc` issue above, it may be better to not stage deployments.
 While OSTree parallel installs deployments cleanly inside the
 `/ostree` directory, ultimately it has to control the system's `/boot`
 directory.  The way this works is via the
-[Boot Loader Specification](http://www.freedesktop.org/wiki/Specifications/BootLoaderSpec),
+[Boot Loader Specification](https://uapi-group.org/specifications/specs/boot_loader_specification/),
 which is a standard for bootloader-independent drop-in configuration
 files.
 
