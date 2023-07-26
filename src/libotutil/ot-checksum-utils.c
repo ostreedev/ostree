@@ -93,6 +93,7 @@ void
 ot_checksum_update (OtChecksum *checksum, const guint8 *buf, size_t len)
 {
   OtRealChecksum *real = (OtRealChecksum *)checksum;
+  g_assert (buf);
   g_return_if_fail (real->initialized);
   g_return_if_fail (!real->closed);
 #if defined(HAVE_OPENSSL)
@@ -108,6 +109,7 @@ static void
 ot_checksum_get_digest_internal (OtRealChecksum *real, guint8 *buf, size_t buflen)
 {
   g_return_if_fail (real->initialized);
+  g_assert (buf);
   g_assert_cmpint (buflen, ==, _OSTREE_SHA256_DIGEST_LEN);
 #if defined(HAVE_OPENSSL)
   guint digest_len = buflen;
