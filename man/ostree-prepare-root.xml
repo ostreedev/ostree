@@ -101,6 +101,23 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
     </refsect1>
 
     <refsect1>
+        <title>Configuration</title>
+
+        <para>
+            The <literal>/usr/lib/ostree/prepare-root.conf</literal> (or <literal>/etc/ostree/prepare-root.conf</literal>) config file is parsed by <literal>ostree-prepare-root</literal>.  This file must
+            be present in the initramfs.  The default dracut module will copy it from the real root if present.
+        </para>
+
+        <variablelist>
+            <varlistentry>
+                <term><varname>sysroot.readonly</varname></term>
+                <listitem><para>A boolean value; the default is false.  If this is set to <literal>true</literal>, then the <literal>/sysroot</literal> mount point is mounted read-only.</para></listitem>
+          </varlistentry>
+        </variablelist>
+    </refsect1>
+
+
+    <refsect1>
         <title>systemd</title>
 
         <para>
