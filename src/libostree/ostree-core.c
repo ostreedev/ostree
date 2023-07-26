@@ -2093,11 +2093,15 @@ _ostree_verify_metadata_object (OstreeObjectType objtype, const char *expected_c
 {
   g_assert (expected_checksum);
 
+  const guint8 *data = ot_variant_get_data (metadata, error);
+  if (!data)
+    return FALSE;
+
   g_auto (OtChecksum) hasher = {
     0,
   };
   ot_checksum_init (&hasher);
-  ot_checksum_update (&hasher, g_variant_get_data (metadata), g_variant_get_size (metadata));
+  ot_checksum_update (&hasher, data, g_variant_get_size (metadata));
 
   char actual_checksum[OSTREE_SHA256_STRING_LEN + 1];
   ot_checksum_get_hexdigest (&hasher, actual_checksum, sizeof (actual_checksum));

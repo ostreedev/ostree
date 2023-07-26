@@ -38,4 +38,6 @@ GVariantBuilder *ot_util_variant_builder_from_variant (GVariant *variant, const 
 
 gboolean ot_variant_bsearch_str (GVariant *array, const char *str, int *out_pos);
 
+const guint8 *ot_variant_get_data (GVariant *variant, GError **error);
+
 G_END_DECLS
