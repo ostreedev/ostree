@@ -464,10 +464,12 @@ main (int argc, char *argv[])
               metadata, OSTREE_COMPOSEFS_DIGEST_KEY_V0, G_VARIANT_TYPE_BYTESTRING);
           if (cfs_digest_v == NULL || g_variant_get_size (cfs_digest_v) != OSTREE_SHA256_DIGEST_LEN)
             errx (EXIT_FAILURE, "Signature validation requested, but no valid digest in commit");
+          const guint8 *cfs_digest_buf = ot_variant_get_data (cfs_digest_v, &error);
+          if (!cfs_digest_buf)
+            errx (EXIT_FAILURE, "Failed to query digest: %s", error->message);
 
           expected_digest_owned = g_malloc (OSTREE_SHA256_STRING_LEN + 1);
-          ot_bin2hex (expected_digest_owned, g_variant_get_data (cfs_digest_v),
-                      g_variant_get_size (cfs_digest_v));
+          ot_bin2hex (expected_digest_owned, cfs_digest_buf, g_variant_get_size (cfs_digest_v));
           expected_digest = expected_digest_owned;
         }
 

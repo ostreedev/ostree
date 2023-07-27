@@ -146,3 +146,21 @@ ot_variant_bsearch_str (GVariant *array, const char *str, int *out_pos)
   *out_pos = imid;
   return FALSE;
 }
+
+/**
+ * ot_variant_get_data:
+ * @variant: A variant
+ * @error: An error
+ *
+ * `g_variant_get_data` says it can return `NULL`, which many callers are not prepared
+ * to handle.  Return an error in this case.
+ *
+ **/
+const guint8 *
+ot_variant_get_data (GVariant *variant, GError **error)
+{
+  const guint8 *data = g_variant_get_data (variant);
+  if (!data)
+    return glnx_null_throw (error, "Corrupted serialized variant");
+  return data;
+}
