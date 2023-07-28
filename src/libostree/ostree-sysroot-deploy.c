@@ -1608,7 +1608,9 @@ sync_in_thread (void *ptr)
   SyncData *syncdata = ptr;
   // Ensure that the caller is blocked waiting
   g_mutex_lock (&syncdata->mutex);
+  ot_journal_print (LOG_INFO, "Starting global sync()");
   sync ();
+  ot_journal_print (LOG_INFO, "Completed global sync()");
   // Signal success
   syncdata->success = true;
   g_cond_broadcast (&syncdata->cond);
@@ -1627,8 +1629,10 @@ full_system_sync (OstreeSysroot *self, SyncStats *out_stats, GCancellable *cance
 {
   GLNX_AUTO_PREFIX_ERROR ("Full sync", error);
   guint64 start_msec = g_get_monotonic_time () / 1000;
+  ot_journal_print (LOG_INFO, "Starting syncfs() for system root");
   if (syncfs (self->sysroot_fd) != 0)
     return glnx_throw_errno_prefix (error, "syncfs(sysroot)");
+  ot_journal_print (LOG_INFO, "Completed syncfs() for system root");
   guint64 end_msec = g_get_monotonic_time () / 1000;
 
   out_stats->root_syncfs_msec = (end_msec - start_msec);
@@ -1638,8 +1642,10 @@ full_system_sync (OstreeSysroot *self, SyncStats *out_stats, GCancellable *cance
 
   start_msec = g_get_monotonic_time () / 1000;
   g_assert_cmpint (self->boot_fd, !=, -1);
+  ot_journal_print (LOG_INFO, "Starting freeze/thaw cycle for system root");
   if (!fsfreeze_thaw_cycle (self, self->boot_fd, cancellable, error))
     return FALSE;
+  ot_journal_print (LOG_INFO, "Completed freeze/thaw cycle for system root");
   end_msec = g_get_monotonic_time () / 1000;
   out_stats->boot_syncfs_msec = (end_msec - start_msec);
 
@@ -3759,6 +3765,7 @@ _ostree_sysroot_finalize_staged_inner (OstreeSysroot *self, GCancellable *cancel
   if (!sysroot_finalize_deployment (self, self->staged_deployment, merge_deployment, cancellable,
                                     error))
     return FALSE;
+  ot_journal_print (LOG_INFO, "Finalized deployment");
 
   /* Now, take ownership of the staged state, as normally the API below strips
    * it out.
@@ -3778,10 +3785,12 @@ _ostree_sysroot_finalize_staged_inner (OstreeSysroot *self, GCancellable *cancel
   if (!ostree_sysroot_simple_write_deployment (self, ostree_deployment_get_osname (staged), staged,
                                                merge_deployment, flags, cancellable, error))
     return FALSE;
+  ot_journal_print (LOG_INFO, "Finished writing deployment");
 
   /* Do the basic cleanup that may impact /boot, but not the repo pruning */
   if (!ostree_sysroot_prepare_cleanup (self, cancellable, error))
     return FALSE;
+  ot_journal_print (LOG_INFO, "Cleanup complete");
 
   // Cleanup will have closed some FDs, re-ensure writability
   if (!_ostree_sysroot_ensure_writable (self, error))
