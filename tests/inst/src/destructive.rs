@@ -388,6 +388,17 @@ fn impl_transaction_test<M: AsRef<str>>(
 
     assert_ne!(commitstates.booted.as_str(), commitstates.target.as_str());
 
+    // Also verify we didn't do a global sync()
+    {
+        let out = cmd!(
+            sh,
+            "journalctl -u ostree-finalize-staged --grep='Starting global sync'"
+        )
+        .ignore_status()
+        .read()?;
+        assert!(!out.contains("Starting global sync"));
+    }
+
     let rt = tokio::runtime::Runtime::new()?;
     let cycle_time_ms = (tdata.cycle_time.as_secs_f64() * 1000f64 * FORCE_REBOOT_AFTER_MUL) as u64;
     // Set when we're trying an interrupt strategy that isn't a reboot, so we will
@@ -537,6 +548,18 @@ fn impl_transaction_test<M: AsRef<str>>(
     }
 }
 
+// See ostree-sysroot.c; we want this off for our tests
+fn suppress_ostree_global_sync(sh: &xshell::Shell) -> Result<()> {
+    let dropindir = "/etc/systemd/system/ostree-finalize-staged.service.d";
+    std::fs::create_dir_all(dropindir)?;
+    std::fs::write(
+        Path::new(dropindir).join("50-suppress-sync.conf"),
+        "[Service]\nEnvironment=OSTREE_SYSROOT_OPTS=skip-sync\n",
+    )?;
+    cmd!(sh, "systemctl daemon-reload").run()?;
+    Ok(())
+}
+
 pub(crate) fn itest_transactionality() -> Result<()> {
     let sh = xshell::Shell::new()?;
     testinit()?;
@@ -582,6 +605,7 @@ pub(crate) fn itest_transactionality() -> Result<()> {
             // in our reboots, and it currently fails to start.  The less
             // we have in each reboot, the faster reboots are.
             cmd!(sh, "systemctl disable --now zincati").run()?;
+            suppress_ostree_global_sync(&sh)?;
             // And prepare for updates
             cmd!(sh, "rpm-ostree cleanup -pr").run()?;
             generate_update(&commit)?;
