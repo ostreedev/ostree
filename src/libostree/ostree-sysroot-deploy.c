@@ -872,26 +872,80 @@ prepare_deployment_etc (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeployme
 {
   GLNX_AUTO_PREFIX_ERROR ("Preparing /etc", error);
 
+  enum DirectoryState
+  {
+    DIRSTATE_NONEXISTENT,
+    DIRSTATE_EMPTY,
+    DIRSTATE_POPULATED,
+  };
+
+  enum DirectoryState etc_state;
+  {
+    gboolean exists = FALSE;
+    g_auto (GLnxDirFdIterator) dfd_iter = {
+      0,
+    };
+    if (!ot_dfd_iter_init_allow_noent (deployment_dfd, "etc", &dfd_iter, &exists, error))
+      return glnx_prefix_error (error, "Failed to stat etc in deployment");
+    if (!exists)
+      {
+        etc_state = DIRSTATE_NONEXISTENT;
+      }
+    else
+      {
+        struct dirent *dent;
+        if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, NULL, error))
+          return FALSE;
+        if (dent)
+          etc_state = DIRSTATE_POPULATED;
+        else
+          etc_state = DIRSTATE_EMPTY;
+      }
+  }
   struct stat stbuf;
-  if (!glnx_fstatat_allow_noent (deployment_dfd, "etc", &stbuf, AT_SYMLINK_NOFOLLOW, error))
-    return FALSE;
-  gboolean etc_exists = (errno == 0);
   if (!glnx_fstatat_allow_noent (deployment_dfd, "usr/etc", &stbuf, AT_SYMLINK_NOFOLLOW, error))
     return FALSE;
   gboolean usretc_exists = (errno == 0);
 
-  if (etc_exists)
+  switch (etc_state)
     {
-      if (usretc_exists)
-        return glnx_throw (error, "Tree contains both /etc and /usr/etc");
-      /* Compatibility hack */
-      if (!glnx_renameat (deployment_dfd, "etc", deployment_dfd, "usr/etc", error))
-        return FALSE;
-      usretc_exists = TRUE;
+    case DIRSTATE_NONEXISTENT:
+      break;
+    case DIRSTATE_EMPTY:
+      {
+        if (usretc_exists)
+          {
+            /* For now it's actually simpler to just remove the empty directory
+             * and have a symmetrical code path.
+             */
+            if (unlinkat (deployment_dfd, "etc", AT_REMOVEDIR) < 0)
+              return glnx_throw_errno_prefix (error, "Failed to remove empty etc");
+            etc_state = DIRSTATE_NONEXISTENT;
+          }
+        /* Otherwise, there's no /etc or /usr/etc, we'll assume they know what they're doing... */
+      }
+      break;
+    case DIRSTATE_POPULATED:
+      {
+        if (usretc_exists)
+          {
+            return glnx_throw (error, "Tree contains both /etc and /usr/etc");
+          }
+        else
+          {
+            /* Compatibility hack */
+            if (!glnx_renameat (deployment_dfd, "etc", deployment_dfd, "usr/etc", error))
+              return FALSE;
+            etc_state = DIRSTATE_NONEXISTENT;
+            usretc_exists = TRUE;
+          }
+      }
+      break;
     }
 
   if (usretc_exists)
     {
+      g_assert (etc_state == DIRSTATE_NONEXISTENT);
       /* We need copies of /etc from /usr/etc (so admins can use vi), and if
        * SELinux is enabled, we need to relabel.
        */
