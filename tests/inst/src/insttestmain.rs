@@ -24,6 +24,7 @@ const TESTS: &[StaticTest] = &[
     test!(sysroot::itest_sysroot_ro),
     test!(sysroot::itest_immutable_bit),
     test!(sysroot::itest_tmpfiles),
+    test!(sysroot::itest_osinit_unshare),
     test!(repobin::itest_basic),
     test!(repobin::itest_nofifo),
     test!(repobin::itest_mtime),
