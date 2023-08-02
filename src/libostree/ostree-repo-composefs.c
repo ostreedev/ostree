@@ -293,7 +293,6 @@ checkout_one_composefs_file_at (OstreeRepo *repo, const char *checksum, struct l
   const guint32 source_uid = g_file_info_get_attribute_uint32 (source_info, "unix::uid");
   const guint32 source_gid = g_file_info_get_attribute_uint32 (source_info, "unix::gid");
   const guint64 source_size = g_file_info_get_size (source_info);
-  const char *source_symlink_target = g_file_info_get_symlink_target (source_info);
   const gboolean is_symlink
       = (g_file_info_get_file_type (source_info) == G_FILE_TYPE_SYMBOLIC_LINK);
 
@@ -314,6 +313,7 @@ checkout_one_composefs_file_at (OstreeRepo *repo, const char *checksum, struct l
   lcfs_node_set_size (node, source_size);
   if (is_symlink)
     {
+      const char *source_symlink_target = g_file_info_get_symlink_target (source_info);
       if (lcfs_node_set_payload (node, source_symlink_target) != 0)
         return glnx_throw_errno (error);
     }
