@@ -6,6 +6,7 @@ use std::path::Path;
 use anyhow::Result;
 use ostree_ext::prelude::*;
 use ostree_ext::{gio, ostree};
+use xshell::cmd;
 
 use crate::test::*;
 
@@ -51,6 +52,17 @@ pub(crate) fn itest_tmpfiles() -> Result<()> {
     if skip_non_ostree_host() {
         return Ok(());
     }
+    let metadata = Path::new("/run/ostree").metadata()?;
+    assert_eq!(metadata.permissions().mode() & !libc::S_IFMT, 0o755);
+    Ok(())
+}
+
+pub(crate) fn itest_osinit_unshare() -> Result<()> {
+    if skip_non_ostree_host() {
+        return Ok(());
+    }
+    let sh = xshell::Shell::new()?;
+    cmd!(sh, "ostree admin os-init ostreetestsuite").run()?;
     let metadata = Path::new("/run/ostree").metadata()?;
     assert_eq!(metadata.permissions().mode() & !libc::S_IFMT, 0o755);
     Ok(())

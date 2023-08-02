@@ -38,9 +38,8 @@ ot_admin_builtin_os_init (int argc, char **argv, OstreeCommandInvocation *invoca
 
   g_autoptr (OstreeSysroot) sysroot = NULL;
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER
-                                              | OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
-                                          invocation, &sysroot, cancellable, error))
+                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER, invocation, &sysroot,
+                                          cancellable, error))
     return FALSE;
 
   if (!ostree_sysroot_ensure_initialized (sysroot, cancellable, error))
