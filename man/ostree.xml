@@ -426,14 +426,6 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                     Regenerate the repository summary metadata.
                 </para></listitem>
             </varlistentry>
-
-            <varlistentry>
-                <term><citerefentry><refentrytitle>ostree-trivial-httpd</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
-                
-                <listitem><para>
-                    Simple webserver.
-                </para></listitem>
-            </varlistentry>
         </variablelist>
     </refsect1>
 

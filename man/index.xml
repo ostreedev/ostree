@@ -197,10 +197,6 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
     </citerefentry></primaryie></indexentry>
 
     <indexentry><primaryie><citerefentry>
-        <refentrytitle>ostree-trivial-httpd</refentrytitle><manvolnum>1</manvolnum>
-    </citerefentry></primaryie></indexentry>
-
-    <indexentry><primaryie><citerefentry>
         <refentrytitle>rofiles-fuse</refentrytitle><manvolnum>1</manvolnum>
     </citerefentry></primaryie></indexentry>
 </index>

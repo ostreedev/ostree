@@ -61,7 +61,6 @@ BUILTINPROTO (summary);
 BUILTINPROTO (rev_parse);
 BUILTINPROTO (remote);
 BUILTINPROTO (write_refs);
-BUILTINPROTO (trivial_httpd);
 
 #undef BUILTINPROTO
 
