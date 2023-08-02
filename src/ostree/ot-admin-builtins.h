@@ -35,6 +35,7 @@ BUILTINPROTO (install);
 BUILTINPROTO (instutil);
 BUILTINPROTO (init_fs);
 BUILTINPROTO (undeploy);
+BUILTINPROTO (set_default);
 BUILTINPROTO (deploy);
 BUILTINPROTO (cleanup);
 BUILTINPROTO (pin);

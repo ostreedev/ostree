@@ -1,0 +1,83 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+    "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<!--
+SPDX-License-Identifier: LGPL-2.0+
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library. If not, see <https://www.gnu.org/licenses/>.
+-->
+
+<refentry id="ostree">
+
+    <refentryinfo>
+        <title>ostree admin set-default</title>
+        <productname>OSTree</productname>
+
+        <authorgroup>
+            <author>
+                <contrib>Developer</contrib>
+                <firstname>Colin</firstname>
+                <surname>Walters</surname>
+                <email>walters@verbum.org</email>
+            </author>
+        </authorgroup>
+    </refentryinfo>
+
+    <refmeta>
+        <refentrytitle>ostree admin set-default</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv>
+        <refname>ostree-admin-set-default</refname>
+        <refpurpose>Make deployment at a given index the default for the next boot</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv>
+            <cmdsynopsis>
+                <command>ostree admin set-default</command> <arg choice="req">INDEX</arg>
+            </cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1>
+        <title>Description</title>
+
+        <para>
+            Make the deployment at INDEX the default for the next boot.
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title>Example</title>
+        <para><command>$ ostree admin status</command></para>
+<programlisting>
+        * exampleos 67e382b11d213a402a5313e61cbc69dfd5ab93cb07.0
+            origin refspec: exampleos/buildmain/x86_64-runtime
+          exampleos ce19c41036cc45e49b0cecf6b157523c2105c4de1c.0
+            origin refspec: exampleos/buildmain/x86_64-runtime
+</programlisting>
+<para><command>$ ostree admin set-default 1</command></para>
+<programlisting>
+        Transaction complete; bootconfig swap: deployment count change: 0
+</programlisting>
+<para><command>$ ostree admin status</command></para>
+          exampleos ce19c41036cc45e49b0cecf6b157523c2105c4de1c.0
+            origin refspec: exampleos/buildmain/x86_64-runtime
+        * exampleos 67e382b11d213a402a5313e61cbc69dfd5ab93cb07.0
+            origin refspec: exampleos/buildmain/x86_64-runtime
+<programlisting>
+</programlisting>
+    </refsect1>
+</refentry>

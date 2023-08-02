@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((28 + ${extra_admin_tests:-0}))"
+echo "1..$((29 + ${extra_admin_tests:-0}))"
 
 mkdir sysrootmin
 ${CMD_PREFIX} ostree admin init-fs --modern sysrootmin
@@ -207,6 +207,16 @@ ${CMD_PREFIX} ostree admin status
 validate_bootloader
 
 echo "ok deploy --retain-rollback"
+
+
+${CMD_PREFIX} ostree admin status
+assert_file_has_content sysroot/boot/loader/entries/ostree-3-otheros.conf "^title.*TestOS 42 1.0.10"
+${CMD_PREFIX} ostree admin set-default 1
+assert_file_has_content sysroot/boot/loader/entries/ostree-3-testos.conf "^title.*TestOS 42 1.0.10"
+${CMD_PREFIX} ostree admin set-default 1
+assert_file_has_content sysroot/boot/loader/entries/ostree-3-otheros.conf "^title.*TestOS 42 1.0.10"
+
+echo "ok set-default"
 
 os_repository_new_commit
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmain/x86_64-runtime
