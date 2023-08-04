@@ -1606,11 +1606,10 @@ static void *
 sync_in_thread (void *ptr)
 {
   SyncData *syncdata = ptr;
-  // Ensure that the caller is blocked waiting
-  g_mutex_lock (&syncdata->mutex);
   ot_journal_print (LOG_INFO, "Starting global sync()");
   sync ();
   ot_journal_print (LOG_INFO, "Completed global sync()");
+  g_mutex_lock (&syncdata->mutex);
   // Signal success
   syncdata->success = true;
   g_cond_broadcast (&syncdata->cond);
