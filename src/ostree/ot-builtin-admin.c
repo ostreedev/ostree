@@ -55,6 +55,8 @@ static OstreeCommand admin_subcommands[] = {
   { "switch", OSTREE_BUILTIN_FLAG_NO_REPO, ot_admin_builtin_switch,
     "Construct new tree from REFSPEC and deploy it" },
   { "undeploy", OSTREE_BUILTIN_FLAG_NO_REPO, ot_admin_builtin_undeploy, "Delete deployment INDEX" },
+  { "set-default", OSTREE_BUILTIN_FLAG_NO_REPO, ot_admin_builtin_set_default,
+    "Make deployment INDEX the default" },
   { "unlock", OSTREE_BUILTIN_FLAG_NO_REPO, ot_admin_builtin_unlock,
     "Make the current deployment mutable (as a hotfix or development)" },
   { "upgrade", OSTREE_BUILTIN_FLAG_NO_REPO, ot_admin_builtin_upgrade,
