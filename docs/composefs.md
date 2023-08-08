@@ -30,21 +30,13 @@ have a `.ostree.cfs` file in the deployment directory which is a mountable
 composefs metadata file, with a "backing store" directory that is
 shared with the current `/ostree/repo/objects`.
 
-### Kernel argument ot-composefs
+### composefs configuration
 
-The `ostree-prepare-root` binary will look for a kernel argument called `ot-composefs`.
+The `ostree-prepare-root` binary will look for `ostree/prepare-root.conf` in `/etc` and
+`/usr/lib` in the initramfs. Using that configuration file you can enable composefs,
+and specify an Ed25519 public key to validate the booted commit.
 
-The default value is `maybe` (this will likely become a build and initramfs-configurable option)
-in the future too.
-
-The possible values are:
-
-- `off`: Never use composefs
-- `maybe`: Use composefs if supported and there is a composefs image in the deployment directory
-- `on`: Require composefs
-- `digest=<sha256>`: Require the mounted composefs image to have a particular digest
-- `signed=<path>`: Require that the commit is signed as validated by the ed25519 public key specified
-   by `path` (the path is resolved in the initrd).
+See the manpage for `ostree-prepare-root` for details of how to configure it.
 
 ### Injecting composefs digests
 
@@ -56,20 +48,20 @@ covering the composefs fsverity digest with a signature.
 
 ### Signatures
 
-If a commit is signed with a ed25519 private key (see `ostree
---sign`), and `signed=/path/to/public.key` is specified on the
-commandline, then the initrd will find the commit being booted in the
-system repo and validate its signature against the public key. It will
-then ensure that the composefs digest being booted has an fs-verity
-digest matching the one in the commit. This allows a fully trusted
-read-only /usr.
+If a commit is signed with an Ed25519 private key (see `ostree
+--sign`), and `composefs.keyfile` is specified in `prepare-root.conf`,
+then the initrd will find the commit being booted in the system repo
+and validate its signature against the public key. It will then ensure
+that the composefs digest being booted has an fs-verity digest
+matching the one in the commit. This allows a fully trusted read-only
+/usr.
 
 The exact usage of the signature is up to the user, but a common way
-to use it with transien keys. This is done like this:
+to use it with transient keys. This is done like this:
  * Generate a new keypair before each build
  * Embed the public key in the initrd that is part of the commit.
- * Ensure the kernel commandline has `ot-signed=/path/to/key`
- * After commiting, run `ostree --sign` with the private key.
+ * Ensure the initrd has a `prepare-root.conf` with `keyfile=/path/to/key`
+ * After committing, run `ostree --sign` with the private key.
  * Throw away the private key.
 
 When a transient key is used this way, that ties the initrd with the

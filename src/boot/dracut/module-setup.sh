@@ -38,6 +38,9 @@ install() {
             inst_simple "$r/ostree/prepare-root.conf"
         fi
     done
+    if test -f "/etc/ostree/initramfs-root-binding.key"; then
+        inst_simple "/etc/ostree/initramfs-root-binding.key"
+    fi
     inst_simple "${systemdsystemunitdir}/ostree-prepare-root.service"
     mkdir -p "${initdir}${systemdsystemconfdir}/initrd-root-fs.target.wants"
     ln_r "${systemdsystemunitdir}/ostree-prepare-root.service" \
