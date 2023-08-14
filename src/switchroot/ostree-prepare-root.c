@@ -332,13 +332,13 @@ load_composefs_config (GKeyFile *config, GError **error)
           for (char **iter = lines; *iter; iter++)
             {
               const char *line = *iter;
-              if (strlen (line) > 0)
-                {
-                  gsize pubkey_size;
-                  g_autofree guchar *pubkey = g_base64_decode (line, &pubkey_size);
-                  ret->pubkeys = g_list_append (
-                      ret->pubkeys, g_bytes_new_take (g_steal_pointer (&pubkey), pubkey_size));
-                }
+              if (!*line)
+                continue;
+
+              gsize pubkey_size;
+              g_autofree guchar *pubkey = g_base64_decode (line, &pubkey_size);
+              ret->pubkeys = g_list_append (
+                  ret->pubkeys, g_bytes_new_take (g_steal_pointer (&pubkey), pubkey_size));
             }
         }
 
