@@ -205,13 +205,11 @@ static GVariant *
 load_variant (const char *root_mountpoint, const char *digest, const char *extension,
               const GVariantType *type, GError **error)
 {
-  g_autofree char *path = NULL;
+  g_autofree char *path = g_strdup_printf ("%s/ostree/repo/objects/%.2s/%s.%s", root_mountpoint,
+                                           digest, digest + 2, extension);
+
   char *data = NULL;
   gsize data_size;
-
-  path = g_strdup_printf ("%s/ostree/repo/objects/%.2s/%s.%s", root_mountpoint, digest, digest + 2,
-                          extension);
-
   if (!g_file_get_contents (path, &data, &data_size, error))
     return NULL;
 
@@ -224,9 +222,7 @@ load_commit_for_deploy (const char *root_mountpoint, const char *deploy_path, GV
 {
   g_autoptr (GError) local_error = NULL;
   g_autofree char *digest = g_path_get_basename (deploy_path);
-  char *dot;
-
-  dot = strchr (digest, '.');
+  char *dot = strchr (digest, '.');
   if (dot != NULL)
     *dot = 0;
 
@@ -338,10 +334,8 @@ load_composefs_config (GKeyFile *config, GError **error)
               const char *line = *iter;
               if (strlen (line) > 0)
                 {
-                  g_autofree guchar *pubkey = NULL;
                   gsize pubkey_size;
-
-                  pubkey = g_base64_decode (line, &pubkey_size);
+                  g_autofree guchar *pubkey = g_base64_decode (line, &pubkey_size);
                   ret->pubkeys = g_list_append (
                       ret->pubkeys, g_bytes_new_take (g_steal_pointer (&pubkey), pubkey_size));
                 }
@@ -360,13 +354,11 @@ main (int argc, char *argv[])
 {
   char srcpath[PATH_MAX];
   struct stat stbuf;
-
-  const char *root_arg = NULL;
   g_autoptr (GError) error = NULL;
 
   if (argc < 2)
     err (EXIT_FAILURE, "usage: ostree-prepare-root SYSROOT");
-  root_arg = argv[1];
+  const char *root_arg = argv[1];
 
   g_autoptr (GKeyFile) config = load_config (&error);
   if (!config)
