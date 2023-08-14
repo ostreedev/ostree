@@ -249,11 +249,16 @@ load_commit_for_deploy (const char *root_mountpoint, const char *deploy_path, GV
 }
 
 static gboolean
-validate_signature (GBytes *data, GVariant *signatures, GList *pubkeys)
+validate_signature (GBytes *data, GVariant *signatures, GPtrArray *pubkeys)
 {
-  for (GList *l = pubkeys; l != NULL; l = l->next)
+  g_assert (data);
+  g_assert (signatures);
+  g_assert (pubkeys);
+
+  for (gsize j = 0; j < pubkeys->len; j++)
     {
-      GBytes *pubkey = l->data;
+      GBytes *pubkey = pubkeys->pdata[j];
+      g_assert (pubkey);
 
       for (gsize i = 0; i < g_variant_n_children (signatures); i++)
         {
@@ -278,12 +283,13 @@ typedef struct
   OtTristate enabled;
   gboolean is_signed;
   char *signature_pubkey;
-  GList *pubkeys;
+  GPtrArray *pubkeys;
 } ComposefsConfig;
 
 static void
 free_composefs_config (ComposefsConfig *config)
 {
+  g_ptr_array_unref (config->pubkeys);
   free (config->signature_pubkey);
   free (config);
 }
@@ -313,6 +319,8 @@ load_composefs_config (GKeyFile *config, GError **error)
 
   if (ret->is_signed)
     {
+      ret->pubkeys = g_ptr_array_new_with_free_func ((GDestroyNotify)g_bytes_unref);
+
       g_autofree char *pubkeys = NULL;
       gsize pubkeys_size;
 
@@ -324,8 +332,7 @@ load_composefs_config (GKeyFile *config, GError **error)
 
       /* Raw binary form if right size */
       if (pubkeys_size == OSTREE_SIGN_ED25519_PUBKEY_SIZE)
-        ret->pubkeys = g_list_append (ret->pubkeys,
-                                      g_bytes_new_take (g_steal_pointer (&pubkeys), pubkeys_size));
+        g_ptr_array_add (ret->pubkeys, g_bytes_new_take (g_steal_pointer (&pubkeys), pubkeys_size));
       else /* otherwise text with base64 key per line */
         {
           g_auto (GStrv) lines = g_strsplit (pubkeys, "\n", -1);
@@ -337,12 +344,12 @@ load_composefs_config (GKeyFile *config, GError **error)
 
               gsize pubkey_size;
               g_autofree guchar *pubkey = g_base64_decode (line, &pubkey_size);
-              ret->pubkeys = g_list_append (
-                  ret->pubkeys, g_bytes_new_take (g_steal_pointer (&pubkey), pubkey_size));
+              g_ptr_array_add (ret->pubkeys,
+                               g_bytes_new_take (g_steal_pointer (&pubkey), pubkey_size));
             }
         }
 
-      if (ret->pubkeys == NULL)
+      if (ret->pubkeys->len == 0)
         return glnx_null_throw (error, "public key file specified, but no public keys found");
     }
 
