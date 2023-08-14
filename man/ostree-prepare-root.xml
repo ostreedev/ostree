@@ -32,7 +32,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <surname>Walters</surname>
                 <email>walters@verbum.org</email>
             </author>
-        </authorgroup>g
+        </authorgroup>
     </refentryinfo>
 
     <refmeta>
@@ -111,8 +111,25 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
         <variablelist>
             <varlistentry>
                 <term><varname>sysroot.readonly</varname></term>
-                <listitem><para>A boolean value; the default is false.  If this is set to <literal>true</literal>, then the <literal>/sysroot</literal> mount point is mounted read-only.</para></listitem>
-          </varlistentry>
+                <listitem><para>A boolean value; the default is <literal>false</literal>.  If this is set to <literal>true</literal>, then the <literal>/sysroot</literal> mount point is mounted read-only.</para></listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><varname>composefs.enabled</varname></term>
+                <listitem><para>This can be <literal>yes</literal>, <literal>no</literal>. <literal>maybe</literal> or
+                <literal>signed</literal>. The default is <literal>maybe</literal>.  If set to <literal>yes</literal> or
+                <literal>signed</literal>, then composefs is always used, and the boot fails if it is not
+                available. Additionally if set to <literal>signed</literal>, boot will fail if the image cannot be
+                validated by a public key. If set to <literal>maybe</literal>, then composefs is used if supported.
+                </para></listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><varname>composefs.keypath</varname></term>
+                <listitem><para>Path to a file with Ed25519 public keys in the initramfs, used if
+                <literal>composefs.enabled</literal> is set to <literal>signed</literal>. The default value for this is
+                <literal>/etc/ostree/initramfs-root-binding.key</literal>. For a valid signed boot the target OSTree
+                commit must be signed by at least one public key in this file, and the commitfs digest listed in the
+                commit must match the target composefs image.</para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 

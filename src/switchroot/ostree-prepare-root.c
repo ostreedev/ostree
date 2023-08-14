@@ -80,11 +80,14 @@
 const char *config_roots[] = { "/usr/lib", "/etc" };
 #define PREPARE_ROOT_CONFIG_PATH "ostree/prepare-root.conf"
 
+#define DEFAULT_KEYPATH "/etc/ostree/initramfs-root-binding.key"
+
 #define SYSROOT_KEY "sysroot"
 #define READONLY_KEY "readonly"
 
-// The kernel argument we support to configure composefs.
-#define OT_COMPOSEFS_KARG "ot-composefs"
+#define COMPOSEFS_KEY "composefs"
+#define ENABLED_KEY "enabled"
+#define KEYPATH_KEY "keypath"
 
 #define OSTREE_PREPARE_ROOT_DEPLOYMENT_MSG \
   SD_ID128_MAKE (71, 70, 33, 6a, 73, ba, 46, 01, ba, d3, 1a, f8, 88, aa, 0d, f7)
@@ -250,21 +253,24 @@ load_commit_for_deploy (const char *root_mountpoint, const char *deploy_path, GV
 }
 
 static gboolean
-validate_signature (GBytes *data, GVariant *signatures, const guchar *pubkey, size_t pubkey_size)
+validate_signature (GBytes *data, GVariant *signatures, GList *pubkeys)
 {
-  g_autoptr (GBytes) pubkey_buf = g_bytes_new_static (pubkey, pubkey_size);
-
-  for (gsize i = 0; i < g_variant_n_children (signatures); i++)
+  for (GList *l = pubkeys; l != NULL; l = l->next)
     {
-      g_autoptr (GError) local_error = NULL;
-      g_autoptr (GVariant) child = g_variant_get_child_value (signatures, i);
-      g_autoptr (GBytes) signature = g_variant_get_data_as_bytes (child);
-      bool valid = false;
+      GBytes *pubkey = l->data;
 
-      if (!otcore_validate_ed25519_signature (data, pubkey_buf, signature, &valid, &local_error))
-        errx (EXIT_FAILURE, "signature verification failed: %s", local_error->message);
-      if (valid)
-        return TRUE;
+      for (gsize i = 0; i < g_variant_n_children (signatures); i++)
+        {
+          g_autoptr (GError) local_error = NULL;
+          g_autoptr (GVariant) child = g_variant_get_child_value (signatures, i);
+          g_autoptr (GBytes) signature = g_variant_get_data_as_bytes (child);
+          bool valid = false;
+
+          if (!otcore_validate_ed25519_signature (data, pubkey, signature, &valid, &local_error))
+            errx (EXIT_FAILURE, "signature verification failed: %s", local_error->message);
+          if (valid)
+            return TRUE;
+        }
     }
 
   return FALSE;
@@ -274,53 +280,76 @@ validate_signature (GBytes *data, GVariant *signatures, const guchar *pubkey, si
 typedef struct
 {
   OtTristate enabled;
+  gboolean is_signed;
   char *signature_pubkey;
-  char *expected_digest;
+  GList *pubkeys;
 } ComposefsConfig;
 
 static void
 free_composefs_config (ComposefsConfig *config)
 {
   free (config->signature_pubkey);
-  free (config->expected_digest);
   free (config);
 }
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (ComposefsConfig, free_composefs_config)
 
 static ComposefsConfig *
-load_composefs_config (GError **error)
+load_composefs_config (GKeyFile *config, GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("Loading composefs config", error);
-  g_autoptr (ComposefsConfig) ret = g_new0 (ComposefsConfig, 1);
-  ret->enabled = OT_TRISTATE_MAYBE;
 
-  // TODO: Drop this kernel argument in favor of just the config file in the initramfs
-  autofree char *ot_composefs = read_proc_cmdline_key (OT_COMPOSEFS_KARG);
-  if (ot_composefs)
+  g_autoptr (ComposefsConfig) ret = g_new0 (ComposefsConfig, 1);
+
+  g_autofree char *enabled = g_key_file_get_value (config, COMPOSEFS_KEY, ENABLED_KEY, NULL);
+  if (g_strcmp0 (enabled, "signed") == 0)
     {
-      if (strcmp (ot_composefs, "off") == 0)
-        ret->enabled = OT_TRISTATE_NO;
-      else if (strcmp (ot_composefs, "maybe") == 0)
-        ret->enabled = OT_TRISTATE_MAYBE;
-      else if (strcmp (ot_composefs, "on") == 0)
-        ret->enabled = OT_TRISTATE_YES;
-      else if (g_str_has_prefix (ot_composefs, "signed="))
+      ret->enabled = OT_TRISTATE_YES;
+      ret->is_signed = true;
+    }
+  else if (!ot_keyfile_get_tristate_with_default (config, COMPOSEFS_KEY, ENABLED_KEY,
+                                                  OT_TRISTATE_MAYBE, &ret->enabled, error))
+    return NULL;
+
+  if (!ot_keyfile_get_value_with_default (config, COMPOSEFS_KEY, KEYPATH_KEY, DEFAULT_KEYPATH,
+                                          &ret->signature_pubkey, error))
+    return NULL;
+
+  if (ret->is_signed)
+    {
+      g_autofree char *pubkeys = NULL;
+      gsize pubkeys_size;
+
+      /* Load keys */
+
+      if (!g_file_get_contents (ret->signature_pubkey, &pubkeys, &pubkeys_size, error))
+        return glnx_prefix_error_null (error, "Reading public key file '%s'",
+                                       ret->signature_pubkey);
+
+      /* Raw binary form if right size */
+      if (pubkeys_size == OSTREE_SIGN_ED25519_PUBKEY_SIZE)
+        ret->pubkeys = g_list_append (ret->pubkeys,
+                                      g_bytes_new_take (g_steal_pointer (&pubkeys), pubkeys_size));
+      else /* otherwise text with base64 key per line */
         {
-          ret->enabled = OT_TRISTATE_YES;
-          ret->signature_pubkey = g_strdup (ot_composefs + strlen ("signed="));
+          g_auto (GStrv) lines = g_strsplit (pubkeys, "\n", -1);
+          for (char **iter = lines; *iter; iter++)
+            {
+              const char *line = *iter;
+              if (strlen (line) > 0)
+                {
+                  g_autofree guchar *pubkey = NULL;
+                  gsize pubkey_size;
+
+                  pubkey = g_base64_decode (line, &pubkey_size);
+                  ret->pubkeys = g_list_append (
+                      ret->pubkeys, g_bytes_new_take (g_steal_pointer (&pubkey), pubkey_size));
+                }
+            }
         }
-      else if (g_str_has_prefix (ot_composefs, "digest="))
-        {
-          ret->enabled = OT_TRISTATE_YES;
-          ret->expected_digest = g_strdup (ot_composefs + strlen ("digest="));
-        }
-      else
-        return glnx_null_throw (error, "Unsupported %s option: '%s'", OT_COMPOSEFS_KARG,
-                                ot_composefs);
-      // In theory it's OK to have both a signature and an expected digest,
-      // but since there's no valid reason to do both, let's not support it.
-      g_assert (!(ret->signature_pubkey && ret->expected_digest));
+
+      if (ret->pubkeys == NULL)
+        return glnx_null_throw (error, "public key file specified, but no public keys found");
     }
 
   return g_steal_pointer (&ret);
@@ -347,7 +376,7 @@ main (int argc, char *argv[])
 
   // We always parse the composefs config, because we want to detect and error
   // out if it's enabled, but not supported at compile time.
-  g_autoptr (ComposefsConfig) composefs_config = load_composefs_config (&error);
+  g_autoptr (ComposefsConfig) composefs_config = load_composefs_config (config, &error);
   if (!composefs_config)
     errx (EXIT_FAILURE, "%s", error->message);
 
@@ -425,21 +454,14 @@ main (int argc, char *argv[])
         1,
       };
 
-      g_autofree char *expected_digest_owned = NULL;
-      const char *expected_digest = expected_digest_owned;
-      if (composefs_config->signature_pubkey)
+      g_autofree char *expected_digest = NULL;
+
+      if (composefs_config->is_signed)
         {
-          g_assert (expected_digest == NULL);
           const char *composefs_pubkey = composefs_config->signature_pubkey;
           g_autoptr (GError) local_error = NULL;
-          g_autofree char *pubkey = NULL;
-          gsize pubkey_size;
           g_autoptr (GVariant) commit = NULL;
           g_autoptr (GVariant) commitmeta = NULL;
-
-          if (!g_file_get_contents (composefs_pubkey, &pubkey, &pubkey_size, &local_error))
-            errx (EXIT_FAILURE, "Failed to load public key '%s': %s", composefs_pubkey,
-                  local_error->message);
 
           if (!load_commit_for_deploy (root_mountpoint, deploy_path, &commit, &commitmeta,
                                        &local_error))
@@ -451,7 +473,7 @@ main (int argc, char *argv[])
             errx (EXIT_FAILURE, "Signature validation requested, but no signatures in commit");
 
           g_autoptr (GBytes) commit_data = g_variant_get_data_as_bytes (commit);
-          if (!validate_signature (commit_data, signatures, (guchar *)pubkey, pubkey_size))
+          if (!validate_signature (commit_data, signatures, composefs_config->pubkeys))
             errx (EXIT_FAILURE, "No valid signatures found for public key");
 
           g_print ("composefs+ostree: Validated commit signature using '%s'\n", composefs_pubkey);
@@ -468,9 +490,8 @@ main (int argc, char *argv[])
           if (!cfs_digest_buf)
             errx (EXIT_FAILURE, "Failed to query digest: %s", error->message);
 
-          expected_digest_owned = g_malloc (OSTREE_SHA256_STRING_LEN + 1);
-          ot_bin2hex (expected_digest_owned, cfs_digest_buf, g_variant_get_size (cfs_digest_v));
-          expected_digest = expected_digest_owned;
+          expected_digest = g_malloc (OSTREE_SHA256_STRING_LEN + 1);
+          ot_bin2hex (expected_digest, cfs_digest_buf, g_variant_get_size (cfs_digest_v));
         }
 
       cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
@@ -489,7 +510,7 @@ main (int argc, char *argv[])
           // If we're not verifying a digest, then we *must* also have signatures disabled.
           // Or stated in reverse: if signature verification is enabled, then digest verification
           // must also be.
-          g_assert (!composefs_config->signature_pubkey);
+          g_assert (!composefs_config->is_signed);
           g_print ("composefs: Mounting with no digest or signature check\n");
         }
 
