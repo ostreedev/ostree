@@ -80,7 +80,11 @@
 const char *config_roots[] = { "/usr/lib", "/etc" };
 #define PREPARE_ROOT_CONFIG_PATH "ostree/prepare-root.conf"
 
-#define DEFAULT_KEYPATH "/etc/ostree/initramfs-root-binding.key"
+// This key is used by default if present in the initramfs to verify
+// the signature on the target commit object.  When composefs is
+// in use, the ostree commit metadata will contain the composefs image digest,
+// which can be used to fully verify the target filesystem tree.
+#define BINDING_KEYPATH "/etc/ostree/initramfs-root-binding.key"
 
 #define SYSROOT_KEY "sysroot"
 #define READONLY_KEY "readonly"
@@ -300,6 +304,7 @@ free_composefs_config (ComposefsConfig *config)
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (ComposefsConfig, free_composefs_config)
 
+// Parse the [composefs] section of the prepare-root.conf.
 static ComposefsConfig *
 load_composefs_config (GKeyFile *config, GError **error)
 {
@@ -317,7 +322,8 @@ load_composefs_config (GKeyFile *config, GError **error)
                                                   OT_TRISTATE_MAYBE, &ret->enabled, error))
     return NULL;
 
-  if (!ot_keyfile_get_value_with_default (config, COMPOSEFS_KEY, KEYPATH_KEY, DEFAULT_KEYPATH,
+  // Look for a key - we default to the initramfs binding path.
+  if (!ot_keyfile_get_value_with_default (config, COMPOSEFS_KEY, KEYPATH_KEY, BINDING_KEYPATH,
                                           &ret->signature_pubkey, error))
     return NULL;
 
