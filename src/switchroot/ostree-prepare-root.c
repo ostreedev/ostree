@@ -205,13 +205,11 @@ static GVariant *
 load_variant (const char *root_mountpoint, const char *digest, const char *extension,
               const GVariantType *type, GError **error)
 {
-  g_autofree char *path = NULL;
+  g_autofree char *path = g_strdup_printf ("%s/ostree/repo/objects/%.2s/%s.%s", root_mountpoint,
+                                           digest, digest + 2, extension);
+
   char *data = NULL;
   gsize data_size;
-
-  path = g_strdup_printf ("%s/ostree/repo/objects/%.2s/%s.%s", root_mountpoint, digest, digest + 2,
-                          extension);
-
   if (!g_file_get_contents (path, &data, &data_size, error))
     return NULL;
 
@@ -224,9 +222,7 @@ load_commit_for_deploy (const char *root_mountpoint, const char *deploy_path, GV
 {
   g_autoptr (GError) local_error = NULL;
   g_autofree char *digest = g_path_get_basename (deploy_path);
-  char *dot;
-
-  dot = strchr (digest, '.');
+  char *dot = strchr (digest, '.');
   if (dot != NULL)
     *dot = 0;
 
@@ -253,11 +249,16 @@ load_commit_for_deploy (const char *root_mountpoint, const char *deploy_path, GV
 }
 
 static gboolean
-validate_signature (GBytes *data, GVariant *signatures, GList *pubkeys)
+validate_signature (GBytes *data, GVariant *signatures, GPtrArray *pubkeys)
 {
-  for (GList *l = pubkeys; l != NULL; l = l->next)
+  g_assert (data);
+  g_assert (signatures);
+  g_assert (pubkeys);
+
+  for (gsize j = 0; j < pubkeys->len; j++)
     {
-      GBytes *pubkey = l->data;
+      GBytes *pubkey = pubkeys->pdata[j];
+      g_assert (pubkey);
 
       for (gsize i = 0; i < g_variant_n_children (signatures); i++)
         {
@@ -282,12 +283,13 @@ typedef struct
   OtTristate enabled;
   gboolean is_signed;
   char *signature_pubkey;
-  GList *pubkeys;
+  GPtrArray *pubkeys;
 } ComposefsConfig;
 
 static void
 free_composefs_config (ComposefsConfig *config)
 {
+  g_ptr_array_unref (config->pubkeys);
   free (config->signature_pubkey);
   free (config);
 }
@@ -317,6 +319,8 @@ load_composefs_config (GKeyFile *config, GError **error)
 
   if (ret->is_signed)
     {
+      ret->pubkeys = g_ptr_array_new_with_free_func ((GDestroyNotify)g_bytes_unref);
+
       g_autofree char *pubkeys = NULL;
       gsize pubkeys_size;
 
@@ -328,27 +332,24 @@ load_composefs_config (GKeyFile *config, GError **error)
 
       /* Raw binary form if right size */
       if (pubkeys_size == OSTREE_SIGN_ED25519_PUBKEY_SIZE)
-        ret->pubkeys = g_list_append (ret->pubkeys,
-                                      g_bytes_new_take (g_steal_pointer (&pubkeys), pubkeys_size));
+        g_ptr_array_add (ret->pubkeys, g_bytes_new_take (g_steal_pointer (&pubkeys), pubkeys_size));
       else /* otherwise text with base64 key per line */
         {
           g_auto (GStrv) lines = g_strsplit (pubkeys, "\n", -1);
           for (char **iter = lines; *iter; iter++)
             {
               const char *line = *iter;
-              if (strlen (line) > 0)
-                {
-                  g_autofree guchar *pubkey = NULL;
-                  gsize pubkey_size;
+              if (!*line)
+                continue;
 
-                  pubkey = g_base64_decode (line, &pubkey_size);
-                  ret->pubkeys = g_list_append (
-                      ret->pubkeys, g_bytes_new_take (g_steal_pointer (&pubkey), pubkey_size));
-                }
+              gsize pubkey_size;
+              g_autofree guchar *pubkey = g_base64_decode (line, &pubkey_size);
+              g_ptr_array_add (ret->pubkeys,
+                               g_bytes_new_take (g_steal_pointer (&pubkey), pubkey_size));
             }
         }
 
-      if (ret->pubkeys == NULL)
+      if (ret->pubkeys->len == 0)
         return glnx_null_throw (error, "public key file specified, but no public keys found");
     }
 
@@ -360,13 +361,11 @@ main (int argc, char *argv[])
 {
   char srcpath[PATH_MAX];
   struct stat stbuf;
-
-  const char *root_arg = NULL;
   g_autoptr (GError) error = NULL;
 
   if (argc < 2)
     err (EXIT_FAILURE, "usage: ostree-prepare-root SYSROOT");
-  root_arg = argv[1];
+  const char *root_arg = argv[1];
 
   g_autoptr (GKeyFile) config = load_config (&error);
   if (!config)
