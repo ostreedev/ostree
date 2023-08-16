@@ -349,6 +349,29 @@ load_composefs_config (GKeyFile *config, GError **error)
   return g_steal_pointer (&ret);
 }
 
+static gboolean
+copy_selinux_context (const char *src_path, const char *dst_path, GError **error)
+{
+  ssize_t bytes_read, real_size;
+
+  if (TEMP_FAILURE_RETRY (bytes_read = lgetxattr (src_path, "security.selinux", NULL, 0)) < 0)
+    {
+      if (errno == ENODATA || errno == ENOTSUP)
+        return TRUE; /* no selinux context, we're done */
+      return glnx_throw_errno_prefix (error, "lgetxattr(security.selinux)");
+    }
+
+  g_autofree guint8 *buf = g_malloc (bytes_read);
+  if (TEMP_FAILURE_RETRY (real_size = lgetxattr (src_path, "security.selinux", buf, bytes_read))
+      < 0)
+    return glnx_throw_errno_prefix (error, "lgetxattr(security.selinux)");
+
+  if (lsetxattr (dst_path, "security.selinux", buf, real_size, 0) < 0)
+    return glnx_throw_errno_prefix (error, "lsetxattr(security.selinux)");
+
+  return TRUE;
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -639,6 +662,18 @@ main (int argc, char *argv[])
         err (EXIT_FAILURE, "failed to prepare /var bind-mount at %s", srcpath);
       if (mount ("../../var", "../../var", NULL, MS_BIND | MS_REMOUNT | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to make writable /var bind-mount at %s", srcpath);
+
+      if (mkdirat (AT_FDCWD, "/inplace", 0731) < 0)
+        err (EXIT_FAILURE, "Failed to create %s", "/inplace");
+      if (mkdirat (AT_FDCWD, "/inplace/var", 0731) < 0)
+        err (EXIT_FAILURE, "Failed to create %s", "/inplace/var");
+
+      g_autoptr (GError) local_error = NULL;
+      if (!copy_selinux_context ("../../var", "/inplace/var", &local_error))
+        err (EXIT_FAILURE, "failed to copy /var selinux label: %s", local_error->message);
+
+      if (mount ("../../var", "/inplace/var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to bind mount ../../var to /inplace/var");
     }
 
     /* When running under systemd, /var will be handled by a 'var.mount' unit outside

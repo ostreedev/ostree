@@ -22,6 +22,7 @@ ConditionPathExists=/etc/initrd-release
 OnFailure=emergency.target
 After=sysroot.mount
 Requires=sysroot.mount
+Before=systemd-volatile-root.service
 Before=initrd-root-fs.target
 
 [Service]
