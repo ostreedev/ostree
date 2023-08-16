@@ -330,23 +330,16 @@ load_composefs_config (GKeyFile *config, GError **error)
         return glnx_prefix_error_null (error, "Reading public key file '%s'",
                                        ret->signature_pubkey);
 
-      /* Raw binary form if right size */
-      if (pubkeys_size == OSTREE_SIGN_ED25519_PUBKEY_SIZE)
-        g_ptr_array_add (ret->pubkeys, g_bytes_new_take (g_steal_pointer (&pubkeys), pubkeys_size));
-      else /* otherwise text with base64 key per line */
+      g_auto (GStrv) lines = g_strsplit (pubkeys, "\n", -1);
+      for (char **iter = lines; *iter; iter++)
         {
-          g_auto (GStrv) lines = g_strsplit (pubkeys, "\n", -1);
-          for (char **iter = lines; *iter; iter++)
-            {
-              const char *line = *iter;
-              if (!*line)
-                continue;
+          const char *line = *iter;
+          if (!*line)
+            continue;
 
-              gsize pubkey_size;
-              g_autofree guchar *pubkey = g_base64_decode (line, &pubkey_size);
-              g_ptr_array_add (ret->pubkeys,
-                               g_bytes_new_take (g_steal_pointer (&pubkey), pubkey_size));
-            }
+          gsize pubkey_size;
+          g_autofree guchar *pubkey = g_base64_decode (line, &pubkey_size);
+          g_ptr_array_add (ret->pubkeys, g_bytes_new_take (g_steal_pointer (&pubkey), pubkey_size));
         }
 
       if (ret->pubkeys->len == 0)
