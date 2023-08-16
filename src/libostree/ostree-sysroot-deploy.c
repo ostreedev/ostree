@@ -3130,6 +3130,8 @@ sysroot_initialize_deployment (OstreeSysroot *self, const char *osname, const ch
                                OstreeDeployment **out_new_deployment, GCancellable *cancellable,
                                GError **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("Initializing deployment", error);
+
   g_assert (osname != NULL || self->booted_deployment != NULL);
 
   if (osname == NULL)
@@ -3460,6 +3462,8 @@ ostree_sysroot_deploy_tree_with_options (OstreeSysroot *self, const char *osname
                                          OstreeDeployment **out_new_deployment,
                                          GCancellable *cancellable, GError **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("Deploying tree", error);
+
   if (!_ostree_sysroot_ensure_writable (self, error))
     return FALSE;
 
@@ -3664,6 +3668,8 @@ ostree_sysroot_stage_tree_with_options (OstreeSysroot *self, const char *osname,
                                         OstreeDeployment **out_new_deployment,
                                         GCancellable *cancellable, GError **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("Staging deployment", error);
+
   if (!_ostree_sysroot_ensure_writable (self, error))
     return FALSE;
 
