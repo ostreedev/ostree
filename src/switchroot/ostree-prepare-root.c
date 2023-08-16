@@ -160,13 +160,13 @@ get_aboot_root_slot (const char *slot_suffix)
 }
 
 static inline char *
-get_ostree_target (void)
+get_ostree_target (const char *cmdline)
 {
-  autofree char *slot_suffix = read_proc_cmdline_key ("androidboot.slot_suffix");
+  autofree char *slot_suffix = find_proc_cmdline_key (cmdline, "androidboot.slot_suffix");
   if (slot_suffix)
     return get_aboot_root_slot (slot_suffix);
 
-  return read_proc_cmdline_key ("ostree");
+  return find_proc_cmdline_key (cmdline, "ostree");
 }
 
 static char *
@@ -175,7 +175,11 @@ resolve_deploy_path (const char *root_mountpoint)
   char destpath[PATH_MAX];
   struct stat stbuf;
   char *deploy_path;
-  autofree char *ostree_target = get_ostree_target ();
+  g_autofree char *kernel_cmdline = read_proc_cmdline ();
+  if (!kernel_cmdline)
+    errx (EXIT_FAILURE, "Failed to read kernel cmdline");
+
+  g_autofree char *ostree_target = get_ostree_target (kernel_cmdline);
   if (!ostree_target)
     errx (EXIT_FAILURE, "No ostree target");
 

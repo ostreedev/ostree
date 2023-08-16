@@ -251,12 +251,16 @@ _ostree_impl_system_generator (const char *normal_dir, const char *early_dir, co
   if (unlinkat (AT_FDCWD, INITRAMFS_MOUNT_VAR, 0) == 0)
     return TRUE;
 
+  g_autofree char *cmdline = read_proc_cmdline ();
+  if (!cmdline)
+    return glnx_throw (error, "Failed to read /proc/cmdline");
+
   /* If we're installed on a system which isn't using OSTree for boot (e.g.
    * package installed as a dependency for flatpak or whatever), silently
    * exit so that we don't error, but at the same time work where switchroot
    * is PID 1 (and so hasn't created /run/ostree-booted).
    */
-  autofree char *ostree_cmdline = read_proc_cmdline_key ("ostree");
+  g_autofree char *ostree_cmdline = find_proc_cmdline_key (cmdline, "ostree");
   if (!ostree_cmdline)
     return TRUE;
 
