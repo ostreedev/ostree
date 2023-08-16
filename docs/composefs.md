@@ -60,7 +60,7 @@ The exact usage of the signature is up to the user, but a common way
 to use it with transient keys. This is done like this:
  * Generate a new keypair before each build
  * Embed the public key in the initrd that is part of the commit.
- * Ensure the initrd has a `prepare-root.conf` with `keyfile=/path/to/key`
+ * Ensure the initrd has a `prepare-root.conf` with `[composefs] enabled=signed`, and either use `keypath` or inject `/etc/ostree/initramfs-root-binding.key`; for more see `man ostree-prepare-root`
  * After committing, run `ostree --sign` with the private key.
  * Throw away the private key.
 
