@@ -85,18 +85,12 @@ cleanup_free (void *p)
 }
 
 static inline char *
-read_proc_cmdline_key (const char *key)
+find_proc_cmdline_key (const char *cmdline, const char *key)
 {
-  char *cmdline = NULL;
-  const char *iter;
   char *ret = NULL;
   size_t key_len = strlen (key);
 
-  cmdline = read_proc_cmdline ();
-  if (!cmdline)
-    err (EXIT_FAILURE, "failed to read /proc/cmdline");
-
-  iter = cmdline;
+  const char *iter = cmdline;
   while (iter != NULL)
     {
       const char *next = strchr (iter, ' ');
@@ -115,7 +109,6 @@ read_proc_cmdline_key (const char *key)
       iter = next_nonspc;
     }
 
-  free (cmdline);
   return ret;
 }
 

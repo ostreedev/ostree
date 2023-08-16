@@ -116,7 +116,10 @@ resolve_deploy_path (const char *root_mountpoint)
   char destpath[PATH_MAX];
   struct stat stbuf;
   char *deploy_path;
-  autofree char *ostree_cmdline = read_proc_cmdline_key ("ostree");
+  autofree char *kernel_cmdline = read_proc_cmdline ();
+  if (!kernel_cmdline)
+    errx (EXIT_FAILURE, "Failed to read kernel cmdline");
+  autofree char *ostree_cmdline = find_proc_cmdline_key (kernel_cmdline, "ostree");
 
   if (snprintf (destpath, sizeof (destpath), "%s/%s", root_mountpoint, ostree_cmdline) < 0)
     err (EXIT_FAILURE, "failed to assemble ostree target path");
