@@ -3081,7 +3081,7 @@ reload_core_config (OstreeRepo *self, GCancellable *cancellable, GError **error)
       {
         g_autofree char *lock_timeout_seconds = NULL;
 
-        if (!ot_keyfile_get_value_with_default (self->config, "core", "lock-timeout-secs", "30",
+        if (!ot_keyfile_get_value_with_default (self->config, "core", "lock-timeout-secs", "300",
                                                 &lock_timeout_seconds, error))
           return FALSE;
 
