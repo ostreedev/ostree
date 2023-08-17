@@ -109,32 +109,25 @@ gboolean
 ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocation,
                        GCancellable *cancellable, GError **error)
 {
-  g_autoptr (GOptionContext) context = NULL;
-  g_autoptr (OstreeSysroot) sysroot = NULL;
-  g_autoptr (OstreeRepo) repo = NULL;
-  g_autoptr (GString) sign_verify = NULL;
-  const char *remote_name;
-  const char *remote_url = NULL;
-  g_autoptr (GVariantBuilder) optbuilder = NULL;
-  g_autoptr (GVariant) options = NULL;
-  gboolean ret = FALSE;
-
-  context = g_option_context_new ("NAME [metalink=|mirrorlist=]URL [BRANCH...]");
-
+  g_autoptr (GOptionContext) context
+      = g_option_context_new ("NAME [metalink=|mirrorlist=]URL [BRANCH...]");
   if (!ostree_option_context_parse (context, option_entries, &argc, &argv, invocation, NULL,
                                     cancellable, error))
-    goto out;
+    return FALSE;
 
+  g_autoptr (OstreeSysroot) sysroot = NULL;
+  g_autoptr (OstreeRepo) repo = NULL;
   if (!ostree_parse_sysroot_or_repo_option (context, opt_sysroot, opt_repo, &sysroot, &repo,
                                             cancellable, error))
-    goto out;
+    return FALSE;
 
+  const char *remote_url = NULL;
   if (opt_custom_backend)
     {
       if (argc < 2)
         {
           ot_util_usage_error (context, "NAME must be specified", error);
-          goto out;
+          return FALSE;
         }
       if (argc >= 3)
         remote_url = argv[2];
@@ -144,26 +137,24 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
       if (argc < 3)
         {
           ot_util_usage_error (context, "NAME and URL must be specified", error);
-          goto out;
+          return FALSE;
         }
       remote_url = argv[2];
     }
-  remote_name = argv[1];
+  const char *remote_name = argv[1];
 
   if (opt_if_not_exists && opt_force)
     {
       ot_util_usage_error (context, "Can only specify one of --if-not-exists and --force", error);
-      goto out;
+      return FALSE;
     }
 
-  optbuilder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+  g_autoptr (GVariantBuilder) optbuilder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
 
   if (argc > 3)
     {
       g_autoptr (GPtrArray) branchesp = g_ptr_array_new ();
-      int i;
-
-      for (i = 3; i < argc; i++)
+      for (int i = 3; i < argc; i++)
         g_ptr_array_add (branchesp, argv[i]);
       g_ptr_array_add (branchesp, NULL);
 
@@ -190,7 +181,7 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
       g_autofree char *subvalue = NULL;
 
       if (!ot_parse_keyvalue (keyvalue, &subkey, &subvalue, error))
-        goto out;
+        return FALSE;
 
       g_variant_builder_add (optbuilder, "{s@v}", subkey,
                              g_variant_new_variant (g_variant_new_string (subvalue)));
@@ -211,6 +202,7 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
                              g_variant_new_variant (g_variant_new_boolean (FALSE)));
     }
 
+  g_autoptr (GString) sign_verify = NULL;
   for (char **iter = opt_sign_verify; iter && *iter; iter++)
     {
       const char *keyspec = *iter;
@@ -236,7 +228,7 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
         optbuilder, "{s@v}", "collection-id",
         g_variant_new_variant (g_variant_new_take_string (g_steal_pointer (&opt_collection_id))));
 
-  options = g_variant_ref_sink (g_variant_builder_end (optbuilder));
+  g_autoptr (GVariant) options = g_variant_ref_sink (g_variant_builder_end (optbuilder));
 
   OstreeRepoRemoteChange changeop;
   if (opt_if_not_exists)
@@ -247,7 +239,7 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
     changeop = OSTREE_REPO_REMOTE_CHANGE_ADD;
   if (!ostree_repo_remote_change (repo, NULL, changeop, remote_name, remote_url, options,
                                   cancellable, error))
-    goto out;
+    return FALSE;
 
 #ifndef OSTREE_DISABLE_GPGME
   /* This is just a convenience option and is not as flexible as the full
@@ -266,11 +258,11 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
       input_stream = (GInputStream *)g_file_read (file, cancellable, error);
 
       if (input_stream == NULL)
-        goto out;
+        return FALSE;
 
       if (!ostree_repo_remote_gpg_import (repo, remote_name, input_stream, NULL, &imported,
                                           cancellable, error))
-        goto out;
+        return FALSE;
 
       /* XXX If we ever add internationalization, use ngettext() here. */
       g_print ("Imported %u GPG key%s to remote \"%s\"\n", imported, (imported == 1) ? "" : "s",
@@ -278,7 +270,5 @@ ot_remote_builtin_add (int argc, char **argv, OstreeCommandInvocation *invocatio
     }
 #endif /* OSTREE_DISABLE_GPGME */
 
-  ret = TRUE;
-out:
-  return ret;
+  return TRUE;
 }
