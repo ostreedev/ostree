@@ -229,7 +229,10 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
         <term><varname>lock-timeout-secs</varname></term>
         <listitem><para>Integer value controlling the number of seconds to
         block while attempting to acquire a lock (see above). A value
-        of -1 means block indefinitely. The default value is 30.
+        of -1 means block indefinitely. The default value is 300.  This timeout
+        is now regarded as a mistake; because it's likely to cause flakes.
+        It's recommended to set it to -1, and have timeouts at a higher application
+        level if desired.
         </para></listitem>
       </varlistentry>
 
