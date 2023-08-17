@@ -93,18 +93,13 @@ gboolean
 ostree_builtin_admin (int argc, char **argv, OstreeCommandInvocation *invocation,
                       GCancellable *cancellable, GError **error)
 {
-  gboolean ret = FALSE;
-  const char *subcommand_name = NULL;
-  OstreeCommand *subcommand;
-  g_autofree char *prgname = NULL;
-  int in, out;
-
   /*
    * Parse the global options. We rearrange the options as
    * necessary, in order to pass relevant options through
    * to the commands, but also have them take effect globally.
    */
-
+  int in, out;
+  const char *subcommand_name = NULL;
   for (in = 1, out = 1; in < argc; in++, out++)
     {
       /* The non-option is the command, take it out of the arguments */
@@ -128,7 +123,7 @@ ostree_builtin_admin (int argc, char **argv, OstreeCommandInvocation *invocation
 
   argc = out;
 
-  subcommand = admin_subcommands;
+  OstreeCommand *subcommand = admin_subcommands;
   while (subcommand->name)
     {
       if (g_strcmp0 (subcommand_name, subcommand->name) == 0)
@@ -163,17 +158,14 @@ ostree_builtin_admin (int argc, char **argv, OstreeCommandInvocation *invocation
       help = g_option_context_get_help (context, FALSE, NULL);
       g_printerr ("%s", help);
 
-      goto out;
+      return FALSE;
     }
 
-  prgname = g_strdup_printf ("%s %s", g_get_prgname (), subcommand_name);
-  g_set_prgname (prgname);
+  {
+    g_autofree char *prgname = g_strdup_printf ("%s %s", g_get_prgname (), subcommand_name);
+    g_set_prgname (prgname);
+  }
 
   OstreeCommandInvocation sub_invocation = { .command = subcommand };
-  if (!subcommand->fn (argc, argv, &sub_invocation, cancellable, error))
-    goto out;
-
-  ret = TRUE;
-out:
-  return ret;
+  return subcommand->fn (argc, argv, &sub_invocation, cancellable, error);
 }
