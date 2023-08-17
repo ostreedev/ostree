@@ -84,6 +84,7 @@ const char *config_roots[] = { "/usr/lib", "/etc" };
 
 #define SYSROOT_KEY "sysroot"
 #define READONLY_KEY "readonly"
+#define ETC_KEY "etc" // Possible values = "persistent" "transient"
 
 #define COMPOSEFS_KEY "composefs"
 #define ENABLED_KEY "enabled"
@@ -349,6 +350,29 @@ load_composefs_config (GKeyFile *config, GError **error)
   return g_steal_pointer (&ret);
 }
 
+static gboolean
+copy_selinux_context (const char *src_path, const char *dst_path, GError **error)
+{
+  ssize_t bytes_read, real_size;
+
+  if (TEMP_FAILURE_RETRY (bytes_read = lgetxattr (src_path, "security.selinux", NULL, 0)) < 0)
+    {
+      if (errno == ENODATA || errno == ENOTSUP)
+        return TRUE; /* no selinux context, we're done */
+      return glnx_throw_errno_prefix (error, "lgetxattr(security.selinux)");
+    }
+
+  g_autofree guint8 *buf = g_malloc (bytes_read);
+  if (TEMP_FAILURE_RETRY (real_size = lgetxattr (src_path, "security.selinux", buf, bytes_read))
+      < 0)
+    return glnx_throw_errno_prefix (error, "lgetxattr(security.selinux)");
+
+  if (lsetxattr (dst_path, "security.selinux", buf, real_size, 0) < 0)
+    return glnx_throw_errno_prefix (error, "lsetxattr(security.selinux)");
+
+  return TRUE;
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -582,18 +606,71 @@ main (int argc, char *argv[])
         }
     }
 
+  g_autofree char *etc_config = NULL;
+  if (!ot_keyfile_get_value_with_default (config, SYSROOT_KEY, ETC_KEY, "persistent", &etc_config,
+                                          &error))
+    errx (EXIT_FAILURE, "failed to parse %s.%s: %s", SYSROOT_KEY, ETC_KEY, error->message);
+  bool etc_transient = false;
+  if (g_str_equal (etc_config, "persistent"))
+    etc_transient = false;
+  else if (g_str_equal (etc_config, "transient"))
+    etc_transient = true;
+  else
+    errx (EXIT_FAILURE, "Invalid %s.%s: %s", SYSROOT_KEY, ETC_KEY, etc_config);
+
+  // In theory these could be distinct, but no reason to try to support it.
+  if (etc_transient && !sysroot_readonly)
+    errx (EXIT_FAILURE, "Must specify %s.%s for %s.%s=transient", SYSROOT_KEY, READONLY_KEY,
+          SYSROOT_KEY, ETC_KEY);
+
   /* Prepare /etc.
    * No action required if sysroot is writable. Otherwise, a bind-mount for
    * the deployment needs to be created and remounted as read/write. */
   if (sysroot_readonly || using_composefs)
     {
-      /* Bind-mount /etc (at deploy path), and remount as writable. */
-      if (mount ("etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to prepare /etc bind-mount at /sysroot.tmp/etc");
-      if (mount (TMP_SYSROOT "/etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_REMOUNT | MS_SILENT,
-                 NULL)
-          < 0)
-        err (EXIT_FAILURE, "failed to make writable /etc bind-mount at /sysroot.tmp/etc");
+      if (etc_transient)
+        {
+          /* Do we have a persistent overlayfs for /usr?  If so, mount it now. */
+          g_autofree char *etc_ovldir
+              = g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "etc-transient", NULL);
+          g_autofree char *upper = g_build_filename (etc_ovldir, "upper", NULL);
+          g_autofree char *work = g_build_filename (etc_ovldir, "work", NULL);
+
+          if (mkdirat (AT_FDCWD, etc_ovldir, 0700) < 0)
+            err (EXIT_FAILURE, "Failed to create %s", etc_ovldir);
+          if (mkdirat (AT_FDCWD, upper, 0755) < 0)
+            err (EXIT_FAILURE, "Failed to create %s", upper);
+          if (mkdirat (AT_FDCWD, work, 0755) < 0)
+            err (EXIT_FAILURE, "Failed to create %s", work);
+
+          g_autofree char *etc_ovl_options = g_strdup_printf ("lowerdir=%s,upperdir=%s,workdir=%s",
+                                                              TMP_SYSROOT "/usr/etc", upper, work);
+          if (mount ("overlay", TMP_SYSROOT "/etc", "overlay", MS_SILENT, etc_ovl_options) < 0)
+            err (EXIT_FAILURE, "failed to mount transient etc overlayfs");
+
+          g_autoptr (GError) local_error = NULL;
+          if (!copy_selinux_context (TMP_SYSROOT "/usr/etc", TMP_SYSROOT "/etc", &local_error))
+            err (EXIT_FAILURE, "failed to copy /usr/etc selinux label: %s", local_error->message);
+
+          /* We make ovldir read-only to avoid it being relabeled to
+           * var_run_t when /run is relabeled */
+          if (mount (etc_ovldir, etc_ovldir, NULL, MS_BIND | MS_SILENT, NULL) < 0)
+            err (EXIT_FAILURE, "failed to bind mount (class:readonly) %s", etc_ovldir);
+          if (mount (etc_ovldir, etc_ovldir, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT,
+                     NULL)
+              < 0)
+            err (EXIT_FAILURE, "failed to bind mount (class:readonly) %s", etc_ovldir);
+        }
+      else
+        {
+          /* Bind-mount /etc (at deploy path), and remount as writable. */
+          if (mount ("etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+            err (EXIT_FAILURE, "failed to prepare /etc bind-mount at /sysroot.tmp/etc");
+          if (mount (TMP_SYSROOT "/etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_REMOUNT | MS_SILENT,
+                     NULL)
+              < 0)
+            err (EXIT_FAILURE, "failed to make writable /etc bind-mount at /sysroot.tmp/etc");
+        }
     }
 
   /* Prepare /usr.
