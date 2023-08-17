@@ -34,7 +34,7 @@ gboolean
 ot_admin_builtin_os_init (int argc, char **argv, OstreeCommandInvocation *invocation,
                           GCancellable *cancellable, GError **error)
 {
-  g_autoptr (GOptionContext) context = g_option_context_new ("OSNAME");
+  g_autoptr (GOptionContext) context = g_option_context_new ("STATEROOT");
 
   g_autoptr (OstreeSysroot) sysroot = NULL;
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
@@ -47,7 +47,7 @@ ot_admin_builtin_os_init (int argc, char **argv, OstreeCommandInvocation *invoca
 
   if (argc < 2)
     {
-      ot_util_usage_error (context, "OSNAME must be specified", error);
+      ot_util_usage_error (context, "STATEROOT must be specified", error);
       return FALSE;
     }
 
@@ -56,7 +56,7 @@ ot_admin_builtin_os_init (int argc, char **argv, OstreeCommandInvocation *invoca
   if (!ostree_sysroot_init_osname (sysroot, osname, cancellable, error))
     return FALSE;
 
-  g_print ("ostree/deploy/%s initialized as OSTree root\n", osname);
+  g_print ("ostree/deploy/%s initialized as OSTree stateroot\n", osname);
 
   return TRUE;
 }

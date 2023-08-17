@@ -47,6 +47,8 @@ static OstreeCommand admin_subcommands[] = {
     "Deprecated commands intended for installer programs" },
   { "os-init", OSTREE_BUILTIN_FLAG_NO_REPO, ot_admin_builtin_os_init,
     "Initialize empty state for given operating system" },
+  { "stateroot-init", OSTREE_BUILTIN_FLAG_NO_REPO, ot_admin_builtin_os_init,
+    "Initialize empty state for given operating system" },
   { "pin", OSTREE_BUILTIN_FLAG_NO_REPO, ot_admin_builtin_pin,
     "Change the \"pinning\" state of a deployment" },
   { "set-origin", OSTREE_BUILTIN_FLAG_NO_REPO, ot_admin_builtin_set_origin,

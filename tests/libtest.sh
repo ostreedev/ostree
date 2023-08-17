@@ -494,7 +494,7 @@ EOF
     if test -n "${OSTREE_NO_XATTRS:-}"; then
         echo -e 'disable-xattrs=true\n' >> sysroot/ostree/repo/config
     fi
-    ${CMD_PREFIX} ostree admin os-init testos
+    ${CMD_PREFIX} ostree admin stateroot-init testos
 
     case $bootmode in
         "syslinux")
