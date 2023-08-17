@@ -51,6 +51,8 @@ static char **opt_overlay_initrds;
 static GOptionEntry options[] = {
   { "os", 0, 0, G_OPTION_ARG_STRING, &opt_osname,
     "Use a different operating system root than the current one", "OSNAME" },
+  { "stateroot", 0, 0, G_OPTION_ARG_STRING, &opt_osname, "Target the provided stateroot",
+    "STATEROOT" },
   { "origin-file", 0, 0, G_OPTION_ARG_FILENAME, &opt_origin_path, "Specify origin file",
     "FILENAME" },
   { "no-prune", 0, 0, G_OPTION_ARG_NONE, &opt_no_prune, "Don't prune the repo when done", NULL },
