@@ -192,7 +192,7 @@ _ostree_lzma_compressor_convert (GConverter *converter, const void *inbuf, gsize
   *bytes_read = inbuf_size - self->lstream.avail_in;
   *bytes_written = outbuf_size - self->lstream.avail_out;
 
-  return G_CONVERTER_CONVERTED;
+  return _ostree_lzma_return (res, error);
 }
 
 static void

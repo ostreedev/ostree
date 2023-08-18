@@ -260,15 +260,9 @@ static gboolean
 process_many_checkouts (OstreeRepo *repo, const char *target, GCancellable *cancellable,
                         GError **error)
 {
-  gboolean ret = FALSE;
-  gsize len;
   GError *temp_error = NULL;
-  g_autoptr (GInputStream) instream = NULL;
-  g_autoptr (GDataInputStream) datastream = NULL;
-  g_autofree char *revision = NULL;
-  g_autofree char *subpath = NULL;
-  g_autofree char *resolved_commit = NULL;
 
+  g_autoptr (GInputStream) instream = NULL;
   if (opt_from_stdin)
     {
       instream = (GInputStream *)g_unix_input_stream_new (0, FALSE);
@@ -279,11 +273,14 @@ process_many_checkouts (OstreeRepo *repo, const char *target, GCancellable *canc
 
       instream = (GInputStream *)g_file_read (f, cancellable, error);
       if (!instream)
-        goto out;
+        return FALSE;
     }
 
-  datastream = g_data_input_stream_new (instream);
+  g_autoptr (GDataInputStream) datastream = g_data_input_stream_new (instream);
 
+  g_autofree char *resolved_commit = NULL;
+  g_autofree char *revision = NULL;
+  gsize len;
   while (
       (revision = g_data_input_stream_read_upto (datastream, "", 1, &len, cancellable, &temp_error))
       != NULL)
@@ -293,37 +290,33 @@ process_many_checkouts (OstreeRepo *repo, const char *target, GCancellable *canc
 
       /* Read the null byte */
       (void)g_data_input_stream_read_byte (datastream, cancellable, NULL);
-      g_free (subpath);
-      subpath = g_data_input_stream_read_upto (datastream, "", 1, &len, cancellable, &temp_error);
+      g_autofree char *subpath
+          = g_data_input_stream_read_upto (datastream, "", 1, &len, cancellable, &temp_error);
       if (temp_error)
         {
           g_propagate_error (error, temp_error);
-          goto out;
+          return FALSE;
         }
 
       /* Read the null byte */
       (void)g_data_input_stream_read_byte (datastream, cancellable, NULL);
 
       if (!ostree_repo_resolve_rev (repo, revision, FALSE, &resolved_commit, error))
-        goto out;
+        return FALSE;
 
       if (!process_one_checkout (repo, resolved_commit, subpath, target, cancellable, error))
         {
           g_prefix_error (error, "Processing tree %s: ", resolved_commit);
-          goto out;
+          return FALSE;
         }
-
-      g_free (revision);
     }
   if (temp_error)
     {
       g_propagate_error (error, temp_error);
-      goto out;
+      return FALSE;
     }
 
-  ret = TRUE;
-out:
-  return ret;
+  return TRUE;
 }
 
 gboolean
