@@ -26,7 +26,7 @@ if ENABLE_MAN
 # ostree.xml.
 man1_files = ostree.1 ostree-admin-cleanup.1				\
 ostree-admin-config-diff.1 ostree-admin-deploy.1			\
-ostree-admin-init-fs.1 ostree-admin-instutil.1 ostree-admin-os-init.1	\
+ostree-admin-init-fs.1 ostree-admin-instutil.1 ostree-admin-stateroot-init.1 ostree-admin-os-init.1	\
 ostree-admin-status.1 ostree-admin-set-origin.1 ostree-admin-switch.1	\
 ostree-admin-undeploy.1 ostree-admin-upgrade.1 ostree-admin-unlock.1	\
 ostree-admin-pin.1 ostree-admin-set-default.1 \

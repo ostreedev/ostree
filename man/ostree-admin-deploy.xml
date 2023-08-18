@@ -66,10 +66,18 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
 
         <variablelist>
             <varlistentry>
+                <term><option>--stateroot</option>="STATEROOT"</term>
+
+                <listitem><para>
+                    Use a different operating system stateroot than the current one.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--os</option>="STATEROOT"</term>
 
                 <listitem><para>
-                    Use a different operating system root than the current one.
+                    Alias for <literal>--stateroot</literal>.
                 </para></listitem>
             </varlistentry>
 

@@ -24,7 +24,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
 <refentry id="ostree">
 
     <refentryinfo>
-        <title>ostree admin os-init</title>
+        <title>ostree admin stateroot-init</title>
         <productname>OSTree</productname>
 
         <authorgroup>
@@ -38,18 +38,18 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
     </refentryinfo>
 
     <refmeta>
-        <refentrytitle>ostree admin os-init</refentrytitle>
+        <refentrytitle>ostree admin stateroot-init</refentrytitle>
         <manvolnum>1</manvolnum>
     </refmeta>
 
     <refnamediv>
-        <refname>ostree-admin-os-init</refname>
-        <refpurpose>Soft-deprecated alias for stateroot-init</refpurpose>
+        <refname>ostree-admin-stateroot-init</refname>
+        <refpurpose>Initialize empty state for a given operating system</refpurpose>
     </refnamediv>
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree admin os-init</command> <arg choice="req">STATEROOT</arg>
+                <command>ostree admin stateroot-init</command> <arg choice="req">STATEROOT</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -57,7 +57,19 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
         <title>Description</title>
 
         <para>
-            This is a soft-deprecated alias for stateroot-init.  Please see the documentation for that.
+            Initializes an new stateroot (AKA "osname") for an operating system.
+            Ensures that the core subdirectories of /var (/tmp, /lib, /run, and
+            /lock) exist and initialize the given STATEROOT as OSTree stateroot.
+            Each deployment location is comprised of a single shared
+            <filename>var</filename> and a set of deployments (chroots).
         </para>
+    </refsect1>
+
+    <refsect1>
+        <title>Example</title>
+        <para><command>$ ostree admin stateroot-init exampleos</command></para>
+    <programlisting>
+        ostree/deploy/exampleos initialized as OSTree stateroot
+    </programlisting>
     </refsect1>
 </refentry>

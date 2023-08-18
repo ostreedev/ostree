@@ -97,7 +97,7 @@ assert_file_has_content_literal err.txt "Cannot stage deployment: Not currently 
 echo "ok staging does not work when not booted"
 
 orig_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
-${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmain/x86_64-runtime
+${CMD_PREFIX} ostree admin deploy --stateroot=testos testos:testos/buildmain/x86_64-runtime
 new_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
 assert_not_streq "${orig_mtime}" "${new_mtime}"
 # Need a new bootversion, sine we now have two deployments
