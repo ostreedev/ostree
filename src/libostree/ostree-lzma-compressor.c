@@ -169,7 +169,7 @@ _ostree_lzma_compressor_convert (GConverter *converter, const void *inbuf, gsize
     {
       res = lzma_easy_encoder (&self->lstream, 8, LZMA_CHECK_CRC64);
       if (res != LZMA_OK)
-        goto out;
+        return _ostree_lzma_return (res, error);
       self->initialized = TRUE;
     }
 
@@ -187,12 +187,11 @@ _ostree_lzma_compressor_convert (GConverter *converter, const void *inbuf, gsize
 
   res = lzma_code (&self->lstream, action);
   if (res != LZMA_OK && res != LZMA_STREAM_END)
-    goto out;
+    return _ostree_lzma_return (res, error);
 
   *bytes_read = inbuf_size - self->lstream.avail_in;
   *bytes_written = outbuf_size - self->lstream.avail_out;
 
-out:
   return _ostree_lzma_return (res, error);
 }
 
