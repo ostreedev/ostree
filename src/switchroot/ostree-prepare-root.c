@@ -436,6 +436,11 @@ main (int argc, char *argv[])
         1,
       };
 
+      cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
+      cfs_options.image_mountdir = OSTREE_COMPOSEFS_LOWERMNT;
+      if (mkdirat (AT_FDCWD, OSTREE_COMPOSEFS_LOWERMNT, 0700) < 0)
+        err (EXIT_FAILURE, "Failed to create %s", OSTREE_COMPOSEFS_LOWERMNT);
+
       g_autofree char *expected_digest = NULL;
 
       if (composefs_config->is_signed)
@@ -475,11 +480,6 @@ main (int argc, char *argv[])
           expected_digest = g_malloc (OSTREE_SHA256_STRING_LEN + 1);
           ot_bin2hex (expected_digest, cfs_digest_buf, g_variant_get_size (cfs_digest_v));
         }
-
-      cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
-      cfs_options.image_mountdir = OSTREE_COMPOSEFS_LOWERMNT;
-      if (mkdirat (AT_FDCWD, OSTREE_COMPOSEFS_LOWERMNT, 0700) < 0)
-        err (EXIT_FAILURE, "Failed to create %s", OSTREE_COMPOSEFS_LOWERMNT);
 
       if (expected_digest != NULL)
         {
