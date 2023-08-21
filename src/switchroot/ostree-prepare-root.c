@@ -493,7 +493,6 @@ main (int argc, char *argv[])
           // Or stated in reverse: if signature verification is enabled, then digest verification
           // must also be.
           g_assert (!composefs_config->is_signed);
-          g_print ("composefs: Mounting with no digest or signature check\n");
         }
 
       if (lcfs_mount_image (OSTREE_COMPOSEFS_NAME, TMP_SYSROOT, &cfs_options) == 0)
