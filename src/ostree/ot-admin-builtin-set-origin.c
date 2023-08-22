@@ -43,41 +43,35 @@ gboolean
 ot_admin_builtin_set_origin (int argc, char **argv, OstreeCommandInvocation *invocation,
                              GCancellable *cancellable, GError **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr (GOptionContext) context = NULL;
-  const char *remotename = NULL;
-  const char *url = NULL;
-  const char *branch = NULL;
-  g_autoptr (OstreeRepo) repo = NULL;
+  g_autoptr (GOptionContext) context = g_option_context_new ("REMOTENAME URL [BRANCH]");
   g_autoptr (OstreeSysroot) sysroot = NULL;
-  g_autoptr (OstreeDeployment) target_deployment = NULL;
-
-  context = g_option_context_new ("REMOTENAME URL [BRANCH]");
-
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER, invocation, &sysroot,
                                           cancellable, error))
-    goto out;
+    return FALSE;
 
   if (argc < 3)
     {
       ot_util_usage_error (context, "REMOTENAME and URL must be specified", error);
-      goto out;
+      return FALSE;
     }
 
-  remotename = argv[1];
-  url = argv[2];
+  const char *remotename = argv[1];
+  const char *url = argv[2];
+  const char *branch = NULL;
   if (argc > 3)
     branch = argv[3];
 
+  g_autoptr (OstreeRepo) repo = NULL;
   if (!ostree_sysroot_get_repo (sysroot, &repo, cancellable, error))
-    goto out;
+    return FALSE;
 
+  g_autoptr (OstreeDeployment) target_deployment = NULL;
   if (opt_index == -1)
     {
       target_deployment = ostree_sysroot_require_booted_deployment (sysroot, error);
       if (target_deployment == NULL)
-        goto out;
+        return FALSE;
       /* To match the below */
       target_deployment = g_object_ref (target_deployment);
     }
@@ -85,22 +79,21 @@ ot_admin_builtin_set_origin (int argc, char **argv, OstreeCommandInvocation *inv
     {
       target_deployment = ot_admin_get_indexed_deployment (sysroot, opt_index, error);
       if (!target_deployment)
-        goto out;
+        return FALSE;
     }
 
   {
-    char **iter;
     g_autoptr (GVariantBuilder) optbuilder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
     g_autoptr (GVariant) remote_options = NULL;
 
-    for (iter = opt_set; iter && *iter; iter++)
+    for (char **iter = opt_set; iter && *iter; iter++)
       {
         const char *keyvalue = *iter;
         g_autofree char *subkey = NULL;
         g_autofree char *subvalue = NULL;
 
         if (!ot_parse_keyvalue (keyvalue, &subkey, &subvalue, error))
-          goto out;
+          return FALSE;
 
         g_variant_builder_add (optbuilder, "{s@v}", subkey,
                                g_variant_new_variant (g_variant_new_string (subvalue)));
@@ -110,7 +103,7 @@ ot_admin_builtin_set_origin (int argc, char **argv, OstreeCommandInvocation *inv
 
     if (!ostree_repo_remote_change (repo, NULL, OSTREE_REPO_REMOTE_CHANGE_ADD_IF_NOT_EXISTS,
                                     remotename, url, remote_options, cancellable, error))
-      goto out;
+      return FALSE;
   }
 
   {
@@ -120,7 +113,7 @@ ot_admin_builtin_set_origin (int argc, char **argv, OstreeCommandInvocation *inv
     g_autofree char *origin_ref = NULL;
 
     if (!ostree_parse_refspec (origin_refspec, &origin_remote, &origin_ref, error))
-      goto out;
+      return FALSE;
 
     {
       g_autofree char *new_refspec
@@ -131,11 +124,9 @@ ot_admin_builtin_set_origin (int argc, char **argv, OstreeCommandInvocation *inv
 
       if (!ostree_sysroot_write_origin_file (sysroot, target_deployment, new_origin, cancellable,
                                              error))
-        goto out;
+        return FALSE;
     }
   }
 
-  ret = TRUE;
-out:
-  return ret;
+  return TRUE;
 }
