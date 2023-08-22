@@ -46,26 +46,21 @@ gboolean
 ostree_builtin_init (int argc, char **argv, OstreeCommandInvocation *invocation,
                      GCancellable *cancellable, GError **error)
 {
-  g_autoptr (GOptionContext) context = NULL;
+  g_autoptr (GOptionContext) context = g_option_context_new ("");
+
   g_autoptr (OstreeRepo) repo = NULL;
-  gboolean ret = FALSE;
-  OstreeRepoMode mode;
-
-  context = g_option_context_new ("");
-
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable,
                                     error))
-    goto out;
+    return FALSE;
 
+  OstreeRepoMode mode;
   if (!ostree_repo_mode_from_string (opt_mode, &mode, error))
-    goto out;
+    return FALSE;
   if (!ostree_repo_set_collection_id (repo, opt_collection_id, error))
-    goto out;
+    return FALSE;
 
   if (!ostree_repo_create (repo, mode, NULL, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
-out:
-  return ret;
+  return TRUE;
 }
