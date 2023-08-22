@@ -274,7 +274,17 @@ AS_IF([test x$have_gpgme = xyes],
 )
 AM_CONDITIONAL(USE_GPGME, test "x$have_gpgme" = xyes)
 
-# These are needed by libcomposefs
+dnl composefs won't work at all without this
+AC_MSG_CHECKING([for MOUNT_ATTR_IDMAP])
+AC_COMPILE_IFELSE(
+	[AC_LANG_SOURCE([[
+			#include <sys/mount.h>
+      int foo = MOUNT_ATTR_IDMAP;
+	]])],
+	[AC_MSG_RESULT(yes)
+	 have_mount_attr_idmap=yes],
+	[AC_MSG_RESULT(no)])
+dnl These are needed by libcomposefs to use the new mount API optionally
 AC_MSG_CHECKING([for new mount API (fsconfig)])
 AC_COMPILE_IFELSE(
 	[AC_LANG_SOURCE([[
@@ -295,9 +305,13 @@ AC_COMPILE_IFELSE(
 		 AC_DEFINE([HAVE_FSCONFIG_CMD_CREATE_LINUX_MOUNT_H], 1, [Define if FSCONFIG_CMD_CREATE is available in linux/mount.h])],
 	[AC_MSG_RESULT(no)])
 
+composefs_default=yes
+if test x"$have_mount_attr_idmap" != xyes; then
+  composefs_default=no
+fi
 AC_ARG_WITH(composefs,
 	    AS_HELP_STRING([--with-composefs], [Support composefs]),
-	    :, with_composefs=yes)
+	    :, with_composefs=$composefs_default)
 
 if test x$with_composefs != xno; then OSTREE_FEATURES="$OSTREE_FEATURES composefs";
    AC_DEFINE([HAVE_COMPOSEFS], 1, [Define if we have libcomposefs])
