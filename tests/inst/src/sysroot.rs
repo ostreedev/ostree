@@ -26,9 +26,9 @@ pub(crate) fn itest_sysroot_ro() -> Result<()> {
 
     let booted = sysroot.booted_deployment().expect("booted deployment");
     assert!(!booted.is_staged());
-    let repo = sysroot.repo().expect("repo");
+    let repo = sysroot.repo();
 
-    let csum = booted.csum().expect("booted csum");
+    let csum = booted.csum();
     let csum = csum.as_str();
 
     let (root, rev) = repo.read_commit(csum, cancellable.as_ref())?;

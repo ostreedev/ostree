@@ -287,7 +287,7 @@ fn parse_and_validate_reboot_mark<M: AsRef<str>>(
         generate_update(&firstdeploy.checksum)?;
         // Update the target state
         let srvrepo_obj = ostree::Repo::new(&gio::File::for_path(SRVREPO));
-        srvrepo_obj.open(gio::NONE_CANCELLABLE)?;
+        srvrepo_obj.open(gio::Cancellable::NONE)?;
         commitstates.target = srvrepo_obj.resolve_rev(TESTREF, false)?.unwrap().into();
     } else if commitstates.booted == commitstates.orig || commitstates.booted == commitstates.prev {
         println!(
@@ -357,9 +357,9 @@ fn impl_transaction_test<M: AsRef<str>>(
     // Gather the expected possible commits
     let mut commitstates = {
         let srvrepo_obj = ostree::Repo::new(&gio::File::for_path(SRVREPO));
-        srvrepo_obj.open(gio::NONE_CANCELLABLE)?;
+        srvrepo_obj.open(gio::Cancellable::NONE)?;
         let sysrepo_obj = ostree::Repo::new(&gio::File::for_path("/sysroot/ostree/repo"));
-        sysrepo_obj.open(gio::NONE_CANCELLABLE)?;
+        sysrepo_obj.open(gio::Cancellable::NONE)?;
 
         CommitStates {
             booted: booted_commit.to_string(),
@@ -569,7 +569,7 @@ pub(crate) fn itest_transactionality() -> Result<()> {
     sysroot.load(cancellable.as_ref())?;
     assert!(sysroot.is_booted());
     let booted = sysroot.booted_deployment().expect("booted deployment");
-    let commit: String = booted.csum().expect("booted csum").into();
+    let commit: String = booted.csum().into();
     // We need this static across reboots
     let srvrepo = Path::new(SRVREPO);
     let firstrun = !srvrepo.exists();
