@@ -163,12 +163,36 @@ get_aboot_root_slot (const char *slot_suffix)
   return NULL;
 }
 
+static bool
+proc_cmdline_has_key_starting_with (const char *cmdline, const char *key)
+{
+  for (const char *iter = cmdline; iter;)
+    {
+      if (g_str_has_prefix (iter, key))
+        return true;
+
+      iter = strchr (iter, ' ');
+      if (iter == NULL)
+        return false;
+
+      iter += strspn (iter, " ");
+    }
+
+  return false;
+}
+
 static inline char *
 get_ostree_target (const char *cmdline)
 {
   autofree char *slot_suffix = find_proc_cmdline_key (cmdline, "androidboot.slot_suffix");
   if (slot_suffix)
     return get_aboot_root_slot (slot_suffix);
+
+  /* Non-A/B androidboot:
+   * https://source.android.com/docs/core/ota/nonab
+   */
+  if (proc_cmdline_has_key_starting_with (cmdline, "androidboot."))
+    return strdup ("/ostree/root.a");
 
   return find_proc_cmdline_key (cmdline, "ostree");
 }
