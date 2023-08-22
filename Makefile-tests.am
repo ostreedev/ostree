@@ -262,7 +262,7 @@ else
 EXTRA_DIST += $(js_installed_tests)
 endif
 
-_installed_or_uninstalled_test_programs = tests/test-varint tests/test-ot-unix-utils tests/test-bsdiff tests/test-mutable-tree \
+_installed_or_uninstalled_test_programs = tests/test-varint tests/test-ot-unix-utils tests/test-bsdiff tests/test-otcore tests/test-mutable-tree \
 	tests/test-keyfile-utils tests/test-ot-opt-utils tests/test-ot-tool-util \
 	tests/test-checksum tests/test-lzma tests/test-rollsum \
 	tests/test-basic-c tests/test-sysroot-c tests/test-pull-c tests/test-repo tests/test-include-ostree-h tests/test-kargs \
@@ -364,6 +364,9 @@ tests_test_varint_LDADD = $(TESTS_LDADD)
 
 tests_test_bsdiff_CFLAGS = $(TESTS_CFLAGS)
 tests_test_bsdiff_LDADD = libbsdiff.la $(TESTS_LDADD)
+
+tests_test_otcore_CFLAGS = $(AM_CFLAGS) $(OT_INTERNAL_GIO_UNIX_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libotcore -I$(srcdir)/libglnx
+tests_test_otcore_LDADD = $(OT_INTERNAL_GIO_UNIX_LIBS) libotcore.la libglnx.la
 
 tests_test_checksum_SOURCES = \
 	src/libostree/ostree-core.c \
