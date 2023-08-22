@@ -87,29 +87,26 @@ cleanup_free (void *p)
 static inline char *
 find_proc_cmdline_key (const char *cmdline, const char *key)
 {
-  char *ret = NULL;
-  size_t key_len = strlen (key);
-
-  const char *iter = cmdline;
-  while (iter != NULL)
+  const size_t key_len = strlen (key);
+  for (const char *iter = cmdline; iter;)
     {
       const char *next = strchr (iter, ' ');
-      const char *next_nonspc = next;
-      while (next_nonspc && *next_nonspc == ' ')
-        next_nonspc += 1;
       if (strncmp (iter, key, key_len) == 0 && iter[key_len] == '=')
         {
           const char *start = iter + key_len + 1;
           if (next)
-            ret = strndup (start, next - start);
-          else
-            ret = strdup (start);
-          break;
+            return strndup (start, next - start);
+
+          return strdup (start);
         }
-      iter = next_nonspc;
+
+      if (next)
+        next += strspn (next, " ");
+
+      iter = next;
     }
 
-  return ret;
+  return NULL;
 }
 
 /* This is an API for other projects to determine whether or not the
