@@ -511,18 +511,22 @@ fn impl_transaction_test<M: AsRef<str>>(
             // the interrupt strategy.
             match strategy {
                 InterruptStrategy::Force(ForceInterruptStrategy::Kill9) => {
-                    bash!(
-                        "systemctl kill -s KILL rpm-ostreed || true
-                      systemctl kill -s KILL ostree-finalize-staged || true
-                      systemctl kill -s KILL ostree-finalize-staged-hold || true"
-                    )?;
+                    cmd!(sh, "systemctl kill -s KILL rpm-ostreed")
+                        .ignore_status()
+                        .run()?;
+                    cmd!(sh, "systemctl kill -s KILL ostree-finalize-staged")
+                        .ignore_status()
+                        .run()?;
+                    cmd!(sh, "systemctl kill -s KILL ostree-finalize-staged-hold")
+                        .ignore_status()
+                        .run()?;
                     live_strategy = Some(strategy);
                 }
                 InterruptStrategy::Force(ForceInterruptStrategy::Reboot) => {
                     mark.reboot_strategy = Some(strategy);
                     prepare_reboot(serde_json::to_string(&mark)?)?;
                     // This is a forced reboot - no syncing of the filesystem.
-                    bash!("reboot -ff")?;
+                    cmd!(sh, "reboot -ff").run()?;
                     std::thread::sleep(time::Duration::from_secs(60));
                     // Shouldn't happen
                     anyhow::bail!("failed to reboot");
@@ -536,11 +540,15 @@ fn impl_transaction_test<M: AsRef<str>>(
                     // We either rebooted, or failed to reboot
                 }
                 InterruptStrategy::Polite(PoliteInterruptStrategy::Stop) => {
-                    bash!(
-                        "systemctl stop rpm-ostreed || true
-                      systemctl stop ostree-finalize-staged || true
-                      systemctl stop ostree-finalize-staged-hold || true"
-                    )?;
+                    cmd!(sh, "systemctl stop rpm-ostreed")
+                        .ignore_status()
+                        .run()?;
+                    cmd!(sh, "systemctl stop ostree-finalize-staged")
+                        .ignore_status()
+                        .run()?;
+                    cmd!(sh, "systemctl stop ostree-finalize-staged-hold")
+                        .ignore_status()
+                        .run()?;
                     live_strategy = Some(strategy);
                 }
             }
@@ -637,7 +645,7 @@ pub(crate) fn itest_transactionality() -> Result<()> {
             let mut f = std::io::BufWriter::new(std::fs::File::create(&TDATAPATH)?);
             serde_json::to_writer(&mut f, &tdata)?;
             f.flush()?;
-            bash!("rpm-ostree status")?;
+            cmd!(sh, "rpm-ostree status").run()?;
         }
 
         let tdata = {
