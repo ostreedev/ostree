@@ -34,7 +34,7 @@
 #include "ostree-core-private.h"
 #include "ostree-mount-util.h"
 #include "ostree-sysroot-private.h"
-#include "ostree.h"
+#include "otcore.h"
 
 #ifdef HAVE_LIBMOUNT
 typedef FILE OtLibMountFile;
@@ -260,7 +260,7 @@ _ostree_impl_system_generator (const char *normal_dir, const char *early_dir, co
    * exit so that we don't error, but at the same time work where switchroot
    * is PID 1 (and so hasn't created /run/ostree-booted).
    */
-  g_autofree char *ostree_cmdline = find_proc_cmdline_key (cmdline, "ostree");
+  g_autofree char *ostree_cmdline = otcore_find_proc_cmdline_key (cmdline, "ostree");
   if (!ostree_cmdline)
     return TRUE;
 
