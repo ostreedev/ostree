@@ -424,11 +424,11 @@ main (int argc, char *argv[])
   // Tracks if we did successfully enable it at runtime
   bool using_composefs = false;
 
+#ifdef HAVE_COMPOSEFS
   /* We construct the new sysroot in /sysroot.tmp, which is either the composfs
      mount or a bind mount of the deploy-dir */
   if (composefs_config->enabled != OT_TRISTATE_NO)
     {
-#ifdef HAVE_COMPOSEFS
       const char *objdirs[] = { "/sysroot/ostree/repo/objects" };
       g_autofree char *cfs_digest = NULL;
       struct lcfs_mount_options_s cfs_options = {
@@ -532,10 +532,12 @@ main (int argc, char *argv[])
               errx (EXIT_FAILURE, "composefs: failed to mount: %s", errmsg);
             }
         }
-#else
-      errx (EXIT_FAILURE, "composefs: enabled at runtime, but support is not compiled in");
-#endif
     }
+#else
+  /* if composefs is configured as "maybe", we should continue */
+  if (composefs_config->enabled == OT_TRISTATE_YES)
+    errx (EXIT_FAILURE, "composefs: enabled at runtime, but support is not compiled in");
+#endif
 
   if (!using_composefs)
     {
