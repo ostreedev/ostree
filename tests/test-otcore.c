@@ -31,11 +31,62 @@ test_ed25519 (void)
   g_clear_error (&error);
 }
 
+static void
+test_prepare_root_cmdline (void)
+{
+  g_autoptr (GError) error = NULL;
+  g_autofree char *target = NULL;
+
+  static const char *notfound_cases[]
+      = { "", "foo", "foo=bar baz  sometest", "xostree foo", "xostree=blah bar", NULL };
+  for (const char **iter = notfound_cases; iter && *iter; iter++)
+    {
+      const char *tcase = *iter;
+      g_assert (otcore_get_ostree_target (tcase, &target, &error));
+      g_assert_no_error (error);
+      g_assert (target == NULL);
+    }
+
+  // Test the default ostree=
+  g_assert (otcore_get_ostree_target ("blah baz=blah ostree=/foo/bar somearg", &target, &error));
+  g_assert_no_error (error);
+  g_assert_cmpstr (target, ==, "/foo/bar");
+  free (g_steal_pointer (&target));
+
+  // Test android boot
+  g_assert (otcore_get_ostree_target ("blah baz=blah androidboot.slot_suffix=_b somearg", &target,
+                                      &error));
+  g_assert_no_error (error);
+  g_assert_cmpstr (target, ==, "/ostree/root.b");
+  free (g_steal_pointer (&target));
+
+  g_assert (otcore_get_ostree_target ("blah baz=blah androidboot.slot_suffix=_a somearg", &target,
+                                      &error));
+  g_assert_no_error (error);
+  g_assert_cmpstr (target, ==, "/ostree/root.a");
+  free (g_steal_pointer (&target));
+
+  // And an expected failure to parse a "c" suffix
+  g_assert (!otcore_get_ostree_target ("blah baz=blah androidboot.slot_suffix=_c somearg", &target,
+                                       &error));
+  g_assert (error);
+  g_assert (target == NULL);
+  g_clear_error (&error);
+
+  // And non-A/B androidboot
+  g_assert (otcore_get_ostree_target ("blah baz=blah androidboot.somethingelse somearg", &target,
+                                      &error));
+  g_assert_no_error (error);
+  g_assert_cmpstr (target, ==, "/ostree/root.a");
+  free (g_steal_pointer (&target));
+}
+
 int
 main (int argc, char **argv)
 {
   g_test_init (&argc, &argv, NULL);
   otcore_ed25519_init ();
   g_test_add_func ("/ed25519", test_ed25519);
+  g_test_add_func ("/prepare-root-cmdline", test_prepare_root_cmdline);
   return g_test_run ();
 }

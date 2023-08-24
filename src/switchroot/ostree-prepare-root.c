@@ -150,53 +150,6 @@ sysroot_is_configured_ro (const char *sysroot)
   return g_key_file_get_boolean (repo_config, SYSROOT_KEY, READONLY_KEY, NULL);
 }
 
-static inline char *
-get_aboot_root_slot (const char *slot_suffix)
-{
-  if (strcmp (slot_suffix, "_a") == 0)
-    return strdup ("/ostree/root.a");
-  else if (strcmp (slot_suffix, "_b") == 0)
-    return strdup ("/ostree/root.b");
-
-  errx (EXIT_FAILURE, "androidboot.slot_suffix invalid: %s", slot_suffix);
-
-  return NULL;
-}
-
-static bool
-proc_cmdline_has_key_starting_with (const char *cmdline, const char *key)
-{
-  for (const char *iter = cmdline; iter;)
-    {
-      if (g_str_has_prefix (iter, key))
-        return true;
-
-      iter = strchr (iter, ' ');
-      if (iter == NULL)
-        return false;
-
-      iter += strspn (iter, " ");
-    }
-
-  return false;
-}
-
-static inline char *
-get_ostree_target (const char *cmdline)
-{
-  autofree char *slot_suffix = find_proc_cmdline_key (cmdline, "androidboot.slot_suffix");
-  if (slot_suffix)
-    return get_aboot_root_slot (slot_suffix);
-
-  /* Non-A/B androidboot:
-   * https://source.android.com/docs/core/ota/nonab
-   */
-  if (proc_cmdline_has_key_starting_with (cmdline, "androidboot."))
-    return strdup ("/ostree/root.a");
-
-  return find_proc_cmdline_key (cmdline, "ostree");
-}
-
 static char *
 resolve_deploy_path (const char *root_mountpoint)
 {
@@ -207,9 +160,12 @@ resolve_deploy_path (const char *root_mountpoint)
   if (!kernel_cmdline)
     errx (EXIT_FAILURE, "Failed to read kernel cmdline");
 
-  g_autofree char *ostree_target = get_ostree_target (kernel_cmdline);
+  g_autoptr (GError) error = NULL;
+  g_autofree char *ostree_target = NULL;
+  if (!otcore_get_ostree_target (kernel_cmdline, &ostree_target, &error))
+    errx (EXIT_FAILURE, "Failed to determine ostree target: %s", error->message);
   if (!ostree_target)
-    errx (EXIT_FAILURE, "No ostree target");
+    errx (EXIT_FAILURE, "No ostree target found");
 
   if (snprintf (destpath, sizeof (destpath), "%s/%s", root_mountpoint, ostree_target) < 0)
     err (EXIT_FAILURE, "failed to assemble ostree target path");

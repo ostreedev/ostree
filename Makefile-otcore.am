@@ -18,6 +18,7 @@ noinst_LTLIBRARIES += libotcore.la
 libotcore_la_SOURCES = \
 	src/libotcore/otcore.h \
     src/libotcore/otcore-ed25519-verify.c \
+    src/libotcore/otcore-prepare-root.c \
 	$(NULL)
 
 libotcore_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/libglnx -I$(srcdir)/src/libotutil -DLOCALEDIR=\"$(datadir)/locale\" $(OT_INTERNAL_GIO_UNIX_CFLAGS) $(OT_INTERNAL_GPGME_CFLAGS) $(OT_DEP_CRYPTO_LIBS) $(LIBSYSTEMD_CFLAGS)
