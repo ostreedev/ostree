@@ -560,9 +560,10 @@ fn impl_transaction_test<M: AsRef<str>>(
 fn suppress_ostree_global_sync(sh: &xshell::Shell) -> Result<()> {
     let dropindir = "/etc/systemd/system/ostree-finalize-staged.service.d";
     std::fs::create_dir_all(dropindir)?;
+    // Aslo opt-in to the new bootloader naming
     std::fs::write(
-        Path::new(dropindir).join("50-suppress-sync.conf"),
-        "[Service]\nEnvironment=OSTREE_SYSROOT_OPTS=skip-sync\n",
+        Path::new(dropindir).join("50-test-options.conf"),
+        "[Service]\nEnvironment=OSTREE_SYSROOT_OPTS=skip-sync,bootloader-naming-2\n",
     )?;
     cmd!(sh, "systemctl daemon-reload").run()?;
     Ok(())

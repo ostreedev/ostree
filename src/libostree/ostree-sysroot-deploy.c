@@ -1912,8 +1912,15 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
   const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
   g_autofree char *bootcsumdir = g_strdup_printf ("ostree/%s-%s", osname, bootcsum);
   g_autofree char *bootconfdir = g_strdup_printf ("loader.%d/entries", new_bootversion);
-  g_autofree char *bootconf_name = g_strdup_printf (
-      "ostree-%d-%s.conf", n_deployments - ostree_deployment_get_index (deployment), osname);
+  g_autofree char *bootconf_name = NULL;
+  guint index = n_deployments - ostree_deployment_get_index (deployment);
+  // Allow opt-in to dropping the stateroot, because grub2 parses the *filename* and ignores
+  // the version field.  xref https://github.com/ostreedev/ostree/issues/2961
+  bool use_new_naming = (sysroot->opt_flags & OSTREE_SYSROOT_GLOBAL_OPT_BOOTLOADER_NAMING_2) > 0;
+  if (use_new_naming)
+    bootconf_name = g_strdup_printf ("ostree-%d.conf", index);
+  else
+    bootconf_name = g_strdup_printf ("ostree-%d-%s.conf", index, osname);
   if (!glnx_shutil_mkdir_p_at (sysroot->boot_fd, bootcsumdir, 0775, cancellable, error))
     return FALSE;
 
