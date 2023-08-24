@@ -44,7 +44,7 @@ assert_bootfs_has_n_bootcsum_dirs 1
 # the booted deployment is never pruned, so this is a hopeless case and auto-pruning can't save us
 consume_bootfs_space
 rpm-ostree rebase :modkernel1
-if OSTREE_SYSROOT_OPTS=early-prune ostree admin finalize-staged |& tee out.txt; then
+if ostree admin finalize-staged |& tee out.txt; then
     assert_not_reached "successfully wrote to filled up bootfs"
 fi
 assert_file_has_content out.txt "Disabling auto-prune optimization; insufficient space left in bootfs"
@@ -58,7 +58,7 @@ rpm-ostree cleanup -bpr
 assert_bootfs_has_n_bootcsum_dirs 1
 
 rpm-ostree rebase :modkernel1
-OSTREE_SYSROOT_OPTS=early-prune ostree admin finalize-staged |& tee out.txt
+ostree admin finalize-staged |& tee out.txt
 assert_not_file_has_content out.txt "updating bootloader in two steps"
 rm out.txt
 
@@ -71,7 +71,7 @@ bootloader_orig=$(sha256sum /boot/loader/entries/*)
 # now try to deploy a third deployment without early pruning; we should hit ENOSPC
 consume_bootfs_space
 rpm-ostree rebase :modkernel2
-if ostree admin finalize-staged |& tee out.txt; then
+if OSTREE_SYSROOT_OPTS=no-early-prune ostree admin finalize-staged |& tee out.txt; then
     assert_not_reached "successfully wrote kernel without auto-pruning"
 fi
 assert_file_has_content out.txt "No space left on device"
@@ -86,7 +86,7 @@ assert_streq "$bootloader_orig" "$(sha256sum /boot/loader/entries/*)"
 
 # now, try again but with auto-pruning enabled
 rpm-ostree rebase :modkernel2
-OSTREE_SYSROOT_OPTS=early-prune ostree admin finalize-staged |& tee out.txt
+ostree admin finalize-staged |& tee out.txt
 assert_file_has_content out.txt "updating bootloader in two steps"
 rm out.txt
 
@@ -120,15 +120,16 @@ unshare -m bash -c \
 consume_bootfs_space "$((free_blocks))"
 
 rpm-ostree rebase :modkernel1
-if ostree admin finalize-staged |& tee out.txt; then
+# Disable auto-pruning to verify we reproduce the bug
+if OSTREE_SYSROOT_OPTS=no-early-prune ostree admin finalize-staged |& tee out.txt; then
     assert_not_reached "successfully wrote kernel without auto-pruning"
 fi
 assert_file_has_content out.txt "No space left on device"
 rm out.txt
 
-# now, try again but with auto-pruning enabled
+# now, try again but with (now default) auto-pruning enabled
 rpm-ostree rebase :modkernel1
-OSTREE_SYSROOT_OPTS=early-prune ostree admin finalize-staged |& tee out.txt
+ostree admin finalize-staged |& tee out.txt
 assert_file_has_content out.txt "updating bootloader in two steps"
 rm out.txt
 

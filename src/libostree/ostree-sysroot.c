@@ -179,7 +179,7 @@ ostree_sysroot_init (OstreeSysroot *self)
 {
   const GDebugKey globalopt_keys[] = {
     { "skip-sync", OSTREE_SYSROOT_GLOBAL_OPT_SKIP_SYNC },
-    { "early-prune", OSTREE_SYSROOT_GLOBAL_OPT_EARLY_PRUNE },
+    { "no-early-prune", OSTREE_SYSROOT_GLOBAL_OPT_NO_EARLY_PRUNE },
     { "bootloader-naming-2", OSTREE_SYSROOT_GLOBAL_OPT_BOOTLOADER_NAMING_2 },
   };
   const GDebugKey keys[] = {
