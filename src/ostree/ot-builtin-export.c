@@ -51,16 +51,6 @@ static GOptionEntry options[]
         { "output", 'o', 0, G_OPTION_ARG_FILENAME, &opt_output_path, "Output to PATH ", "PATH" },
         { NULL } };
 
-#ifdef HAVE_LIBARCHIVE
-
-static void
-propagate_libarchive_error (GError **error, struct archive *a)
-{
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "%s", archive_error_string (a));
-}
-
-#endif
-
 gboolean
 ostree_builtin_export (int argc, char **argv, OstreeCommandInvocation *invocation,
                        GCancellable *cancellable, GError **error)
@@ -89,30 +79,18 @@ ostree_builtin_export (int argc, char **argv, OstreeCommandInvocation *invocatio
    * supports.
    */
   if (archive_write_set_format_gnutar (a) != ARCHIVE_OK)
-    {
-      propagate_libarchive_error (error, a);
-      return FALSE;
-    }
+    return glnx_throw (error, "%s", archive_error_string (a));
   if (archive_write_add_filter_none (a) != ARCHIVE_OK)
-    {
-      propagate_libarchive_error (error, a);
-      return FALSE;
-    }
+    return glnx_throw (error, "%s", archive_error_string (a));
   if (opt_output_path)
     {
       if (archive_write_open_filename (a, opt_output_path) != ARCHIVE_OK)
-        {
-          propagate_libarchive_error (error, a);
-          return FALSE;
-        }
+        return glnx_throw (error, "%s", archive_error_string (a));
     }
   else
     {
       if (archive_write_open_FILE (a, stdout) != ARCHIVE_OK)
-        {
-          propagate_libarchive_error (error, a);
-          return FALSE;
-        }
+        return glnx_throw (error, "%s", archive_error_string (a));
     }
 
   OstreeRepoExportArchiveOptions opts = {
@@ -145,10 +123,7 @@ ostree_builtin_export (int argc, char **argv, OstreeCommandInvocation *invocatio
     return FALSE;
 
   if (archive_write_close (a) != ARCHIVE_OK)
-    {
-      propagate_libarchive_error (error, a);
-      return FALSE;
-    }
+    return glnx_throw (error, "%s", archive_error_string (a));
 
   return TRUE;
 #else
