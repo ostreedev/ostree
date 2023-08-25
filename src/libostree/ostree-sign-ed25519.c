@@ -415,17 +415,18 @@ ostree_sign_ed25519_add_pk (OstreeSign *self, GVariant *public_key, GError **err
   if (!_ostree_sign_ed25519_is_initialized (sign, error))
     return FALSE;
 
-  gpointer key = NULL;
+  g_autofree guint8 *key_owned = NULL;
+  const guint8 *key = NULL;
   gsize n_elements = 0;
 
   if (g_variant_is_of_type (public_key, G_VARIANT_TYPE_STRING))
     {
       const gchar *pk_ascii = g_variant_get_string (public_key, NULL);
-      key = g_base64_decode (pk_ascii, &n_elements);
+      key = key_owned = g_base64_decode (pk_ascii, &n_elements);
     }
   else if (g_variant_is_of_type (public_key, G_VARIANT_TYPE_BYTESTRING))
     {
-      key = (gpointer)g_variant_get_fixed_array (public_key, &n_elements, sizeof (guchar));
+      key = g_variant_get_fixed_array (public_key, &n_elements, sizeof (guchar));
     }
   else
     {
@@ -461,7 +462,7 @@ _ed25519_add_revoked (OstreeSign *self, GVariant *revoked_key, GError **error)
 
   const gchar *rk_ascii = g_variant_get_string (revoked_key, NULL);
   gsize n_elements = 0;
-  gpointer key = g_base64_decode (rk_ascii, &n_elements);
+  g_autofree guint8 *key = g_base64_decode (rk_ascii, &n_elements);
 
   if (!validate_length (n_elements, OSTREE_SIGN_ED25519_PUBKEY_SIZE, error))
     return glnx_prefix_error (error, "Incorrect ed25519 revoked key");
