@@ -277,11 +277,11 @@ AM_CONDITIONAL(USE_GPGME, test "x$have_gpgme" = xyes)
 dnl composefs won't work at all without this
 AC_MSG_CHECKING([for MOUNT_ATTR_IDMAP])
 AC_COMPILE_IFELSE(
-	[AC_LANG_SOURCE([[
-			#include <linux/mount.h>
+	[AC_LANG_PROGRAM([
 			#include <sys/mount.h>
-      int foo = MOUNT_ATTR_IDMAP;
-	]])],
+			#include <linux/mount.h>
+  ],[int foo = MOUNT_ATTR_IDMAP;]
+	)],
 	[AC_MSG_RESULT(yes)
 	 have_mount_attr_idmap=yes],
 	[AC_MSG_RESULT(no)])
