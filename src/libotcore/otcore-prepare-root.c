@@ -106,3 +106,34 @@ otcore_get_ostree_target (const char *cmdline, char **out_target, GError **error
   *out_target = otcore_find_proc_cmdline_key (cmdline, "ostree");
   return TRUE;
 }
+
+// Load a config file; if it doesn't exist, we return an empty configuration.
+// NULL will be returned if we caught an error.
+GKeyFile *
+otcore_load_config (int rootfs_fd, const char *filename, GError **error)
+{
+  // The path to the config file for this binary
+  static const char *const config_roots[] = { "usr/lib", "etc" };
+  g_autoptr (GKeyFile) ret = g_key_file_new ();
+
+  for (guint i = 0; i < G_N_ELEMENTS (config_roots); i++)
+    {
+      glnx_autofd int fd = -1;
+      g_autofree char *path = g_build_filename (config_roots[i], filename, NULL);
+      if (!ot_openat_ignore_enoent (rootfs_fd, path, &fd, error))
+        return NULL;
+      /* If the config file doesn't exist, that's OK */
+      if (fd == -1)
+        continue;
+
+      g_print ("Loading %s\n", path);
+
+      g_autofree char *buf = glnx_fd_readall_utf8 (fd, NULL, NULL, error);
+      if (!buf)
+        return NULL;
+      if (!g_key_file_load_from_data (ret, buf, -1, 0, error))
+        return NULL;
+    }
+
+  return g_steal_pointer (&ret);
+}

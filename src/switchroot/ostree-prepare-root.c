@@ -76,8 +76,6 @@
 #include "ot-keyfile-utils.h"
 #include "otcore.h"
 
-// The path to the config file for this binary
-const char *config_roots[] = { "/usr/lib", "/etc" };
 #define PREPARE_ROOT_CONFIG_PATH "ostree/prepare-root.conf"
 
 // This key is used by default if present in the initramfs to verify
@@ -105,35 +103,6 @@ const char *config_roots[] = { "/usr/lib", "/etc" };
 #endif
 
 #include "ostree-mount-util.h"
-
-// Load our config file; if it doesn't exist, we return an empty configuration.
-// NULL will be returned if we caught an error.
-static GKeyFile *
-load_config (GError **error)
-{
-  g_autoptr (GKeyFile) ret = g_key_file_new ();
-
-  for (guint i = 0; i < G_N_ELEMENTS (config_roots); i++)
-    {
-      glnx_autofd int fd = -1;
-      g_autofree char *path = g_build_filename (config_roots[i], PREPARE_ROOT_CONFIG_PATH, NULL);
-      if (!ot_openat_ignore_enoent (AT_FDCWD, path, &fd, error))
-        return NULL;
-      /* If the config file doesn't exist, that's OK */
-      if (fd == -1)
-        continue;
-
-      g_print ("Loading %s\n", path);
-
-      g_autofree char *buf = glnx_fd_readall_utf8 (fd, NULL, NULL, error);
-      if (!buf)
-        return NULL;
-      if (!g_key_file_load_from_data (ret, buf, -1, 0, error))
-        return NULL;
-    }
-
-  return g_steal_pointer (&ret);
-}
 
 static bool
 sysroot_is_configured_ro (const char *sysroot)
@@ -350,7 +319,14 @@ main (int argc, char *argv[])
     err (EXIT_FAILURE, "usage: ostree-prepare-root SYSROOT");
   const char *root_arg = argv[1];
 
-  g_autoptr (GKeyFile) config = load_config (&error);
+  // Since several APIs want to operate in terms of file descriptors, let's
+  // open the initramfs now.  Currently this is just used for the config parser.
+  glnx_autofd int initramfs_rootfs_fd = -1;
+  if (!glnx_opendirat (AT_FDCWD, "/", FALSE, &initramfs_rootfs_fd, &error))
+    errx (EXIT_FAILURE, "Failed to open /: %s", error->message);
+
+  g_autoptr (GKeyFile) config
+      = otcore_load_config (initramfs_rootfs_fd, PREPARE_ROOT_CONFIG_PATH, &error);
   if (!config)
     errx (EXIT_FAILURE, "Failed to parse config: %s", error->message);
 

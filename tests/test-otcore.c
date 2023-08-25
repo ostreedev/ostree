@@ -81,6 +81,54 @@ test_prepare_root_cmdline (void)
   free (g_steal_pointer (&target));
 }
 
+static void
+test_prepare_root_config (void)
+{
+  g_autoptr (GError) error = NULL;
+  g_auto (GLnxTmpDir) tmpdir = {
+    0,
+  };
+  g_assert (glnx_mkdtempat (AT_FDCWD, "/tmp/test-XXXXXX", 0777, &tmpdir, &error));
+  g_assert_no_error (error);
+
+  {
+    g_autoptr (GKeyFile) config = NULL;
+    g_auto (GStrv) keys = NULL;
+    config = otcore_load_config (tmpdir.fd, "ostree/someconfig.conf", &error);
+    g_assert (config);
+    keys = g_key_file_get_groups (config, NULL);
+    g_assert (keys && *keys == NULL);
+  }
+
+  g_assert (glnx_shutil_mkdir_p_at (tmpdir.fd, "usr/lib/ostree", 0755, NULL, NULL));
+  g_assert (glnx_file_replace_contents_at (tmpdir.fd, "usr/lib/ostree/someconfig.conf",
+                                           (guint8 *)"[foo]\nbar=baz", -1, 0, NULL, NULL));
+
+  {
+    g_autoptr (GKeyFile) config = NULL;
+    g_auto (GStrv) keys = NULL;
+    config = otcore_load_config (tmpdir.fd, "ostree/someconfig.conf", &error);
+    g_assert (config);
+    keys = g_key_file_get_groups (config, NULL);
+    g_assert (keys);
+    g_assert_cmpstr (*keys, ==, "foo");
+  }
+
+  g_assert (glnx_shutil_mkdir_p_at (tmpdir.fd, "etc/ostree", 0755, NULL, NULL));
+  g_assert (glnx_file_replace_contents_at (tmpdir.fd, "usr/lib/ostree/someconfig.conf",
+                                           (guint8 *)"[test]\nbar=baz", -1, 0, NULL, NULL));
+
+  {
+    g_autoptr (GKeyFile) config = NULL;
+    g_auto (GStrv) keys = NULL;
+    config = otcore_load_config (tmpdir.fd, "ostree/someconfig.conf", &error);
+    g_assert (config);
+    keys = g_key_file_get_groups (config, NULL);
+    g_assert (keys);
+    g_assert_cmpstr (*keys, ==, "test");
+  }
+}
+
 int
 main (int argc, char **argv)
 {
@@ -88,5 +136,6 @@ main (int argc, char **argv)
   otcore_ed25519_init ();
   g_test_add_func ("/ed25519", test_ed25519);
   g_test_add_func ("/prepare-root-cmdline", test_prepare_root_cmdline);
+  g_test_add_func ("/prepare-root-config", test_prepare_root_config);
   return g_test_run ();
 }
