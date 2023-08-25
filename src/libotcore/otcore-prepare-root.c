@@ -82,12 +82,12 @@ otcore_get_ostree_target (const char *cmdline, char **out_target, GError **error
     {
       if (strcmp (slot_suffix, "_a") == 0)
         {
-          *out_target = strdup (slot_a);
+          *out_target = g_strdup (slot_a);
           return TRUE;
         }
       else if (strcmp (slot_suffix, "_b") == 0)
         {
-          *out_target = strdup (slot_b);
+          *out_target = g_strdup (slot_b);
           return TRUE;
         }
       return glnx_throw (error, "androidboot.slot_suffix invalid: %s", slot_suffix);
@@ -98,7 +98,7 @@ otcore_get_ostree_target (const char *cmdline, char **out_target, GError **error
    */
   if (proc_cmdline_has_key_starting_with (cmdline, "androidboot."))
     {
-      *out_target = strdup (slot_a);
+      *out_target = g_strdup (slot_a);
       return TRUE;
     }
 

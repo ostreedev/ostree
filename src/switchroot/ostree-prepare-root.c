@@ -247,8 +247,8 @@ static void
 free_composefs_config (ComposefsConfig *config)
 {
   g_ptr_array_unref (config->pubkeys);
-  free (config->signature_pubkey);
-  free (config);
+  g_free (config->signature_pubkey);
+  g_free (config);
 }
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (ComposefsConfig, free_composefs_config)
