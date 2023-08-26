@@ -6340,6 +6340,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo *self, const char *nam
     return FALSE;
 
   mainctx = _ostree_main_context_new_default ();
+  (void)mainctx; // Used for autocleanup
 
   fetcher = _ostree_repo_remote_new_fetcher (self, name, TRUE, extra_headers, append_user_agent,
                                              NULL, error);
