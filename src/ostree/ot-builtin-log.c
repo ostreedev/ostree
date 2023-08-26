@@ -41,72 +41,62 @@ static gboolean
 log_commit (OstreeRepo *repo, const gchar *checksum, gboolean is_recurse, OstreeDumpFlags flags,
             GError **error)
 {
-  g_autoptr (GVariant) variant = NULL;
-  g_autofree char *parent = NULL;
-  gboolean ret = FALSE;
   GError *local_error = NULL;
 
+  g_autoptr (GVariant) variant = NULL;
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, checksum, &variant, &local_error))
     {
       if (is_recurse && g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {
           g_print ("<< History beyond this commit not fetched >>\n");
           g_clear_error (&local_error);
-          ret = TRUE;
+          return TRUE;
         }
       else
         {
           g_propagate_error (error, local_error);
+          return FALSE;
         }
-      goto out;
     }
 
   ot_dump_object (OSTREE_OBJECT_TYPE_COMMIT, checksum, variant, flags);
 
   /* Get the parent of this commit */
-  parent = ostree_commit_get_parent (variant);
+  g_autofree char *parent = ostree_commit_get_parent (variant);
   if (parent && !log_commit (repo, parent, TRUE, flags, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
-out:
-  return ret;
+  return TRUE;
 }
 
 gboolean
 ostree_builtin_log (int argc, char **argv, OstreeCommandInvocation *invocation,
                     GCancellable *cancellable, GError **error)
 {
-  g_autoptr (GOptionContext) context = NULL;
+
+  g_autoptr (GOptionContext) context = g_option_context_new ("REV");
+
   g_autoptr (OstreeRepo) repo = NULL;
-  gboolean ret = FALSE;
-  const char *rev;
-  g_autofree char *checksum = NULL;
-  OstreeDumpFlags flags = OSTREE_DUMP_NONE;
-
-  context = g_option_context_new ("REV");
-
   if (!ostree_option_context_parse (context, options, &argc, &argv, invocation, &repo, cancellable,
                                     error))
-    goto out;
-
-  if (opt_raw)
-    flags |= OSTREE_DUMP_RAW;
+    return FALSE;
 
   if (argc <= 1)
     {
       ot_util_usage_error (context, "A rev argument is required", error);
-      goto out;
+      return FALSE;
     }
-  rev = argv[1];
+  const char *rev = argv[1];
+  OstreeDumpFlags flags = OSTREE_DUMP_NONE;
+  if (opt_raw)
+    flags |= OSTREE_DUMP_RAW;
 
+  g_autofree char *checksum = NULL;
   if (!ostree_repo_resolve_rev (repo, rev, FALSE, &checksum, error))
-    goto out;
+    return FALSE;
 
   if (!log_commit (repo, checksum, FALSE, flags, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
-out:
-  return ret;
+  return TRUE;
 }
