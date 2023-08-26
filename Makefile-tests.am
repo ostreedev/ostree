@@ -366,7 +366,7 @@ tests_test_bsdiff_CFLAGS = $(TESTS_CFLAGS)
 tests_test_bsdiff_LDADD = libbsdiff.la $(TESTS_LDADD)
 
 tests_test_otcore_CFLAGS = $(AM_CFLAGS) $(OT_INTERNAL_GIO_UNIX_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libotcore -I$(srcdir)/libglnx
-tests_test_otcore_LDADD = $(OT_INTERNAL_GIO_UNIX_LIBS) libotcore.la libglnx.la
+tests_test_otcore_LDADD = $(OT_INTERNAL_GIO_UNIX_LIBS) libotcore.la libglnx.la libotutil.la
 
 tests_test_checksum_SOURCES = \
 	src/libostree/ostree-core.c \

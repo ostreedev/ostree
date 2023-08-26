@@ -2850,14 +2850,6 @@ ostree_repo_write_content_finish (OstreeRepo *self, GAsyncResult *result, guchar
   return TRUE;
 }
 
-static GVariant *
-create_empty_gvariant_dict (void)
-{
-  GVariantBuilder builder;
-  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a{sv}"));
-  return g_variant_builder_end (&builder);
-}
-
 /**
  * ostree_repo_write_commit:
  * @self: Repo
@@ -2951,7 +2943,7 @@ ostree_repo_write_commit_with_time (OstreeRepo *self, const char *parent, const 
     return FALSE;
 
   g_autoptr (GVariant) commit = g_variant_new (
-      "(@a{sv}@ay@a(say)sst@ay@ay)", new_metadata ? new_metadata : create_empty_gvariant_dict (),
+      "(@a{sv}@ay@a(say)sst@ay@ay)", new_metadata,
       parent ? ostree_checksum_to_bytes_v (parent) : ot_gvariant_new_bytearray (NULL, 0),
       g_variant_new_array (G_VARIANT_TYPE ("(say)"), NULL, 0), subject ? subject : "",
       body ? body : "", GUINT64_TO_BE (time),
