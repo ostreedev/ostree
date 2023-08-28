@@ -473,6 +473,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
                                   cancellable, error))
         goto out;
     }
+  (void)mode_overrides; // This takes care of cleanup
 
   if (opt_skiplist_file)
     {
