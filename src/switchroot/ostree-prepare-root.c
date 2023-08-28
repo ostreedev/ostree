@@ -233,6 +233,24 @@ validate_signature (GBytes *data, GVariant *signatures, GPtrArray *pubkeys)
 
   return FALSE;
 }
+
+// Output a friendly message based on an errno for common cases
+static const char *
+composefs_error_message (int errsv)
+{
+  switch (errsv)
+    {
+    case ENOVERITY:
+      return "fsverity not enabled on composefs image";
+    case EWRONGVERITY:
+      return "Wrong fsverity digest in composefs image";
+    case ENOSIGNATURE:
+      return "Missing signature for fsverity in composefs image";
+    default:
+      return strerror (errsv);
+    }
+}
+
 #endif
 
 typedef struct
@@ -412,6 +430,11 @@ main (int argc, char *argv[])
         1,
       };
 
+      cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
+      cfs_options.image_mountdir = OSTREE_COMPOSEFS_LOWERMNT;
+      if (mkdirat (AT_FDCWD, OSTREE_COMPOSEFS_LOWERMNT, 0700) < 0)
+        err (EXIT_FAILURE, "Failed to create %s", OSTREE_COMPOSEFS_LOWERMNT);
+
       g_autofree char *expected_digest = NULL;
 
       if (composefs_config->is_signed)
@@ -450,26 +473,10 @@ main (int argc, char *argv[])
 
           expected_digest = g_malloc (OSTREE_SHA256_STRING_LEN + 1);
           ot_bin2hex (expected_digest, cfs_digest_buf, g_variant_get_size (cfs_digest_v));
-        }
 
-      cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
-      cfs_options.image_mountdir = OSTREE_COMPOSEFS_LOWERMNT;
-      if (mkdirat (AT_FDCWD, OSTREE_COMPOSEFS_LOWERMNT, 0700) < 0)
-        err (EXIT_FAILURE, "Failed to create %s", OSTREE_COMPOSEFS_LOWERMNT);
-
-      if (expected_digest != NULL)
-        {
           cfs_options.flags |= LCFS_MOUNT_FLAGS_REQUIRE_VERITY;
           g_print ("composefs: Verifying digest: %s\n", expected_digest);
           cfs_options.expected_fsverity_digest = expected_digest;
-        }
-      else
-        {
-          // If we're not verifying a digest, then we *must* also have signatures disabled.
-          // Or stated in reverse: if signature verification is enabled, then digest verification
-          // must also be.
-          g_assert (!composefs_config->is_signed);
-          g_print ("composefs: Mounting with no digest or signature check\n");
         }
 
       if (lcfs_mount_image (OSTREE_COMPOSEFS_NAME, TMP_SYSROOT, &cfs_options) == 0)
@@ -482,29 +489,14 @@ main (int argc, char *argv[])
       else
         {
           int errsv = errno;
-          const char *errmsg;
-          switch (errsv)
+          g_assert (composefs_config->enabled != OT_TRISTATE_NO);
+          if (composefs_config->enabled == OT_TRISTATE_MAYBE && errsv == ENOENT)
             {
-            case ENOVERITY:
-              errmsg = "fsverity not enabled on composefs image";
-              break;
-            case EWRONGVERITY:
-              errmsg = "Wrong fsverity digest in composefs image";
-              break;
-            case ENOSIGNATURE:
-              errmsg = "Missing signature for fsverity in composefs image";
-              break;
-            default:
-              errmsg = strerror (errno);
-              break;
-            }
-          if (composefs_config->enabled == OT_TRISTATE_MAYBE)
-            {
-              g_print ("composefs: optional support failed: %s\n", errmsg);
+              g_print ("composefs: No image present\n");
             }
           else
             {
-              g_assert (composefs_config->enabled == OT_TRISTATE_YES);
+              const char *errmsg = composefs_error_message (errsv);
               errx (EXIT_FAILURE, "composefs: failed to mount: %s", errmsg);
             }
         }
