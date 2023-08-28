@@ -1052,6 +1052,7 @@ write_content_object (OstreeRepo *self, const char *expected_checksum, GInputStr
                                                 actual_checksum, error))
             return FALSE;
         }
+      (void)actual_checksum_owned; // Just used to autofree
 
       if (checksum_payload_input)
         actual_payload_checksum = ot_checksum_instream_get_string (checksum_payload_input);

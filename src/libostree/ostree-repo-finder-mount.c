@@ -438,7 +438,6 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder *finder,
         {
           const OstreeCollectionRef *ref = refs[i];
           g_autofree gchar *resolved_repo_uri = NULL;
-          g_autoptr (UriAndKeyring) resolved_repo = NULL;
 
           for (gsize j = 0; j < repos_refs->len; j++)
             {
@@ -484,7 +483,8 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder *finder,
                        ref->collection_id, ref->ref_name, mount_name, resolved_repo_uri,
                        keyring_remote->keyring, keyring_remote->name);
 
-              resolved_repo = uri_and_keyring_new (resolved_repo_uri, keyring_remote);
+              g_autoptr (UriAndKeyring) resolved_repo
+                  = uri_and_keyring_new (resolved_repo_uri, keyring_remote);
 
               supported_ref_to_checksum = g_hash_table_lookup (repo_to_refs, resolved_repo);
 

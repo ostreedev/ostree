@@ -784,7 +784,7 @@ fetch_ref_contents (OtPullData *pull_data, const char *main_collection_id,
                                                   filename, pull_data->n_network_retries,
                                                   &ret_contents, cancellable, error))
         return FALSE;
-
+      g_assert (ret_contents);
       g_strchomp (ret_contents);
     }
 
@@ -1951,6 +1951,7 @@ load_remote_repo_config (OtPullData *pull_data, GKeyFile **out_keyfile, GCancell
                                               "config", pull_data->n_network_retries, &contents,
                                               cancellable, error))
     return FALSE;
+  g_assert (contents);
 
   g_autoptr (GKeyFile) ret_keyfile = g_key_file_new ();
   if (!g_key_file_load_from_data (ret_keyfile, contents, strlen (contents), 0, error))
@@ -6339,6 +6340,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo *self, const char *nam
     return FALSE;
 
   mainctx = _ostree_main_context_new_default ();
+  (void)mainctx; // Used for autocleanup
 
   fetcher = _ostree_repo_remote_new_fetcher (self, name, TRUE, extra_headers, append_user_agent,
                                              NULL, error);
