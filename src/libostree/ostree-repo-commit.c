@@ -909,6 +909,8 @@ write_content_object (OstreeRepo *self, const char *expected_checksum, GInputStr
   else
     file_input = input;
 
+  (void)file_input_owned; // Conditionally owned
+
   gboolean phys_object_is_symlink = FALSE;
   switch (object_file_type)
     {
