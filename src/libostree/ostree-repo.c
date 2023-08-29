@@ -2877,6 +2877,9 @@ get_remotes_d_dir (OstreeRepo *self, GFile *sysroot)
           break;
         }
     }
+
+  (void)sysroot_owned; // Conditionally owned
+
   /* For backwards compat, also fall back to the sysroot-path variable, which we
    * don't set anymore internally, and I hope no one else uses.
    */

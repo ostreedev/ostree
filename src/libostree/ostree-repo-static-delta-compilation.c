@@ -1267,7 +1267,6 @@ ostree_repo_static_delta_generate (OstreeRepo *self, OstreeStaticDeltaGenerateOp
   guint64 total_compressed_size = 0;
   guint64 total_uncompressed_size = 0;
   g_autoptr (GVariantBuilder) part_headers = NULL;
-  g_autoptr (GPtrArray) part_temp_paths = NULL;
   g_autoptr (GVariant) to_commit = NULL;
   const char *opt_filename;
   g_autofree char *descriptor_name = NULL;
@@ -1422,7 +1421,6 @@ ostree_repo_static_delta_generate (OstreeRepo *self, OstreeStaticDeltaGenerateOp
   }
 
   part_headers = g_variant_builder_new (G_VARIANT_TYPE ("a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT));
-  part_temp_paths = g_ptr_array_new_with_free_func ((GDestroyNotify)glnx_tmpfile_clear);
   for (i = 0; i < builder.parts->len; i++)
     {
       OstreeStaticDeltaPartBuilder *part_builder = builder.parts->pdata[i];

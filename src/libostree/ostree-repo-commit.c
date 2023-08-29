@@ -454,6 +454,7 @@ throw_min_free_space_error (OstreeRepo *self, guint64 bytes_required, GError **e
     }
   else
     err_msg = "would be exceeded";
+  (void)err_msg_owned; // Conditional ownership
 
   if (self->min_free_space_mb > 0)
     return glnx_throw (error, "min-free-space-size %" G_GUINT64_FORMAT "MB %s",
@@ -907,6 +908,8 @@ write_content_object (OstreeRepo *self, const char *expected_checksum, GInputStr
     }
   else
     file_input = input;
+
+  (void)file_input_owned; // Conditionally owned
 
   gboolean phys_object_is_symlink = FALSE;
   switch (object_file_type)
