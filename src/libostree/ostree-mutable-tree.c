@@ -505,8 +505,9 @@ ostree_mutable_tree_fill_empty_from_dirtree (OstreeMutableTree *self, OstreeRepo
         if (g_strcmp0 (empty_tree_csum, contents_checksum) == 0)
           {
             /* Adding an empty tree to a full one - stick with the old contents */
-            contents_checksum = self->contents_checksum;
-            break;
+            g_set_object (&self->repo, repo);
+            ostree_mutable_tree_set_metadata_checksum (self, metadata_checksum);
+            return TRUE;
           }
         else
           return FALSE;
