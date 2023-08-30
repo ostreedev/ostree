@@ -174,10 +174,11 @@ ot_keyfile_get_string_list_with_separator_choice (GKeyFile *keyfile, const char 
                                                   const char *key, const char *separators,
                                                   char ***out_value, GError **error)
 {
-  g_return_val_if_fail (keyfile != NULL, FALSE);
-  g_return_val_if_fail (section != NULL, FALSE);
-  g_return_val_if_fail (key != NULL, FALSE);
-  g_return_val_if_fail (separators != NULL, FALSE);
+  g_assert (keyfile != NULL);
+  g_assert (section != NULL);
+  g_assert (key != NULL);
+  g_assert (separators != NULL);
+  g_assert (out_value != NULL);
 
   g_autofree char *value_str = NULL;
   if (!ot_keyfile_get_value_with_default (keyfile, section, key, NULL, &value_str, error))
@@ -215,7 +216,7 @@ ot_keyfile_get_string_list_with_separator_choice (GKeyFile *keyfile, const char 
         }
     }
 
-  ot_transfer_out_value (out_value, &value_list);
+  *out_value = g_steal_pointer (&value_list);
   return TRUE;
 }
 
