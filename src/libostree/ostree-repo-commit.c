@@ -941,6 +941,8 @@ write_content_object (OstreeRepo *self, const char *expected_checksum, GInputStr
   else
     size = 0;
 
+  (void)file_input_owned; // Conditionally owned
+
   /* Free space check; only applies during transactions */
   if ((self->min_free_space_percent > 0 || self->min_free_space_mb > 0) && self->in_transaction)
     {
