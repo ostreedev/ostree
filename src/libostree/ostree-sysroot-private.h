@@ -44,7 +44,7 @@ typedef enum
   /* Skip invoking `sync()` */
   OSTREE_SYSROOT_GLOBAL_OPT_SKIP_SYNC = 1 << 0,
   /* See https://github.com/ostreedev/ostree/pull/2847 */
-  OSTREE_SYSROOT_GLOBAL_OPT_EARLY_PRUNE = 1 << 1,
+  OSTREE_SYSROOT_GLOBAL_OPT_NO_EARLY_PRUNE = 1 << 1,
   OSTREE_SYSROOT_GLOBAL_OPT_BOOTLOADER_NAMING_2 = 1 << 2,
 } OstreeSysrootGlobalOptFlags;
 

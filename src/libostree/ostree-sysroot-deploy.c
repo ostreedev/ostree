@@ -2761,9 +2761,8 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot *self, GPtrArray *n
   if (!_ostree_sysroot_ensure_writable (self, error))
     return FALSE;
 
-  /* for now, this is gated on an environment variable */
-  const gboolean opted_in = (self->opt_flags & OSTREE_SYSROOT_GLOBAL_OPT_EARLY_PRUNE) > 0;
-  if (opted_in && !opts->disable_auto_early_prune
+  const bool skip_early_prune = (self->opt_flags & OSTREE_SYSROOT_GLOBAL_OPT_NO_EARLY_PRUNE) > 0;
+  if (!skip_early_prune && !opts->disable_auto_early_prune
       && !auto_early_prune_old_deployments (self, new_deployments, cancellable, error))
     return FALSE;
 
