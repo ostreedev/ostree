@@ -8,7 +8,7 @@ license = "MIT"
 name = "ostree"
 readme = "rust-bindings/README.md"
 repository = "https://github.com/ostreedev/ostree"
-rust-version = "1.64.0"
+rust-version = "1.70.0"
 version = "0.18.0"
 
 exclude = [
@@ -40,8 +40,6 @@ members = [".", "rust-bindings/sys"]
 [dependencies]
 base64 = "0.20.0"
 bitflags = "1.2.1"
-cap-std = { version = "1.0", optional = true}
-io-lifetimes = { version = "1.0", optional = true}
 ffi = { package = "ostree-sys", path = "rust-bindings/sys", version = "0.13.0" }
 gio = "0.16"
 glib = "0.16"
@@ -53,10 +51,10 @@ thiserror = "1.0.20"
 [dev-dependencies]
 maplit = "1.0.2"
 tempfile = "3"
-cap-tempfile = "1.0"
+io-lifetimes = "1"
+cap-tempfile = "2"
 
 [features]
-cap-std-apis = ["cap-std", "io-lifetimes", "v2017_10"]
 dox = ["ffi/dox"]
 v2014_9 = ["ffi/v2014_9"]
 v2015_7 = ["v2014_9", "ffi/v2015_7"]

@@ -1,5 +1,9 @@
+#[cfg(feature = "v2017_10")]
+use cap_tempfile::cap_std;
 use glib::prelude::*;
 use glib::GString;
+#[cfg(feature = "v2017_10")]
+use std::os::fd::AsFd;
 use std::path::Path;
 
 #[derive(Debug)]
@@ -28,13 +32,13 @@ impl TestRepo {
 }
 
 #[derive(Debug)]
-#[cfg(feature = "cap-std-apis")]
+#[cfg(feature = "v2017_10")]
 pub struct CapTestRepo {
     pub dir: cap_tempfile::TempDir,
     pub repo: ostree::Repo,
 }
 
-#[cfg(feature = "cap-std-apis")]
+#[cfg(feature = "v2017_10")]
 impl CapTestRepo {
     pub fn new() -> Self {
         Self::new_with_mode(ostree::RepoMode::Archive)
@@ -42,7 +46,8 @@ impl CapTestRepo {
 
     pub fn new_with_mode(repo_mode: ostree::RepoMode) -> Self {
         let dir = cap_tempfile::tempdir(cap_std::ambient_authority()).unwrap();
-        let repo = ostree::Repo::create_at_dir(&dir, ".", repo_mode, None).expect("repo create");
+        let repo =
+            ostree::Repo::create_at_dir(dir.as_fd(), ".", repo_mode, None).expect("repo create");
         Self { dir, repo }
     }
 }

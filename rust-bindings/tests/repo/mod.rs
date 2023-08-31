@@ -1,6 +1,12 @@
 use crate::util::*;
+#[cfg(feature = "v2017_10")]
+use cap_std::fs::Dir;
+#[cfg(feature = "v2017_10")]
+use cap_tempfile::cap_std;
 use ostree::prelude::*;
 use ostree::{ObjectName, ObjectType};
+#[cfg(feature = "v2017_10")]
+use std::os::fd::AsFd;
 
 #[cfg(any(feature = "v2016_8", feature = "dox"))]
 mod checkout_at;
@@ -54,13 +60,15 @@ fn list_commits() {
 }
 
 #[test]
-#[cfg(feature = "cap-std-apis")]
+#[cfg(feature = "v2017_10")]
 fn cap_std_commit() {
     let test_repo = CapTestRepo::new();
 
     assert!(test_repo.dir.exists("config"));
     // Also test re-acquiring a new dfd
-    assert!(test_repo.repo.dfd_as_dir().unwrap().exists("config"));
+    assert!(Dir::reopen_dir(&test_repo.repo.dfd_borrow())
+        .unwrap()
+        .exists("config"));
 
     assert!(test_repo.repo.require_rev("nosuchrev").is_err());
 
@@ -69,7 +77,7 @@ fn cap_std_commit() {
 
     assert_eq!(test_repo.repo.require_rev("test").unwrap(), checksum);
 
-    let repo2 = ostree::Repo::open_at_dir(&test_repo.dir, ".").unwrap();
+    let repo2 = ostree::Repo::open_at_dir(test_repo.dir.as_fd(), ".").unwrap();
     let refs = repo2
         .list_refs(None, gio::Cancellable::NONE)
         .expect("failed to list refs");
