@@ -149,6 +149,11 @@ impl Repo {
         }
     }
 
+    //#[doc(alias = "ostree_repo_commit_add_composefs_metadata")]
+    //pub fn commit_add_composefs_metadata(&self, format_version: u32, dict: /*Ignored*/&glib::VariantDict, repo_root: &RepoFile, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
+    //    unsafe { TODO: call ffi:ostree_repo_commit_add_composefs_metadata() }
+    //}
+
     #[doc(alias = "ostree_repo_commit_transaction")]
     pub fn commit_transaction(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<RepoTransactionStats, glib::Error> {
         unsafe {
@@ -446,7 +451,7 @@ impl Repo {
     //}
 
     //#[doc(alias = "ostree_repo_list_objects")]
-    //pub fn list_objects(&self, flags: RepoListObjectsFlags, out_objects: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 203 }/TypeId { ns_id: 2, id: 203 }, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
+    //pub fn list_objects(&self, flags: RepoListObjectsFlags, out_objects: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 204 }/TypeId { ns_id: 2, id: 204 }, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
     //    unsafe { TODO: call ffi:ostree_repo_list_objects() }
     //}
 
@@ -1087,7 +1092,7 @@ impl Repo {
     }
 
     //#[doc(alias = "ostree_repo_traverse_commit")]
-    //pub fn traverse_commit(&self, commit_checksum: &str, maxdepth: i32, out_reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 203 }/TypeId { ns_id: 2, id: 203 }, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
+    //pub fn traverse_commit(&self, commit_checksum: &str, maxdepth: i32, out_reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 204 }/TypeId { ns_id: 2, id: 204 }, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
     //    unsafe { TODO: call ffi:ostree_repo_traverse_commit() }
     //}
 
@@ -1113,7 +1118,7 @@ impl Repo {
     //#[cfg(any(feature = "v2018_6", feature = "dox"))]
     //#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
     //#[doc(alias = "ostree_repo_traverse_reachable_refs")]
-    //pub fn traverse_reachable_refs(&self, depth: u32, reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 203 }/TypeId { ns_id: 2, id: 203 }, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
+    //pub fn traverse_reachable_refs(&self, depth: u32, reachable: /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 204 }/TypeId { ns_id: 2, id: 204 }, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
     //    unsafe { TODO: call ffi:ostree_repo_traverse_reachable_refs() }
     //}
 
@@ -1364,12 +1369,12 @@ impl Repo {
     //#[cfg(any(feature = "v2018_5", feature = "dox"))]
     //#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_5")))]
     //#[doc(alias = "ostree_repo_traverse_new_parents")]
-    //pub fn traverse_new_parents() -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 203 }/TypeId { ns_id: 2, id: 203 } {
+    //pub fn traverse_new_parents() -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 204 }/TypeId { ns_id: 2, id: 204 } {
     //    unsafe { TODO: call ffi:ostree_repo_traverse_new_parents() }
     //}
 
     //#[doc(alias = "ostree_repo_traverse_new_reachable")]
-    //pub fn traverse_new_reachable() -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 203 }/TypeId { ns_id: 2, id: 203 } {
+    //pub fn traverse_new_reachable() -> /*Unknown conversion*//*Unimplemented*/HashTable TypeId { ns_id: 2, id: 204 }/TypeId { ns_id: 2, id: 204 } {
     //    unsafe { TODO: call ffi:ostree_repo_traverse_new_reachable() }
     //}
 

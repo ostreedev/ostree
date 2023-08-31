@@ -4,7 +4,7 @@ use crate::KernelArgs;
 
 #[test]
 fn should_create_and_fill_kernel_args() {
-    let mut args = KernelArgs::new();
+    let args = KernelArgs::new();
     args.append("key=value");
     args.append("arg1");
     args.append("key2=value2");
@@ -13,7 +13,7 @@ fn should_create_and_fill_kernel_args() {
 
 #[test]
 fn should_convert_to_string_vec() {
-    let mut args = KernelArgs::new();
+    let args = KernelArgs::new();
     args.parse_append("key=value arg1 key2=value2");
     assert_eq!(
         args.to_strv()
@@ -26,7 +26,7 @@ fn should_convert_to_string_vec() {
 
 #[test]
 fn should_get_last_value() {
-    let mut args = KernelArgs::new();
+    let args = KernelArgs::new();
     args.append("key=value1");
     args.append("key=value2");
     args.append("key=value3");
@@ -41,14 +41,14 @@ fn should_convert_from_string() {
 
 #[test]
 fn should_append_argv() {
-    let mut args = KernelArgs::new();
+    let args = KernelArgs::new();
     args.append_argv(&["arg1", "arg2=value", "arg3", "arg4=value"]);
     assert_eq!(args.to_string(), "arg1 arg2=value arg3 arg4=value");
 }
 
 #[test]
 fn should_append_argv_filtered() {
-    let mut args = KernelArgs::new();
+    let args = KernelArgs::new();
     args.append_argv_filtered(
         &["prefix.arg1", "arg2", "prefix.arg3", "arg4=value"],
         &["prefix"],
@@ -58,7 +58,7 @@ fn should_append_argv_filtered() {
 
 #[test]
 fn should_replace_argv() {
-    let mut args = KernelArgs::from_string("arg1=value1 arg2=value2 arg3");
+    let args = KernelArgs::from_string("arg1=value1 arg2=value2 arg3");
     args.replace_argv(&["arg1=value3", "arg3=value4", "arg4"]);
     assert_eq!(args.to_string(), "arg1=value3 arg2=value2 arg3=value4 arg4");
 }

@@ -144,7 +144,7 @@ pub const OSTREE_FILEMETA_GVARIANT_STRING: *const c_char =
     b"(uuua(ayay))\0" as *const u8 as *const c_char;
 pub const OSTREE_GPG_KEY_GVARIANT_STRING: *const c_char =
     b"(aa{sv}aa{sv}a{sv})\0" as *const u8 as *const c_char;
-pub const OSTREE_MAX_METADATA_SIZE: c_int = 10485760;
+pub const OSTREE_MAX_METADATA_SIZE: c_int = 134217728;
 pub const OSTREE_MAX_METADATA_WARN_SIZE: c_int = 7340032;
 pub const OSTREE_METADATA_KEY_BOOTABLE: *const c_char =
     b"ostree.bootable\0" as *const u8 as *const c_char;
@@ -416,14 +416,6 @@ pub struct _OstreeKernelArgs {
 }
 
 pub type OstreeKernelArgs = *mut _OstreeKernelArgs;
-
-#[repr(C)]
-pub struct _OstreeKernelArgsEntry {
-    _data: [u8; 0],
-    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
-}
-
-pub type OstreeKernelArgsEntry = *mut _OstreeKernelArgsEntry;
 
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -898,6 +890,7 @@ impl ::std::fmt::Debug for OstreeSysrootDeployTreeOpts {
 #[repr(C)]
 pub struct OstreeSysrootWriteDeploymentsOpts {
     pub do_postclean: gboolean,
+    pub disable_auto_early_prune: gboolean,
     pub unused_bools: [gboolean; 7],
     pub unused_ints: [c_int; 7],
     pub unused_ptrs: [gpointer; 7],
@@ -907,6 +900,7 @@ impl ::std::fmt::Debug for OstreeSysrootWriteDeploymentsOpts {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         f.debug_struct(&format!("OstreeSysrootWriteDeploymentsOpts @ {self:p}"))
             .field("do_postclean", &self.do_postclean)
+            .field("disable_auto_early_prune", &self.disable_auto_early_prune)
             .field("unused_bools", &self.unused_bools)
             .field("unused_ints", &self.unused_ints)
             .field("unused_ptrs", &self.unused_ptrs)
@@ -1862,6 +1856,14 @@ extern "C" {
         destination_dfd: c_int,
         destination_path: *const c_char,
         commit: *const c_char,
+        cancellable: *mut gio::GCancellable,
+        error: *mut *mut glib::GError,
+    ) -> gboolean;
+    pub fn ostree_repo_commit_add_composefs_metadata(
+        self_: *mut OstreeRepo,
+        format_version: c_uint,
+        dict: *mut glib::GVariantDict,
+        repo_root: *mut OstreeRepoFile,
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
