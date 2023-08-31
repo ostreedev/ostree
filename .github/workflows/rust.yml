@@ -11,7 +11,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  CARGO_PROJECT_FEATURES: "v2021_5,cap-std-apis"
+  CARGO_PROJECT_FEATURES: "v2022_6"
   # TODO: Automatically query this from the C side
   LATEST_LIBOSTREE: "v2022_6"
   # Pinned toolchain for linting

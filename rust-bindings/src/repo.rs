@@ -1,11 +1,11 @@
 #[cfg(any(feature = "v2016_4", feature = "dox"))]
 use crate::RepoListRefsExtFlags;
-#[cfg(feature = "cap-std-apis")]
 use crate::RepoMode;
 use crate::{Checksum, ObjectDetails, ObjectName, ObjectType, Repo, RepoTransactionStats};
 use ffi::OstreeRepoListObjectsFlags;
 use glib::ffi as glib_sys;
 use glib::{self, translate::*, Error, IsA};
+use std::os::fd::BorrowedFd;
 use std::{
     collections::{HashMap, HashSet},
     future::Future,
@@ -105,17 +105,17 @@ impl Repo {
         Repo::new(&gio::File::for_path(path.as_ref()))
     }
 
-    #[cfg(feature = "cap-std-apis")]
-    /// A version of [`open_at`] which uses cap-std.
-    pub fn open_at_dir(dir: &cap_std::fs::Dir, path: &str) -> Result<Repo, glib::Error> {
+    /// Open using the target directory file descriptor.
+    #[cfg(any(feature = "v2017_10", feature = "dox"))]
+    pub fn open_at_dir(dir: BorrowedFd<'_>, path: &str) -> Result<Repo, glib::Error> {
         use std::os::unix::io::AsRawFd;
         crate::Repo::open_at(dir.as_raw_fd(), path, gio::Cancellable::NONE)
     }
 
-    #[cfg(feature = "cap-std-apis")]
-    /// A version of [`create_at`] which uses cap-std, and also returns the opened repo.
+    /// A version of [`create_at`] which resolves the path relative to the provided directory file descriptor, and also returns the opened repo.
+    #[cfg(any(feature = "v2017_10", feature = "dox"))]
     pub fn create_at_dir(
-        dir: &cap_std::fs::Dir,
+        dir: BorrowedFd<'_>,
         path: &str,
         mode: RepoMode,
         options: Option<&glib::Variant>,
@@ -152,17 +152,9 @@ impl Repo {
     }
 
     /// Borrow the directory file descriptor for this repository.
-    #[cfg(feature = "cap-std-apis")]
-    pub fn dfd_borrow(&self) -> io_lifetimes::BorrowedFd {
-        unsafe { io_lifetimes::BorrowedFd::borrow_raw(self.dfd()) }
-    }
-
-    /// Return a new `cap-std` directory reference for this repository.
-    #[cfg(feature = "cap-std-apis")]
-    pub fn dfd_as_dir(&self) -> std::io::Result<cap_std::fs::Dir> {
-        use io_lifetimes::AsFd;
-        let dfd = self.dfd_borrow();
-        cap_std::fs::Dir::reopen_dir(&dfd.as_fd())
+    #[cfg(feature = "v2017_10")]
+    pub fn dfd_borrow(&self) -> BorrowedFd {
+        unsafe { BorrowedFd::borrow_raw(self.dfd()) }
     }
 
     /// Find all objects reachable from a commit.
