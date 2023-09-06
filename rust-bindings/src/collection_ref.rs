@@ -28,9 +28,9 @@ impl CollectionRef {
     ///
     /// If no collection ID was set in the `CollectionRef`, `None` is returned.
     pub fn collection_id(&self) -> Option<&CStr> {
-        let inner = self.to_glib_none();
+        let inner = ToGlibPtr::<*const ffi::OstreeCollectionRef>::to_glib_none(self).0;
         unsafe {
-            (*inner.0)
+            (*inner)
                 .collection_id
                 .as_nonnull_ptr()
                 .map(|ptr| CStr::from_ptr(ptr))
@@ -43,8 +43,8 @@ impl CollectionRef {
     /// Since the value may not be valid UTF-8, `&CStr` is returned. You can safely turn it into a
     /// `&str` using the `as_str` method.
     pub fn ref_name(&self) -> &CStr {
-        let inner = self.to_glib_none();
-        unsafe { CStr::from_ptr((*inner.0).ref_name) }
+        let inner = ToGlibPtr::<*const ffi::OstreeCollectionRef>::to_glib_none(self).0;
+        unsafe { CStr::from_ptr((*inner).ref_name) }
     }
 }
 

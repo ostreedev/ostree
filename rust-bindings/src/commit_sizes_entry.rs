@@ -7,26 +7,26 @@ use glib::{
 impl CommitSizesEntry {
     /// Object checksum as hex string.
     pub fn checksum(&self) -> GString {
-        let underlying = self.to_glib_none();
-        unsafe { GString::from_glib_none((*underlying.0).checksum) }
+        let inner = ToGlibPtr::<*const ffi::OstreeCommitSizesEntry>::to_glib_none(self).0;
+        unsafe { GString::from_glib_none((*inner).checksum) }
     }
 
     /// The object type.
     pub fn objtype(&self) -> ObjectType {
-        let underlying = self.to_glib_none();
-        unsafe { ObjectType::from_glib((*underlying.0).objtype) }
+        let inner = ToGlibPtr::<*const ffi::OstreeCommitSizesEntry>::to_glib_none(self).0;
+        unsafe { ObjectType::from_glib((*inner).objtype) }
     }
 
     /// Unpacked object size.
     pub fn unpacked(&self) -> u64 {
-        let underlying = self.to_glib_none();
-        unsafe { (*underlying.0).unpacked }
+        let inner = ToGlibPtr::<*const ffi::OstreeCommitSizesEntry>::to_glib_none(self).0;
+        unsafe { (*inner).unpacked }
     }
 
     /// Compressed object size.
     pub fn archived(&self) -> u64 {
-        let underlying = self.to_glib_none();
-        unsafe { (*underlying.0).archived }
+        let inner = ToGlibPtr::<*const ffi::OstreeCommitSizesEntry>::to_glib_none(self).0;
+        unsafe { (*inner).archived }
     }
 }
 

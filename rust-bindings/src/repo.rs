@@ -1,10 +1,12 @@
 #[cfg(any(feature = "v2016_4", feature = "dox"))]
 use crate::RepoListRefsExtFlags;
+#[cfg(any(feature = "v2017_10", feature = "dox"))]
 use crate::RepoMode;
 use crate::{Checksum, ObjectDetails, ObjectName, ObjectType, Repo, RepoTransactionStats};
 use ffi::OstreeRepoListObjectsFlags;
 use glib::ffi as glib_sys;
 use glib::{self, translate::*, Error, IsA};
+#[cfg(any(feature = "v2017_10", feature = "dox"))]
 use std::os::fd::BorrowedFd;
 use std::{
     collections::{HashMap, HashSet},
