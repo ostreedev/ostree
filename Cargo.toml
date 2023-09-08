@@ -11,17 +11,12 @@ repository = "https://github.com/ostreedev/ostree"
 rust-version = "1.70.0"
 version = "0.19.1"
 
-exclude = [
-    "/*.am", "/apidoc", "/autogen.sh", "/bash", "/bsdiff",
-    "/build-aux", "/buildutil", "/*.mk", "/ci", "/coccinelle",
-    "/*.ac", "/docs", "/libglnx", "/man", "/manual-tests",
-    "/*.yml", "/*.doap", "/src", "/tests",
-    "/.github", "/.cci.jenkinsfile", "/.dir-locals.el", "/.editorconfig",
-    "/.vimrc", "/.copr", "/.packit.yaml", "/GNUmakefile", "TODO",
-    "composefs",
-    "/rust-bindings/conf/**",
-    "/rust-bindings/gir-files/**",
-    "/rust-bindings/sys/**",
+include = [
+    "/COPYING",
+    "/rust-bindings/**",
+    "!/rust-bindings/conf/**",
+    "!/rust-bindings/gir-files/**",
+    "!/rust-bindings/sys/**",
 ]
 
 [package.metadata.docs.rs]
