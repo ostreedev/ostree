@@ -1069,6 +1069,7 @@ meta_fetch_on_complete (GObject *object, GAsyncResult *result, gpointer user_dat
   g_autoptr (GError) local_error = NULL;
   GError **error = &local_error;
   gboolean free_fetch_data = TRUE;
+  gboolean was_enoent = FALSE;
 
   ostree_object_name_deserialize (fetch_data->object, &checksum, &objtype);
   checksum_obj = ostree_object_to_string (checksum, objtype);
@@ -1079,6 +1080,7 @@ meta_fetch_on_complete (GObject *object, GAsyncResult *result, gpointer user_dat
     {
       if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {
+          was_enoent = TRUE;
           if (fetch_data->is_detached_meta)
             {
               /* There isn't any detached metadata, just fetch the commit */
@@ -1195,7 +1197,7 @@ out:
   g_assert (pull_data->n_outstanding_metadata_fetches > 0);
   pull_data->n_outstanding_metadata_fetches--;
 
-  if (local_error == NULL)
+  if (local_error == NULL && !was_enoent)
     pull_data->n_fetched_metadata++;
 
   if (_ostree_fetcher_should_retry_request (local_error, fetch_data->n_retries_remaining--))

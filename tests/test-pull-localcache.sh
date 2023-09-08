@@ -48,7 +48,7 @@ commit=$(${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b main --tree=
 rm -rf repo
 init_repo
 ${CMD_PREFIX} ostree --repo=repo pull --localcache-repo repo-local origin main >out.txt
-assert_file_has_content out.txt '3 metadata, 1 content objects fetched (4 meta, 5 content local)'
+assert_file_has_content out.txt '2 metadata, 1 content objects fetched (4 meta, 5 content local)'
 echo "ok pull --localcache-repo"
 
 # Check that pulling the same commit works as well
