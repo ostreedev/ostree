@@ -1,0 +1,6 @@
+area/prepare-root:
+- src/switchroot/**
+- src/boot
+
+area/rust-bindings:
+- rust-bindings/**
