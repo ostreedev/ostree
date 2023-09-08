@@ -89,6 +89,8 @@ typedef struct
                                            signapi verified */
   GHashTable *ref_keyring_map;          /* Maps OstreeCollectionRef to keyring remote name */
   GPtrArray *static_delta_superblocks;
+  GHashTable *static_delta_targets; /* Set<checksum> of commits fetched via static delta */
+
   GHashTable *expected_commit_sizes;           /* Maps commit checksum to known size */
   GHashTable *commit_to_depth;                 /* Maps parent commit checksum maximum depth */
   GHashTable *scanned_metadata;                /* Maps object name to itself */

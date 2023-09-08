@@ -1611,9 +1611,10 @@ scan_commit_object (OtPullData *pull_data, const char *checksum, guint recursion
 
   /* We only recurse to looking whether we need dirtree/dirmeta
    * objects if the commit is partial, and we're not doing a
-   * commit-only fetch.
+   * commit-only fetch nor is it the target of a static delta.
    */
-  if (is_partial && !pull_data->is_commit_only)
+  if (is_partial && !pull_data->is_commit_only
+      && !g_hash_table_contains (pull_data->static_delta_targets, checksum))
     {
       g_autoptr (GVariant) tree_contents_csum = NULL;
       g_autoptr (GVariant) tree_meta_csum = NULL;
@@ -2469,6 +2470,7 @@ on_superblock_fetched (GObject *src, GAsyncResult *res, gpointer data)
           (GVariantType *)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT, delta_superblock_data, FALSE));
 
       g_ptr_array_add (pull_data->static_delta_superblocks, g_variant_ref (delta_superblock));
+      g_hash_table_add (pull_data->static_delta_targets, g_strdup (to_revision));
       if (!process_one_static_delta (pull_data, from_revision, to_revision, delta_superblock,
                                      fetch_data->requested_ref, pull_data->cancellable, error))
         goto out;
@@ -4052,6 +4054,8 @@ ostree_repo_pull_with_options (OstreeRepo *self, const char *remote_name_or_base
 
   pull_data->static_delta_superblocks
       = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
+  pull_data->static_delta_targets
+      = g_hash_table_new_full (g_str_hash, g_str_equal, (GDestroyNotify)g_free, NULL);
 
   if (need_summary)
     {
@@ -4907,6 +4911,7 @@ out:
   g_clear_pointer (&pull_data->summary_sig_etag, g_free);
   g_clear_pointer (&pull_data->summary, g_variant_unref);
   g_clear_pointer (&pull_data->static_delta_superblocks, g_ptr_array_unref);
+  g_clear_pointer (&pull_data->static_delta_targets, g_hash_table_unref);
   g_clear_pointer (&pull_data->commit_to_depth, g_hash_table_unref);
   g_clear_pointer (&pull_data->expected_commit_sizes, g_hash_table_unref);
   g_clear_pointer (&pull_data->scanned_metadata, g_hash_table_unref);
