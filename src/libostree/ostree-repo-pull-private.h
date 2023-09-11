@@ -88,7 +88,7 @@ typedef struct
   GHashTable *signapi_verified_commits; /* Map<checksum,verification> of commits that have been
                                            signapi verified */
   GHashTable *ref_keyring_map;          /* Maps OstreeCollectionRef to keyring remote name */
-  GPtrArray *static_delta_superblocks;
+
   GHashTable *static_delta_targets; /* Set<checksum> of commits fetched via static delta */
 
   GHashTable *expected_commit_sizes;           /* Maps commit checksum to known size */
