@@ -210,7 +210,7 @@ update_progress (gpointer user_data)
       pull_data->fetched_deltapart_size, "total-delta-part-size", "t",
       pull_data->total_deltapart_size, "total-delta-part-usize", "t",
       pull_data->total_deltapart_usize, "total-delta-superblocks", "u",
-      pull_data->static_delta_superblocks->len,
+      g_hash_table_size (pull_data->static_delta_targets),
       /* We fetch metadata before content.  These allow us to report metadata fetch progress
          specifically. */
       "outstanding-metadata-fetches", "u", pull_data->n_outstanding_metadata_fetches,
@@ -1069,6 +1069,7 @@ meta_fetch_on_complete (GObject *object, GAsyncResult *result, gpointer user_dat
   g_autoptr (GError) local_error = NULL;
   GError **error = &local_error;
   gboolean free_fetch_data = TRUE;
+  gboolean was_enoent = FALSE;
 
   ostree_object_name_deserialize (fetch_data->object, &checksum, &objtype);
   checksum_obj = ostree_object_to_string (checksum, objtype);
@@ -1079,6 +1080,7 @@ meta_fetch_on_complete (GObject *object, GAsyncResult *result, gpointer user_dat
     {
       if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {
+          was_enoent = TRUE;
           if (fetch_data->is_detached_meta)
             {
               /* There isn't any detached metadata, just fetch the commit */
@@ -1195,7 +1197,7 @@ out:
   g_assert (pull_data->n_outstanding_metadata_fetches > 0);
   pull_data->n_outstanding_metadata_fetches--;
 
-  if (local_error == NULL)
+  if (local_error == NULL && !was_enoent)
     pull_data->n_fetched_metadata++;
 
   if (_ostree_fetcher_should_retry_request (local_error, fetch_data->n_retries_remaining--))
@@ -1609,9 +1611,10 @@ scan_commit_object (OtPullData *pull_data, const char *checksum, guint recursion
 
   /* We only recurse to looking whether we need dirtree/dirmeta
    * objects if the commit is partial, and we're not doing a
-   * commit-only fetch.
+   * commit-only fetch nor is it the target of a static delta.
    */
-  if (is_partial && !pull_data->is_commit_only)
+  if (is_partial && !pull_data->is_commit_only
+      && !g_hash_table_contains (pull_data->static_delta_targets, checksum))
     {
       g_autoptr (GVariant) tree_contents_csum = NULL;
       g_autoptr (GVariant) tree_meta_csum = NULL;
@@ -2466,7 +2469,7 @@ on_superblock_fetched (GObject *src, GAsyncResult *res, gpointer data)
       delta_superblock = g_variant_ref_sink (g_variant_new_from_bytes (
           (GVariantType *)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT, delta_superblock_data, FALSE));
 
-      g_ptr_array_add (pull_data->static_delta_superblocks, g_variant_ref (delta_superblock));
+      g_hash_table_add (pull_data->static_delta_targets, g_strdup (to_revision));
       if (!process_one_static_delta (pull_data, from_revision, to_revision, delta_superblock,
                                      fetch_data->requested_ref, pull_data->cancellable, error))
         goto out;
@@ -4048,8 +4051,8 @@ ostree_repo_pull_with_options (OstreeRepo *self, const char *remote_name_or_base
         need_summary = TRUE;
     }
 
-  pull_data->static_delta_superblocks
-      = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
+  pull_data->static_delta_targets
+      = g_hash_table_new_full (g_str_hash, g_str_equal, (GDestroyNotify)g_free, NULL);
 
   if (need_summary)
     {
@@ -4904,7 +4907,7 @@ out:
   g_clear_pointer (&pull_data->summary_data_sig, g_bytes_unref);
   g_clear_pointer (&pull_data->summary_sig_etag, g_free);
   g_clear_pointer (&pull_data->summary, g_variant_unref);
-  g_clear_pointer (&pull_data->static_delta_superblocks, g_ptr_array_unref);
+  g_clear_pointer (&pull_data->static_delta_targets, g_hash_table_unref);
   g_clear_pointer (&pull_data->commit_to_depth, g_hash_table_unref);
   g_clear_pointer (&pull_data->expected_commit_sizes, g_hash_table_unref);
   g_clear_pointer (&pull_data->scanned_metadata, g_hash_table_unref);

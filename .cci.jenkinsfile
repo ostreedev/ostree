@@ -47,6 +47,7 @@ cosaPod(runAsUser: 0, memory: "9Gi", cpu: "4") {
     checkout scm
     unstash 'build'
     shwrap("""
+      chown -R -h builder: .
       # Move the bits into the cosa pod (but only if major versions match)
       buildroot_id=\$(cat installed/buildroot-id)
       osver=\$(. /usr/lib/os-release && echo \$VERSION_ID)
@@ -54,17 +55,15 @@ cosaPod(runAsUser: 0, memory: "9Gi", cpu: "4") {
         rsync -rlv installed/rootfs/ /
       fi
       rsync -rlv installed/tests/ /
-      coreos-assembler init --force https://github.com/coreos/fedora-coreos-config
-      mkdir -p overrides/rootfs
+      runuser -u builder -- coreos-assembler init --force https://github.com/coreos/fedora-coreos-config
       # And override the on-host bits
       mv installed/rootfs/* overrides/rootfs/
       rm installed -rf
-      coreos-assembler fetch
-      coreos-assembler build
-      coreos-assembler buildextend-metal
-      coreos-assembler buildextend-metal4k
-      coreos-assembler buildextend-live --fast
-
+      runuser -u builder -- coreos-assembler fetch
+      runuser -u builder -- coreos-assembler build
+      runuser -u builder -- coreos-assembler buildextend-metal
+      runuser -u builder -- coreos-assembler buildextend-metal4k
+      runuser -u builder -- coreos-assembler buildextend-live --fast
     """)
   }
   kola(cosaDir: "${env.WORKSPACE}")

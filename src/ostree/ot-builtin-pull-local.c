@@ -36,6 +36,7 @@ static gboolean opt_per_object_fsync;
 static gboolean opt_untrusted;
 static gboolean opt_bareuseronly_files;
 static gboolean opt_require_static_deltas;
+static gboolean opt_disable_static_deltas;
 static gboolean opt_gpg_verify;
 static gboolean opt_gpg_verify_summary;
 static gboolean opt_disable_verify_bindings;
@@ -60,6 +61,8 @@ static GOptionEntry options[]
           "Reject regular files with mode outside of 0775 (world writable, suid, etc.)", NULL },
         { "require-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_require_static_deltas,
           "Require static deltas", NULL },
+        { "disable-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_disable_static_deltas,
+          "Do not use static deltas", NULL },
         { "gpg-verify", 0, 0, G_OPTION_ARG_NONE, &opt_gpg_verify,
           "GPG verify commits (must specify --remote)", NULL },
         { "gpg-verify-summary", 0, 0, G_OPTION_ARG_NONE, &opt_gpg_verify_summary,
@@ -186,6 +189,9 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeCommandInvocation *invoc
     if (opt_remote)
       g_variant_builder_add (&builder, "{s@v}", "override-remote-name",
                              g_variant_new_variant (g_variant_new_string (opt_remote)));
+    g_variant_builder_add (
+        &builder, "{s@v}", "disable-static-deltas",
+        g_variant_new_variant (g_variant_new_boolean (opt_disable_static_deltas)));
     g_variant_builder_add (
         &builder, "{s@v}", "require-static-deltas",
         g_variant_new_variant (g_variant_new_boolean (opt_require_static_deltas)));

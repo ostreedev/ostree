@@ -26,7 +26,7 @@ skip_without_user_xattrs
 bindatafiles="bash true ostree"
 morebindatafiles="false ls"
 
-echo '1..13'
+echo '1..14'
 
 mkdir repo
 ostree_repo_init repo --mode=archive
@@ -183,13 +183,27 @@ echo 'ok heuristic endian detection'
 ${CMD_PREFIX} ostree --repo=repo summary -u
 
 mkdir repo2 && ostree_repo_init repo2 --mode=bare-user
-${CMD_PREFIX} ostree --repo=repo2 pull-local --require-static-deltas repo ${origrev}
+${CMD_PREFIX} ostree --repo=repo2 pull-local --require-static-deltas repo ${origrev} | tee pullstats.txt
+# we should've only fetched the superblock, the index, and the delta part
+assert_file_has_content pullstats.txt '1 delta parts, 2 loose fetched; .* transferred in .* seconds; 0 bytes content written'
 ${CMD_PREFIX} ostree --repo=repo2 fsck
 ${CMD_PREFIX} ostree --repo=repo2 ls ${origrev} >/dev/null
 
 echo 'ok pull delta'
 
-rm repo2 -rf
+# verify that having the commit partially doesn't degrade static delta fetching
+rm repo2 pullstats.txt -rf
+mkdir repo2 && ostree_repo_init repo2 --mode=bare-user
+${CMD_PREFIX} ostree --repo=repo2 pull-local --disable-static-deltas repo ${origrev} --commit-metadata-only
+${CMD_PREFIX} ostree --repo=repo2 pull-local --require-static-deltas repo ${origrev} | tee pullstats.txt
+${CMD_PREFIX} ostree --repo=repo2 fsck
+# we should've only fetched the superblock, the index, and the delta part
+assert_file_has_content pullstats.txt '1 delta parts, 2 loose fetched; .* transferred in .* seconds; 0 bytes content written'
+${CMD_PREFIX} ostree --repo=repo2 ls ${origrev} >/dev/null
+
+echo 'ok pull delta with commitpartial'
+
+rm repo2 pullstats.txt -rf
 mkdir repo2 && ostree_repo_init repo2 --mode=bare-user
 mkdir deltadir
 
