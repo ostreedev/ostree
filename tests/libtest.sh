@@ -25,11 +25,12 @@ else
   test_srcdir=$(dirname $0)
 fi
 
-if [ -n "${G_TEST_BUILDDIR:-}" ]; then
-  test_builddir="${G_TEST_BUILDDIR}/tests"
-else
-  test_builddir=$(dirname $0)
+top_builddir="${G_TEST_BUILDDIR:-}"
+if test -z "${top_builddir}"; then
+    top_builddir=$(cd $(dirname $0)/.. && pwd)
 fi
+
+test_builddir="${top_builddir}/tests"
 . ${test_srcdir}/libtest-core.sh
 
 # Make sure /sbin/capsh etc. are in our PATH even if non-root
@@ -180,9 +181,11 @@ if test -n "${OT_TESTS_VALGRIND:-}"; then
     CMD_PREFIX="env G_SLICE=always-malloc OSTREE_SUPPRESS_SYNCFS=1 valgrind -q --error-exitcode=1 --leak-check=full --num-callers=30 --suppressions=${test_srcdir}/glib.supp --suppressions=${test_srcdir}/ostree.supp"
 fi
 
-OSTREE_HTTPD="${G_TEST_BUILDDIR}/ostree-trivial-httpd"
-if ! [ -x "${OSTREE_HTTPD}" ]; then
-    fatal "Failed to find ${OSTREE_HTTPD}"
+if test -z "${OSTREE_HTTPD:-}"; then
+    OSTREE_HTTPD="${top_builddir}/ostree-trivial-httpd"
+    if ! [ -x "${OSTREE_HTTPD}" ]; then
+        OSTREE_HTTPD=
+    fi
 fi
 
 files_are_hardlinked() {
