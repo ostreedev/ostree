@@ -26,6 +26,11 @@ if ! has_gpgme; then
     exit 0
 fi
 
+if test -z "${OSTREE_HTTPD}"; then
+    echo "1..0 #SKIP no ostree-trivial-httpd"
+    exit 0
+fi
+
 echo "1..7"
 
 keyid="472CDAFA"

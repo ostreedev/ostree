@@ -43,14 +43,19 @@ echo $ED25519SECRET > ed25519.secret
     );
     let s = Command::new("bash")
         .env("G_TEST_SRCDIR", pwd)
+        .env("OSTREE_HTTPD", "")
         .current_dir(path)
         .args(["-euo", "pipefail"])
         .args(["-c", cmd.as_str()])
         .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
+        .stderr(std::process::Stdio::piped())
+        .output()
         .unwrap();
-    assert!(s.success());
+    if !s.status.success() {
+        let mut stderr = std::io::stderr().lock();
+        let _ = std::io::copy(&mut std::io::Cursor::new(&s.stderr), &mut stderr);
+        panic!("failed to source libtest: {:?}", s.status);
+    }
 
     let seckey = std::fs::read_to_string(path.join("ed25519.secret")).unwrap();
     let seckey = seckey.to_variant();
@@ -74,9 +79,7 @@ echo $ED25519SECRET > ed25519.secret
     let badsigs = [b"".as_slice()].to_variant();
 
     let e = signer.data_verify(payload, &badsigs).err().unwrap();
-    assert!(e
-        .to_string()
-        .contains("Invalid signature length of 0 bytes"))
+    assert!(e.to_string().contains("Ill-formed input"), "{}", e)
 }
 
 #[test]

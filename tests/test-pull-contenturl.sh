@@ -21,6 +21,11 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
+if test -z "${OSTREE_HTTPD}"; then
+    echo "1..0 #SKIP no ostree-trivial-httpd"
+    exit 0
+fi
+
 echo "1..2"
 
 COMMIT_SIGN=""
