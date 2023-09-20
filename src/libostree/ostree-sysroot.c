@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "otutil.h"
+#include <dlfcn.h>
 #include <err.h>
 #include <sys/file.h>
 #include <sys/mount.h>
@@ -75,6 +76,29 @@ enum
 };
 
 G_DEFINE_TYPE (OstreeSysroot, ostree_sysroot, G_TYPE_OBJECT)
+
+static void *
+load_sysroot_rs (void)
+{
+  static gssize initialized = 0;
+  static void *sysrootrs = NULL;
+  if (g_once_init_enter (&initialized))
+    {
+      const char *uninstalled = g_getenv ("OSTREE_UNINSTALLED");
+      g_autofree char *path = NULL;
+      if (uninstalled)
+        path = g_strdup_printf ("%s/target/release/libostreesysrs.so", uninstalled);
+      else
+        path = g_strdup_printf ("%s/libostreesysrs.so", PKGLIBEXECDIR);
+      sysrootrs = dlopen (path, RTLD_NOW);
+      if (sysrootrs == NULL)
+        {
+          errx (EXIT_FAILURE, "failed to initialize libostreesysrs.so: %s", dlerror ());
+        }
+      g_once_init_leave (&initialized, 1);
+    }
+  return sysrootrs;
+}
 
 static void
 ostree_sysroot_finalize (GObject *object)
@@ -447,11 +471,16 @@ ostree_sysroot_is_booted (OstreeSysroot *self)
 gboolean
 _ostree_sysroot_bump_mtime (OstreeSysroot *self, GError **error)
 {
+  void *lib = load_sysroot_rs ();
+  int (*f) (int fd) = dlsym (lib, "_ostreesys_bump_mtime");
+  g_assert (f);
+
   /* Allow other systems to monitor for changes */
-  if (utimensat (self->sysroot_fd, "ostree/deploy", NULL, 0) < 0)
+  int r = f (self->sysroot_fd);
+  if (r < 0)
     {
-      glnx_set_prefix_error_from_errno (error, "%s", "futimens");
-      return FALSE;
+      errno = r;
+      return glnx_throw_errno_prefix (error, "futimens");
     }
   return TRUE;
 }
