@@ -169,12 +169,19 @@ pub(crate) fn get_reboot_mark() -> Result<Option<String>> {
 
 /// Initiate a clean reboot; on next boot get_reboot_mark() will return `mark`.
 #[allow(dead_code)]
-pub(crate) fn reboot<M: AsRef<str>>(mark: M) -> std::io::Error {
+pub(crate) fn reboot<M: AsRef<str>>(mark: M) -> anyhow::Error {
     let mark = mark.as_ref();
     use std::os::unix::process::CommandExt;
+    if let Err(e) = std::io::stderr().flush() {
+        return e.into();
+    }
+    if let Err(e) = std::io::stdout().flush() {
+        return e.into();
+    }
     std::process::Command::new("/tmp/autopkgtest-reboot")
         .arg(mark)
         .exec()
+        .into()
 }
 
 /// Prepare a reboot - you should then initiate a reboot however you like.
