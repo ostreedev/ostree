@@ -19,6 +19,10 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library. If not, see <https://www.gnu.org/licenses/>.
 
+installkernel() {
+    instmods erofs overlay
+}
+
 check() {
     if [[ -x $systemdutildir/systemd ]] && [[ -x /usr/lib/ostree/ostree-prepare-root ]]; then
        return 255
