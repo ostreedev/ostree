@@ -63,10 +63,11 @@ static gboolean
 _ostree_bootloader_zipl_query (OstreeBootloader *bootloader, gboolean *out_is_active,
                                GCancellable *cancellable, GError **error)
 {
-  /* We don't auto-detect this one; should be explicitly chosen right now.
-   * see also https://github.com/coreos/coreos-assembler/pull/849
-   */
+#if defined(__s390x__)
+  *out_is_active = TRUE;
+#else
   *out_is_active = FALSE;
+#endif
   return TRUE;
 }
 

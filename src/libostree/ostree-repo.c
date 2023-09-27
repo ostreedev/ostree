@@ -3300,7 +3300,8 @@ reload_sysroot_config (OstreeRepo *self, GCancellable *cancellable, GError **err
   g_autofree char *bootloader = NULL;
 
   if (!ot_keyfile_get_value_with_default_group_optional (self->config, "sysroot", "bootloader",
-                                                         "auto", &bootloader, error))
+                                                         CFG_SYSROOT_BOOTLOADER_DEFAULT_STR,
+                                                         &bootloader, error))
     return FALSE;
 
   /* TODO: possibly later add support for specifying a generic bootloader
