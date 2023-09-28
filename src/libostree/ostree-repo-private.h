@@ -143,6 +143,13 @@ typedef enum
   /* Non-exhaustive */
 } OstreeCfgSysrootBootloaderOpt;
 
+#if !defined(__s390x__)
+#define CFG_SYSROOT_BOOTLOADER_DEFAULT_STR "auto"
+#else
+// There's nothing else on s390x.
+#define CFG_SYSROOT_BOOTLOADER_DEFAULT_STR "zipl"
+#endif
+
 static const char *const CFG_SYSROOT_BOOTLOADER_OPTS_STR[] = {
   /* This must be kept in the same order as the enum */
   "auto", "none", "grub2", "syslinux", "uboot", "zipl", "aboot", NULL,
