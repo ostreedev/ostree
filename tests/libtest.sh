@@ -249,6 +249,13 @@ setup_test_repository () {
     mkdir baz/another/
     echo x > baz/another/y
 
+    mkdir baz/sub1
+    echo SAME_CONTENT > baz/sub1/duplicate_a
+    echo SAME_CONTENT > baz/sub1/duplicate_b
+
+    mkdir baz/sub2
+    echo SAME_CONTENT > baz/sub2/duplicate_c
+
     # if we are running inside a container we cannot test
     # the overlayfs whiteout marker passthrough
     if ! test -n "${OSTREE_NO_WHITEOUTS:-}"; then
