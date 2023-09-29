@@ -35,6 +35,9 @@
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <unistd.h>
+#ifdef HAVE_SELINUX
+#include <selinux/restorecon.h>
+#endif
 
 #include "ostree-mount-util.h"
 #include "otcore.h"
@@ -74,6 +77,50 @@ do_remount (const char *target, bool writable)
     }
 
   printf ("Remounted %s: %s\n", writable ? "rw" : "ro", target);
+}
+
+/* Relabel the directory $real_path, which is going to be an overlayfs mount,
+ * based on the content of an overlayfs upperdirectory that is in use by the mount.
+ * The goal is that we relabel in the overlay mount all the files that have been
+ * modified (directly or via parent copyup operations) since the overlayfs was
+ * mounted. This will be used for the /etc overlayfs mount where no selinux labels
+ * are set before selinux policy is loaded.
+ */
+static void
+relabel_dir_for_upper (const char *upper_path, const char *real_path, gboolean is_dir)
+{
+#ifdef HAVE_SELINUX
+  if (selinux_restorecon (real_path, 0))
+    err (EXIT_FAILURE, "Failed to relabel %s", real_path);
+
+  if (!is_dir)
+    return;
+
+  g_auto (GLnxDirFdIterator) dfd_iter = {
+    0,
+  };
+
+  if (!glnx_dirfd_iterator_init_at (AT_FDCWD, upper_path, FALSE, &dfd_iter, NULL))
+    err (EXIT_FAILURE, "Failed to open upper directory %s for relabeling", upper_path);
+
+  while (TRUE)
+    {
+      struct dirent *dent;
+
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, NULL, NULL))
+        {
+          err (EXIT_FAILURE, "Failed to read upper directory %s for relabelin", upper_path);
+          break;
+        }
+
+      if (dent == NULL)
+        break;
+
+      g_autofree char *upper_child = g_build_filename (upper_path, dent->d_name, NULL);
+      g_autofree char *real_child = g_build_filename (real_path, dent->d_name, NULL);
+      relabel_dir_for_upper (upper_child, real_child, dent->d_type == DT_DIR);
+    }
+#endif
 }
 
 int
@@ -119,6 +166,52 @@ main (int argc, char *argv[])
   if (mount ("none", "/sysroot", NULL, MS_REC | MS_PRIVATE, NULL) < 0)
     perror ("warning: While remounting /sysroot MS_PRIVATE");
 
+  const char *transient_etc = NULL;
+  g_variant_dict_lookup (ostree_run_metadata, OTCORE_RUN_BOOTED_KEY_TRANSIENT_ETC, "&s",
+                         &transient_etc);
+
+  if (transient_etc)
+    {
+      /* If the initramfs created any files in /etc (directly or via overlay copy-up) they
+       * will be unlabeled, because the selinux policy is not loaded until after the
+       * pivot-root. So, for all files in the upper dir, relabel the corresponding overlay
+       * file.
+       *
+       * Also, note that during boot systemd will create a /run/machine-id ->
+       * /etc/machine-id bind mount (as /etc is read-only early on). It will then later
+       * replace this mount with a real one (in systemd-machine-id-commit.service).
+       *
+       * We need to label the actual overlayfs file, not the temporary bind-mount. To do
+       * this we unmount the covering mount before relabeling, but we do so in a temporary
+       * private namespace to avoid affecting other parts of the system.
+       */
+
+      glnx_autofd int initial_ns_fd = -1;
+      if (g_file_test ("/run/machine-id", G_FILE_TEST_EXISTS)
+          && g_file_test ("/etc/machine-id", G_FILE_TEST_EXISTS))
+        {
+          initial_ns_fd = open ("/proc/self/ns/mnt", O_RDONLY | O_NOCTTY | O_CLOEXEC);
+          if (initial_ns_fd < 0)
+            err (EXIT_FAILURE, "Failed to open initial namespace");
+
+          if (unshare (CLONE_NEWNS) < 0)
+            err (EXIT_FAILURE, "Failed to unshare initial namespace");
+
+          /* Ensure unmount is not propagated */
+          if (mount ("none", "/etc", NULL, MS_REC | MS_PRIVATE, NULL) < 0)
+            err (EXIT_FAILURE, "warning: While remounting /etc MS_PRIVATE");
+
+          if (umount2 ("/etc/machine-id", MNT_DETACH) < 0)
+            err (EXIT_FAILURE, "Failed to unmount machine-id");
+        }
+
+      g_autofree char *upper = g_build_filename (transient_etc, "upper", NULL);
+      relabel_dir_for_upper (upper, "/etc", TRUE);
+
+      if (initial_ns_fd != -1 && setns (initial_ns_fd, CLONE_NEWNS) < 0)
+        err (EXIT_FAILURE, "Failed to join initial namespace");
+    }
+
   gboolean root_is_composefs = FALSE;
   g_variant_dict_lookup (ostree_run_metadata, OTCORE_RUN_BOOTED_KEY_COMPOSEFS, "b",
                          &root_is_composefs);
@@ -140,8 +233,9 @@ main (int argc, char *argv[])
   do_remount ("/sysroot", !sysroot_configured_readonly);
 
   /* And also make sure to make /etc rw again. We make this conditional on
-   * sysroot_configured_readonly because only in that case is it a bind-mount. */
-  if (sysroot_configured_readonly)
+   * sysroot_configured_readonly && !transient_etc because only in that case is it a
+   * bind-mount. */
+  if (sysroot_configured_readonly && !transient_etc)
     do_remount ("/etc", true);
 
   /* If /var was created as as an OSTree default bind mount (instead of being a separate

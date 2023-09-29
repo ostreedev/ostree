@@ -63,6 +63,11 @@ ostree_remount_SOURCES = \
 ostree_remount_CPPFLAGS = $(AM_CPPFLAGS) $(OT_INTERNAL_GIO_UNIX_CFLAGS) -Isrc/switchroot -I$(srcdir)/src/libotcore -I$(srcdir)/src/libotutil -I$(srcdir)/libglnx
 ostree_remount_LDADD = $(AM_LDFLAGS) $(OT_INTERNAL_GIO_UNIX_LIBS) libotcore.la libotutil.la libglnx.la
 
+if USE_SELINUX
+ostree_remount_CPPFLAGS += $(OT_DEP_SELINUX_CFLAGS)
+ostree_remount_LDADD += $(OT_DEP_SELINUX_LIBS)
+endif
+
 if USE_COMPOSEFS
 ostree_prepare_root_LDADD += libcomposefs.la
 endif

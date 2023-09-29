@@ -114,6 +114,10 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <listitem><para>A boolean value; the default is <literal>false</literal>.  If this is set to <literal>true</literal>, then the <literal>/sysroot</literal> mount point is mounted read-only.</para></listitem>
             </varlistentry>
             <varlistentry>
+                <term><varname>etc.transient</varname></term>
+                <listitem><para>A boolean value; the default is <literal>false</literal>.  If this is set to <literal>true</literal>, then the <literal>/etc</literal> mount point is mounted transiently i.e. a non-persistent location.</para></listitem>
+            </varlistentry>
+            <varlistentry>
                 <term><varname>composefs.enabled</varname></term>
                 <listitem><para>This can be <literal>yes</literal>, <literal>no</literal>. <literal>maybe</literal> or
                 <literal>signed</literal>. The default is <literal>maybe</literal>.  If set to <literal>yes</literal> or

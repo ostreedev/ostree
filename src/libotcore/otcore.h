@@ -72,3 +72,5 @@ GKeyFile *otcore_load_config (int rootfs, const char *filename, GError **error);
 #define OTCORE_RUN_BOOTED_KEY_COMPOSEFS_SIGNATURE "composefs.signed"
 // This key will be present if the sysroot-ro flag was found
 #define OTCORE_RUN_BOOTED_KEY_SYSROOT_RO "sysroot-ro"
+
+#define OTCORE_RUN_BOOTED_KEY_TRANSIENT_ETC "transient-etc"
