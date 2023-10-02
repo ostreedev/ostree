@@ -28,6 +28,7 @@
 #include <gio/gunixoutputstream.h>
 #include <glib-unix.h>
 #include <glib/gprintf.h>
+#include <stdbool.h>
 #include <sys/ioctl.h>
 #include <sys/statvfs.h>
 #include <sys/xattr.h>
@@ -3272,8 +3273,14 @@ get_final_xattrs (OstreeRepo *self, OstreeRepoCommitModifier *modifier, const ch
   if (modifier && modifier->sepolicy)
     {
       g_autofree char *label = NULL;
+      const char *path_for_labeling = relpath;
 
-      if (!ostree_sepolicy_get_label (modifier->sepolicy, relpath,
+      bool using_v1 = (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SELINUX_LABEL_V1) > 0;
+      bool is_usretc = g_str_equal (relpath, "/usr/etc") || g_str_has_prefix (relpath, "/usr/etc/");
+      if (using_v1 && is_usretc)
+        path_for_labeling += strlen ("/usr");
+
+      if (!ostree_sepolicy_get_label (modifier->sepolicy, path_for_labeling,
                                       g_file_info_get_attribute_uint32 (file_info, "unix::mode"),
                                       &label, cancellable, error))
         return FALSE;

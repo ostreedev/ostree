@@ -54,6 +54,7 @@ static char *opt_tar_pathname_filter;
 static gboolean opt_no_xattrs;
 static char *opt_selinux_policy;
 static gboolean opt_selinux_policy_from_base;
+static int opt_selinux_labeling_epoch;
 static gboolean opt_canonical_permissions;
 static gboolean opt_ro_executables;
 static gboolean opt_consume;
@@ -134,6 +135,10 @@ static GOptionEntry options[] = {
     "Set SELinux labels based on policy in root filesystem PATH (may be /)", "PATH" },
   { "selinux-policy-from-base", 'P', 0, G_OPTION_ARG_NONE, &opt_selinux_policy_from_base,
     "Set SELinux labels based on first --tree argument", NULL },
+  { "selinux-labeling-epoch", 0, 0, G_OPTION_ARG_INT, &opt_selinux_labeling_epoch,
+    "Configure the default SELinux labeling rules; 0 is the default, 1 enables labeling /usr/etc "
+    "as /etc",
+    NULL },
   { "link-checkout-speedup", 0, 0, G_OPTION_ARG_NONE, &opt_link_checkout_speedup,
     "Optimize for commits of trees composed of hardlinks into the repository", NULL },
   { "devino-canonical", 'I', 0, G_OPTION_ARG_NONE, &opt_devino_canonical,
@@ -597,6 +602,19 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS;
   if (opt_consume)
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME;
+  switch (opt_selinux_labeling_epoch)
+    {
+    case 0:
+      break;
+    case 1:
+      flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SELINUX_LABEL_V1;
+      break;
+    default:
+      {
+        glnx_throw (error, "Unknown SELinux labeling epoch: %d", opt_selinux_labeling_epoch);
+        goto out;
+      }
+    }
   if (opt_devino_canonical)
     {
       opt_link_checkout_speedup = TRUE; /* Imply this */
