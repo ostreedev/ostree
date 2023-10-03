@@ -943,15 +943,10 @@ ostree_repo_write_archive_to_mtree_from_fd (OstreeRepo *self, int fd, OstreeMuta
 
 #ifdef HAVE_LIBARCHIVE
 
-static gboolean
-file_to_archive_entry_common (GFile *root, OstreeRepoExportArchiveOptions *opts, GFile *path,
-                              GFileInfo *file_info, struct archive_entry *entry, GError **error)
+static char *
+file_to_pathstr (GFile *root, OstreeRepoExportArchiveOptions *opts, GFile *path)
 {
-  gboolean ret = FALSE;
   g_autofree char *pathstr = g_file_get_relative_path (root, path);
-  g_autoptr (GVariant) xattrs = NULL;
-  time_t ts = (time_t)opts->timestamp_secs;
-
   if (opts->path_prefix && opts->path_prefix[0])
     {
       g_autofree char *old_pathstr = pathstr;
@@ -963,6 +958,18 @@ file_to_archive_entry_common (GFile *root, OstreeRepoExportArchiveOptions *opts,
       g_free (pathstr);
       pathstr = g_strdup (".");
     }
+
+  return g_steal_pointer (&pathstr);
+}
+
+static gboolean
+file_to_archive_entry_common (GFile *root, OstreeRepoExportArchiveOptions *opts, GFile *path,
+                              GFileInfo *file_info, struct archive_entry *entry, GError **error)
+{
+  gboolean ret = FALSE;
+  g_autofree char *pathstr = file_to_pathstr (root, opts, path);
+  g_autoptr (GVariant) xattrs = NULL;
+  time_t ts = (time_t)opts->timestamp_secs;
 
   archive_entry_update_pathname_utf8 (entry, pathstr);
   archive_entry_set_ctime (entry, ts, OSTREE_TIMESTAMP);
@@ -1021,7 +1028,8 @@ out:
 static gboolean
 write_directory_to_libarchive_recurse (OstreeRepo *self, OstreeRepoExportArchiveOptions *opts,
                                        GFile *root, GFile *dir, struct archive *a,
-                                       GCancellable *cancellable, GError **error)
+                                       GHashTable *seen_checksums, GCancellable *cancellable,
+                                       GError **error)
 {
   gboolean ret = FALSE;
   g_autoptr (GFileInfo) dir_info = NULL;
@@ -1057,8 +1065,8 @@ write_directory_to_libarchive_recurse (OstreeRepo *self, OstreeRepoExportArchive
       /* First, handle directories recursively */
       if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
         {
-          if (!write_directory_to_libarchive_recurse (self, opts, root, path, a, cancellable,
-                                                      error))
+          if (!write_directory_to_libarchive_recurse (self, opts, root, path, a, seen_checksums,
+                                                      cancellable, error))
             goto out;
 
           /* Go to the next entry */
@@ -1086,8 +1094,26 @@ write_directory_to_libarchive_recurse (OstreeRepo *self, OstreeRepoExportArchive
             g_autoptr (GInputStream) file_in = NULL;
             g_autoptr (GFileInfo) regular_file_info = NULL;
             const char *checksum;
+            GFile *old_path;
 
             checksum = ostree_repo_file_get_checksum ((OstreeRepoFile *)path);
+
+            old_path = g_hash_table_lookup (seen_checksums, checksum);
+            if (old_path)
+              {
+                g_autofree char *old_pathstr = file_to_pathstr (root, opts, old_path);
+
+                archive_entry_set_hardlink (entry, old_pathstr);
+                if (!write_header_free_entry (a, &entry, error))
+                  goto out;
+
+                break;
+              }
+            else
+              {
+                /* The checksum is owned by path (an OstreeRepoFile) */
+                g_hash_table_insert (seen_checksums, (char *)checksum, g_object_ref (path));
+              }
 
             if (!ostree_repo_load_file (self, checksum, &file_in, &regular_file_info, NULL,
                                         cancellable, error))
@@ -1168,9 +1194,11 @@ ostree_repo_export_tree_to_archive (OstreeRepo *self, OstreeRepoExportArchiveOpt
 #ifdef HAVE_LIBARCHIVE
   gboolean ret = FALSE;
   struct archive *a = archive;
+  g_autoptr (GHashTable) seen_checksums
+      = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_object_unref);
 
   if (!write_directory_to_libarchive_recurse (self, opts, (GFile *)root, (GFile *)root, a,
-                                              cancellable, error))
+                                              seen_checksums, cancellable, error))
     goto out;
 
   ret = TRUE;

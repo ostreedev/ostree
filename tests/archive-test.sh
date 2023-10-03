@@ -72,9 +72,9 @@ date > test-overlays/overlaid-file
 $OSTREE commit ${COMMIT_ARGS} -b test-base --base test2 --owner-uid 42 --owner-gid 42 test-overlays/
 $OSTREE ls -R test-base > ls.txt
 if can_create_whiteout_devices; then
-    assert_streq "$(wc -l < ls.txt)" 17
+    assert_streq "$(wc -l < ls.txt)" 22
 else
-    assert_streq "$(wc -l < ls.txt)" 14
+    assert_streq "$(wc -l < ls.txt)" 19
 fi
 
 assert_streq "$(grep '42.*42' ls.txt | wc -l)" 2
