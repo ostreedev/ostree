@@ -20,6 +20,9 @@ if test "${OS_ID}" = 'fedora'; then
         *) CONFIGOPTS="${CONFIGOPTS:-} --with-curl"
     esac
 fi
+if [[ "${OS_ID_LIKE}" =~ rhel|fedora ]]; then
+    CONFIGOPTS="${CONFIGOPTS:-} --with-composefs --with-openssl"
+fi
 case "${CONFIGOPTS:-}" in
     *--with-curl*|--with-soup*)
         if test -x /usr/bin/gnome-desktop-testing-runner; then
