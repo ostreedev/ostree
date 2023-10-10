@@ -284,7 +284,8 @@ AC_COMPILE_IFELSE(
 	)],
 	[AC_MSG_RESULT(yes)
 	 have_mount_attr_idmap=yes],
-	[AC_MSG_RESULT(no)])
+	[AC_MSG_RESULT(no)
+	 have_mount_attr_idmap=no])
 dnl These are needed by libcomposefs to use the new mount API optionally
 AC_MSG_CHECKING([for new mount API (fsconfig)])
 AC_COMPILE_IFELSE(
@@ -307,7 +308,7 @@ AC_COMPILE_IFELSE(
 	[AC_MSG_RESULT(no)])
 
 composefs_default=yes
-if test x"$have_mount_attr_idmap" != xyes; then
+if test x"$have_mount_attr_idmap" == xno; then
   composefs_default=no
 fi
 AC_ARG_WITH(composefs,
