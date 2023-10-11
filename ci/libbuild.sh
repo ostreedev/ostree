@@ -3,6 +3,7 @@
 dn=$(cd $(dirname $0) && pwd)
 
 OS_ID=$(. /etc/os-release; echo $ID)
+OS_ID_LIKE=$(. /etc/os-release; echo $ID ${ID_LIKE:-})
 OS_VERSION_ID=$(. /etc/os-release; echo $VERSION_ID)
 
 pkg_upgrade() {
