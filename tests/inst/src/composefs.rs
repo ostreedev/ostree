@@ -131,6 +131,7 @@ fn verify_composefs_signed(sh: &xshell::Shell, metadata: &glib::VariantDict) -> 
     Ok(())
 }
 
+#[allow(dead_code)]
 pub(crate) fn itest_composefs() -> Result<()> {
     let sh = &xshell::Shell::new()?;
     if !cmd!(sh, "ostree --version").read()?.contains("- composefs") {

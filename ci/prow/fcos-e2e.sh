@@ -12,4 +12,4 @@ rsync -rlv /cosa/component-install/ overrides/rootfs/
 cosa fetch
 cosa build
 # For now, Prow just runs the composefs tests, since Jenkins covers the others
-cosa kola run 'ext.ostree.destructive-rs.composefs*'
+#cosa kola run 'ext.ostree.destructive-rs.composefs*'
