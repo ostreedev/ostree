@@ -87,6 +87,9 @@
 #define SYSROOT_KEY "sysroot"
 #define READONLY_KEY "readonly"
 
+#define ETC_KEY "etc"
+#define TRANSIENT_KEY "transient"
+
 #define COMPOSEFS_KEY "composefs"
 #define ENABLED_KEY "enabled"
 #define KEYPATH_KEY "keypath"
@@ -547,13 +550,51 @@ main (int argc, char *argv[])
    * the deployment needs to be created and remounted as read/write. */
   if (sysroot_readonly || using_composefs)
     {
-      /* Bind-mount /etc (at deploy path), and remount as writable. */
-      if (mount ("etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to prepare /etc bind-mount at /sysroot.tmp/etc");
-      if (mount (TMP_SYSROOT "/etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_REMOUNT | MS_SILENT,
-                 NULL)
-          < 0)
-        err (EXIT_FAILURE, "failed to make writable /etc bind-mount at /sysroot.tmp/etc");
+      gboolean etc_transient = FALSE;
+      if (!ot_keyfile_get_boolean_with_default (config, ETC_KEY, TRANSIENT_KEY, FALSE,
+                                                &etc_transient, &error))
+        errx (EXIT_FAILURE, "Failed to parse etc.transient value: %s", error->message);
+
+      if (etc_transient)
+        {
+          char *ovldir = "/run/ostree/transient-etc";
+
+          g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_TRANSIENT_ETC,
+                                 g_variant_new_string (ovldir));
+
+          char *lowerdir = "usr/etc";
+          if (using_composefs)
+            lowerdir = TMP_SYSROOT "/usr/etc";
+
+          g_autofree char *upperdir = g_build_filename (ovldir, "upper", NULL);
+          g_autofree char *workdir = g_build_filename (ovldir, "work", NULL);
+
+          struct
+          {
+            const char *path;
+            int mode;
+          } subdirs[] = { { ovldir, 0700 }, { upperdir, 0755 }, { workdir, 0755 } };
+          for (int i = 0; i < G_N_ELEMENTS (subdirs); i++)
+            {
+              if (mkdirat (AT_FDCWD, subdirs[i].path, subdirs[i].mode) < 0)
+                err (EXIT_FAILURE, "Failed to create dir %s", subdirs[i].path);
+            }
+
+          g_autofree char *ovl_options
+              = g_strdup_printf ("lowerdir=%s,upperdir=%s,workdir=%s", lowerdir, upperdir, workdir);
+          if (mount ("overlay", TMP_SYSROOT "/etc", "overlay", MS_SILENT, ovl_options) < 0)
+            err (EXIT_FAILURE, "failed to mount transient etc overlayfs");
+        }
+      else
+        {
+          /* Bind-mount /etc (at deploy path), and remount as writable. */
+          if (mount ("etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+            err (EXIT_FAILURE, "failed to prepare /etc bind-mount at /sysroot.tmp/etc");
+          if (mount (TMP_SYSROOT "/etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_REMOUNT | MS_SILENT,
+                     NULL)
+              < 0)
+            err (EXIT_FAILURE, "failed to make writable /etc bind-mount at /sysroot.tmp/etc");
+        }
     }
 
   /* Prepare /usr.
