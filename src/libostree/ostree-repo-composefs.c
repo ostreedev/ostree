@@ -210,6 +210,7 @@ ostree_composefs_target_write (OstreeComposefsTarget *target, int fd, guchar **o
                                GCancellable *cancellable, GError **error)
 {
 #ifdef HAVE_COMPOSEFS
+  GLNX_AUTO_PREFIX_ERROR ("Writing composefs", error);
   g_autoptr (GOutputStream) tmp_out = NULL;
   g_autoptr (GOutputStream) out = NULL;
   struct lcfs_node_s *root;
@@ -235,7 +236,7 @@ ostree_composefs_target_write (OstreeComposefsTarget *target, int fd, guchar **o
     }
 
   if (lcfs_write_to (root, &options) != 0)
-    return glnx_throw_errno (error);
+    return glnx_throw_errno_prefix (error, "lcfs_write_to");
 
   if (out_fsverity_digest)
     *out_fsverity_digest = g_steal_pointer (&fsverity_digest);
@@ -402,7 +403,7 @@ checkout_composefs_recurse (OstreeRepo *self, const char *dirtree_checksum,
       if (lcfs_node_add_child (parent, directory, name) != 0)
         {
           lcfs_node_unref (directory);
-          return glnx_throw_errno (error);
+          return glnx_throw_errno_prefix (error, "lcfs_node_add_child");
         }
     }
 
@@ -428,7 +429,7 @@ checkout_composefs_recurse (OstreeRepo *self, const char *dirtree_checksum,
 
         if (!checkout_one_composefs_file_at (self, tmp_checksum, directory, fname, cancellable,
                                              error))
-          return FALSE;
+          return glnx_prefix_error (error, "Processing %s", tmp_checksum);
       }
     contents_csum_v = NULL; /* iter_loop freed it */
   }
@@ -494,6 +495,7 @@ checkout_composefs_tree (OstreeRepo *self, OstreeComposefsTarget *target, Ostree
 static struct lcfs_node_s *
 ensure_lcfs_dir (struct lcfs_node_s *parent, const char *name, GError **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("Ensuring dir", error);
   struct lcfs_node_s *node;
 
   node = lcfs_node_lookup_child (parent, name);
@@ -505,7 +507,7 @@ ensure_lcfs_dir (struct lcfs_node_s *parent, const char *name, GError **error)
   if (lcfs_node_add_child (parent, node, name) != 0)
     {
       lcfs_node_unref (node);
-      glnx_throw_errno (error);
+      glnx_throw_errno_prefix (error, "lcfs_node_add_child");
       return NULL;
     }
 
@@ -537,6 +539,7 @@ ostree_repo_checkout_composefs (OstreeRepo *self, OstreeComposefsTarget *target,
                                 OstreeRepoFile *source, GCancellable *cancellable, GError **error)
 {
 #ifdef HAVE_COMPOSEFS
+  GLNX_AUTO_PREFIX_ERROR ("Checking out composefs", error);
   char *root_dirs[] = { "usr", "etc", "boot", "var", "sysroot" };
   int i;
   struct lcfs_node_s *root, *dir;
@@ -545,7 +548,7 @@ ostree_repo_checkout_composefs (OstreeRepo *self, OstreeComposefsTarget *target,
       = g_file_query_info (G_FILE (source), OSTREE_GIO_FAST_QUERYINFO,
                            G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable, error);
   if (!target_info)
-    return FALSE;
+    return glnx_prefix_error (error, "Failed to query");
 
   if (!checkout_composefs_tree (self, target, source, target_info, cancellable, error))
     return FALSE;
