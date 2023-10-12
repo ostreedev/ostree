@@ -32,6 +32,21 @@ ostree refs --delete testbranch
 rm co -rf
 echo "ok commit with sepolicy"
 
+ostree ls -X ${host_refspec} /usr/etc/sysctl.conf > ls.txt
+if grep -qF ':etc_t:' ls.txt; then
+  ostree checkout -H ${host_refspec} co
+  ostree commit -b testbranch --link-checkout-speedup \
+       --selinux-policy co --tree=dir=co --selinux-labeling-epoch=1
+  ostree ls -X testbranch /usr/etc/sysctl.conf > ls.txt
+  assert_file_has_content ls.txt ':system_conf_t:'
+  rm co ls.txt -rf
+  ostree refs --delete testbranch
+else
+  echo 'Already using --selinux-labeling-epoch > 0 on host, hopefully!'
+fi
+
+echo "ok --selinux-labeling-epoch=1"
+
 # Now let's check that selinux policy labels can be applied on checkout
 
 rm rootfs -rf

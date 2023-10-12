@@ -185,6 +185,14 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
             </varlistentry>
 
             <varlistentry>
+                <term><option>--selinux-labeling-epoch</option>0 | 1</term>
+
+                <listitem><para>
+                    When SELinux labeling is enabled, epoch <literal>1</literal> ensures that <literal>/usr/etc</literal> is labeled as if it was <literal>/etc</literal>.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--bootable</option></term>
                 <listitem><para>
                     Inject standard metadata for a bootable Linux filesystem tree.
