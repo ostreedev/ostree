@@ -1126,7 +1126,7 @@ echo "ok test error pre commit/bootid"
 
 # Whiteouts
 cd ${test_tmpdir}
-mkdir -p overlay/baz/
+mkdir -p overlay/baz/another/
 if touch overlay/baz/.wh.cow && touch overlay/.wh.deeper && touch overlay/baz/another/.wh..wh..opq; then
     touch overlay/anewfile
     mkdir overlay/anewdir/
