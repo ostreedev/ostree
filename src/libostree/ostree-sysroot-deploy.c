@@ -820,6 +820,7 @@ static gboolean
 selinux_relabel_var_if_needed (OstreeSysroot *sysroot, OstreeSePolicy *sepolicy, int os_deploy_dfd,
                                GCancellable *cancellable, GError **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("Relabeling /var", error);
   /* This is a bit of a hack; we should change the code at some
    * point in the distant future to only create (and label) /var
    * when doing a deployment.
@@ -3044,6 +3045,17 @@ lint_deployment_fs (OstreeSysroot *self, OstreeDeployment *deployment, int deplo
   return TRUE;
 }
 
+static gboolean
+require_stateroot (OstreeSysroot *self, const char *stateroot, GError **error)
+{
+  const char *osdeploypath = glnx_strjoina ("ostree/deploy/", stateroot);
+  if (!glnx_fstatat_allow_noent (self->sysroot_fd, osdeploypath, NULL, 0, error))
+    return FALSE;
+  if (errno == ENOENT)
+    return glnx_throw (error, "No such stateroot: %s", stateroot);
+  return TRUE;
+}
+
 /* The first part of writing a deployment. This primarily means doing the
  * hardlink farm checkout, but we also compute some initial state.
  */
@@ -3059,6 +3071,9 @@ sysroot_initialize_deployment (OstreeSysroot *self, const char *osname, const ch
 
   if (osname == NULL)
     osname = ostree_deployment_get_osname (self->booted_deployment);
+
+  if (!require_stateroot (self, osname, error))
+    return FALSE;
 
   OstreeRepo *repo = ostree_sysroot_repo (self);
 
@@ -3234,6 +3249,7 @@ run_in_deployment (int deployment_dfd, const gchar *const *child_argv, gsize chi
 static gboolean
 sysroot_finalize_selinux_policy (int deployment_dfd, GError **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("Finalizing SELinux policy", error);
   struct stat stbuf;
   gint exit_status;
   g_autofree gchar *stdout = NULL;
@@ -3280,6 +3296,7 @@ sysroot_finalize_deployment (OstreeSysroot *self, OstreeDeployment *deployment,
                              OstreeDeployment *merge_deployment, GCancellable *cancellable,
                              GError **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("Finalizing deployment", error);
   g_autofree char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
   glnx_autofd int deployment_dfd = -1;
   if (!glnx_opendirat (self->sysroot_fd, deployment_path, TRUE, &deployment_dfd, error))

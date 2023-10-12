@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((29 + ${extra_admin_tests:-0}))"
+echo "1..$((30 + ${extra_admin_tests:-0}))"
 
 mkdir sysrootmin
 ${CMD_PREFIX} ostree admin init-fs --modern sysrootmin
@@ -75,6 +75,13 @@ ${CMD_PREFIX} ostree admin --print-current-dir > curdir
 assert_file_has_content curdir ^`pwd`/sysroot/ostree/deploy/testos/deploy/${rev}\.0$
 
 echo "ok --print-current-dir"
+
+if ${CMD_PREFIX} ostree admin deploy --stateroot=nosuchroot testos:testos/buildmain/x86_64-runtime 2>err.txt; then
+    fatal "deployed to nonexistent root"
+fi
+assert_file_has_content err.txt "error:.*No such stateroot: nosuchroot"
+
+echo "ok nice error for deploy with no stateroot"
 
 # Test layout of bootloader config and refs
 assert_not_has_dir sysroot/boot/loader.0
