@@ -10,6 +10,8 @@ cd $(mktemp -d)
 cosa init https://github.com/coreos/fedora-coreos-config/
 rsync -rlv /cosa/component-install/ overrides/rootfs/
 cosa fetch
+# For composefs
+echo 'rootfs: "ext4verity"' >> src/config/image.yaml
 cosa build
 # For now, Prow just runs the composefs tests, since Jenkins covers the others
 #cosa kola run 'ext.ostree.destructive-rs.composefs*'

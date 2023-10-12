@@ -33,7 +33,7 @@ const TESTS: &[StaticTest] = &[
 ];
 const DESTRUCTIVE_TESTS: &[StaticTest] = &[
     test!(destructive::itest_transactionality),
-    // test!(composefs::itest_composefs),
+    test!(composefs::itest_composefs),
 ];
 
 #[derive(Debug, StructOpt)]

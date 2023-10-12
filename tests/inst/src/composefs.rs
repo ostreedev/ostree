@@ -131,15 +131,21 @@ fn verify_composefs_signed(sh: &xshell::Shell, metadata: &glib::VariantDict) -> 
     Ok(())
 }
 
-#[allow(dead_code)]
 pub(crate) fn itest_composefs() -> Result<()> {
     let sh = &xshell::Shell::new()?;
-    if !cmd!(sh, "ostree --version").read()?.contains("- composefs") {
-        println!("SKIP no composefs support");
-        return Ok(());
-    }
     let mark = match crate::test::get_reboot_mark()? {
         None => {
+            if !cmd!(sh, "ostree --version").read()?.contains("- composefs") {
+                println!("SKIP no composefs support");
+                return Ok(());
+            }
+            {
+                let fstype = cmd!(sh, "stat -f / -c %T").read()?;
+                if fstype.trim() == "xfs" {
+                    println!("SKIP no xfs fsverity yet");
+                    return Ok(());
+                }
+            }
             cmd!(
                 sh,
                 "ostree --repo=/ostree/repo config set ex-integrity.composefs true"
