@@ -91,6 +91,14 @@ EOF
     test ! -f /run/ostree/staged-deployment-locked
     echo "ok cleanup staged"
 
+    # And verify that re-staging cleans the previous lock
+    test '!' -f /run/ostree/staged-deployment
+    ostree admin deploy --stage staged-deploy
+    test -f /run/ostree/staged-deployment
+    test '!' -f /run/ostree/staged-deployment-locked
+    ostree admin undeploy 0
+    echo "ok restage unlocked"
+
     # Upgrade with staging
     ostree admin deploy --stage staged-deploy
     origcommit=$(ostree rev-parse staged-deploy)
