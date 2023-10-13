@@ -3676,6 +3676,9 @@ ostree_sysroot_stage_tree_with_options (OstreeSysroot *self, const char *osname,
     {
       if (!_ostree_sysroot_rmrf_deployment (self, self->staged_deployment, cancellable, error))
         return FALSE;
+      // Also remove the lock; xref https://github.com/ostreedev/ostree/issues/3025
+      if (!ot_ensure_unlinked_at (AT_FDCWD, _OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED, error))
+        return FALSE;
     }
 
   /* Bump mtime so external processes know something changed, and then reload. */
