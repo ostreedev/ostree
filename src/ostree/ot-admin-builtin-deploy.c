@@ -41,7 +41,7 @@ static gboolean opt_no_prune;
 static gboolean opt_no_merge;
 static char **opt_kernel_argv;
 static char **opt_kernel_argv_append;
-static char *opt_kernel_argv_delete;
+static char **opt_kernel_argv_delete;
 static gboolean opt_kernel_proc_cmdline;
 static char *opt_osname;
 static char *opt_origin_path;
@@ -79,8 +79,8 @@ static GOptionEntry options[] = {
     "NAME=VALUE" },
   { "karg-none", 0, 0, G_OPTION_ARG_NONE, &opt_kernel_arg_none, "Do not import kernel arguments",
     NULL },
-  { "karg-delete", 0, 0, G_OPTION_ARG_STRING, &opt_kernel_argv_delete,
-    "Delete kernel argument if exists", "NAME=VALUE" },
+  { "karg-delete", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_kernel_argv_delete,
+    "Delete kernel argument if exists, can be used multiple times", "NAME=VALUE" },
   { "overlay-initrd", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_overlay_initrds,
     "Overlay iniramfs file", "FILE" },
   { NULL }
@@ -205,9 +205,10 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
       ostree_kernel_args_append_argv (kargs, opt_kernel_argv_append);
     }
 
-  if (opt_kernel_argv_delete)
+  for (char **strviter = opt_kernel_argv_delete; strviter && *strviter; strviter++)
     {
-      if (!ostree_kernel_args_delete (kargs, opt_kernel_argv_delete, error))
+      const char *arg = *strviter;
+      if (!ostree_kernel_args_delete_if_present (kargs, arg, error))
         return FALSE;
     }
 
