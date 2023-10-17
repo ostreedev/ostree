@@ -71,11 +71,9 @@ assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'option
 echo "ok deploy --karg-append"
 
 assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*quiet .*TESTARG=TESTVALUE .*APPENDARG=VALAPPEND .*APPENDARG=2NDAPPEND'
-${CMD_PREFIX} ostree admin deploy  --os=testos --karg-delete=TESTARG=TESTVALUE testos:testos/buildmain/x86_64-runtime
+${CMD_PREFIX} ostree admin deploy  --os=testos --karg-delete=TESTARG=TESTVALUE --karg-delete=quiet --karg-delete=APPENDARG=VALAPPEND testos:testos/buildmain/x86_64-runtime
 assert_not_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*TESTARG=TESTVALUE'
-${CMD_PREFIX} ostree admin deploy  --os=testos --karg-delete=quiet testos:testos/buildmain/x86_64-runtime
 assert_not_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*quiet'
-${CMD_PREFIX} ostree admin deploy  --os=testos --karg-delete=APPENDARG=VALAPPEND testos:testos/buildmain/x86_64-runtime
 assert_not_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*APPENDARG=VALAPPEND'
 
 echo "ok deploy --karg-delete"

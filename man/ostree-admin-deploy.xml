@@ -144,6 +144,14 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                     Append kernel argument; useful with e.g. console= that can be used multiple times.
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--karg-delete</option>="NAME=VALUE"</term>
+
+                <listitem><para>
+                    Delete kernel argument if exists, can be used multiple times.
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 
