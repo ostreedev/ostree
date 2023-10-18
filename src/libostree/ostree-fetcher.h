@@ -99,6 +99,16 @@ void _ostree_fetcher_set_proxy (OstreeFetcher *fetcher, const char *proxy);
 void _ostree_fetcher_set_client_cert (OstreeFetcher *fetcher, const char *cert_path,
                                       const char *key_path);
 
+void _ostree_fetcher_set_low_speed_limit (OstreeFetcher *self, guint32 opt_low_speed_limit);
+
+void _ostree_fetcher_set_low_speed_time (OstreeFetcher *self, guint32 opt_low_speed_time);
+
+void _ostree_fetcher_set_retry_all (OstreeFetcher *self, gboolean opt_retry_all);
+
+void
+_ostree_fetcher_set_max_outstanding_fetcher_requests (OstreeFetcher *self,
+                                                      guint32 opt_max_outstanding_fetcher_requests);
+
 void _ostree_fetcher_set_tls_database (OstreeFetcher *self, const char *tlsdb_path);
 
 void _ostree_fetcher_set_extra_headers (OstreeFetcher *self, GVariant *extra_headers);
