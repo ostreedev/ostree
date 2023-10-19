@@ -1646,25 +1646,28 @@ full_system_sync (OstreeSysroot *self, SyncStats *out_stats, GCancellable *cance
                   GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("Full sync", error);
-  guint64 start_msec = g_get_monotonic_time () / 1000;
   ot_journal_print (LOG_INFO, "Starting syncfs() for system root");
+  guint64 start_msec = g_get_monotonic_time () / 1000;
   if (syncfs (self->sysroot_fd) != 0)
     return glnx_throw_errno_prefix (error, "syncfs(sysroot)");
-  ot_journal_print (LOG_INFO, "Completed syncfs() for system root");
   guint64 end_msec = g_get_monotonic_time () / 1000;
+  ot_journal_print (LOG_INFO, "Completed syncfs() for system root in %" G_GUINT64_FORMAT " ms",
+                    end_msec - start_msec);
 
   out_stats->root_syncfs_msec = (end_msec - start_msec);
 
   if (!_ostree_sysroot_ensure_boot_fd (self, error))
     return FALSE;
 
-  start_msec = g_get_monotonic_time () / 1000;
   g_assert_cmpint (self->boot_fd, !=, -1);
   ot_journal_print (LOG_INFO, "Starting freeze/thaw cycle for system root");
+  start_msec = g_get_monotonic_time () / 1000;
   if (!fsfreeze_thaw_cycle (self, self->boot_fd, cancellable, error))
     return FALSE;
-  ot_journal_print (LOG_INFO, "Completed freeze/thaw cycle for system root");
   end_msec = g_get_monotonic_time () / 1000;
+  ot_journal_print (LOG_INFO,
+                    "Completed freeze/thaw cycle for system root in %" G_GUINT64_FORMAT " ms",
+                    end_msec - start_msec);
   out_stats->boot_syncfs_msec = (end_msec - start_msec);
 
   return TRUE;
@@ -3284,9 +3287,14 @@ sysroot_finalize_selinux_policy (int deployment_dfd, GError **error)
   static const gsize SEMODULE_REBUILD_ARGC
       = sizeof (SEMODULE_REBUILD_ARGV) / sizeof (*SEMODULE_REBUILD_ARGV);
 
+  ot_journal_print (LOG_INFO, "Refreshing SELinux policy");
+  guint64 start_msec = g_get_monotonic_time () / 1000;
   if (!run_in_deployment (deployment_dfd, SEMODULE_REBUILD_ARGV, SEMODULE_REBUILD_ARGC,
                           &exit_status, NULL, error))
     return FALSE;
+  guint64 end_msec = g_get_monotonic_time () / 1000;
+  ot_journal_print (LOG_INFO, "Refreshed SELinux policy in %" G_GUINT64_FORMAT " ms",
+                    end_msec - start_msec);
   return g_spawn_check_exit_status (exit_status, error);
 }
 #endif /* HAVE_SELINUX */
