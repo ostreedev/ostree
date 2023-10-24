@@ -381,6 +381,12 @@ _ostree_bootloader_zipl_post_bls_sync (OstreeBootloader *bootloader, int bootver
 {
   OstreeBootloaderZipl *self = OSTREE_BOOTLOADER_ZIPL (bootloader);
 
+  // This can happen in a unit testing environment; at some point what we want to do here
+  // is move all of the zipl logic to a systemd unit instead that's keyed of
+  // ostree-finalize-staged.service.
+  if (getuid () != 0)
+    return TRUE;
+
   /* Note that unlike the grub2-mkconfig backend, we make no attempt to
    * chroot().
    */
