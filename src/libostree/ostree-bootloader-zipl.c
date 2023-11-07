@@ -35,6 +35,7 @@
 #define SECURE_EXECUTION_LUKS_ROOT_KEY "/etc/luks/root"
 #define SECURE_EXECUTION_LUKS_BOOT_KEY "/etc/luks/boot"
 #define SECURE_EXECUTION_LUKS_CONFIG "/etc/crypttab"
+#define SECURE_BOOT_SYSFS_FLAG "/sys/firmware/ipl/secure"
 
 #if !(defined HAVE_LIBARCHIVE) && defined(__s390x__)
 #error libarchive is required for s390x
@@ -109,6 +110,52 @@ _ostree_bootloader_zipl_write_config (OstreeBootloader *bootloader, int bootvers
                                       error))
     return FALSE;
 
+  return TRUE;
+}
+
+static gboolean
+_ostree_secure_boot_is_enabled (gboolean *out_enabled, GCancellable *cancellable, GError **error)
+{
+  *out_enabled = FALSE;
+  glnx_autofd int fd = -1;
+  if (!ot_openat_ignore_enoent (AT_FDCWD, SECURE_BOOT_SYSFS_FLAG, &fd, error))
+    return FALSE;
+  if (fd != -1)
+    {
+      g_autofree char *data = glnx_fd_readall_utf8 (fd, NULL, cancellable, error);
+      if (!data)
+        return FALSE;
+      *out_enabled = strstr (data, "1") != NULL;
+      ot_journal_print (LOG_INFO, "s390x: sysfs: Secure Boot enabled: %d", *out_enabled);
+      return TRUE;
+    }
+
+  // Fallback, RHEL 9 kernel is buggy and doesn't have sysfs flag.
+  // Let's check kmsg, with Secure Boot enabled kernel prints smth like:
+  // [    0.027998] Linux version 5.14.0-284.36.1.el9_2.s390x
+  // [    0.023193] setup: Linux is running as a z/VM guest operating system in 64-bit mode
+  // [    0.023193] setup: Linux is running with Secure-IPL enabled
+  // [    0.023194] setup: The IPL report contains the following components:
+  // [    0.023194] setup: 0000000000009000 - 000000000000a000 (not signed)
+  // [    0.023196] setup: 000000000000a000 - 000000000000e000 (signed, verified)
+  // [    0.023197] setup: 0000000000010000 - 0000000000866000 (signed, verified)
+  // [    0.023198] setup: 0000000000867000 - 0000000000868000 (not signed)
+  // [    0.023199] setup: 0000000000877000 - 0000000000878000 (not signed)
+  // [    0.023200] setup: 0000000000880000 - 0000000003f98000 (not signed)
+  fd = openat (AT_FDCWD, "/dev/kmsg", O_NONBLOCK | O_RDONLY);
+  if (fd == -1)
+    return glnx_throw_errno_prefix (error, "openat(/dev/kmsg)");
+  unsigned max_lines = 5; // no need to read dozens of messages, ours comes really early
+  while (*out_enabled != TRUE && max_lines > 0)
+    {
+      char buf[1024];
+      ssize_t len = read (fd, buf, sizeof (buf));
+      if (len == -EAGAIN)
+        break;
+      *out_enabled = strstr (buf, "Secure-IPL enabled") != NULL;
+      --max_lines;
+    }
+  ot_journal_print (LOG_INFO, "s390x: kmsg: Secure Boot enabled: %d", *out_enabled);
   return TRUE;
 }
 
@@ -414,7 +461,11 @@ _ostree_bootloader_zipl_post_bls_sync (OstreeBootloader *bootloader, int bootver
       return _ostree_secure_execution_enable (self, bootversion, keys, cancellable, error);
     }
   /* Fallback to non-SE setup */
-  const char *const zipl_argv[] = { "zipl", NULL };
+  gboolean sb_enabled = FALSE;
+  if (!_ostree_secure_boot_is_enabled (&sb_enabled, cancellable, error))
+    return FALSE;
+  const char *const zipl_argv[]
+      = { "zipl", "--secure", (sb_enabled == TRUE) ? "1" : "auto", "-V", NULL };
   int estatus;
   if (!g_spawn_sync (NULL, (char **)zipl_argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, NULL,
                      &estatus, error))
