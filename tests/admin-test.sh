@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((30 + ${extra_admin_tests:-0}))"
+echo "1..$((31 + ${extra_admin_tests:-0}))"
 
 mkdir sysrootmin
 ${CMD_PREFIX} ostree admin init-fs --modern sysrootmin
@@ -186,6 +186,12 @@ assert_not_has_file sysroot/ostree/deploy/testos/deploy/${rev}.4/etc/aconfigfile
 ${CMD_PREFIX} ostree admin status
 validate_bootloader
 echo "ok deploy with modified /etc"
+
+if ${CMD_PREFIX} ostree admin undeploy blah 2>err.txt; then
+    fatal "undeploy parsed string"
+fi
+assert_file_has_content_literal err.txt 'error: Invalid index: blah'
+echo "ok undeploy error invalid int"
 
 # we now have 5 deployments, let's bring that back down to 1
 for i in $(seq 4); do

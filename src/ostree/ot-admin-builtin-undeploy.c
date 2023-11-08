@@ -50,7 +50,14 @@ ot_admin_builtin_undeploy (int argc, char **argv, OstreeCommandInvocation *invoc
   g_autoptr (GPtrArray) current_deployments = ostree_sysroot_get_deployments (sysroot);
 
   const char *deploy_index_str = argv[1];
-  int deploy_index = atoi (deploy_index_str);
+  guint deploy_index;
+  {
+    char *endptr = NULL;
+    errno = 0;
+    deploy_index = (guint)g_ascii_strtoull (deploy_index_str, &endptr, 10);
+    if (*endptr != '\0')
+      return glnx_throw (error, "Invalid index: %s", deploy_index_str);
+  }
 
   g_autoptr (OstreeDeployment) target_deployment
       = ot_admin_get_indexed_deployment (sysroot, deploy_index, error);
