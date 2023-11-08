@@ -1,0 +1,92 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+    "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<!--
+Copyright 2023 Red Hat, Inc.
+
+SPDX-License-Identifier: LGPL-2.0+
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library. If not, see <https://www.gnu.org/licenses/>.
+-->
+
+<refentry id="ostree">
+
+    <refentryinfo>
+        <title>ostree admin lock-finalization</title>
+        <productname>OSTree</productname>
+
+        <authorgroup>
+            <author>
+                <contrib>Developer</contrib>
+                <firstname>Colin</firstname>
+                <surname>Walters</surname>
+                <email>walters@verbum.org</email>
+            </author>
+        </authorgroup>
+    </refentryinfo>
+
+    <refmeta>
+        <refentrytitle>ostree admin lock-finalization</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv>
+        <refname>ostree-admin-lock-finalization</refname>
+        <refpurpose>Change whether staged deployment will be queued for next boot</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv>
+            <cmdsynopsis>
+                <command>ostree admin lock-finalization</command> <arg choice="opt" rep="repeat">OPTIONS</arg>
+            </cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1>
+        <title>Description</title>
+
+        <para>
+            This command requires a staged deployment.  By default, this command ensures the deployment
+            will be set into a "finalization locked" state, which means it will not be queued for the next boot by default.
+        </para>
+        <para>
+            This is the same as the <literal>--lock-finalization</literal> argument for <literal>ostree admin deploy</literal>.
+        </para>
+        <para>
+            However more commonly, one will use the <literal>--unlock</literal> argument for this command to later unlock
+            a deployment which was finalization locked.
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title>Options</title>
+
+        <variablelist>
+            <varlistentry>
+                <term><option>--sysroot</option>="PATH"</term>
+
+                <listitem><para>
+                    Path to the system to use rather than the current one.
+                </para></listitem>
+            </varlistentry>
+            <varlistentry>
+                <term><option>--unlock</option>,<option>-u</option></term>
+
+                <listitem><para>
+                    Unlock the deployment finalization state.
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+</refentry>

@@ -51,6 +51,7 @@ struct _OstreeDeployment
   GKeyFile *origin;
   OstreeDeploymentUnlockedState unlocked;
   gboolean staged;
+  gboolean finalization_locked;
   char **overlay_initrds;
   char *overlay_initrds_id;
 };

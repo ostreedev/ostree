@@ -1106,6 +1106,8 @@ _ostree_sysroot_reload_staged (OstreeSysroot *self, GError **error)
            * canonical "staged_deployment" reference.
            */
           self->staged_deployment->staged = TRUE;
+          (void)g_variant_dict_lookup (staged_deployment_dict, _OSTREE_SYSROOT_STAGED_KEY_LOCKED,
+                                       "b", &self->staged_deployment->finalization_locked);
         }
     }
 

@@ -122,6 +122,16 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
             </varlistentry>
 
             <varlistentry>
+                <term><option>--lock-finalization</option></term>
+
+                <listitem><para>
+                    The deployment will not be "finalized" by default on shutdown; to later
+                    queue it, use <literal>ostree admin unlock-finalization</literal>.
+                </para></listitem>
+            </varlistentry>
+
+
+            <varlistentry>
                 <term><option>--karg-proc-cmdline</option></term>
 
                 <listitem><para>

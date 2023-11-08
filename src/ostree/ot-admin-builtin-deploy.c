@@ -60,7 +60,7 @@ static GOptionEntry options[] = {
     "Do not apply configuration (/etc and kernel arguments) from booted deployment", NULL },
   { "retain", 0, 0, G_OPTION_ARG_NONE, &opt_retain, "Do not delete previous deployments", NULL },
   { "stage", 0, 0, G_OPTION_ARG_NONE, &opt_stage, "Complete deployment at OS shutdown", NULL },
-  { "lock-finalization", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &opt_lock_finalization,
+  { "lock-finalization", 0, 0, G_OPTION_ARG_NONE, &opt_lock_finalization,
     "Prevent automatic deployment finalization on shutdown", NULL },
   { "retain-pending", 0, 0, G_OPTION_ARG_NONE, &opt_retain_pending,
     "Do not delete pending deployments", NULL },
@@ -122,6 +122,10 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
       ot_util_usage_error (context, "Can't specify both --no-merge and --karg-delete", error);
       return FALSE;
     }
+
+  // Locking implies staging
+  if (opt_lock_finalization)
+    opt_stage = TRUE;
 
   const char *refspec = argv[1];
 
@@ -236,6 +240,7 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
   g_auto (GStrv) kargs_strv = kargs ? ostree_kernel_args_to_strv (kargs) : NULL;
 
   OstreeSysrootDeployTreeOpts opts = {
+    .locked = opt_lock_finalization,
     .override_kernel_argv = kargs_strv,
     .overlay_initrds = overlay_initrd_chksums ? (char **)overlay_initrd_chksums->pdata : NULL,
   };
@@ -247,9 +252,11 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
         return glnx_throw (error, "--stage cannot currently be combined with --retain arguments");
       if (opt_not_as_default)
         return glnx_throw (error, "--stage cannot currently be combined with --not-as-default");
-      /* touch file *before* we stage to avoid races */
+      /* For compatibility with older versions of ostree, also write this legacy file.
+       * This can likely be safely deleted in the middle of 2024 say. */
       if (opt_lock_finalization)
         {
+          g_debug ("Writing legacy finalization lockfile");
           if (!glnx_shutil_mkdir_p_at (AT_FDCWD,
                                        dirname (strdupa (_OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED)),
                                        0755, cancellable, error))
@@ -262,7 +269,7 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
                                             _OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED);
         }
       /* use old API if we can to exercise it in CI */
-      if (!overlay_initrd_chksums)
+      if (!(overlay_initrd_chksums || opt_lock_finalization))
         {
           if (!ostree_sysroot_stage_tree (sysroot, opt_osname, revision, origin, merge_deployment,
                                           kargs_strv, &new_deployment, cancellable, error))

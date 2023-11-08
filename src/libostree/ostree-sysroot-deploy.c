@@ -3657,6 +3657,10 @@ ostree_sysroot_stage_tree_with_options (OstreeSysroot *self, const char *osname,
   g_autoptr (GVariantBuilder) builder = g_variant_builder_new ((GVariantType *)"a{sv}");
   g_variant_builder_add (builder, "{sv}", "target", serialize_deployment_to_variant (deployment));
 
+  if (opts->locked)
+    g_variant_builder_add (builder, "{sv}", _OSTREE_SYSROOT_STAGED_KEY_LOCKED,
+                           g_variant_new_boolean (TRUE));
+
   if (merge_deployment)
     g_variant_builder_add (builder, "{sv}", "merge-deployment",
                            serialize_deployment_to_variant (merge_deployment));
@@ -3706,6 +3710,73 @@ ostree_sysroot_stage_tree_with_options (OstreeSysroot *self, const char *osname,
   return TRUE;
 }
 
+/**
+ * ostree_sysroot_change_finalization:
+ * @self: Sysroot
+ * @deployment: Deployment which must be staged
+ * @error: Error
+ *
+ * Given the target deployment (which must be the staged deployment) this API
+ * will toggle its "finalization locking" state.  If it is currently locked,
+ * it will be unlocked (and hence queued to apply on shutdown).
+ *
+ * Since: 2023.8
+ */
+_OSTREE_PUBLIC
+gboolean
+ostree_sysroot_change_finalization (OstreeSysroot *self, OstreeDeployment *deployment,
+                                    GError **error)
+{
+  GCancellable *cancellable = NULL;
+  g_assert (ostree_deployment_is_staged (deployment));
+
+  gboolean new_locked_state = !ostree_deployment_is_finalization_locked (deployment);
+
+  /* Read the staged state from disk */
+  glnx_autofd int fd = -1;
+  if (!glnx_openat_rdonly (AT_FDCWD, _OSTREE_SYSROOT_RUNSTATE_STAGED, TRUE, &fd, error))
+    return FALSE;
+
+  g_autoptr (GBytes) contents = ot_fd_readall_or_mmap (fd, 0, error);
+  if (!contents)
+    return FALSE;
+  g_autoptr (GVariant) staged_deployment_data
+      = g_variant_new_from_bytes ((GVariantType *)"a{sv}", contents, TRUE);
+  g_autoptr (GVariantDict) staged_deployment_dict = g_variant_dict_new (staged_deployment_data);
+
+  g_variant_dict_insert (staged_deployment_dict, _OSTREE_SYSROOT_STAGED_KEY_LOCKED, "b",
+                         new_locked_state);
+  g_autoptr (GVariant) new_staged_deployment_data = g_variant_dict_end (staged_deployment_dict);
+
+  if (!glnx_file_replace_contents_at (fd, _OSTREE_SYSROOT_RUNSTATE_STAGED,
+                                      g_variant_get_data (new_staged_deployment_data),
+                                      g_variant_get_size (new_staged_deployment_data),
+                                      GLNX_FILE_REPLACE_NODATASYNC, cancellable, error))
+    return FALSE;
+
+  if (!new_locked_state)
+    {
+      /* Delete the legacy lock if there was any. */
+      if (!ot_ensure_unlinked_at (AT_FDCWD, _OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED, error))
+        return FALSE;
+    }
+  else
+    {
+      /* Create the legacy lockfile; see also the code in ot-admin-builtin-deploy.c */
+      if (!glnx_shutil_mkdir_p_at (AT_FDCWD,
+                                   dirname (strdupa (_OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED)), 0755,
+                                   cancellable, error))
+        return FALSE;
+
+      glnx_autofd int lockfd = open (_OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED,
+                                     O_CREAT | O_WRONLY | O_NOCTTY | O_CLOEXEC, 0640);
+      if (lockfd == -1)
+        return glnx_throw_errno_prefix (error, "touch(%s)", _OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED);
+    }
+
+  return TRUE;
+}
+
 /* Invoked at shutdown time by ostree-finalize-staged.service */
 static gboolean
 _ostree_sysroot_finalize_staged_inner (OstreeSysroot *self, GCancellable *cancellable,
@@ -3722,11 +3793,22 @@ _ostree_sysroot_finalize_staged_inner (OstreeSysroot *self, GCancellable *cancel
     }
 
   /* Check if finalization is locked. */
-  if (!glnx_fstatat_allow_noent (AT_FDCWD, _OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED, NULL, 0, error))
-    return FALSE;
-  if (errno == 0)
+  gboolean locked = false;
+  (void)g_variant_lookup (self->staged_deployment_data, _OSTREE_SYSROOT_STAGED_KEY_LOCKED, "b",
+                          &locked);
+  if (locked)
+    g_debug ("staged is locked via metadata");
+  else
     {
-      ot_journal_print (LOG_INFO, "Not finalizing; found " _OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED);
+      if (!glnx_fstatat_allow_noent (AT_FDCWD, _OSTREE_SYSROOT_RUNSTATE_STAGED_LOCKED, NULL, 0,
+                                     error))
+        return FALSE;
+      if (errno == 0)
+        locked = TRUE;
+    }
+  if (locked)
+    {
+      ot_journal_print (LOG_INFO, "Not finalizing; deployment is locked for finalization");
       return TRUE;
     }
 
