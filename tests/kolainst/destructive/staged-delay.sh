@@ -24,7 +24,8 @@ rpm-ostree kargs --append=somedummykarg=1
 ;;
 
 "2")
-journalctl -b -1 -u ostree-finalize-staged > logs.txt
+prev_bootid=$(journalctl --list-boots -o json |jq -r '.[] | select(.index == -1) | .boot_id')
+journalctl -b $prev_bootid -u ostree-finalize-staged > logs.txt
 assert_file_has_content_literal logs.txt 'ostree-finalize-staged found /boot/loader/entries'
 # older systemd doesn't output the success message
 if systemctl --version | head -1 | grep -qF -e 'systemd 239'; then

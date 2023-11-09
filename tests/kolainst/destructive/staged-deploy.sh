@@ -72,7 +72,8 @@ EOF
     # Check that deploy-staged service worked
     rpm-ostree status
     # Assert that the previous boot had a journal entry for it
-    journalctl -b "-1" -u ostree-finalize-staged.service > svc.txt
+    prev_bootid=$(journalctl --list-boots -o json |jq -r '.[] | select(.index == -1) | .boot_id')
+    journalctl -b $prev_bootid -u ostree-finalize-staged.service > svc.txt
     assert_file_has_content svc.txt 'Bootloader updated; bootconfig swap: yes;.*deployment count change: 1'
     # Also validate ignoring socket and fifo
     assert_file_has_content svc.txt 'Ignoring.*during /etc merge:.*sock-to-ignore'
