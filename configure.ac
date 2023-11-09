@@ -155,17 +155,26 @@ AS_IF([test x$enable_http2 != xno ], [
 SOUP3_DEPENDENCY="libsoup-3.0 >= 3.0.0"
 AC_ARG_WITH(soup3,
 	    AS_HELP_STRING([--with-soup3], [Use libsoup3 @<:@default=no@:>@]),
-	    [], [with_soup3=no])
+	    [], [with_soup3=check])
 AS_IF([test x$with_soup3 != xno], [
-    PKG_CHECK_MODULES(OT_DEP_SOUP3, $SOUP3_DEPENDENCY)
-    with_soup3=yes
-    AC_DEFINE([HAVE_LIBSOUP3], 1, [Define if we have libsoup3])
-    OSTREE_FEATURES="$OSTREE_FEATURES libsoup3"
-    with_soup_default=no
-    dnl soup3 always supports client certs
-    have_libsoup_client_certs=yes
+    AC_MSG_CHECKING([for $SOUP3_DEPENDENCY])
+    PKG_CHECK_EXISTS($SOUP3_DEPENDENCY, have_soup3=yes, have_soup3=no)
+    AC_MSG_RESULT([$have_soup3])
+    AS_IF([ test x$have_soup3 = xno && test x$with_soup3 != xcheck], [
+       AC_MSG_ERROR([libsoup3 is enabled but could not be found])
+    ])
+    AS_IF([test x$have_soup3 = xyes], [
+      with_soup3=yes
+      PKG_CHECK_MODULES(OT_DEP_SOUP3, $SOUP3_DEPENDENCY)
+      AC_DEFINE([HAVE_LIBSOUP3], 1, [Define if we have libsoup3])
+      OSTREE_FEATURES="$OSTREE_FEATURES libsoup3"
+      dnl And disable libsoup2
+      with_soup_default=no
+      dnl soup3 always supports client certs
+      have_libsoup_client_certs=yes
+    ], [with_soup3=no])
 ], [with_soup_default=check])
-AM_CONDITIONAL(USE_LIBSOUP3, test x$with_soup3 != xno)
+AM_CONDITIONAL(USE_LIBSOUP3, test x$with_soup3 = xyes)
 
 dnl When bumping the libsoup-2.4 dependency, remember to bump
 dnl SOUP_VERSION_MIN_REQUIRED and SOUP_VERSION_MAX_ALLOWED in
@@ -704,6 +713,8 @@ echo "
     introspection:                                $found_introspection
     rofiles-fuse:                                 $enable_rofiles_fuse
     HTTP backend:                                 $fetcher_backend
+    libsoup:                                      $with_soup
+    libsoup3:                                     $with_soup3
     SELinux:                                      $with_selinux
     fs-verity:                                    $ac_cv_header_linux_fsverity_h
     cryptographic checksums:                      $with_crypto
