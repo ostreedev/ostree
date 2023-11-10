@@ -60,7 +60,8 @@ EOF
     # Check that the finalize and hold services succeeded in the
     # previous boot. Dump them to the test log to help debugging.
     prepare_tmpdir
-    journalctl -b -1 -o short-monotonic \
+    prev_bootid=$(journalctl --list-boots -o json |jq -r '.[] | select(.index == -1) | .boot_id')
+    journalctl -b "${prev_bootid}" -o short-monotonic \
         -u ostree-finalize-staged.service \
         -u ostree-finalize-staged-hold.service \
         -u boot.mount \
@@ -72,10 +73,11 @@ EOF
 
     # Check that the hold service remained active and kept /boot mounted until
     # the finalize service completed.
-    finalize_stopped=$(journalctl -b -1 -o json -g Stopped -u ostree-finalize-staged.service | tail -n1 | jq -r .__MONOTONIC_TIMESTAMP)
-    hold_stopping=$(journalctl -b -1 -o json -g Stopping -u ostree-finalize-staged-hold.service | tail -n1 | jq -r .__MONOTONIC_TIMESTAMP)
-    hold_stopped=$(journalctl -b -1 -o json -g Stopped -u ostree-finalize-staged-hold.service | tail -n1 | jq -r .__MONOTONIC_TIMESTAMP)
-    boot_unmounting=$(journalctl -b -1 -o json -g Unmounting -u boot.mount | tail -n1 | jq -r .__MONOTONIC_TIMESTAMP)
+    prev_bootid=$(journalctl --list-boots -o json |jq -r '.[] | select(.index == -1) | .boot_id')
+    finalize_stopped=$(journalctl -b $prev_bootid -o json -g Stopped -u ostree-finalize-staged.service | tail -n1 | jq -r .__MONOTONIC_TIMESTAMP)
+    hold_stopping=$(journalctl -b $prev_bootid -o json -g Stopping -u ostree-finalize-staged-hold.service | tail -n1 | jq -r .__MONOTONIC_TIMESTAMP)
+    hold_stopped=$(journalctl -b $prev_bootid -o json -g Stopped -u ostree-finalize-staged-hold.service | tail -n1 | jq -r .__MONOTONIC_TIMESTAMP)
+    boot_unmounting=$(journalctl -b $prev_bootid -o json -g Unmounting -u boot.mount | tail -n1 | jq -r .__MONOTONIC_TIMESTAMP)
     test "${finalize_stopped}" -lt "${hold_stopping}"
     test "${hold_stopped}" -lt "${boot_unmounting}"
     ;;
