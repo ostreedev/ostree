@@ -16,7 +16,7 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
       fatal "modified /usr"
     fi
     # But, we can affect it in a new mount namespace
-    unshare -m -- /bin/sh -c 'mount -o remount,rw /usr && echo hello from transient unlock >'"${testfile}"
+    unshare -m -- /bin/sh -c 'mount --options-source=disable -o remount,rw /usr && echo hello from transient unlock >'"${testfile}"
     assert_file_has_content "${testfile}" "hello from transient unlock"
     # Still can't write to it from the outer namespace
     if touch ${testfile} || rm -v "${testfile}" 2>/dev/null; then
