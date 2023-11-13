@@ -72,6 +72,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
             <listitem><para><command>instutil</command></para></listitem>
             <listitem><para><command>os-init</command></para></listitem>
             <listitem><para><command>pin</command></para></listitem>
+            <listitem><para><command>post-copy</command></para></listitem>
             <listitem><para><command>set-origin</command></para></listitem>
             <listitem><para><command>status</command></para></listitem>
             <listitem><para><command>switch</command></para></listitem>
