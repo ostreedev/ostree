@@ -226,22 +226,28 @@ gboolean
 _ostree_ensure_fsverity (OstreeRepo *self, gboolean allow_enoent, int dirfd, const char *path,
                          gboolean *supported, GError **error)
 {
-  glnx_autofd int fd = -1;
+  struct stat buf;
 
-  if (!ot_openat_ignore_enoent (dirfd, path, &fd, error))
+  if (fstatat (dirfd, path, &buf, AT_SYMLINK_NOFOLLOW) != 0)
+    {
+      if (errno == ENOENT && allow_enoent)
+        return TRUE;
+
+      return glnx_throw_errno_prefix (error, "fstatat(%s)", path);
+    }
+
+  if (!S_ISREG (buf.st_mode))
+    return TRUE; /* Ignore symlinks, etc */
+
+  glnx_autofd int fd = openat (dirfd, path, O_CLOEXEC | O_RDONLY);
+  if (fd < 0)
+    return glnx_throw_errno_prefix (error, "openat(%s)", path);
+
+  if (!_ostree_fsverity_enable (fd, TRUE, supported, NULL, error))
     return FALSE;
 
-  if (fd == -1 && !allow_enoent)
-    return glnx_throw (error, "Unexpectedly missing file '%s', can't enable fs-verity", path);
-
-  if (fd != -1)
-    {
-      if (!_ostree_fsverity_enable (fd, TRUE, supported, NULL, error))
-        return FALSE;
-
-      if (!supported && self->fs_verity_wanted == _OSTREE_FEATURE_YES)
-        return glnx_throw (error, "fsverity required but filesystem does not support it");
-    }
+  if (!supported && self->fs_verity_wanted == _OSTREE_FEATURE_YES)
+    return glnx_throw (error, "fsverity required but filesystem does not support it");
 
   return TRUE;
 }
