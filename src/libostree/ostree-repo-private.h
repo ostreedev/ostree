@@ -412,6 +412,9 @@ gboolean _ostree_tmpf_fsverity_core (GLnxTmpfile *tmpf, _OstreeFeatureSupport fs
 gboolean _ostree_tmpf_fsverity (OstreeRepo *self, GLnxTmpfile *tmpf, GBytes *signature,
                                 GError **error);
 
+gboolean _ostree_ensure_fsverity (OstreeRepo *self, gboolean allow_enoent, int dirfd,
+                                  const char *path, gboolean *supported, GError **error);
+
 gboolean _ostree_repo_verify_bindings (const char *collection_id, const char *ref_name,
                                        GVariant *commit, GError **error);
 

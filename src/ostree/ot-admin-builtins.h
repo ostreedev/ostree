@@ -48,6 +48,7 @@ BUILTINPROTO (diff);
 BUILTINPROTO (switch);
 BUILTINPROTO (upgrade);
 BUILTINPROTO (kargs);
+BUILTINPROTO (post_copy);
 
 #undef BUILTINPROTO
 

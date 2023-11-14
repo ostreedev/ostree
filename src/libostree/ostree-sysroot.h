@@ -238,6 +238,10 @@ _OSTREE_PUBLIC
 OstreeDeployment *ostree_sysroot_get_merge_deployment (OstreeSysroot *self, const char *osname);
 
 _OSTREE_PUBLIC
+gboolean ostree_sysroot_update_post_copy (OstreeSysroot *self, GCancellable *cancellable,
+                                          GError **error);
+
+_OSTREE_PUBLIC
 GKeyFile *ostree_sysroot_origin_new_from_refspec (OstreeSysroot *self, const char *refspec);
 
 typedef enum

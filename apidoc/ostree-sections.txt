@@ -560,6 +560,7 @@ ostree_sysroot_lock_async
 ostree_sysroot_lock_finish
 ostree_sysroot_unlock
 ostree_sysroot_unload
+ostree_sysroot_update_post_copy
 ostree_sysroot_set_mount_namespace_in_use
 ostree_sysroot_is_booted
 ostree_sysroot_get_fd
