@@ -29,8 +29,8 @@ global:
  * edit this other than to update the year.  This is just a copy/paste
  * source.  Replace $LASTSTABLE with the last stable version, and $NEWVERSION
  * with whatever the next version with new symbols will be.
-LIBOSTREE_2021.$NEWVERSION {
+LIBOSTREE_$YEAR.$NEWVERSION {
 global:
   someostree_symbol_deleteme;
-} LIBOSTREE_2021.$LASTSTABLE;
+} LIBOSTREE_$YEAR.$LASTSTABLE;
 */
