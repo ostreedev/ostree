@@ -85,10 +85,10 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
         </para>
 
         <para>
-            A read-only bind mount is created over <literal>/sysroot/usr</literal>.  The immutable bit is set on the deployment
+            A read-only bind mount is created over <literal>/sysroot/usr</literal>.  The immutable bit (see chattr(1)) is set on the deployment
             root, so this provides basic protection for filesystem mutation.  If the <literal>sysroot.readonly</literal>
-            option is enabled, instead a writable bind mount for <literal>/sysroot/etc</literal>, and everything else
-            is mounted read-only.
+            option is enabled, then <literal>/sysroot/sysroot</literal> is mounted read-only to provide further protection and a writable bind mount for
+            <literal>/sysroot/etc</literal> is created.
         </para>
 
         <para>
@@ -111,7 +111,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
         <variablelist>
             <varlistentry>
                 <term><varname>sysroot.readonly</varname></term>
-                <listitem><para>A boolean value; the default is <literal>false</literal>.  If this is set to <literal>true</literal>, then the <literal>/sysroot</literal> mount point is mounted read-only.</para></listitem>
+                <listitem><para>A boolean value; the default is <literal>false</literal> unless composefs is enabled.  If this is set to <literal>true</literal>, then the <literal>/sysroot</literal> mount point is mounted read-only.</para></listitem>
             </varlistentry>
             <varlistentry>
                 <term><varname>etc.transient</varname></term>

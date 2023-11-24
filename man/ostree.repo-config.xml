@@ -379,6 +379,15 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
     <variablelist>
 
       <varlistentry>
+        <term><varname>readonly</varname></term>
+        <listitem><para>A boolean value. If this is set to <literal>true</literal>, then the
+        <literal>/sysroot</literal> mount point is mounted read-only. This is configured a
+        legacy repository configuration and the equivalent option in <literal>ostree/prepare-root.conf</literal>
+        should be used instead - see <citerefentry><refentrytitle>ostree-prepare-root</refentrytitle><manvolnum>1</manvolnum></citerefentry>.
+        </para></listitem>
+      </varlistentry>
+
+      <varlistentry>
         <term><varname>bootloader</varname></term>
         <listitem><para>Configure the bootloader that OSTree uses when
         deploying the sysroot.  This may take the values
