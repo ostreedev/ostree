@@ -8,6 +8,9 @@ prepare_tmpdir
 
 case "${AUTOPKGTEST_REBOOT_MARK:-}" in
   "")
+  # Need to disable gpg verification for test builds
+  sed -i -e 's,gpg-verify=true,gpg-verify=false,' /etc/ostree/remotes.d/*.conf
+
   # Test our generator
   test -f /run/systemd/generator/multi-user.target.wants/ostree-finalize-staged.path
   test -f /run/systemd/generator/local-fs.target.requires/ostree-remount.service
