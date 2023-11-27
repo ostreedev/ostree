@@ -98,7 +98,9 @@ deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploym
   GKeyFile *origin = ostree_deployment_get_origin (deployment);
 
   const char *deployment_status = "";
-  if (ostree_deployment_is_staged (deployment))
+  if (ostree_deployment_is_finalization_locked (deployment))
+    deployment_status = " (finalization locked)";
+  else if (ostree_deployment_is_staged (deployment))
     deployment_status = " (staged)";
   else if (is_pending)
     deployment_status = " (pending)";
@@ -155,7 +157,8 @@ deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploym
       else if (local_error != NULL)
         {
           g_propagate_error (error, g_steal_pointer (&local_error));
-          return FALSE;
+          return glnx_prefix_error (error, "Deployment %i",
+                                    ostree_deployment_get_index (deployment));
         }
 
       const guint n_signatures = ostree_gpg_verify_result_count_all (result);

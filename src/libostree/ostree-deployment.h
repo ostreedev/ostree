@@ -71,6 +71,8 @@ GKeyFile *ostree_deployment_get_origin (OstreeDeployment *self);
 _OSTREE_PUBLIC
 gboolean ostree_deployment_is_staged (OstreeDeployment *self);
 _OSTREE_PUBLIC
+gboolean ostree_deployment_is_finalization_locked (OstreeDeployment *self);
+_OSTREE_PUBLIC
 gboolean ostree_deployment_is_pinned (OstreeDeployment *self);
 
 _OSTREE_PUBLIC

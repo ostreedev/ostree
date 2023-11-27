@@ -93,6 +93,9 @@ struct OstreeSysroot
   OstreeSysrootDebugFlags debug_flags;
 };
 
+/* Key in staged deployment variant for finalization locking */
+#define _OSTREE_SYSROOT_STAGED_KEY_LOCKED "locked"
+
 #define OSTREE_SYSROOT_LOCKFILE "ostree/lock"
 /* We keep some transient state in /run */
 #define _OSTREE_SYSROOT_RUNSTATE_STAGED "/run/ostree/staged-deployment"

@@ -8,6 +8,9 @@ prepare_tmpdir
 
 case "${AUTOPKGTEST_REBOOT_MARK:-}" in
   "")
+  # Need to disable gpg verification for test builds
+  sed -i -e 's,gpg-verify=true,gpg-verify=false,' /etc/ostree/remotes.d/*.conf
+
   # Test our generator
   test -f /run/systemd/generator/multi-user.target.wants/ostree-finalize-staged.path
   test -f /run/systemd/generator/local-fs.target.requires/ostree-remount.service
@@ -83,13 +86,15 @@ EOF
     test '!' -f /run/ostree/staged-deployment
 
     test '!' -f /run/ostree/staged-deployment
-    ostree admin deploy --stage staged-deploy --lock-finalization
+    ostree admin status > status.txt
+    assert_not_file_has_content status.txt 'finalization locked'
+    ostree admin deploy staged-deploy --lock-finalization
+    ostree admin status > status.txt
+    assert_file_has_content status.txt 'finalization locked'
     test -f /run/ostree/staged-deployment
-    test -f /run/ostree/staged-deployment-locked
     # check that we can cleanup the staged deployment
     ostree admin undeploy 0
     test ! -f /run/ostree/staged-deployment
-    test ! -f /run/ostree/staged-deployment-locked
     echo "ok cleanup staged"
 
     # And verify that re-staging cleans the previous lock
@@ -126,6 +131,19 @@ EOF
     grep -vqFe '(staged)' status.txt
     test '!' -f /run/ostree/staged-deployment
     echo "ok unstage"
+
+    ostree admin deploy staged-deploy --lock-finalization
+    ostree admin status > status.txt
+    assert_file_has_content status.txt 'finalization locked'
+    ostree admin lock-finalization > out.txt
+    assert_file_has_content_literal out.txt 'already finalization locked'
+    ostree admin status > status.txt
+    assert_file_has_content status.txt 'finalization locked'
+    ostree admin lock-finalization -u > out.txt
+    assert_file_has_content_literal out.txt 'now queued to apply'
+    ostree admin status > status.txt
+    assert_not_file_has_content status.txt 'finalization locked'
+    echo "ok finalization locking toggle"
 
    # Staged should be overwritten by non-staged as first
     commit=$(rpmostree_query_json '.deployments[0].checksum')

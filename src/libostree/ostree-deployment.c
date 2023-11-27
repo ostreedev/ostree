@@ -461,3 +461,18 @@ ostree_deployment_is_staged (OstreeDeployment *self)
 {
   return self->staged;
 }
+
+/**
+ * ostree_deployment_is_finalization_locked:
+ * @self: Deployment
+ *
+ * Returns: `TRUE` if deployment is queued to be "finalized" at shutdown time, but requires
+ * additional action.
+ *
+ * Since: 2023.8
+ */
+gboolean
+ostree_deployment_is_finalization_locked (OstreeDeployment *self)
+{
+  return self->finalization_locked;
+}
