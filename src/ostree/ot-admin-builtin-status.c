@@ -155,7 +155,8 @@ deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploym
       else if (local_error != NULL)
         {
           g_propagate_error (error, g_steal_pointer (&local_error));
-          return FALSE;
+          return glnx_prefix_error (error, "Deployment %i",
+                                    ostree_deployment_get_index (deployment));
         }
 
       const guint n_signatures = ostree_gpg_verify_result_count_all (result);
