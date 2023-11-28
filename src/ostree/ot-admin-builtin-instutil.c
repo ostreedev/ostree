@@ -24,7 +24,6 @@
 #include "ot-admin-functions.h"
 #include "ot-admin-instutil-builtins.h"
 #include "ot-builtins.h"
-#include "ot-main.h"
 
 #include <glib/gi18n.h>
 

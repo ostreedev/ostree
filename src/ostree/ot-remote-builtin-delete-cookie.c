@@ -24,7 +24,6 @@
 #include <sys/stat.h>
 
 #include "ostree-repo-private.h"
-#include "ot-main.h"
 #include "ot-remote-builtins.h"
 #include "ot-remote-cookie-util.h"
 

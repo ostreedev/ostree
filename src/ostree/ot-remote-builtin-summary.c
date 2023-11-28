@@ -22,7 +22,6 @@
 #include "otutil.h"
 
 #include "ot-dump.h"
-#include "ot-main.h"
 #include "ot-remote-builtins.h"
 
 static gboolean opt_list_metadata_keys;

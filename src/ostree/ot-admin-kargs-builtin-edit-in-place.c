@@ -19,9 +19,6 @@
 #include "config.h"
 
 #include "ot-admin-kargs-builtins.h"
-#include "ot-main.h"
-
-#include "ostree.h"
 #include "otutil.h"
 
 static char **opt_kargs_edit_in_place_append;

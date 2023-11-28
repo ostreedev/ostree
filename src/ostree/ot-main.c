@@ -31,7 +31,6 @@
 
 #include "ostree.h"
 #include "ot-admin-functions.h"
-#include "ot-main.h"
 #include "otutil.h"
 
 static char *opt_repo;

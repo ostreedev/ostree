@@ -23,7 +23,6 @@
 
 #include "ostree.h"
 #include "ot-builtins.h"
-#include "ot-main.h"
 
 static char *opt_mode = "bare";
 static char *opt_collection_id = NULL;

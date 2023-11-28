@@ -21,7 +21,6 @@
 
 #include "otutil.h"
 
-#include "ot-main.h"
 #include "ot-remote-builtins.h"
 
 static char **opt_set;
