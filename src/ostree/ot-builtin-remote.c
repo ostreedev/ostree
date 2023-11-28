@@ -22,7 +22,6 @@
 #include "config.h"
 
 #include "ot-builtins.h"
-#include "ot-main.h"
 #include "ot-remote-builtins.h"
 
 static OstreeCommand remote_subcommands[] = {

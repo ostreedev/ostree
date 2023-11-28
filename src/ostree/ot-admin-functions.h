@@ -21,8 +21,7 @@
 
 #pragma once
 
-#include <gio/gio.h>
-#include <ostree.h>
+#include "ot-main.h"
 
 G_BEGIN_DECLS
 

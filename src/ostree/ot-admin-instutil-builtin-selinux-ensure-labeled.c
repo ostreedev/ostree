@@ -21,7 +21,6 @@
 #include <string.h>
 
 #include "ot-admin-instutil-builtins.h"
-#include "ot-main.h"
 
 #include "otutil.h"
 

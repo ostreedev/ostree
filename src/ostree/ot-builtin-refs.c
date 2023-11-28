@@ -23,7 +23,6 @@
 
 #include "ostree.h"
 #include "ot-builtins.h"
-#include "ot-main.h"
 
 static gboolean opt_delete;
 static gboolean opt_list;

@@ -23,7 +23,6 @@
 
 #include "config.h"
 
-#include "ostree.h"
 #include "ot-main.h"
 
 G_BEGIN_DECLS

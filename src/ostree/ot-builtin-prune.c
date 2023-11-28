@@ -24,7 +24,6 @@
 
 #include "ostree.h"
 #include "ot-builtins.h"
-#include "ot-main.h"
 #include "otutil.h"
 #include "parse-datetime.h"
 

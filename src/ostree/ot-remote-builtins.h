@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include <ostree.h>
+#include "ot-main.h"
 
 G_BEGIN_DECLS
 

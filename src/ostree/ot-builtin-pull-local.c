@@ -26,7 +26,6 @@
 
 #include "ostree.h"
 #include "ot-builtins.h"
-#include "ot-main.h"
 #include "otutil.h"
 
 static char *opt_remote;

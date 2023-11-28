@@ -24,7 +24,6 @@
 #include "ostree.h"
 #include "ot-builtins.h"
 #include "ot-dump.h"
-#include "ot-main.h"
 #include "otutil.h"
 
 static gboolean opt_update, opt_view, opt_raw;
