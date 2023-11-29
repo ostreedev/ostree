@@ -61,7 +61,8 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
             will be set into a "finalization locked" state, which means it will not be queued for the next boot by default.
         </para>
         <para>
-            This is the same as the <literal>--lock-finalization</literal> argument for <literal>ostree admin deploy</literal>.
+            This is the same as the <literal>--lock-finalization</literal> argument for <literal>ostree admin deploy</literal>,
+            which is the recommended way to use this feature in a race-free way.
         </para>
         <para>
             However more commonly, one will use the <literal>--unlock</literal> argument for this command to later unlock
