@@ -3225,8 +3225,7 @@ run_in_deployment (int deployment_dfd, const gchar *const *child_argv, gint *exi
                                               "/sbin",
                                               NULL };
 
-  GPtrArray *args = g_ptr_array_new ();
-  g_autofree gchar **args_raw = NULL;
+  g_autoptr (GPtrArray) args = g_ptr_array_new ();
 
   for (char **it = (char **)COMMON_ARGV; it && *it; it++)
     g_ptr_array_add (args, *it);
@@ -3236,9 +3235,7 @@ run_in_deployment (int deployment_dfd, const gchar *const *child_argv, gint *exi
 
   g_ptr_array_add (args, NULL);
 
-  args_raw = (gchar **)g_ptr_array_free (args, FALSE);
-
-  return g_spawn_sync (NULL, args_raw, NULL, 0, &child_setup_fchdir,
+  return g_spawn_sync (NULL, (char **)args->pdata, NULL, 0, &child_setup_fchdir,
                        (gpointer)(uintptr_t)deployment_dfd, stdout, NULL, exit_status, error);
 }
 
