@@ -3165,83 +3165,77 @@ child_setup_fchdir (gpointer data)
  * Derived from rpm-ostree's rust/src/bwrap.rs
  */
 static gboolean
-run_in_deployment (int deployment_dfd, const gchar *const *child_argv, gsize child_argc,
-                   gint *exit_status, gchar **stdout, GError **error)
+run_in_deployment (int deployment_dfd, const gchar *const *child_argv, gint *exit_status,
+                   gchar **stdout, GError **error)
 {
-  static const gchar *const COMMON_ARGV[] = {
-    "/usr/bin/bwrap",
-    "--dev",
-    "/dev",
-    "--proc",
-    "/proc",
-    "--dir",
-    "/run",
-    "--dir",
-    "/tmp",
-    "--chdir",
-    "/",
-    "--die-with-parent",
-    "--unshare-pid",
-    "--unshare-uts",
-    "--unshare-ipc",
-    "--unshare-cgroup-try",
-    "--ro-bind",
-    "/sys/block",
-    "/sys/block",
-    "--ro-bind",
-    "/sys/bus",
-    "/sys/bus",
-    "--ro-bind",
-    "/sys/class",
-    "/sys/class",
-    "--ro-bind",
-    "/sys/dev",
-    "/sys/dev",
-    "--ro-bind",
-    "/sys/devices",
-    "/sys/devices",
-    "--bind",
-    "usr",
-    "/usr",
-    "--bind",
-    "etc",
-    "/etc",
-    "--bind",
-    "var",
-    "/var",
-    "--symlink",
-    "/usr/lib",
-    "/lib",
-    "--symlink",
-    "/usr/lib32",
-    "/lib32",
-    "--symlink",
-    "/usr/lib64",
-    "/lib64",
-    "--symlink",
-    "/usr/bin",
-    "/bin",
-    "--symlink",
-    "/usr/sbin",
-    "/sbin",
-  };
-  static const gsize COMMON_ARGC = sizeof (COMMON_ARGV) / sizeof (*COMMON_ARGV);
+  static const gchar *const COMMON_ARGV[] = { "/usr/bin/bwrap",
+                                              "--dev",
+                                              "/dev",
+                                              "--proc",
+                                              "/proc",
+                                              "--dir",
+                                              "/run",
+                                              "--dir",
+                                              "/tmp",
+                                              "--chdir",
+                                              "/",
+                                              "--die-with-parent",
+                                              "--unshare-pid",
+                                              "--unshare-uts",
+                                              "--unshare-ipc",
+                                              "--unshare-cgroup-try",
+                                              "--ro-bind",
+                                              "/sys/block",
+                                              "/sys/block",
+                                              "--ro-bind",
+                                              "/sys/bus",
+                                              "/sys/bus",
+                                              "--ro-bind",
+                                              "/sys/class",
+                                              "/sys/class",
+                                              "--ro-bind",
+                                              "/sys/dev",
+                                              "/sys/dev",
+                                              "--ro-bind",
+                                              "/sys/devices",
+                                              "/sys/devices",
+                                              "--bind",
+                                              "usr",
+                                              "/usr",
+                                              "--bind",
+                                              "etc",
+                                              "/etc",
+                                              "--bind",
+                                              "var",
+                                              "/var",
+                                              "--symlink",
+                                              "/usr/lib",
+                                              "/lib",
+                                              "--symlink",
+                                              "/usr/lib32",
+                                              "/lib32",
+                                              "--symlink",
+                                              "/usr/lib64",
+                                              "/lib64",
+                                              "--symlink",
+                                              "/usr/bin",
+                                              "/bin",
+                                              "--symlink",
+                                              "/usr/sbin",
+                                              "/sbin",
+                                              NULL };
 
-  gsize i;
-  GPtrArray *args = g_ptr_array_sized_new (COMMON_ARGC + child_argc + 1);
-  g_autofree gchar **args_raw = NULL;
+  g_autoptr (GPtrArray) args = g_ptr_array_new ();
 
-  for (i = 0; i < COMMON_ARGC; i++)
-    g_ptr_array_add (args, (gchar *)COMMON_ARGV[i]);
+  for (char **it = (char **)COMMON_ARGV; it && *it; it++)
+    g_ptr_array_add (args, *it);
 
-  for (i = 0; i < child_argc; i++)
-    g_ptr_array_add (args, (gchar *)child_argv[i]);
+  for (char **it = (char **)child_argv; it && *it; it++)
+    g_ptr_array_add (args, *it);
 
   g_ptr_array_add (args, NULL);
 
-  args_raw = (gchar **)g_ptr_array_free (args, FALSE);
-
-  return g_spawn_sync (NULL, args_raw, NULL, 0, &child_setup_fchdir,
+  return g_spawn_sync (NULL, (char **)args->pdata, NULL, 0, &child_setup_fchdir,
                        (gpointer)(uintptr_t)deployment_dfd, stdout, NULL, exit_status, error);
 }
 
@@ -3269,11 +3263,8 @@ sysroot_finalize_selinux_policy (int deployment_dfd, GError **error)
    * Skip the SELinux policy refresh if the --refresh
    * flag is not supported by semodule.
    */
-  static const gchar *const SEMODULE_HELP_ARGV[] = { "semodule", "--help" };
-  static const gsize SEMODULE_HELP_ARGC
-      = sizeof (SEMODULE_HELP_ARGV) / sizeof (*SEMODULE_HELP_ARGV);
-  if (!run_in_deployment (deployment_dfd, SEMODULE_HELP_ARGV, SEMODULE_HELP_ARGC, &exit_status,
-                          &stdout, error))
+  static const gchar *const SEMODULE_HELP_ARGV[] = { "semodule", "--help", NULL };
+  if (!run_in_deployment (deployment_dfd, SEMODULE_HELP_ARGV, &exit_status, &stdout, error))
     return FALSE;
   if (!g_spawn_check_exit_status (exit_status, error))
     return glnx_prefix_error (error, "failed to run semodule");
@@ -3283,14 +3274,11 @@ sysroot_finalize_selinux_policy (int deployment_dfd, GError **error)
       return TRUE;
     }
 
-  static const gchar *const SEMODULE_REBUILD_ARGV[] = { "semodule", "-N", "--refresh" };
-  static const gsize SEMODULE_REBUILD_ARGC
-      = sizeof (SEMODULE_REBUILD_ARGV) / sizeof (*SEMODULE_REBUILD_ARGV);
+  static const gchar *const SEMODULE_REBUILD_ARGV[] = { "semodule", "-N", "--refresh", NULL };
 
   ot_journal_print (LOG_INFO, "Refreshing SELinux policy");
   guint64 start_msec = g_get_monotonic_time () / 1000;
-  if (!run_in_deployment (deployment_dfd, SEMODULE_REBUILD_ARGV, SEMODULE_REBUILD_ARGC,
-                          &exit_status, NULL, error))
+  if (!run_in_deployment (deployment_dfd, SEMODULE_REBUILD_ARGV, &exit_status, NULL, error))
     return FALSE;
   guint64 end_msec = g_get_monotonic_time () / 1000;
   ot_journal_print (LOG_INFO, "Refreshed SELinux policy in %" G_GUINT64_FORMAT " ms",
