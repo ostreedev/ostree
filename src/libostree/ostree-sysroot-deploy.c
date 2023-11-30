@@ -3039,10 +3039,10 @@ lint_deployment_fs (OstreeSysroot *self, OstreeDeployment *deployment, int deplo
       if (dent == NULL)
         break;
 
-      fprintf (
-          stderr,
-          "note: Deploying commit %s which contains content in /var/%s that will be ignored.\n",
-          ostree_deployment_get_csum (deployment), dent->d_name);
+      fprintf (stderr,
+               "note: Deploying commit %s which contains content in /var/%s that should be in "
+               "/usr/share/factory/var\n",
+               ostree_deployment_get_csum (deployment), dent->d_name);
     }
 
   return TRUE;
