@@ -434,10 +434,19 @@ _ostree_bootloader_zipl_post_bls_sync (OstreeBootloader *bootloader, int bootver
   if (getuid () != 0)
     return TRUE;
 
-  /* Note that unlike the grub2-mkconfig backend, we make no attempt to
-   * chroot().
-   */
-  g_assert (self->sysroot->booted_deployment);
+  // If we're in a booted deployment, we don't need to spawn a container.
+  // Also avoid containerizing if there's no deployments to target, which shouldn't
+  // generally happen.
+  OstreeDeployment *target_deployment;
+  if (self->sysroot->booted_deployment || self->sysroot->deployments->len == 0)
+    {
+      target_deployment = NULL;
+    }
+  else
+    {
+      g_assert_cmpint (self->sysroot->deployments->len, >, 0);
+      target_deployment = self->sysroot->deployments->pdata[0];
+    }
 
   if (!glnx_fstatat_allow_noent (self->sysroot->sysroot_fd, zipl_requires_execute_path, NULL, 0,
                                  error))
@@ -467,9 +476,30 @@ _ostree_bootloader_zipl_post_bls_sync (OstreeBootloader *bootloader, int bootver
   const char *const zipl_argv[]
       = { "zipl", "--secure", (sb_enabled == TRUE) ? "1" : "auto", "-V", NULL };
   int estatus;
-  if (!g_spawn_sync (NULL, (char **)zipl_argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, NULL,
-                     &estatus, error))
-    return FALSE;
+  if (target_deployment != NULL)
+    {
+      g_debug ("executing zipl in deployment root");
+      g_autofree char *deployment_path
+          = ostree_sysroot_get_deployment_dirpath (self->sysroot, target_deployment);
+      glnx_autofd int deployment_dfd = -1;
+      if (!glnx_opendirat (self->sysroot->sysroot_fd, deployment_path, TRUE, &deployment_dfd,
+                           error))
+        return FALSE;
+
+      g_autofree char *sysroot_boot
+          = g_build_filename (gs_file_get_path_cached (self->sysroot->path), "boot", NULL);
+      const char *bwrap_args[] = { "--bind", sysroot_boot, "/boot", NULL };
+      if (!_ostree_sysroot_run_in_deployment (deployment_dfd, bwrap_args, zipl_argv, &estatus, NULL,
+                                              error))
+        return glnx_prefix_error (error, "Failed to invoke zipl");
+    }
+  else
+    {
+      g_debug ("executing zipl from booted system");
+      if (!g_spawn_sync (NULL, (char **)zipl_argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL,
+                         NULL, &estatus, error))
+        return FALSE;
+    }
   if (!g_spawn_check_exit_status (estatus, error))
     return FALSE;
   if (!glnx_unlinkat (self->sysroot->sysroot_fd, zipl_requires_execute_path, 0, error))

@@ -3151,7 +3151,6 @@ get_var_dfd (OstreeSysroot *self, int osdeploy_dfd, OstreeDeployment *deployment
   return glnx_opendirat (base_dfd, base_path, TRUE, ret_fd, error);
 }
 
-#ifdef HAVE_SELINUX
 static void
 child_setup_fchdir (gpointer data)
 {
@@ -3164,9 +3163,10 @@ child_setup_fchdir (gpointer data)
 /*
  * Derived from rpm-ostree's rust/src/bwrap.rs
  */
-static gboolean
-run_in_deployment (int deployment_dfd, const gchar *const *child_argv, gint *exit_status,
-                   gchar **stdout, GError **error)
+gboolean
+_ostree_sysroot_run_in_deployment (int deployment_dfd, const char *const *bwrap_argv,
+                                   const gchar *const *child_argv, gint *exit_status,
+                                   gchar **stdout, GError **error)
 {
   static const gchar *const COMMON_ARGV[] = { "/usr/bin/bwrap",
                                               "--dev",
@@ -3229,6 +3229,11 @@ run_in_deployment (int deployment_dfd, const gchar *const *child_argv, gint *exi
 
   for (char **it = (char **)COMMON_ARGV; it && *it; it++)
     g_ptr_array_add (args, *it);
+  for (char **it = (char **)bwrap_argv; it && *it; it++)
+    g_ptr_array_add (args, *it);
+
+  // Separate bwrap args from child args
+  g_ptr_array_add (args, "--");
 
   for (char **it = (char **)child_argv; it && *it; it++)
     g_ptr_array_add (args, *it);
@@ -3239,6 +3244,7 @@ run_in_deployment (int deployment_dfd, const gchar *const *child_argv, gint *exi
                        (gpointer)(uintptr_t)deployment_dfd, stdout, NULL, exit_status, error);
 }
 
+#ifdef HAVE_SELINUX
 /*
  * Run semodule to check if the module content changed after merging /etc
  * and rebuild the policy if needed.
@@ -3264,7 +3270,8 @@ sysroot_finalize_selinux_policy (int deployment_dfd, GError **error)
    * flag is not supported by semodule.
    */
   static const gchar *const SEMODULE_HELP_ARGV[] = { "semodule", "--help", NULL };
-  if (!run_in_deployment (deployment_dfd, SEMODULE_HELP_ARGV, &exit_status, &stdout, error))
+  if (!_ostree_sysroot_run_in_deployment (deployment_dfd, NULL, SEMODULE_HELP_ARGV, &exit_status,
+                                          &stdout, error))
     return FALSE;
   if (!g_spawn_check_exit_status (exit_status, error))
     return glnx_prefix_error (error, "failed to run semodule");
@@ -3278,7 +3285,8 @@ sysroot_finalize_selinux_policy (int deployment_dfd, GError **error)
 
   ot_journal_print (LOG_INFO, "Refreshing SELinux policy");
   guint64 start_msec = g_get_monotonic_time () / 1000;
-  if (!run_in_deployment (deployment_dfd, SEMODULE_REBUILD_ARGV, &exit_status, NULL, error))
+  if (!_ostree_sysroot_run_in_deployment (deployment_dfd, NULL, SEMODULE_REBUILD_ARGV, &exit_status,
+                                          NULL, error))
     return FALSE;
   guint64 end_msec = g_get_monotonic_time () / 1000;
   ot_journal_print (LOG_INFO, "Refreshed SELinux policy in %" G_GUINT64_FORMAT " ms",
