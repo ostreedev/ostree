@@ -3151,7 +3151,6 @@ get_var_dfd (OstreeSysroot *self, int osdeploy_dfd, OstreeDeployment *deployment
   return glnx_opendirat (base_dfd, base_path, TRUE, ret_fd, error);
 }
 
-#ifdef HAVE_SELINUX
 static void
 child_setup_fchdir (gpointer data)
 {
@@ -3245,6 +3244,7 @@ _ostree_sysroot_run_in_deployment (int deployment_dfd, const char *const *bwrap_
                        (gpointer)(uintptr_t)deployment_dfd, stdout, NULL, exit_status, error);
 }
 
+#ifdef HAVE_SELINUX
 /*
  * Run semodule to check if the module content changed after merging /etc
  * and rebuild the policy if needed.
