@@ -150,8 +150,9 @@ gboolean _ostree_sysroot_rmrf_deployment (OstreeSysroot *sysroot, OstreeDeployme
 
 char *_ostree_sysroot_get_runstate_path (OstreeDeployment *deployment, const char *key);
 
-gboolean _ostree_sysroot_run_in_deployment (int deployment_dfd, const gchar *const *child_argv,
-                                            gint *exit_status, gchar **stdout, GError **error);
+gboolean _ostree_sysroot_run_in_deployment (int deployment_dfd, const char *const *bwrap_argv,
+                                            const gchar *const *child_argv, gint *exit_status,
+                                            gchar **stdout, GError **error);
 
 char *_ostree_sysroot_join_lines (GPtrArray *lines);
 
