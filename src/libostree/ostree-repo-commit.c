@@ -586,11 +586,11 @@ _ostree_repo_bare_content_cleanup (OstreeRepoBareContent *regwrite)
 }
 
 /* Allocate an O_TMPFILE, write everything from @input to it, but
- * not exceeding @length.  Used for every object in archive repos,
- * and content objects in all bare-type repos.
+ * not exceeding @length.
  */
 static gboolean
-create_regular_tmpfile_linkable_with_content (OstreeRepo *self, guint64 length, GInputStream *input,
+create_regular_tmpfile_linkable_with_content (OstreeRepo *self, guint64 length,
+                                              GInputStream *original_input, GInputStream *input,
                                               GLnxTmpfile *out_tmpf, GCancellable *cancellable,
                                               GError **error)
 {
@@ -601,40 +601,44 @@ create_regular_tmpfile_linkable_with_content (OstreeRepo *self, guint64 length, 
                                       error))
     return FALSE;
 
-  if (!glnx_try_fallocate (tmpf.fd, 0, length, error))
-    return FALSE;
-
-  if (G_IS_FILE_DESCRIPTOR_BASED (input))
+  // Try to do a reflink if possible; if we hit this case we're operating on trusted local input.
+  gboolean did_clone = FALSE;
+  if (G_IS_FILE_DESCRIPTOR_BASED (original_input))
     {
-      int infd = g_file_descriptor_based_get_fd ((GFileDescriptorBased *)input);
-      if (glnx_regfile_copy_bytes (infd, tmpf.fd, (off_t)length) < 0)
-        return glnx_throw_errno_prefix (error, "regfile copy");
+      int infd = g_file_descriptor_based_get_fd ((GFileDescriptorBased *)original_input);
+      if (ioctl (tmpf.fd, FICLONE, infd) == 0)
+        {
+          did_clone = TRUE;
+        }
     }
   else
     {
-      /* We used to do a g_output_stream_splice(), but there are two issues with that:
-       *  - We want to honor the size provided, to avoid malicious content that says it's
-       *    e.g. 10 bytes but is actually gigabytes.
-       *  - Due to GLib bugs that pointlessly calls `poll()` on the output fd for every write
-       */
-      gsize buf_size = MIN (length, 1048576);
-      g_autofree gchar *buf = g_malloc (buf_size);
-      guint64 remaining = length;
-      while (remaining > 0)
-        {
-          const gssize bytes_read
-              = g_input_stream_read (input, buf, MIN (remaining, buf_size), cancellable, error);
-          if (bytes_read < 0)
-            return FALSE;
-          else if (bytes_read == 0)
-            return glnx_throw (error,
-                               "Unexpected EOF with %" G_GUINT64_FORMAT "/%" G_GUINT64_FORMAT
-                               " bytes remaining",
-                               remaining, length);
-          if (glnx_loop_write (tmpf.fd, buf, bytes_read) < 0)
-            return glnx_throw_errno_prefix (error, "write");
-          remaining -= bytes_read;
-        }
+      if (!glnx_try_fallocate (tmpf.fd, 0, length, error))
+        return FALSE;
+    }
+
+  /* We used to do a g_output_stream_splice(), but there are two issues with that:
+   *  - We want to honor the size provided, to avoid malicious content that says it's
+   *    e.g. 10 bytes but is actually gigabytes.
+   *  - Due to GLib bugs that pointlessly calls `poll()` on the output fd for every write
+   */
+  gsize buf_size = MIN (length, 1048576);
+  g_autofree gchar *buf = g_malloc (buf_size);
+  guint64 remaining = length;
+  while (remaining > 0)
+    {
+      const gssize bytes_read
+          = g_input_stream_read (input, buf, MIN (remaining, buf_size), cancellable, error);
+      if (bytes_read < 0)
+        return FALSE;
+      else if (bytes_read == 0)
+        return glnx_throw (error,
+                           "Unexpected EOF with %" G_GUINT64_FORMAT "/%" G_GUINT64_FORMAT
+                           " bytes remaining",
+                           remaining, length);
+      if (!did_clone && glnx_loop_write (tmpf.fd, buf, bytes_read) < 0)
+        return glnx_throw_errno_prefix (error, "write");
+      remaining -= bytes_read;
     }
 
   if (!glnx_fchmod (tmpf.fd, 0644, error))
@@ -989,8 +993,8 @@ write_content_object (OstreeRepo *self, const char *expected_checksum, GInputStr
     }
   else if (repo_mode != OSTREE_REPO_MODE_ARCHIVE)
     {
-      if (!create_regular_tmpfile_linkable_with_content (self, size, file_input, &tmpf, cancellable,
-                                                         error))
+      if (!create_regular_tmpfile_linkable_with_content (self, size, input, file_input, &tmpf,
+                                                         cancellable, error))
         return FALSE;
     }
   else
