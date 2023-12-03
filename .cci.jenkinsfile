@@ -18,7 +18,7 @@ stage("Build") {
           git fetch origin --tags
           git submodule update --init
 
-          env MAKE_JOBS=${n} SKIP_INSTALLDEPS=1 ./ci/build.sh
+          env MAKE_JOBS=${n} ./ci/build.sh
         """)
       }
       stage("Unit tests") {
