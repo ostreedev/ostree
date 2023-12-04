@@ -706,6 +706,13 @@ global:
   ostree_repo_commit_add_composefs_metadata;
 } LIBOSTREE_2023.1;
 
+LIBOSTREE_2023.8 {
+global:
+  ostree_sysroot_update_post_copy;
+  ostree_deployment_is_finalization_locked;
+  ostree_sysroot_change_finalization;
+} LIBOSTREE_2023.4;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
