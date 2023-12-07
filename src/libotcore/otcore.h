@@ -55,6 +55,11 @@ GKeyFile *otcore_load_config (int rootfs, const char *filename, GError **error);
 // we make it with mode 0 (which requires CAP_DAC_OVERRIDE to pass through).
 #define OTCORE_RUN_OSTREE_PRIVATE "/run/ostree/.private"
 
+// The directory holding extra/backing data for a deployment, such as overlayfs workdirs
+#define OSTREE_DEPLOYMENT_BACKING_DIR "backing"
+// The directory holding the root overlayfs
+#define OSTREE_DEPLOYMENT_ROOT_TRANSIENT_DIR "root-transient"
+
 // The name of the composefs metadata root
 #define OSTREE_COMPOSEFS_NAME ".ostree.cfs"
 // The temporary directory used for the EROFS mount; it's in the .private directory
@@ -70,6 +75,8 @@ GKeyFile *otcore_load_config (int rootfs, const char *filename, GError **error);
 // This key if present contains the public key successfully used
 // to verify the signature.
 #define OTCORE_RUN_BOOTED_KEY_COMPOSEFS_SIGNATURE "composefs.signed"
+// This key will be present if the root is transient
+#define OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT "root.transient"
 // This key will be present if the sysroot-ro flag was found
 #define OTCORE_RUN_BOOTED_KEY_SYSROOT_RO "sysroot-ro"
 

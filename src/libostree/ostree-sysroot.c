@@ -36,7 +36,7 @@
 #include "ostree-repo-private.h"
 #include "ostree-sepolicy-private.h"
 #include "ostree-sysroot-private.h"
-#include "ostree.h"
+#include "otcore.h"
 
 /**
  * SECTION:ostree-sysroot
@@ -1963,6 +1963,17 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot *sysroot, const char *osna
     return FALSE;
 
   return TRUE;
+}
+
+/* Return the sysroot-relative path to the "backing" directory of a deployment
+ * which can hold additional data.
+ */
+char *
+_ostree_sysroot_get_deployment_backing_relpath (OstreeDeployment *deployment)
+{
+  return g_strdup_printf (
+      "ostree/deploy/%s/backing/%s.%d", ostree_deployment_get_osname (deployment),
+      ostree_deployment_get_csum (deployment), ostree_deployment_get_deployserial (deployment));
 }
 
 /* Deploy a copy of @target_deployment */
