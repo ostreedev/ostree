@@ -374,7 +374,7 @@ main (int argc, char *argv[])
   const char *root_mountpoint = realpath (root_arg, NULL);
   if (root_mountpoint == NULL)
     err (EXIT_FAILURE, "realpath(\"%s\")", root_arg);
-  char *deploy_path = resolve_deploy_path (root_mountpoint);
+  g_autofree char *deploy_path = resolve_deploy_path (root_mountpoint);
 
   if (mkdirat (AT_FDCWD, OTCORE_RUN_OSTREE, 0755) < 0)
     err (EXIT_FAILURE, "Failed to create %s", OTCORE_RUN_OSTREE);
