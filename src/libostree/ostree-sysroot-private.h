@@ -142,8 +142,7 @@ gboolean _ostree_sysroot_boot_complete (OstreeSysroot *self, GCancellable *cance
 
 OstreeDeployment *_ostree_sysroot_deserialize_deployment_from_variant (GVariant *v, GError **error);
 
-char *_ostree_sysroot_get_origin_relpath (GFile *path, guint32 *out_device, guint64 *out_inode,
-                                          GCancellable *cancellable, GError **error);
+char *_ostree_sysroot_get_deployment_backing_relpath (OstreeDeployment *deployment);
 
 gboolean _ostree_sysroot_rmrf_deployment (OstreeSysroot *sysroot, OstreeDeployment *deployment,
                                           GCancellable *cancellable, GError **error);

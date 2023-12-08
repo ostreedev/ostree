@@ -3078,6 +3078,10 @@ sysroot_initialize_deployment (OstreeSysroot *self, const char *osname, const ch
   if (!require_stateroot (self, osname, error))
     return FALSE;
 
+  g_autofree char *stateroot_backing = g_strdup_printf ("ostree/deploy/%s/backing", osname);
+  if (!glnx_shutil_mkdir_p_at (self->sysroot_fd, stateroot_backing, 0700, cancellable, error))
+    return glnx_prefix_error (error, "Creating backing directory");
+
   OstreeRepo *repo = ostree_sysroot_repo (self);
 
   gint new_deployserial;
@@ -3296,6 +3300,49 @@ sysroot_finalize_selinux_policy (int deployment_dfd, GError **error)
 #endif /* HAVE_SELINUX */
 
 static gboolean
+sysroot_initialize_deployment_backing (OstreeSysroot *self, OstreeDeployment *deployment,
+                                       OstreeSePolicy *sepolicy, GError **error)
+{
+  GLNX_AUTO_PREFIX_ERROR ("Preparing deployment backing dir", error);
+  g_autofree char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
+  g_autofree char *backing_relpath = _ostree_sysroot_get_deployment_backing_relpath (deployment);
+  struct stat stbuf;
+
+  if (!glnx_fstatat (self->sysroot_fd, deployment_path, &stbuf, AT_SYMLINK_NOFOLLOW, error))
+    return FALSE;
+
+  // Create the "backing" directory with additional data */
+  if (!glnx_ensure_dir (self->sysroot_fd, backing_relpath, 0700, error))
+    return glnx_prefix_error (error, "Creating backing dir");
+
+  // The root-transient holds overlayfs directories for the root
+  g_autofree char *rootovldir
+      = g_build_filename (backing_relpath, OSTREE_DEPLOYMENT_ROOT_TRANSIENT_DIR, NULL);
+  if (!glnx_ensure_dir (self->sysroot_fd, rootovldir, 0700, error))
+    return glnx_prefix_error (error, "Creating root ovldir");
+
+  // The overlayfs work (subdirectory of root-transient)
+  g_autofree char *workdir = g_build_filename (rootovldir, "work", NULL);
+  if (!glnx_ensure_dir (self->sysroot_fd, workdir, 0700, error))
+    return glnx_prefix_error (error, "Creating work dir");
+
+  // Create the overlayfs upper; this needs to have the same mode and SELinux label as the root
+  {
+    g_auto (OstreeSepolicyFsCreatecon) con = {
+      0,
+    };
+
+    if (!_ostree_sepolicy_preparefscreatecon (&con, sepolicy, "/", stbuf.st_mode, error))
+      return glnx_prefix_error (error, "Looking up SELinux label for /");
+    g_autofree char *upperdir = g_build_filename (rootovldir, "upper", NULL);
+    if (!glnx_ensure_dir (self->sysroot_fd, upperdir, stbuf.st_mode, error))
+      return glnx_prefix_error (error, "Creating upper dir");
+  }
+
+  return TRUE;
+}
+
+static gboolean
 sysroot_finalize_deployment (OstreeSysroot *self, OstreeDeployment *deployment,
                              OstreeDeployment *merge_deployment, GCancellable *cancellable,
                              GError **error)
@@ -3358,6 +3405,9 @@ sysroot_finalize_deployment (OstreeSysroot *self, OstreeDeployment *deployment,
     return FALSE;
 
   if (!selinux_relabel_var_if_needed (self, sepolicy, os_deploy_dfd, cancellable, error))
+    return FALSE;
+
+  if (!sysroot_initialize_deployment_backing (self, deployment, sepolicy, error))
     return FALSE;
 
   /* Rewrite the origin using the final merged selinux config, just to be
