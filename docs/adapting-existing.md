@@ -69,6 +69,10 @@ d /var/mnt 0755 root root -
 d /run/media 0755 root root -
 ```
 
+However, as of OSTree 2023.9 there is support for a `root.transient`
+model, which can increase compatibility in some scenarios.  For more
+information, see `man ostree-prepare-root.conf`.
+
 Particularly note here the double indirection of `/home`.  By default,
 each deployment will share the global toplevel `/home` directory on
 the physical root filesystem.  It is then up to higher levels of
