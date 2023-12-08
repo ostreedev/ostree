@@ -118,6 +118,24 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <listitem><para>A boolean value; the default is <literal>false</literal>.  If this is set to <literal>true</literal>, then the <literal>/etc</literal> mount point is mounted transiently i.e. a non-persistent location.</para></listitem>
             </varlistentry>
             <varlistentry>
+                <term><varname>root.transient</varname></term>
+                <listitem><para>A boolean value; the default is <literal>false</literal>.
+                   If this is set to <literal>true</literal>, then the <literal>/</literal> filesystem will be a writable <literal>overlayfs</literal>,
+                   with the upper directory being a hidden directory (in the underlying system root filesystem) that will persist across reboots by default.
+                   However, changes will <emphasis>be discarded</emphasis> on OS updates!
+                </para>
+                <para>
+                   Enabling this option can be very useful for cases such as packages (dpkg/rpm/etc) that write content into <literal>/opt</literal>,
+                   particularly where they expect the target to be writable at runtime.  To make that work, ensure that your <literal>/opt</literal>
+                   directory is *not* a symlink to <literal>/var/opt</literal>, but is just an empty directory.
+                </para>
+                <para>
+                   Note the <literal>/usr</literal> mount point remains read-only by default.  This option is independent of <literal>etc.transient</literal> and <literal>sysroot.readonly</literal>;
+                   it is supported for example to have <literal>root.transient=true</literal> but <literal>etc.transient=false</literal> in which case changes to <literal>/etc</literal> continue
+                   to persist across updates, with the default OSTree 3-way merge applied.
+                </para></listitem>
+            </varlistentry>
+            <varlistentry>
                 <term><varname>composefs.enabled</varname></term>
                 <listitem><para>This can be <literal>yes</literal>, <literal>no</literal>. <literal>maybe</literal> or
                 <literal>signed</literal>. The default is <literal>maybe</literal>.  If set to <literal>yes</literal> or
