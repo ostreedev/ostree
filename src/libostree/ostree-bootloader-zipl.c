@@ -142,7 +142,7 @@ _ostree_secure_boot_is_enabled (gboolean *out_enabled, GCancellable *cancellable
   // [    0.023198] setup: 0000000000867000 - 0000000000868000 (not signed)
   // [    0.023199] setup: 0000000000877000 - 0000000000878000 (not signed)
   // [    0.023200] setup: 0000000000880000 - 0000000003f98000 (not signed)
-  fd = openat (AT_FDCWD, "/dev/kmsg", O_NONBLOCK | O_RDONLY);
+  fd = openat (AT_FDCWD, "/dev/kmsg", O_NONBLOCK | O_RDONLY | O_CLOEXEC);
   if (fd == -1)
     return glnx_throw_errno_prefix (error, "openat(/dev/kmsg)");
   unsigned max_lines = 5; // no need to read dozens of messages, ours comes really early
