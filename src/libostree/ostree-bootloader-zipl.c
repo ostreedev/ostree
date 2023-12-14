@@ -149,9 +149,10 @@ _ostree_secure_boot_is_enabled (gboolean *out_enabled, GCancellable *cancellable
   while (*out_enabled != TRUE && max_lines > 0)
     {
       char buf[1024];
-      ssize_t len = TEMP_FAILURE_RETRY (read (fd, buf, sizeof (buf)));
+      ssize_t len = TEMP_FAILURE_RETRY (read (fd, buf, sizeof (buf) - 1));
       if (len < 0)
         break;
+      buf[len] = '\0';
       *out_enabled = strstr (buf, "Secure-IPL enabled") != NULL;
       --max_lines;
     }
