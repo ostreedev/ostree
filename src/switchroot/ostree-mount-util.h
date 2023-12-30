@@ -36,6 +36,10 @@
 #define _OSTREE_SYSROOT_READONLY_STAMP "/run/ostree-sysroot-ro.stamp"
 #define _OSTREE_COMPOSEFS_ROOT_STAMP "/run/ostree-composefs-root.stamp"
 
+#define OTCORE_SYSROOT_NOT_WRITEABLE \
+  "sysroot.readonly=true requires %s to be writable at this point, the cmdline should contain rw " \
+  "but not ro, if that is not the case this is likely the issue"
+
 #define autofree __attribute__ ((cleanup (cleanup_free)))
 
 static inline int

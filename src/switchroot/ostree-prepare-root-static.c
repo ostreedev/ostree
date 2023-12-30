@@ -229,8 +229,7 @@ main (int argc, char *argv[])
   if (sysroot_readonly)
     {
       if (!sysroot_currently_writable)
-        errx (EXIT_FAILURE, "sysroot.readonly=true requires %s to be writable at this point",
-              root_arg);
+        errx (EXIT_FAILURE, OTCORE_SYSROOT_NOT_WRITEABLE, root_arg);
       /* Pass on the fact that we discovered a readonly sysroot to ostree-remount.service */
       int fd = open (_OSTREE_SYSROOT_READONLY_STAMP, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
       if (fd < 0)

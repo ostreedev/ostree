@@ -557,8 +557,7 @@ main (int argc, char *argv[])
   if (sysroot_readonly)
     {
       if (!sysroot_currently_writable)
-        errx (EXIT_FAILURE, "sysroot.readonly=true requires %s to be writable at this point",
-              root_arg);
+        errx (EXIT_FAILURE, OTCORE_SYSROOT_NOT_WRITEABLE, root_arg);
     }
   /* Pass on the state for use by ostree-prepare-root */
   g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_SYSROOT_RO,
