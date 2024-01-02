@@ -87,6 +87,19 @@ At the current time, there are no additional userspace runtime requirements.
 **IMPORTANT** The integration with composefs is experimental and subject to change.  Please
 try it and report issues but do not deploy to production systems yet.
 
+## Compatiblity
+
+One issue that ostree users transitioning to composefs may hit is that it is no
+longer possible to add new toplevel directories via the `chattr -i / && mkdir /somedir && chattr -i`
+trick.   A bit more on this in the following issues:
+
+* <https://github.com/coreos/rpm-ostree/issues/337>
+* <https://github.com/ostreedev/ostree/pull/2681>
+
+However, users who were doing things like this probably want to enable the
+`root.transient` option; see `man ostree-prepare-root` which will allow
+this (but also change other behaviors too).
+
 ## Comparison with other approaches
 
 There is also support for using [IMA](ima.md) with ostree.  In short, composefs
