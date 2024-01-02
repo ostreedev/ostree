@@ -22,6 +22,7 @@
 #include "ostree-libarchive-private.h"
 #include "ostree-sysroot-private.h"
 #include "otutil.h"
+#include <gio/gunixinputstream.h>
 #include <string.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -142,17 +143,17 @@ _ostree_secure_boot_is_enabled (gboolean *out_enabled, GCancellable *cancellable
   // [    0.023198] setup: 0000000000867000 - 0000000000868000 (not signed)
   // [    0.023199] setup: 0000000000877000 - 0000000000878000 (not signed)
   // [    0.023200] setup: 0000000000880000 - 0000000003f98000 (not signed)
-  fd = openat (AT_FDCWD, "/dev/kmsg", O_NONBLOCK | O_RDONLY);
+  fd = openat (AT_FDCWD, "/dev/kmsg", O_NONBLOCK | O_RDONLY | O_CLOEXEC);
   if (fd == -1)
     return glnx_throw_errno_prefix (error, "openat(/dev/kmsg)");
-  unsigned max_lines = 5; // no need to read dozens of messages, ours comes really early
+  g_autoptr (GInputStream) istream = g_unix_input_stream_new (g_steal_fd (&fd), TRUE);
+  g_autoptr (GDataInputStream) stream = g_data_input_stream_new (istream);
+  unsigned int max_lines = 5; // no need to read dozens of messages, ours comes really early
   while (*out_enabled != TRUE && max_lines > 0)
     {
-      char buf[1024];
-      ssize_t len = read (fd, buf, sizeof (buf));
-      if (len == -EAGAIN)
-        break;
-      *out_enabled = strstr (buf, "Secure-IPL enabled") != NULL;
+      gsize len = 0;
+      g_autofree char *line = g_data_input_stream_read_line (stream, &len, NULL, error);
+      *out_enabled = strstr (line, "Secure-IPL enabled") != NULL;
       --max_lines;
     }
   ot_journal_print (LOG_INFO, "s390x: kmsg: Secure Boot enabled: %d", *out_enabled);
