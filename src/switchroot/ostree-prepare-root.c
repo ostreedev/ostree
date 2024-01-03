@@ -632,12 +632,17 @@ main (int argc, char *argv[])
     }
 
   /* Prepare /usr.
-   * It may be either just a read-only bind-mount, or a persistent overlayfs. */
-  if (lstat (".usr-ovl-work", &stbuf) == 0)
+   * It may be either just a read-only bind-mount, or a persistent overlayfs if set up
+   * with ostree admin unlock --hotfix.
+   * Note however that root.transient as handled above is effectively a generalization of unlock
+   * --hotfix.
+   */
+  if (lstat (OTCORE_HOTFIX_USR_OVL_WORK, &stbuf) == 0)
     {
       /* Do we have a persistent overlayfs for /usr?  If so, mount it now. */
       const char usr_ovl_options[]
-          = "lowerdir=" TMP_SYSROOT "/usr,upperdir=.usr-ovl-upper,workdir=.usr-ovl-work";
+          = "lowerdir=" TMP_SYSROOT
+            "/usr,upperdir=.usr-ovl-upper,workdir=" OTCORE_HOTFIX_USR_OVL_WORK;
 
       /* Except overlayfs barfs if we try to mount it on a read-only
        * filesystem.  For this use case I think admins are going to be
