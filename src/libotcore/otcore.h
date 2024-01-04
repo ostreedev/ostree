@@ -60,6 +60,9 @@ GKeyFile *otcore_load_config (int rootfs, const char *filename, GError **error);
 // The directory holding the root overlayfs
 #define OSTREE_DEPLOYMENT_ROOT_TRANSIENT_DIR "root-transient"
 
+// Written by ostree admin unlock --hotfix, read by ostree-prepare-root
+#define OTCORE_HOTFIX_USR_OVL_WORK ".usr-ovl-work"
+
 // The name of the composefs metadata root
 #define OSTREE_COMPOSEFS_NAME ".ostree.cfs"
 // The temporary directory used for the EROFS mount; it's in the .private directory
