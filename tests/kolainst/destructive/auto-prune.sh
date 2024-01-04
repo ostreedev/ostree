@@ -106,6 +106,7 @@ rpm-ostree rollback
 # to not actually fit (because some filesystems like ext4 include reserved
 # overhead in their f_bfree count for some reason) will still trigger the auto-
 # prune logic.
+# https://github.com/ostreedev/ostree/pull/2866
 
 unconsume_bootfs_space
 
@@ -114,10 +115,10 @@ unconsume_bootfs_space
 unshare -m bash -c \
   "mount -o rw,remount /boot && \
    cp /usr/lib/modules/`uname -r`/{vmlinuz,initramfs.img} /boot"
-free_blocks=$(stat --file-system /boot -c '%f')
+free_blocks_kernel_and_initrd=$(stat --file-system /boot -c '%f')
 unshare -m bash -c \
   "mount -o rw,remount /boot && rm /boot/{vmlinuz,initramfs.img}"
-consume_bootfs_space "$((free_blocks))"
+consume_bootfs_space "$((free_blocks_kernel_and_initrd))"
 
 rpm-ostree rebase :modkernel1
 # Disable auto-pruning to verify we reproduce the bug
@@ -129,6 +130,34 @@ rm out.txt
 
 # now, try again but with (now default) auto-pruning enabled
 rpm-ostree rebase :modkernel1
+ostree admin finalize-staged |& tee out.txt
+assert_file_has_content out.txt "updating bootloader in two steps"
+rm out.txt
+
+# Below, we test that the size estimator is blocksize aware. This catches the
+# case where the dtb contains many small files such that there's a lot of wasted
+# block space we need to account for.
+# https://github.com/coreos/fedora-coreos-tracker/issues/1637
+
+unconsume_bootfs_space
+
+mkdir -p rootfs/usr/lib/modules/`uname -r`/dtb
+(set +x; for i in {1..10000}; do echo -n x > rootfs/usr/lib/modules/`uname -r`/dtb/$i; done)
+ostree commit --base modkernel1 -P --tree=dir=rootfs -b modkernel3
+
+# a naive estimator would think all those files just take 10000 bytes
+consume_bootfs_space "$((free_blocks_kernel_and_initrd - 10000))"
+
+rpm-ostree rebase :modkernel3
+# Disable auto-pruning to verify we reproduce the bug
+if OSTREE_SYSROOT_OPTS=no-early-prune ostree admin finalize-staged |& tee out.txt; then
+    assert_not_reached "successfully wrote kernel without auto-pruning"
+fi
+assert_file_has_content out.txt "No space left on device"
+rm out.txt
+
+# now, try again but with (now default) auto-pruning enabled
+rpm-ostree rebase :modkernel3
 ostree admin finalize-staged |& tee out.txt
 assert_file_has_content out.txt "updating bootloader in two steps"
 rm out.txt
