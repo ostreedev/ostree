@@ -59,6 +59,12 @@
   SD_ID128_MAKE (e8, 64, 6c, d6, 3d, ff, 46, 25, b7, 79, 09, a8, e7, a4, 09, 94)
 #endif
 
+/* How much additional space we require available on top of what we accounted
+ * during the early prune fallocate space check. This accounts for anything not
+ * captured directly by `get_kernel_layout_size()` like writing new BLS entries.
+ */
+#define EARLY_PRUNE_SAFETY_MARGIN_SIZE (1 << 20) /* 1 MB */
+
 /*
  * Like symlinkat() but overwrites (atomically) an existing
  * symlink.
@@ -2540,6 +2546,9 @@ dfd_fallocate_check (int dfd, off_t len, gboolean *out_passed, GError **error)
   };
   if (!glnx_open_tmpfile_linkable_at (dfd, ".", O_WRONLY | O_CLOEXEC, &tmpf, error))
     return FALSE;
+
+  /* add the safety margin */
+  len += EARLY_PRUNE_SAFETY_MARGIN_SIZE;
 
   *out_passed = TRUE;
   /* There's glnx_try_fallocate, but not with the same error semantics. */
