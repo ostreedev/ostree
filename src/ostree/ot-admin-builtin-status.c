@@ -33,35 +33,6 @@ static gboolean opt_verify;
 static GOptionEntry options[] = { { "verify", 'V', 0, G_OPTION_ARG_NONE, &opt_verify,
                                     "Print the commit verification status", NULL },
                                   { NULL } };
-
-#ifndef OSTREE_DISABLE_GPGME
-static gboolean
-deployment_get_gpg_verify (OstreeDeployment *deployment, OstreeRepo *repo)
-{
-  /* XXX Something like this could be added to the OstreeDeployment
-   *     API in libostree if the OstreeRepo parameter is acceptable. */
-  GKeyFile *origin = ostree_deployment_get_origin (deployment);
-
-  if (origin == NULL)
-    return FALSE;
-
-  g_autofree char *refspec = g_key_file_get_string (origin, "origin", "refspec", NULL);
-
-  if (refspec == NULL)
-    return FALSE;
-
-  g_autofree char *remote = NULL;
-  if (!ostree_parse_refspec (refspec, &remote, NULL, NULL))
-    return FALSE;
-
-  gboolean gpg_verify = FALSE;
-  if (remote)
-    (void)ostree_repo_remote_get_gpg_verify (repo, remote, &gpg_verify, NULL);
-
-  return gpg_verify;
-}
-#endif /* OSTREE_DISABLE_GPGME */
-
 static gboolean
 deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeployment *deployment,
                          gboolean is_booted, gboolean is_pending, gboolean is_rollback,
@@ -95,6 +66,8 @@ deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploym
     }
 
   GKeyFile *origin = ostree_deployment_get_origin (deployment);
+  g_autofree char *origin_refspec
+      = origin ? g_key_file_get_string (origin, "origin", "refspec", NULL) : NULL;
 
   const char *deployment_status = "";
   if (ostree_deployment_is_finalization_locked (deployment))
@@ -127,7 +100,6 @@ deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploym
     g_print ("    origin: none\n");
   else
     {
-      g_autofree char *origin_refspec = g_key_file_get_string (origin, "origin", "refspec", NULL);
       if (!origin_refspec)
         g_print ("    origin: <unknown origin type>\n");
       else
@@ -137,15 +109,22 @@ deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploym
     }
 
 #ifndef OSTREE_DISABLE_GPGME
-  if (!opt_verify && deployment_get_gpg_verify (deployment, repo))
+  g_autofree char *remote = NULL;
+  if (origin_refspec && !ostree_parse_refspec (origin_refspec, &remote, NULL, NULL))
+    return FALSE;
+
+  gboolean gpg_verify = FALSE;
+  if (remote)
+    (void)ostree_repo_remote_get_gpg_verify (repo, remote, &gpg_verify, NULL);
+  if (!opt_verify && gpg_verify)
     {
+      g_assert (remote);
       g_autoptr (GString) output_buffer = g_string_sized_new (256);
       /* Print any digital signatures on this commit. */
 
-      const char *osname = ostree_deployment_get_osname (deployment);
       g_autoptr (GError) local_error = NULL;
       g_autoptr (OstreeGpgVerifyResult) result
-          = ostree_repo_verify_commit_for_remote (repo, ref, osname, cancellable, &local_error);
+          = ostree_repo_verify_commit_for_remote (repo, ref, remote, cancellable, &local_error);
 
       /* G_IO_ERROR_NOT_FOUND just means the commit is not signed. */
       if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
@@ -174,16 +153,8 @@ deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploym
     {
       if (!commit)
         return glnx_throw (error, "Cannot verify, failed to load commit");
-
-      if (origin == NULL)
-        return glnx_throw (error, "Cannot verify deployment with no origin");
-
-      g_autofree char *refspec = g_key_file_get_string (origin, "origin", "refspec", NULL);
-      if (refspec == NULL)
+      if (origin_refspec == NULL)
         return glnx_throw (error, "No origin/refspec, cannot verify");
-      g_autofree char *remote = NULL;
-      if (!ostree_parse_refspec (refspec, &remote, NULL, NULL))
-        return FALSE;
       if (remote == NULL)
         return glnx_throw (error, "Cannot verify deployment without remote");
 
