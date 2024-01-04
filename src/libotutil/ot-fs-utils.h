@@ -75,7 +75,7 @@ GBytes *ot_fd_readall_or_mmap (int fd, goffset offset, GError **error);
 gboolean ot_parse_file_by_line (const char *path, gboolean (*cb) (const char *, void *, GError **),
                                 void *cbdata, GCancellable *cancellable, GError **error);
 
-gboolean ot_get_dir_size (int dfd, const char *path, guint64 *out_size, GCancellable *cancellable,
-                          GError **error);
+gboolean ot_get_dir_size (int dfd, const char *path, guint64 blocksize, guint64 *out_size,
+                          GCancellable *cancellable, GError **error);
 
 G_END_DECLS

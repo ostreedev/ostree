@@ -227,11 +227,12 @@ ot_parse_file_by_line (const char *path, gboolean (*cb) (const char *, void *, G
   return TRUE;
 }
 
-/* Calculate the size of the files contained in a directory. Symlinks are not
- * followed. */
+/* Calculate the size of the files contained in a directory. Symlinks are
+ * not followed. If `blocksize` is nonzero, all sizes are rounded to its next
+ * multiple. */
 gboolean
-ot_get_dir_size (int dfd, const char *path, guint64 *out_size, GCancellable *cancellable,
-                 GError **error)
+ot_get_dir_size (int dfd, const char *path, guint64 blocksize, guint64 *out_size,
+                 GCancellable *cancellable, GError **error)
 {
   g_auto (GLnxDirFdIterator) dfd_iter = {
     0,
@@ -256,11 +257,18 @@ ot_get_dir_size (int dfd, const char *path, guint64 *out_size, GCancellable *can
             return FALSE;
 
           *out_size += stbuf.st_size;
+          if (blocksize > 0)
+            {
+              off_t rem = stbuf.st_size % blocksize;
+              if (rem > 0)
+                *out_size += blocksize - rem;
+            }
         }
       else if (dent->d_type == DT_DIR)
         {
           guint64 subdir_size;
-          if (!ot_get_dir_size (dfd_iter.fd, dent->d_name, &subdir_size, cancellable, error))
+          if (!ot_get_dir_size (dfd_iter.fd, dent->d_name, blocksize, &subdir_size, cancellable,
+                                error))
             return FALSE;
 
           *out_size += subdir_size;

@@ -59,6 +59,12 @@
   SD_ID128_MAKE (e8, 64, 6c, d6, 3d, ff, 46, 25, b7, 79, 09, a8, e7, a4, 09, 94)
 #endif
 
+/* How much additional space we require available on top of what we accounted
+ * during the early prune fallocate space check. This accounts for anything not
+ * captured directly by `get_kernel_layout_size()` like writing new BLS entries.
+ */
+#define EARLY_PRUNE_SAFETY_MARGIN_SIZE (1 << 20) /* 1 MB */
+
 /*
  * Like symlinkat() but overwrites (atomically) an existing
  * symlink.
@@ -2450,7 +2456,8 @@ write_deployments_finish (OstreeSysroot *self, GCancellable *cancellable, GError
 }
 
 static gboolean
-add_file_size_if_nonnull (int dfd, const char *path, guint64 *inout_size, GError **error)
+add_file_size_if_nonnull (int dfd, const char *path, guint64 blocksize, guint64 *inout_size,
+                          GError **error)
 {
   if (path == NULL)
     return TRUE;
@@ -2460,14 +2467,21 @@ add_file_size_if_nonnull (int dfd, const char *path, guint64 *inout_size, GError
     return FALSE;
 
   *inout_size += stbuf.st_size;
+  if (blocksize > 0)
+    {
+      off_t rem = stbuf.st_size % blocksize;
+      if (rem > 0)
+        *inout_size += blocksize - rem;
+    }
+
   return TRUE;
 }
 
 /* calculates the total size of the bootcsum dir in /boot after we would copy
  * it. This reflects the logic in  install_deployment_kernel(). */
 static gboolean
-get_kernel_layout_size (OstreeSysroot *self, OstreeDeployment *deployment, guint64 *out_size,
-                        GCancellable *cancellable, GError **error)
+get_kernel_layout_size (OstreeSysroot *self, OstreeDeployment *deployment, guint64 blocksize,
+                        guint64 *out_size, GCancellable *cancellable, GError **error)
 {
   g_autofree char *deployment_dirpath = ostree_sysroot_get_deployment_dirpath (self, deployment);
   glnx_autofd int deployment_dfd = -1;
@@ -2479,11 +2493,11 @@ get_kernel_layout_size (OstreeSysroot *self, OstreeDeployment *deployment, guint
     return FALSE;
 
   guint64 bootdir_size = 0;
-  if (!add_file_size_if_nonnull (kernel_layout->boot_dfd, kernel_layout->kernel_srcpath,
+  if (!add_file_size_if_nonnull (kernel_layout->boot_dfd, kernel_layout->kernel_srcpath, blocksize,
                                  &bootdir_size, error))
     return FALSE;
   if (!add_file_size_if_nonnull (kernel_layout->boot_dfd, kernel_layout->initramfs_srcpath,
-                                 &bootdir_size, error))
+                                 blocksize, &bootdir_size, error))
     return FALSE;
   if (kernel_layout->devicetree_srcpath)
     {
@@ -2491,22 +2505,22 @@ get_kernel_layout_size (OstreeSysroot *self, OstreeDeployment *deployment, guint
       if (kernel_layout->devicetree_namever)
         {
           if (!add_file_size_if_nonnull (kernel_layout->boot_dfd, kernel_layout->devicetree_srcpath,
-                                         &bootdir_size, error))
+                                         blocksize, &bootdir_size, error))
             return FALSE;
         }
       else
         {
           guint64 dirsize = 0;
           if (!ot_get_dir_size (kernel_layout->boot_dfd, kernel_layout->devicetree_srcpath,
-                                &dirsize, cancellable, error))
+                                blocksize, &dirsize, cancellable, error))
             return FALSE;
           bootdir_size += dirsize;
         }
     }
   if (!add_file_size_if_nonnull (kernel_layout->boot_dfd, kernel_layout->kernel_hmac_srcpath,
-                                 &bootdir_size, error))
+                                 blocksize, &bootdir_size, error))
     return FALSE;
-  if (!add_file_size_if_nonnull (kernel_layout->boot_dfd, kernel_layout->aboot_srcpath,
+  if (!add_file_size_if_nonnull (kernel_layout->boot_dfd, kernel_layout->aboot_srcpath, blocksize,
                                  &bootdir_size, error))
     return FALSE;
 
@@ -2532,6 +2546,9 @@ dfd_fallocate_check (int dfd, off_t len, gboolean *out_passed, GError **error)
   };
   if (!glnx_open_tmpfile_linkable_at (dfd, ".", O_WRONLY | O_CLOEXEC, &tmpf, error))
     return FALSE;
+
+  /* add the safety margin */
+  len += EARLY_PRUNE_SAFETY_MARGIN_SIZE;
 
   *out_passed = TRUE;
   /* There's glnx_try_fallocate, but not with the same error semantics. */
@@ -2583,6 +2600,11 @@ auto_early_prune_old_deployments (OstreeSysroot *self, GPtrArray *new_deployment
   g_autoptr (GHashTable) new_bootcsums
       = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
+  /* get bootfs block size */
+  struct statvfs stvfsbuf;
+  if (TEMP_FAILURE_RETRY (fstatvfs (self->boot_fd, &stvfsbuf)) < 0)
+    return glnx_throw_errno_prefix (error, "fstatvfs(boot)");
+
   g_auto (GStrv) bootdirs = NULL;
   if (!_ostree_sysroot_list_all_boot_directories (self, &bootdirs, cancellable, error))
     return glnx_prefix_error (error, "listing bootcsum directories in bootfs");
@@ -2597,7 +2619,8 @@ auto_early_prune_old_deployments (OstreeSysroot *self, GPtrArray *new_deployment
 
       guint64 bootdir_size;
       g_autofree char *ostree_bootdir = g_build_filename ("ostree", bootdir, NULL);
-      if (!ot_get_dir_size (self->boot_fd, ostree_bootdir, &bootdir_size, cancellable, error))
+      if (!ot_get_dir_size (self->boot_fd, ostree_bootdir, stvfsbuf.f_bsize, &bootdir_size,
+                            cancellable, error))
         return FALSE;
 
       /* for our purposes of sizing bootcsums, it's highly unlikely we need a
@@ -2609,10 +2632,7 @@ auto_early_prune_old_deployments (OstreeSysroot *self, GPtrArray *new_deployment
            * that users report it and we tweak this code to handle this.
            *
            * An alternative is working with the block size instead, which would
-           * be easier to handle. But ideally, `ot_get_dir_size` would be block
-           * size aware too for better accuracy, which is awkward since the
-           * function itself is generic over directories and doesn't consider
-           * e.g. mount points from different filesystems. */
+           * be easier to handle. */
           g_printerr ("bootcsum %s size exceeds %u; disabling auto-prune optimization\n", bootdir,
                       G_MAXUINT);
           return TRUE;
@@ -2640,7 +2660,8 @@ auto_early_prune_old_deployments (OstreeSysroot *self, GPtrArray *new_deployment
         }
 
       guint64 bootdir_size = 0;
-      if (!get_kernel_layout_size (self, deployment, &bootdir_size, cancellable, error))
+      if (!get_kernel_layout_size (self, deployment, stvfsbuf.f_bsize, &bootdir_size, cancellable,
+                                   error))
         return FALSE;
 
       /* see similar logic in previous loop */
