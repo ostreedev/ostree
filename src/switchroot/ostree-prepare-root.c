@@ -644,18 +644,11 @@ main (int argc, char *argv[])
           = "lowerdir=" TMP_SYSROOT
             "/usr,upperdir=.usr-ovl-upper,workdir=" OTCORE_HOTFIX_USR_OVL_WORK;
 
-      /* Except overlayfs barfs if we try to mount it on a read-only
-       * filesystem.  For this use case I think admins are going to be
-       * okay if we remount the rootfs here, rather than waiting until
-       * later boot and `systemd-remount-fs.service`.
-       */
-      if (path_is_on_readonly_fs (TMP_SYSROOT))
-        {
-          if (mount (TMP_SYSROOT, TMP_SYSROOT, NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
-            err (EXIT_FAILURE, "failed to remount rootfs writable (for overlayfs)");
-        }
-
-      if (mount ("overlay", TMP_SYSROOT "/usr", "overlay", MS_SILENT, usr_ovl_options) < 0)
+      unsigned long mflags = MS_SILENT;
+      // Propagate readonly state
+      if (!sysroot_currently_writable)
+        mflags |= MS_RDONLY;
+      if (mount ("overlay", TMP_SYSROOT "/usr", "overlay", mflags, usr_ovl_options) < 0)
         err (EXIT_FAILURE, "failed to mount /usr overlayfs");
     }
   else if (!using_composefs)
