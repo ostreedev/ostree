@@ -29,10 +29,14 @@
 #include <glib/gi18n.h>
 
 static gboolean opt_verify;
+static gboolean opt_skip_signatures;
 
-static GOptionEntry options[] = { { "verify", 'V', 0, G_OPTION_ARG_NONE, &opt_verify,
-                                    "Print the commit verification status", NULL },
-                                  { NULL } };
+static GOptionEntry options[]
+    = { { "verify", 'V', 0, G_OPTION_ARG_NONE, &opt_verify, "Print the commit verification status",
+          NULL },
+        { "skip-signatures", 'S', 0, G_OPTION_ARG_NONE, &opt_skip_signatures,
+          "Print the commit verification status", NULL },
+        { NULL } };
 static gboolean
 deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeployment *deployment,
                          gboolean is_booted, gboolean is_pending, gboolean is_rollback,
@@ -116,7 +120,7 @@ deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploym
   gboolean gpg_verify = FALSE;
   if (remote)
     (void)ostree_repo_remote_get_gpg_verify (repo, remote, &gpg_verify, NULL);
-  if (!opt_verify && gpg_verify)
+  if (!opt_skip_signatures && !opt_verify && gpg_verify)
     {
       g_assert (remote);
       g_autoptr (GString) output_buffer = g_string_sized_new (256);
