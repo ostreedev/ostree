@@ -152,6 +152,8 @@ deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploym
 
       g_print ("%s", output_buffer->str);
     }
+#else
+  g_autofree char *remote = NULL;
 #endif /* OSTREE_DISABLE_GPGME */
   if (opt_verify)
     {
