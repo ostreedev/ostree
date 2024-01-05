@@ -35,8 +35,8 @@ static gboolean opt_query_booted;
 static GOptionEntry options[] = {
   { "verify", 'V', 0, G_OPTION_ARG_NONE, &opt_verify, "Print the commit verification status",
     NULL },
-  { "skip-signatures", 'S', 0, G_OPTION_ARG_NONE, &opt_skip_signatures,
-    "Print the commit verification status", NULL },
+  { "skip-signatures", 'S', 0, G_OPTION_ARG_NONE, &opt_skip_signatures, "Skip signatures in output",
+    NULL },
   { "query-booted", 'Q', 0, G_OPTION_ARG_NONE, &opt_query_booted,
     "Output the string \"default\" if the default deployment is the booted one, \"not-default\" if "
     "we are booted in a non-default deployment (e.g. the user interactively chose a different "
