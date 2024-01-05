@@ -24,7 +24,35 @@ And that's it.
 For historical reasons, OSTree defaults to detecting the bootloader; if some GRUB files are present then OSTree will default to executing `grub2-mkconfig`.
 
 [Commented out for now, as this can lead to the system not booting in some cases.]: #
-[This can be avoided by setting `sysroot.bootloader=none` (except this should not be set on s390x).]: # 
+[This can be avoided by setting `sysroot.bootloader=none` (except this should not be set on s390x).]: #
+
+## OSTree and aboot
+
+The Android bootloader is another bootloader than may be used with ostree. It still uses the files in `/boot/loader/entries` as metadata, but the boootloader does not read these files. Android bootloaders package their kernel+initramfs+cmdline+dtb in a signed binary blob called an [Android Boot Image](https://source.android.com/docs/core/architecture/bootloader/boot-image-header). This binary blob then is written to either partition boot_a or boot_b depending on which slot is suitable.
+
+Android bootloaders by design inject kargs into the cmdline, some patches may be required in the Android bootloader implementation to ensure that the firmware does not switch between system_a and system_b partitions by populating a `root=` karg, or that a `ro` karg that is incompatible with ostree is not inserted. Conversly leaving the `androidboot.slot_suffix=` karg injecting functionality is required but this is commonplace for any Android Bootloader that does AB updates.
+
+We have two accompanying scripts that work with this type of environment:
+
+[aboot-update](https://gitlab.com/CentOS/automotive/rpms/aboot-update) is used to generate Android Boot Images to be delivered to the client.
+
+[aboot-deploy](https://gitlab.com/CentOS/automotive/rpms/aboot-deploy) reads what the current slot is according to the `androidboot.slot_suffix=` karg, writes to the alternate boot_a or boot_b slot and sets a symlink either /ostree/root.a or /ostree/root.b so that it is known which userspace directory to boot into based on the `androidboot.slot_suffix=` karg, on subsequent boots.
+
+```
++-----------------------------+                            +---------------------------------+
+|                             |    +------------------+    |                                 |
+|  firmware appends:          |    |                  |    |                                 |
+|                             +--->+ boot_a partition +--->+                                 |
+|  androidboot.slot_suffix=_a |    |                  |    |                  /ostree/root.a |
+|                             |    +------------------+    |                                 |
+|  or                         |                            | system_a partition              |
+|                             |    +------------------+    |                                 |
+|  androidboot.slot_suffix=_b |    |                  |    |                  /ostree/root.b |
+|                             +--->+ boot_b partition +--->+                                 |
+|  to cmdline                 |    |                  |    |                                 |
+|                             |    +------------------+    |                                 |
++-----------------------------+                            +---------------------------------+
+```
 
 ## GRUB and os-prober
 
