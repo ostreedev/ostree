@@ -21,6 +21,9 @@ ConditionKernelCommandLine=ostree
 # marked as a triggering condition in case in the future we want
 # to do something else.
 ConditionPathExists=|/boot/ostree/finalize-failure.stamp
+# We start early
+DefaultDependencies=no
+After=sysinit.target
 RequiresMountsFor=/boot
 # Ensure that we propagate the failure into the current boot before
 # any further finalization attempts.
