@@ -62,6 +62,65 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
     </refsect1>
 
     <refsect1>
+        <title>Options</title>
+
+        <variablelist>
+            <varlistentry>
+                <term><option>--sysroot</option>="PATH"</term>
+
+                <listitem><para>
+                    Create a new OSTree sysroot at PATH
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>-V, --verify</option></term>
+
+                <listitem><para>
+                    Print the commit verification status
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>-S, --skip-signatures</option></term>
+
+                <listitem><para>
+                    Skip signatures in output
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>-Q, --query-booted</option></term>
+
+                <listitem><para>
+                    Output the string <literal>default</literal> if the default deployment
+                    is the booted one, <literal>not-default</literal> if we are booted in
+                    a non-default deployment (e.g. the user interactively chose a
+                    different entry in the bootloader menu, or the bootloader rolled back
+                    automatically, etc.). If we are not in a booted OSTree system, an
+                    error is returned.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>-v, --verbose</option></term>
+
+                <listitem><para>
+                    Print debug information during command processing
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--version</option>--version</term>
+
+                <listitem><para>
+                    Print version information and exit
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
         <title>Example</title>
         <para><command>$ ostree admin status</command></para>
 <programlisting>
