@@ -16,10 +16,14 @@
 [Unit]
 Description=OSTree Complete Boot
 Documentation=man:ostree(1)
+ConditionKernelCommandLine=ostree
 # For now, this is the only condition on which we start, but it's
 # marked as a triggering condition in case in the future we want
 # to do something else.
 ConditionPathExists=|/boot/ostree/finalize-failure.stamp
+# We start early
+DefaultDependencies=no
+After=sysinit.target
 RequiresMountsFor=/boot
 # Ensure that we propagate the failure into the current boot before
 # any further finalization attempts.
