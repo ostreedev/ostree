@@ -30,21 +30,17 @@
 
 static gboolean opt_verify;
 static gboolean opt_skip_signatures;
-static gboolean opt_query_booted;
+static gboolean opt_is_default;
 
-static GOptionEntry options[] = {
-  { "verify", 'V', 0, G_OPTION_ARG_NONE, &opt_verify, "Print the commit verification status",
-    NULL },
-  { "skip-signatures", 'S', 0, G_OPTION_ARG_NONE, &opt_skip_signatures, "Skip signatures in output",
-    NULL },
-  { "query-booted", 'Q', 0, G_OPTION_ARG_NONE, &opt_query_booted,
-    "Output the string \"default\" if the default deployment is the booted one, \"not-default\" if "
-    "we are booted in a non-default deployment (e.g. the user interactively chose a different "
-    "entry in  the bootloader menu, or the bootloader rolled back automatically, etc.). If we are "
-    "not in a booted OSTree system, an error is returned.",
-    NULL },
-  { NULL }
-};
+static GOptionEntry options[]
+    = { { "verify", 'V', 0, G_OPTION_ARG_NONE, &opt_verify, "Print the commit verification status",
+          NULL },
+        { "skip-signatures", 'S', 0, G_OPTION_ARG_NONE, &opt_skip_signatures,
+          "Skip signatures in output", NULL },
+        { "is-default", 'D', 0, G_OPTION_ARG_NONE, &opt_is_default,
+          "Output \"default\" if booted into the default deployment, otherwise \"not-default\"",
+          NULL },
+        { NULL } };
 static gboolean
 deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeployment *deployment,
                          gboolean is_booted, gboolean is_pending, gboolean is_rollback,
@@ -210,7 +206,7 @@ ot_admin_builtin_status (int argc, char **argv, OstreeCommandInvocation *invocat
   if (booted_deployment)
     ostree_sysroot_query_deployments_for (sysroot, NULL, &pending_deployment, &rollback_deployment);
 
-  if (opt_query_booted)
+  if (opt_is_default)
     {
       if (deployments->len == 0)
         return glnx_throw (error, "Not in a booted OSTree system");
