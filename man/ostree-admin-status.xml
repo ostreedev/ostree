@@ -90,7 +90,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
             </varlistentry>
 
             <varlistentry>
-                <term><option>-Q, --query-booted</option></term>
+                <term><option>-D, --is-default</option></term>
 
                 <listitem><para>
                     Output the string <literal>default</literal> if the default deployment
@@ -111,7 +111,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
             </varlistentry>
 
             <varlistentry>
-                <term><option>--version</option>--version</term>
+                <term><option>--version</option></term>
 
                 <listitem><para>
                     Print version information and exit
