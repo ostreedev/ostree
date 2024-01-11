@@ -1,0 +1,107 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+"http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<!--
+Copyright 2023 Red Hat Inc.
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the
+Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
+-->
+
+<refentry id="ostree-state-overlay@.service">
+
+  <refentryinfo>
+    <title>ostree-state-overlay</title>
+    <productname>ostree</productname>
+
+    <authorgroup>
+      <author>
+        <contrib>Developer</contrib>
+        <firstname>Jonathan</firstname>
+        <surname>Lebon</surname>
+        <email>jonathan@jlebon.com</email>
+      </author>
+    </authorgroup>
+  </refentryinfo>
+
+  <refmeta>
+    <refentrytitle>ostree-state-overlay</refentrytitle>
+    <manvolnum>8</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>ostree-state-overlay@.service</refname>
+    <refpurpose>Set up state overlays</refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <para><filename>ostree-state-overlay@.service</filename></para>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title>Experimental</title>
+    <para>
+      <emphasis role="bold">Note this feature is currently considered
+      experimental.</emphasis> It may not work correctly and some of its
+      semantics may be subject to change. Positive or negative feedback are both
+      welcome and may be provided at
+      <ulink url="https://github.com/ostreedev/ostree/discussions"/>. If using
+      the feature via rpm-ostree, feedback may also be provided at
+      <ulink url="https://github.com/coreos/rpm-ostree/issues/233"/>.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      In some cases, it's useful to be able to have a directory as part of the
+      OSTree commit yet still have this directory be writable client-side. One
+      example is software that ships in <filename>/opt</filename>.
+      <filename>/opt</filename> is its own vendor-namespaced alternate file
+      hierarchy which may contain both code and state. With state overlays, it's
+      possible to have the code part baked in the OSTree, but still allowing the
+      directory to be writable so that state can be kept there.
+    </para>
+
+    <para>
+      Since it's writable, nothing prevents sufficiently privileged code to
+      modify or delete content that comes from the OSTree commit. This is in
+      sharp contrast with content in <filename>/usr</filename>, and more
+      closely matches a package manager-based distro.
+    </para>
+  
+    <para>
+      Crucially, this state is automatically rebased during upgrades (or more
+      generally, anytime a different OSTree commit is booted). The semantics
+      of the rebase are as follows: any state file or directory that modified
+      OSTree content is deleted, otherwise it is kept and merged onto the new
+      base content (using overlayfs). This mostly matches the semantics of a
+      package manager.
+    </para>
+
+    <para>
+      To enable this feature, simply instantiate the unit template, using the
+      target path (in escaped systemd path notation) as the instance name. For
+      example, to enable it on <filename>/opt</filename>:
+    </para>
+
+    <literallayout>
+    $ systemctl enable --now ostree-state-overlay@opt.service
+    </literallayout>
+
+  </refsect1>
+
+</refentry>
