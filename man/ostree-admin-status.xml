@@ -103,6 +103,33 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
             </varlistentry>
 
             <varlistentry>
+                <term><option>-b, --booted-index</option></term>
+
+                <listitem><para>
+                    Print the index of the booted deployment. If we are not in a booted
+                    OSTree system, an error is returned.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>-p, --pending-index</option></term>
+
+                <listitem><para>
+                    Print the index of the pending deployment. If we are not in a booted
+                    OSTree system, an error is returned.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>-r, --rollback-index</option></term>
+
+                <listitem><para>
+                    Print the index of the rollback deployment. If we are not in a booted
+                    OSTree system, an error is returned.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>-v, --verbose</option></term>
 
                 <listitem><para>

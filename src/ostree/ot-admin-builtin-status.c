@@ -31,6 +31,9 @@
 static gboolean opt_verify;
 static gboolean opt_skip_signatures;
 static gboolean opt_is_default;
+static gboolean opt_booted_index;
+static gboolean opt_pending_index;
+static gboolean opt_rollback_index;
 
 static GOptionEntry options[]
     = { { "verify", 'V', 0, G_OPTION_ARG_NONE, &opt_verify, "Print the commit verification status",
@@ -40,6 +43,12 @@ static GOptionEntry options[]
         { "is-default", 'D', 0, G_OPTION_ARG_NONE, &opt_is_default,
           "Output \"default\" if booted into the default deployment, otherwise \"not-default\"",
           NULL },
+        { "booted-index", 'b', 0, G_OPTION_ARG_NONE, &opt_booted_index,
+          "Print the index of the booted deployment", NULL },
+        { "pending-index", 'p', 0, G_OPTION_ARG_NONE, &opt_pending_index,
+          "Print the index of the pending deployment", NULL },
+        { "rollback-index", 'r', 0, G_OPTION_ARG_NONE, &opt_rollback_index,
+          "Print the index of the rollback deployment", NULL },
         { NULL } };
 static gboolean
 deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeployment *deployment,
@@ -182,6 +191,22 @@ deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploym
   return TRUE;
 }
 
+static gboolean
+find_deployment_index (const OstreeDeployment *target_deployment, const GPtrArray *deployments)
+{
+  for (guint i = 0; i < deployments->len; ++i)
+    {
+      const OstreeDeployment *deployment = deployments->pdata[i];
+      if (deployment == target_deployment)
+        {
+          g_print ("%d\n", i);
+          return TRUE;
+        }
+    }
+
+  return FALSE;
+}
+
 gboolean
 ot_admin_builtin_status (int argc, char **argv, OstreeCommandInvocation *invocation,
                          GCancellable *cancellable, GError **error)
@@ -217,6 +242,18 @@ ot_admin_builtin_status (int argc, char **argv, OstreeCommandInvocation *invocat
   else if (deployments->len == 0)
     {
       g_print ("No deployments.\n");
+    }
+  else if (opt_booted_index)
+    {
+      return find_deployment_index (booted_deployment, deployments);
+    }
+  else if (opt_pending_index)
+    {
+      return find_deployment_index (pending_deployment, deployments);
+    }
+  else if (opt_rollback_index)
+    {
+      return find_deployment_index (rollback_deployment, deployments);
     }
   else
     {
