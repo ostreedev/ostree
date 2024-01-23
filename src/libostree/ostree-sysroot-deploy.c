@@ -323,11 +323,20 @@ copy_dir_recurse (int src_parent_dfd, int dest_parent_dfd, const char *name,
         }
       else
         {
-          if (!glnx_file_copy_at (src_dfd_iter.fd, dent->d_name, &child_stbuf, dest_dfd,
-                                  dent->d_name,
-                                  sysroot_flags_to_copy_flags (GLNX_FILE_COPY_OVERWRITE, flags),
-                                  cancellable, error))
-            return glnx_prefix_error (error, "Copying %s", dent->d_name);
+          if (S_ISLNK (child_stbuf.st_mode) || S_ISREG (child_stbuf.st_mode))
+            {
+              if (!glnx_file_copy_at (src_dfd_iter.fd, dent->d_name, &child_stbuf, dest_dfd,
+                                      dent->d_name,
+                                      sysroot_flags_to_copy_flags (GLNX_FILE_COPY_OVERWRITE, flags),
+                                      cancellable, error))
+                return glnx_prefix_error (error, "Copying %s", dent->d_name);
+            }
+          else
+            {
+              ot_journal_print (LOG_INFO,
+                                "Ignoring non-regular/non-symlink file found during /etc merge: %s",
+                                dent->d_name);
+            }
         }
     }
 
