@@ -18,6 +18,7 @@
 #include "config.h"
 
 #include "ostree-deployment-private.h"
+#include "ostree-sysroot-private.h"
 #include "ostree.h"
 #include "otutil.h"
 
@@ -475,4 +476,63 @@ gboolean
 ostree_deployment_is_finalization_locked (OstreeDeployment *self)
 {
   return self->finalization_locked;
+}
+
+/**
+ * ostree_deployment_set_ext_metadata:
+ * @self: Deployment
+ * @metadata_key: extended attribute(metadata) name/key to add.
+ * @metadata_value: extended attribute(metadata) value to add.
+ * @error: a #GError
+ *
+ */
+gboolean
+ostree_deployment_set_ext_metadata (OstreeDeployment *self, const char *metadata_key,
+                                    const char *metadata_value, GError **error)
+{
+  g_autofree char *backing_relpath = _ostree_sysroot_get_deployment_backing_relpath (self);
+  if (setxattr (backing_relpath, metadata_key, metadata_value, strlen (metadata_value), 0) < 0)
+    {
+      g_set_error (error, G_IO_ERROR, g_io_error_from_errno (errno),
+                   "Failed to set deployment metadata %s on %s: %s", metadata_key, backing_relpath,
+                   g_strerror (errno));
+      return FALSE;
+    }
+  return TRUE;
+}
+
+/**
+ * ostree_deployment_get_ext_metadata:
+ * @self: Deployment
+ * @metadata_key: (nullable): key of extended attribute
+ * @error: a #GError
+ * Returns: The value of a extended attribute(metadata) checksum given the key.
+ */
+const char *
+ostree_deployment_get_ext_metadata (OstreeDeployment *self, const char *metadata_key,
+                                    GError **error)
+{
+  g_autofree char *backing_relpath = _ostree_sysroot_get_deployment_backing_relpath (self);
+  g_autofree char *metadata_value = NULL;
+  g_autofree int len = getxattr (backing_relpath, metadata_key, NULL, 0);
+  if (len < 0)
+    {
+      if (errno == ENODATA)
+        return NULL;
+      g_set_error (error, G_IO_ERROR, g_io_error_from_errno (errno),
+                   "Failed to get deployment metadata %s on %s: %s", metadata_key, backing_relpath,
+                   g_strerror (errno));
+      return NULL;
+    }
+  metadata_value = g_malloc (len + 1);
+  len = getxattr (backing_relpath, metadata_key, metadata_value, len);
+  if (len < 0)
+    {
+      g_set_error (error, G_IO_ERROR, g_io_error_from_errno (errno),
+                   "Failed to get deployment metadata %s on %s: %s", metadata_key, backing_relpath,
+                   g_strerror (errno));
+      return NULL;
+    }
+  metadata_value[len] = '\0';
+  return metadata_value;
 }
