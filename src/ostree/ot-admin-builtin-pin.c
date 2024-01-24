@@ -31,6 +31,53 @@ static gboolean opt_unpin;
 static GOptionEntry options[]
     = { { "unpin", 'u', 0, G_OPTION_ARG_NONE, &opt_unpin, "Unset pin", NULL }, { NULL } };
 
+static gint64
+get_deployment_index_for_type (OstreeSysroot *sysroot, const char *deploy_index_str)
+{
+  g_autoptr (GPtrArray) deployments = ostree_sysroot_get_deployments (sysroot);
+  OstreeDeployment *booted_deployment = ostree_sysroot_get_booted_deployment (sysroot);
+  if (booted_deployment && deploy_index_str[0] == 'b')
+    return ostree_deployment_get_index (booted_deployment);
+
+  g_autoptr (OstreeDeployment) pending_deployment = NULL;
+  g_autoptr (OstreeDeployment) rollback_deployment = NULL;
+  if (booted_deployment)
+    ostree_sysroot_query_deployments_for (sysroot, NULL, &pending_deployment, &rollback_deployment);
+
+  if (pending_deployment && deploy_index_str[0] == 'p')
+    return ostree_deployment_get_index (pending_deployment);
+  else if (rollback_deployment && deploy_index_str[0] == 'r')
+    return ostree_deployment_get_index (rollback_deployment);
+
+  return -1;
+}
+
+static gboolean
+do_pinning (OstreeSysroot *sysroot, const gint64 deploy_index, GError **error)
+{
+  g_autoptr (OstreeDeployment) target_deployment
+      = ot_admin_get_indexed_deployment (sysroot, deploy_index, error);
+  if (!target_deployment)
+    return FALSE;
+
+  const gboolean current_pin = ostree_deployment_is_pinned (target_deployment);
+  const gboolean desired_pin = !opt_unpin;
+  if (current_pin == desired_pin)
+    {
+      g_print ("Deployment %lld is already %s\n", (long long int)deploy_index,
+               current_pin ? "pinned" : "unpinned");
+      return TRUE;
+    }
+  else if (ostree_sysroot_deployment_set_pinned (sysroot, target_deployment, desired_pin, error))
+    {
+      g_print ("Deployment %lld is now %s\n", (long long int)deploy_index,
+               desired_pin ? "pinned" : "unpinned");
+      return TRUE;
+    }
+
+  return FALSE;
+}
+
 gboolean
 ot_admin_builtin_pin (int argc, char **argv, OstreeCommandInvocation *invocation,
                       GCancellable *cancellable, GError **error)
@@ -54,32 +101,25 @@ ot_admin_builtin_pin (int argc, char **argv, OstreeCommandInvocation *invocation
       char *endptr = NULL;
 
       errno = 0;
-      const guint64 deploy_index = g_ascii_strtoull (deploy_index_str, &endptr, 10);
-      if (*endptr != '\0')
-        return glnx_throw (error, "Invalid index: %s", deploy_index_str);
-      if (errno == ERANGE)
-        return glnx_throw (error, "Index too large: %s", deploy_index_str);
-
-      g_autoptr (OstreeDeployment) target_deployment
-          = ot_admin_get_indexed_deployment (sysroot, deploy_index, error);
-      if (!target_deployment)
-        return FALSE;
-
-      gboolean current_pin = ostree_deployment_is_pinned (target_deployment);
-      const gboolean desired_pin = !opt_unpin;
-      if (current_pin == desired_pin)
+      gint64 deploy_index;
+      if (!g_strcmp0 (deploy_index_str, "booted") || !g_strcmp0 (deploy_index_str, "pending")
+          || !g_strcmp0 (deploy_index_str, "rollback"))
         {
-          g_print ("Deployment %s is already %s\n", deploy_index_str,
-                   current_pin ? "pinned" : "unpinned");
+          deploy_index = get_deployment_index_for_type (sysroot, deploy_index_str);
+          if (deploy_index < 0)
+            return glnx_throw (error, "Deployment type not found: %s", deploy_index_str);
         }
       else
         {
-          if (!ostree_sysroot_deployment_set_pinned (sysroot, target_deployment, desired_pin,
-                                                     error))
-            return FALSE;
-          g_print ("Deployment %s is now %s\n", deploy_index_str,
-                   desired_pin ? "pinned" : "unpinned");
+          deploy_index = g_ascii_strtoull (deploy_index_str, &endptr, 10);
+          if (*endptr != '\0')
+            return glnx_throw (error, "Invalid index: %s", deploy_index_str);
+          else if (errno == ERANGE)
+            return glnx_throw (error, "Index too large: %s", deploy_index_str);
         }
+
+      if (!do_pinning (sysroot, deploy_index, error))
+        return FALSE;
     }
 
   return TRUE;
