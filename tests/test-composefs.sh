@@ -24,6 +24,7 @@ if ! ${CMD_PREFIX} ostree --version | grep -q -e '- composefs'; then
     exit 0
 fi
 
+skip_without_user_xattrs
 
 setup_test_repository "bare-user"
 
