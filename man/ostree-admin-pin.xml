@@ -58,8 +58,10 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
 
         <para>
           Ensures the deployment at <literal>INDEX</literal>, will not be garbage
-          collected by default. This is termed "pinning".   If the
+          collected by default. This is termed "pinning". If the
           <literal>-u</literal> option is provided, undoes a pinning operation.
+          <literal>INDEX</literal> can be >= 0 or one of booted, pending or
+          rollback strings.
         </para>
     </refsect1>
 
