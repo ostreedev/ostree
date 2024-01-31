@@ -80,30 +80,6 @@ jobs:
         with:
           name: inst.tar.zst
           path: inst.tar.zst
-  build-c9s:
-    name: "Build (C9S)"
-    runs-on: ubuntu-latest
-    container: quay.io/centos/centos:stream9
-    steps:
-      - name: Install bootstrap dependencies
-        run: dnf -y install git-core dnf-utils zstd
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      # https://github.com/actions/checkout/issues/760
-      - name: Mark git checkout as safe
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - name: Install build dependencies
-        run:  dnf config-manager --enable crb && dnf builddep -y ostree
-      - name: Build
-        run: |
-          env NOCONFIGURE=1 ./autogen.sh &&
-          ./configure --with-curl --with-selinux --with-dracut=yesbutnoconf &&
-          make -j 4 && make install DESTDIR=$(pwd)/install && tar -c -C install --zstd -f inst.tar.zst .
-      - name: Upload binary
-        uses: actions/upload-artifact@v2
-        with:
-          name: inst-c9s.tar.zst
-          path: inst.tar.zst
   privtest:
     name: "Privileged testing"
     needs: [build-c, build-integration]
