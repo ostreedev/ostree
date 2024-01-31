@@ -38,6 +38,9 @@ pkg_install_buildroot() {
     case "${OS_ID}" in
         fedora)
             pkg_install dnf-plugins-core @buildsys-build;;
+        centos)
+            # Sadly this stuff is actually hardcoded in *Python code* in mock...
+            dnf -y install make gcc;;
         *) fatal "pkg_install_buildroot(): Unhandled OS ${OS_ID}";;
     esac
 }
