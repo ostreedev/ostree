@@ -24,6 +24,12 @@ if ! test -d /ostree/repo; then
     exit 0
 fi
 
+# Gracefully exit if we can not find the grub2 'default' configuration as it is
+# the case on new installations with bootupd where it is not needed.
+if ! test -f /etc/default/grub; then
+    exit 0
+fi
+
 # Gracefully exit if the grub2 configuration has BLS enabled,
 # and the installed version has support for the blscfg module.
 # Since there is no need to create menu entries for that case.
