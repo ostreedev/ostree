@@ -195,7 +195,7 @@ create_file_copy_from_input_at (OstreeRepo *repo, OstreeRepoCheckoutAtOptions *o
   g_autoptr (GVariant) modified_xattrs = NULL;
 
   /* If we're doing SELinux labeling, prepare it */
-  if (sepolicy_enabled)
+  if (sepolicy_enabled && ostree_sepolicy_host_enabled (options->sepolicy))
     {
       /* If doing sepolicy path-based labeling, we don't want to set the
        * security.selinux attr via the generic xattr paths in either the symlink
@@ -1045,7 +1045,7 @@ checkout_tree_at_recurse (OstreeRepo *self, OstreeRepoCheckoutAtOptions *options
     };
 
     /* If we're doing SELinux labeling, prepare it */
-    if (sepolicy_enabled)
+    if (sepolicy_enabled && ostree_sepolicy_host_enabled (options->sepolicy))
       {
         /* We'll set the xattr via setfscreatecon(), so don't do it via generic xattrs below. */
         modified_xattrs = _ostree_filter_selinux_xattr (xattrs);
