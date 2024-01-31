@@ -235,6 +235,9 @@ ostree_composefs_target_write (OstreeComposefsTarget *target, int fd, guchar **o
       options.file_write_cb = _composefs_write_cb;
     }
 
+  options.version = 0;
+  options.max_version = 1; /* Support new whiteout xattr if required */
+
   if (lcfs_write_to (root, &options) != 0)
     return glnx_throw_errno_prefix (error, "lcfs_write_to");
 

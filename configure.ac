@@ -284,6 +284,8 @@ AS_IF([test x$have_gpgme = xyes],
 AM_CONDITIONAL(USE_GPGME, test "x$have_gpgme" = xyes)
 
 dnl composefs won't work at all without this
+AC_CHECK_HEADERS([endian.h sys/endian.h machine/endian.h])
+AC_CHECK_FUNCS([reallocarray])
 AC_MSG_CHECKING([for MOUNT_ATTR_IDMAP])
 AC_COMPILE_IFELSE(
 	[AC_LANG_PROGRAM([
