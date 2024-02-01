@@ -1,5 +1,5 @@
 #!/bin/sh
-# 
+#
 # Copyright (C) 2014 Colin Walters <walters@verbum.org>
 #
 # This program is free software: you can redistribute it and/or modify
@@ -21,6 +21,12 @@ if ! which ostree >/dev/null 2>/dev/null; then
     exit 0
 fi
 if ! test -d /ostree/repo; then
+    exit 0
+fi
+
+# Gracefully exit if we can not find the grub2 'default' configuration as it is
+# the case on new installations with bootupd where it is not needed.
+if ! test -f /etc/default/grub; then
     exit 0
 fi
 
