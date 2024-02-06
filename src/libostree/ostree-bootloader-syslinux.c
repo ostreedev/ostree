@@ -18,6 +18,7 @@
 #include "config.h"
 
 #include "ostree-bootloader-syslinux.h"
+#include "ostree-repo-private.h"
 #include "ostree-sysroot-private.h"
 #include "otutil.h"
 
@@ -84,15 +85,16 @@ append_config_from_loader_entries (OstreeBootloaderSyslinux *self, gboolean rege
       val = ostree_bootconfig_parser_get (config, "linux");
       if (!val)
         return glnx_throw (error, "No \"linux\" key in bootloader config");
-      g_ptr_array_add (new_lines, g_strdup_printf ("\tKERNEL /boot%s", val));
+      const char *prefix = self->sysroot->repo->enable_bootprefix ? "" : "/boot";
+      g_ptr_array_add (new_lines, g_strdup_printf ("\tKERNEL %s%s", prefix, val));
 
       val = ostree_bootconfig_parser_get (config, "initrd");
       if (val)
-        g_ptr_array_add (new_lines, g_strdup_printf ("\tINITRD /boot%s", val));
+        g_ptr_array_add (new_lines, g_strdup_printf ("\tINITRD %s%s", prefix, val));
 
       val = ostree_bootconfig_parser_get (config, "devicetree");
       if (val)
-        g_ptr_array_add (new_lines, g_strdup_printf ("\tDEVICETREE /boot%s", val));
+        g_ptr_array_add (new_lines, g_strdup_printf ("\tDEVICETREE %s%s", prefix, val));
 
       val = ostree_bootconfig_parser_get (config, "options");
       if (val)
