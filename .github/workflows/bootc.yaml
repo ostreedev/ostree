@@ -35,7 +35,9 @@ jobs:
       - name: bootc install
         run: |
           set -xeuo pipefail
-          sudo podman run --rm -ti --privileged -v /:/target --pid=host --security-opt label=disable \
+          sudo podman run --env BOOTC_SKIP_SELINUX_HOST_CHECK=1 --rm -ti --privileged -v /:/target --pid=host --security-opt label=disable \
             -v /var/lib/containers:/var/lib/containers \
             localhost/test:latest bootc install to-filesystem --skip-fetch-check \
-            --disable-selinux --replace=alongside /target
+             --replace=alongside /target
+          # Verify labeling for /etc
+          sudo ls -dZ /ostree/deploy/default/deploy/*.0/etc |grep :etc_t:
