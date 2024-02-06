@@ -243,8 +243,9 @@ ot_admin_builtin_state_overlay (int argc, char **argv, OstreeCommandInvocation *
   /* First parse the args without loading the sysroot to see what options are
    * set. */
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_NONE, invocation, &sysroot,
-                                          cancellable, error))
+                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER
+                                              | OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
+                                          invocation, &sysroot, cancellable, error))
     return FALSE;
 
   if (argc < 3)
