@@ -260,9 +260,14 @@ _ostree_impl_system_generator (const char *normal_dir, const char *early_dir, co
   g_autofree char *cmdline = read_proc_cmdline ();
   if (!cmdline)
     return glnx_throw (error, "Failed to read /proc/cmdline");
+
   g_autofree char *ostree_cmdline = otcore_find_proc_cmdline_key (cmdline, "ostree");
-  // SAFETY: If we have /run/ostree, then we must have the ostree= karg
-  g_assert (ostree_cmdline);
+
+  /* This could happen in CoreOS live environments, where we hackily mock
+   * the `ostree=` karg for `ostree-prepare-root.service` specifically, but
+   * otherwise that karg doesn't exist on the real command-line. */
+  if (!ostree_cmdline)
+    return TRUE;
 
   if (!require_internal_units (normal_dir, early_dir, late_dir, error))
     return FALSE;
