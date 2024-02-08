@@ -74,8 +74,9 @@ struct OstreeSysroot
   /* The device/inode for / and /etc, used to detect booted deployment */
   dev_t root_device;
   ino_t root_inode;
-  dev_t etc_device;
-  ino_t etc_inode;
+
+  // The parsed data from /run/ostree
+  GVariantDict *run_ostree_metadata;
 
   gboolean is_physical; /* TRUE if we're pointed at physical storage root and not a deployment */
   GPtrArray *deployments;

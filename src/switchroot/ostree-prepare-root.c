@@ -430,6 +430,15 @@ main (int argc, char *argv[])
   GVariantBuilder metadata_builder;
   g_variant_builder_init (&metadata_builder, G_VARIANT_TYPE ("a{sv}"));
 
+  /* Record the underlying plain deployment directory (device,inode) pair
+   * so that it can be later checked by the sysroot code to figure out
+   * which deployment was booted.
+   */
+  if (lstat (".", &stbuf) < 0)
+    err (EXIT_FAILURE, "lstat deploy_root");
+  g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_BACKING_ROOTDEVINO,
+                         g_variant_new ("(tt)", (guint64)stbuf.st_dev, (guint64)stbuf.st_ino));
+
   // Tracks if we did successfully enable it at runtime
   bool using_composefs = false;
 

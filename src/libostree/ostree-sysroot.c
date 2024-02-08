@@ -83,6 +83,7 @@ ostree_sysroot_finalize (GObject *object)
 
   g_clear_object (&self->path);
   g_clear_object (&self->repo);
+  g_clear_pointer (&self->run_ostree_metadata, g_variant_dict_unref);
   g_clear_pointer (&self->deployments, g_ptr_array_unref);
   g_clear_object (&self->booted_deployment);
   g_clear_object (&self->staged_deployment);
@@ -808,26 +809,35 @@ parse_deployment (OstreeSysroot *self, const char *boot_link, OstreeDeployment *
   if (looking_for_booted_deployment)
     {
       struct stat stbuf;
-      struct stat etc_stbuf = {};
       if (!glnx_fstat (deployment_dfd, &stbuf, error))
         return FALSE;
 
-      /* We look for either the root or the etc subdir of the
-       * deployment. We need to do this, because when using composefs,
-       * the root is not a bind mount of the deploy dir, but the etc
-       * dir is.
+      /* ostree-prepare-root records the (device, inode) pair of the underlying real deployment
+       * directory (before we might have mounted a composefs or overlayfs on top).
+       *
+       * Because this parser is operating outside the mounted namespace, we compare against
+       * that backing directory.
        */
-
-      if (!glnx_fstatat_allow_noent (deployment_dfd, "etc", &etc_stbuf, 0, error))
-        return FALSE;
+      g_assert (self->run_ostree_metadata);
+      guint64 expected_root_dev = 0;
+      guint64 expected_root_inode = 0;
+      if (!g_variant_dict_lookup (self->run_ostree_metadata,
+                                  OTCORE_RUN_BOOTED_KEY_BACKING_ROOTDEVINO, "(tt)",
+                                  &expected_root_dev, &expected_root_inode))
+        {
+          g_debug ("Missing %s", OTCORE_RUN_BOOTED_KEY_BACKING_ROOTDEVINO);
+          expected_root_dev = (guint64)self->root_device;
+          expected_root_inode = (guint64)self->root_inode;
+        }
+      else
+        g_debug ("Target rootdev key %s found", OTCORE_RUN_BOOTED_KEY_BACKING_ROOTDEVINO);
 
       /* A bit ugly, we're assigning to a sysroot-owned variable from deep in
        * this parsing code. But eh, if something fails the sysroot state can't
        * be relied on anyways.
        */
       is_booted_deployment
-          = (stbuf.st_dev == self->root_device && stbuf.st_ino == self->root_inode)
-            || (etc_stbuf.st_dev == self->etc_device && etc_stbuf.st_ino == self->etc_inode);
+          = stbuf.st_dev == expected_root_dev && stbuf.st_ino == expected_root_inode;
     }
 
   g_autoptr (OstreeDeployment) ret_deployment
@@ -1016,27 +1026,27 @@ ostree_sysroot_initialize (OstreeSysroot *self, GError **error)
        * we'll use it to sanity check that we found a booted deployment for example.
        * Second, we also find out whether sysroot == /.
        */
-      if (!glnx_fstatat_allow_noent (AT_FDCWD, OSTREE_PATH_BOOTED, NULL, 0, error))
+      glnx_autofd int booted_state_fd = -1;
+      if (!ot_openat_ignore_enoent (AT_FDCWD, OSTREE_PATH_BOOTED, &booted_state_fd, error))
         return FALSE;
-      const gboolean ostree_booted = (errno == 0);
+      const gboolean ostree_booted = booted_state_fd != -1;
 
+      if (booted_state_fd != -1)
+        {
+          g_autoptr (GVariant) ostree_run_metadata_v = NULL;
+          if (!ot_variant_read_fd (booted_state_fd, 0, G_VARIANT_TYPE_VARDICT, TRUE,
+                                   &ostree_run_metadata_v, error))
+            return glnx_prefix_error (error, "failed to read %s", OTCORE_RUN_BOOTED);
+          self->run_ostree_metadata = g_variant_dict_new (ostree_run_metadata_v);
+        }
+
+      // Gather the root device/inode
       {
         struct stat root_stbuf;
         if (!glnx_fstatat (AT_FDCWD, "/", &root_stbuf, 0, error))
           return FALSE;
         self->root_device = root_stbuf.st_dev;
         self->root_inode = root_stbuf.st_ino;
-      }
-
-      {
-        struct stat etc_stbuf;
-        if (!glnx_fstatat_allow_noent (AT_FDCWD, "/etc", &etc_stbuf, 0, error))
-          return FALSE;
-        if (errno != ENOENT)
-          {
-            self->etc_device = etc_stbuf.st_dev;
-            self->etc_inode = etc_stbuf.st_ino;
-          }
       }
 
       struct stat self_stbuf;
@@ -1047,6 +1057,7 @@ ostree_sysroot_initialize (OstreeSysroot *self, GError **error)
           = (self->root_device == self_stbuf.st_dev && self->root_inode == self_stbuf.st_ino);
 
       self->root_is_ostree_booted = (ostree_booted && root_is_sysroot);
+      g_debug ("root_is_ostree_booted: %d", self->root_is_ostree_booted);
       self->loadstate = OSTREE_SYSROOT_LOAD_STATE_INIT;
     }
 
