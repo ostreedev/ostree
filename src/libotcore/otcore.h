@@ -82,5 +82,7 @@ GKeyFile *otcore_load_config (int rootfs, const char *filename, GError **error);
 #define OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT "root.transient"
 // This key will be present if the sysroot-ro flag was found
 #define OTCORE_RUN_BOOTED_KEY_SYSROOT_RO "sysroot-ro"
+// Always holds the (device, inode) pair of the booted deployment
+#define OTCORE_RUN_BOOTED_KEY_BACKING_ROOTDEVINO "backing-root-device-inode"
 
 #define OTCORE_RUN_BOOTED_KEY_TRANSIENT_ETC "transient-etc"
