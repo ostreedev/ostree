@@ -392,6 +392,16 @@ main (int argc, char *argv[])
     err (EXIT_FAILURE, "Failed to create %s", OTCORE_RUN_OSTREE);
   if (mkdirat (AT_FDCWD, OTCORE_RUN_OSTREE_PRIVATE, 0) < 0)
     err (EXIT_FAILURE, "Failed to create %s", OTCORE_RUN_OSTREE_PRIVATE);
+  if (mkdirat (AT_FDCWD, OTCORE_RUN_DEPLOYDIR, 0) < 0)
+    err (EXIT_FAILURE, "Failed to create %s", OTCORE_RUN_DEPLOYDIR);
+
+  /* Bind mount deploy dir (readonly) so we can later find the active deployment */
+  if (mount (deploy_path, OTCORE_RUN_DEPLOYDIR, NULL, MS_BIND | MS_SILENT, NULL) < 0)
+    err (EXIT_FAILURE, "failed to bind-mount deploy dir %s", deploy_path);
+  if (mount (OTCORE_RUN_DEPLOYDIR, OTCORE_RUN_DEPLOYDIR, NULL,
+             MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL)
+      < 0)
+    err (EXIT_FAILURE, "failed to bind mount (class:readonly) deploy dir");
 
   /* Fall back to querying the repository configuration in the target disk.
    * This is an operating system builder choice.  More info:

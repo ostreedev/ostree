@@ -55,6 +55,8 @@ GKeyFile *otcore_load_config (int rootfs, const char *filename, GError **error);
 // we make it with mode 0 (which requires CAP_DAC_OVERRIDE to pass through).
 #define OTCORE_RUN_OSTREE_PRIVATE "/run/ostree/.private"
 
+#define OTCORE_RUN_DEPLOYDIR OTCORE_RUN_OSTREE "/deploy"
+
 // The directory holding extra/backing data for a deployment, such as overlayfs workdirs
 #define OSTREE_DEPLOYMENT_BACKING_DIR "backing"
 // The directory holding the root overlayfs
