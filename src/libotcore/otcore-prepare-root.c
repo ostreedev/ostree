@@ -19,6 +19,12 @@
 
 #include "otcore.h"
 
+// This key is used by default if present in the initramfs to verify
+// the signature on the target commit object.  When composefs is
+// in use, the ostree commit metadata will contain the composefs image digest,
+// which can be used to fully verify the target filesystem tree.
+#define BINDING_KEYPATH "/etc/ostree/initramfs-root-binding.key"
+
 static bool
 proc_cmdline_has_key_starting_with (const char *cmdline, const char *key)
 {
@@ -133,6 +139,72 @@ otcore_load_config (int rootfs_fd, const char *filename, GError **error)
         return NULL;
       if (!g_key_file_load_from_data (ret, buf, -1, 0, error))
         return NULL;
+    }
+
+  return g_steal_pointer (&ret);
+}
+
+void
+otcore_free_composefs_config (ComposefsConfig *config)
+{
+  g_ptr_array_unref (config->pubkeys);
+  g_free (config->signature_pubkey);
+  g_free (config);
+}
+
+// Parse the [composefs] section of the prepare-root.conf.
+ComposefsConfig *
+otcore_load_composefs_config (GKeyFile *config, GError **error)
+{
+  GLNX_AUTO_PREFIX_ERROR ("Loading composefs config", error);
+
+  g_autoptr (ComposefsConfig) ret = g_new0 (ComposefsConfig, 1);
+
+  g_autofree char *enabled = g_key_file_get_value (config, OTCORE_PREPARE_ROOT_COMPOSEFS_KEY,
+                                                   OTCORE_PREPARE_ROOT_ENABLED_KEY, NULL);
+  if (g_strcmp0 (enabled, "signed") == 0)
+    {
+      ret->enabled = OT_TRISTATE_YES;
+      ret->is_signed = true;
+    }
+  else if (!ot_keyfile_get_tristate_with_default (config, OTCORE_PREPARE_ROOT_COMPOSEFS_KEY,
+                                                  OTCORE_PREPARE_ROOT_ENABLED_KEY,
+                                                  OT_TRISTATE_MAYBE, &ret->enabled, error))
+    return NULL;
+
+  // Look for a key - we default to the initramfs binding path.
+  if (!ot_keyfile_get_value_with_default (config, OTCORE_PREPARE_ROOT_COMPOSEFS_KEY,
+                                          OTCORE_PREPARE_ROOT_KEYPATH_KEY, BINDING_KEYPATH,
+                                          &ret->signature_pubkey, error))
+    return NULL;
+
+  if (ret->is_signed)
+    {
+      ret->pubkeys = g_ptr_array_new_with_free_func ((GDestroyNotify)g_bytes_unref);
+
+      g_autofree char *pubkeys = NULL;
+      gsize pubkeys_size;
+
+      /* Load keys */
+
+      if (!g_file_get_contents (ret->signature_pubkey, &pubkeys, &pubkeys_size, error))
+        return glnx_prefix_error_null (error, "Reading public key file '%s'",
+                                       ret->signature_pubkey);
+
+      g_auto (GStrv) lines = g_strsplit (pubkeys, "\n", -1);
+      for (char **iter = lines; *iter; iter++)
+        {
+          const char *line = *iter;
+          if (!*line)
+            continue;
+
+          gsize pubkey_size;
+          g_autofree guchar *pubkey = g_base64_decode (line, &pubkey_size);
+          g_ptr_array_add (ret->pubkeys, g_bytes_new_take (g_steal_pointer (&pubkey), pubkey_size));
+        }
+
+      if (ret->pubkeys->len == 0)
+        return glnx_null_throw (error, "public key file specified, but no public keys found");
     }
 
   return g_steal_pointer (&ret);
