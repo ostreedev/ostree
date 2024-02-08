@@ -753,3 +753,19 @@ _ostree_filter_selinux_xattr (GVariant *xattrs)
     return NULL;
   return g_variant_ref_sink (g_variant_builder_end (&builder));
 }
+
+/**
+ * ostree_sepolicy_host_enabled:
+ * @self: Policy
+ *
+ * Return if the host has selinux enabled
+ */
+gboolean
+ostree_sepolicy_host_enabled (OstreeSePolicy *self)
+{
+#ifdef HAVE_SELINUX
+  return cached_is_selinux_enabled ();
+#else
+  return FALSE;
+#endif
+}
