@@ -147,7 +147,7 @@ otcore_load_config (int rootfs_fd, const char *filename, GError **error)
 void
 otcore_free_composefs_config (ComposefsConfig *config)
 {
-  g_ptr_array_unref (config->pubkeys);
+  g_clear_pointer (&config->pubkeys, g_ptr_array_unref);
   g_free (config->signature_pubkey);
   g_free (config);
 }
