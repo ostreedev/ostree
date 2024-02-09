@@ -85,7 +85,8 @@ LT_INIT([disable-static])
 dnl We have an always-on feature now to signify the fix for 
 dnl https://github.com/ostreedev/ostree/pull/2874/commits/de6fddc6adee09a93901243dc7074090828a1912
 dnl "commit: fix ostree deployment on 64-bit inode fs"
-OSTREE_FEATURES="inode64"
+dnl initial-var signifies this version of ostree propagates /var
+OSTREE_FEATURES="inode64 initial-var"
 AC_SUBST([OSTREE_FEATURES])
 
 GLIB_TESTS

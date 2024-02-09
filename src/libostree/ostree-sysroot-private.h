@@ -148,6 +148,8 @@ char *_ostree_sysroot_get_deployment_backing_relpath (OstreeDeployment *deployme
 gboolean _ostree_sysroot_rmrf_deployment (OstreeSysroot *sysroot, OstreeDeployment *deployment,
                                           GCancellable *cancellable, GError **error);
 
+gboolean _ostree_sysroot_stateroot_legacy_var_init (int dfd, GError **error);
+
 char *_ostree_sysroot_get_runstate_path (OstreeDeployment *deployment, const char *key);
 
 gboolean _ostree_sysroot_run_in_deployment (int deployment_dfd, const char *const *bwrap_argv,
