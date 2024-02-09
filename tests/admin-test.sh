@@ -63,6 +63,11 @@ assert_not_file_has_content status.txt "pending"
 assert_not_file_has_content status.txt "rollback"
 validate_bootloader
 
+# Someday probably soon we'll turn this on by default, but for now
+if test -f sysroot/ostree/deploy/testos/deploy/*.0/.ostree.cfs; then
+    fatal "found composefs unexpectedly"
+fi
+
 # Test the bootable and linux keys
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo --print-metadata-key=ostree.linux show testos:testos/buildmain/x86_64-runtime >out.txt
 assert_file_has_content_literal out.txt 3.6.0
