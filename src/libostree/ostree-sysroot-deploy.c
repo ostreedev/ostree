@@ -661,8 +661,34 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
                                 cancellable, error))
     return FALSE;
 
+  glnx_autofd int ret_deployment_dfd = -1;
+  if (!glnx_opendirat (osdeploy_dfd, checkout_target_name, TRUE, &ret_deployment_dfd, error))
+    return FALSE;
+
 #ifdef HAVE_COMPOSEFS
-  if (repo->composefs_wanted != OT_TRISTATE_NO)
+  /* TODO: Consider changing things in the future to parse the deployment config from memory, and
+   * if composefs is enabled, then we can check out in "user mode" (i.e. only have suid binaries
+   * enabled in composefs, etc.)
+   *
+   * However in practice we should get this for free by going to composefs-native backing
+   * storage.
+   */
+  g_autoptr (GKeyFile) prepare_root_config
+      = otcore_load_config (ret_deployment_dfd, PREPARE_ROOT_CONFIG_PATH, error);
+  if (!prepare_root_config)
+    return glnx_prefix_error (error, "Parsing prepare-root config");
+  // We always parse the composefs config, because we want to detect and error
+  // out if it's enabled, but not supported at compile time.
+  g_autoptr (ComposefsConfig) composefs_config
+      = otcore_load_composefs_config (prepare_root_config, error);
+  if (!composefs_config)
+    return glnx_prefix_error (error, "Reading composefs config");
+
+  OtTristate composefs_enabled = composefs_config->enabled;
+  g_debug ("composefs enabled by config: %d repo: %d", composefs_enabled, repo->composefs_wanted);
+  if (repo->composefs_wanted == OT_TRISTATE_YES)
+    composefs_enabled = repo->composefs_wanted;
+  if (composefs_enabled == OT_TRISTATE_YES)
     {
       g_autofree guchar *fsverity_digest = NULL;
       g_auto (GLnxTmpfile) tmpf = {
@@ -691,6 +717,8 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
       g_autofree char *composefs_cfs_path
           = g_strdup_printf ("%s/" OSTREE_COMPOSEFS_NAME, checkout_target_name);
 
+      g_debug ("writing %s", composefs_cfs_path);
+
       if (!glnx_open_tmpfile_linkable_at (osdeploy_dfd, checkout_target_name, O_WRONLY | O_CLOEXEC,
                                           &tmpf, error))
         return FALSE;
@@ -712,9 +740,13 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
                                  error))
         return FALSE;
     }
+  else
+    g_debug ("not using composefs");
 #endif
 
-  return glnx_opendirat (osdeploy_dfd, checkout_target_name, TRUE, out_deployment_dfd, error);
+  if (out_deployment_dfd)
+    *out_deployment_dfd = glnx_steal_fd (&ret_deployment_dfd);
+  return TRUE;
 }
 
 static char *

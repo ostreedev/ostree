@@ -76,14 +76,6 @@
 #include "ot-keyfile-utils.h"
 #include "otcore.h"
 
-#define PREPARE_ROOT_CONFIG_PATH "ostree/prepare-root.conf"
-
-// This key is used by default if present in the initramfs to verify
-// the signature on the target commit object.  When composefs is
-// in use, the ostree commit metadata will contain the composefs image digest,
-// which can be used to fully verify the target filesystem tree.
-#define BINDING_KEYPATH "/etc/ostree/initramfs-root-binding.key"
-
 #define SYSROOT_KEY "sysroot"
 #define READONLY_KEY "readonly"
 
@@ -91,10 +83,6 @@
 #define ROOT_KEY "root"
 #define ETC_KEY "etc"
 #define TRANSIENT_KEY "transient"
-
-#define COMPOSEFS_KEY "composefs"
-#define ENABLED_KEY "enabled"
-#define KEYPATH_KEY "keypath"
 
 #define OSTREE_PREPARE_ROOT_DEPLOYMENT_MSG \
   SD_ID128_MAKE (71, 70, 33, 6a, 73, ba, 46, 01, ba, d3, 1a, f8, 88, aa, 0d, f7)
@@ -258,79 +246,6 @@ composefs_error_message (int errsv)
 
 #endif
 
-typedef struct
-{
-  OtTristate enabled;
-  gboolean is_signed;
-  char *signature_pubkey;
-  GPtrArray *pubkeys;
-} ComposefsConfig;
-
-static void
-free_composefs_config (ComposefsConfig *config)
-{
-  g_ptr_array_unref (config->pubkeys);
-  g_free (config->signature_pubkey);
-  g_free (config);
-}
-
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (ComposefsConfig, free_composefs_config)
-
-// Parse the [composefs] section of the prepare-root.conf.
-static ComposefsConfig *
-load_composefs_config (GKeyFile *config, GError **error)
-{
-  GLNX_AUTO_PREFIX_ERROR ("Loading composefs config", error);
-
-  g_autoptr (ComposefsConfig) ret = g_new0 (ComposefsConfig, 1);
-
-  g_autofree char *enabled = g_key_file_get_value (config, COMPOSEFS_KEY, ENABLED_KEY, NULL);
-  if (g_strcmp0 (enabled, "signed") == 0)
-    {
-      ret->enabled = OT_TRISTATE_YES;
-      ret->is_signed = true;
-    }
-  else if (!ot_keyfile_get_tristate_with_default (config, COMPOSEFS_KEY, ENABLED_KEY,
-                                                  OT_TRISTATE_MAYBE, &ret->enabled, error))
-    return NULL;
-
-  // Look for a key - we default to the initramfs binding path.
-  if (!ot_keyfile_get_value_with_default (config, COMPOSEFS_KEY, KEYPATH_KEY, BINDING_KEYPATH,
-                                          &ret->signature_pubkey, error))
-    return NULL;
-
-  if (ret->is_signed)
-    {
-      ret->pubkeys = g_ptr_array_new_with_free_func ((GDestroyNotify)g_bytes_unref);
-
-      g_autofree char *pubkeys = NULL;
-      gsize pubkeys_size;
-
-      /* Load keys */
-
-      if (!g_file_get_contents (ret->signature_pubkey, &pubkeys, &pubkeys_size, error))
-        return glnx_prefix_error_null (error, "Reading public key file '%s'",
-                                       ret->signature_pubkey);
-
-      g_auto (GStrv) lines = g_strsplit (pubkeys, "\n", -1);
-      for (char **iter = lines; *iter; iter++)
-        {
-          const char *line = *iter;
-          if (!*line)
-            continue;
-
-          gsize pubkey_size;
-          g_autofree guchar *pubkey = g_base64_decode (line, &pubkey_size);
-          g_ptr_array_add (ret->pubkeys, g_bytes_new_take (g_steal_pointer (&pubkey), pubkey_size));
-        }
-
-      if (ret->pubkeys->len == 0)
-        return glnx_null_throw (error, "public key file specified, but no public keys found");
-    }
-
-  return g_steal_pointer (&ret);
-}
-
 int
 main (int argc, char *argv[])
 {
@@ -362,7 +277,7 @@ main (int argc, char *argv[])
 
   // We always parse the composefs config, because we want to detect and error
   // out if it's enabled, but not supported at compile time.
-  g_autoptr (ComposefsConfig) composefs_config = load_composefs_config (config, &error);
+  g_autoptr (ComposefsConfig) composefs_config = otcore_load_composefs_config (config, &error);
   if (!composefs_config)
     errx (EXIT_FAILURE, "%s", error->message);
 
