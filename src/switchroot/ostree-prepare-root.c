@@ -76,8 +76,6 @@
 #include "ot-keyfile-utils.h"
 #include "otcore.h"
 
-#define PREPARE_ROOT_CONFIG_PATH "ostree/prepare-root.conf"
-
 #define SYSROOT_KEY "sysroot"
 #define READONLY_KEY "readonly"
 
