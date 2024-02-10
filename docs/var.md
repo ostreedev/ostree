@@ -9,6 +9,31 @@ nav_order: 6
 1. TOC
 {:toc}
 
+## Default commit/image /var handling
+
+As of OSTree 2024.3, when a commit is "deployed" (queued to boot),
+the initial content of `/var` in a commit will be placed into the
+"stateroot" (default `var`) if the stateroot `var` is empty.
+
+The semantics of this are intended to match that of Docker "volumes";
+consider that ostree systems have the equivalent of
+`VOLUME /var`
+by default.
+
+It is still strongly recommended to use systemd `tmpfiles.d` snippets
+to populate directory structure and the like in `/var` on firstboot,
+because this is more resilent.
+
+Even better, use `StateDirectory=` for systemd units.
+
+### ostree container /var
+
+Some earlier versions of the ostree-container stack migrated content in `/var`
+in container images into `/usr/share/factory/var` (per below).  This has
+been reverted, and the semantics defer to the above ostree semantic.
+
+## Previous /var handling via /usr/share/factory/var
+
 As of OSTree 2023.8, the `/usr/lib/tmpfiles.d/ostree-tmpfiles.conf` file gained this snippet:
 
 ```text
@@ -18,7 +43,7 @@ As of OSTree 2023.8, the `/usr/lib/tmpfiles.d/ostree-tmpfiles.conf` file gained 
 C+! /var - - - - -
 ```
 
-This is inert by default.  However, there is a pending change in the ostree-container stack which will move all files in `/var` from fetched container images into `/usr/share/factory/var`.  And other projects in the ostree ecosystem are now recommended do this by default.
+This is inert by default.  As of version 0.13 of the ostree-ext project, content in `/var` in fetched container images is moved to `/usr/share/factory/var`.  This is no longer recommended.
 
 Together, this will have the semantic that on OS updates, on the next boot (early in boot), any new files/directories will be copied.  For more information on this, see [`man tmpfiles.d`](https://man7.org/linux/man-pages/man5/tmpfiles.d.5.html).
 

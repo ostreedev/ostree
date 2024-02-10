@@ -1792,6 +1792,46 @@ ostree_sysroot_lock_finish (OstreeSysroot *self, GAsyncResult *result, GError **
   return g_task_propagate_boolean ((GTask *)result, error);
 }
 
+// This is a legacy subset of what happens normally via systemd tmpfiles.d;
+// it is only run in the case that the deployment it self comes without
+// usr/lib/tmpfiles.d
+gboolean
+_ostree_sysroot_stateroot_legacy_var_init (int dfd, GError **error)
+{
+  GLNX_AUTO_PREFIX_ERROR ("Legacy mode stateroot var initialization", error);
+
+  /* This is a bit of a legacy hack...but we have to keep it around
+   * now.  We're ensuring core subdirectories of /var exist.
+   */
+  if (!glnx_ensure_dir (dfd, "tmp", 0777, error))
+    return FALSE;
+
+  if (fchmodat (dfd, "tmp", 01777, 0) < 0)
+    return glnx_throw_errno_prefix (error, "fchmod %s", "var/tmp");
+
+  if (!glnx_ensure_dir (dfd, "lib", 0777, error))
+    return FALSE;
+
+  /* This needs to be available and properly labeled early during the boot
+   * process (before tmpfiles.d kicks in), so that journald can flush logs from
+   * the first boot there. https://bugzilla.redhat.com/show_bug.cgi?id=1265295
+   * */
+  if (!glnx_ensure_dir (dfd, "log", 0755, error))
+    return FALSE;
+
+  if (!glnx_fstatat_allow_noent (dfd, "run", NULL, AT_SYMLINK_NOFOLLOW, error))
+    return FALSE;
+  if (errno == ENOENT && symlinkat ("../run", dfd, "run") < 0)
+    return glnx_throw_errno_prefix (error, "Symlinking %s", "var/run");
+
+  if (!glnx_fstatat_allow_noent (dfd, "lock", NULL, AT_SYMLINK_NOFOLLOW, error))
+    return FALSE;
+  if (errno == ENOENT && symlinkat ("../run/lock", dfd, "lock") < 0)
+    return glnx_throw_errno_prefix (error, "Symlinking %s", "var/lock");
+
+  return TRUE;
+}
+
 /**
  * ostree_sysroot_init_osname:
  * @self: Sysroot
@@ -1822,31 +1862,6 @@ ostree_sysroot_init_osname (OstreeSysroot *self, const char *osname, GCancellabl
 
   if (mkdirat (dfd, "var", 0777) < 0)
     return glnx_throw_errno_prefix (error, "Creating %s", "var");
-
-  /* This is a bit of a legacy hack...but we have to keep it around
-   * now.  We're ensuring core subdirectories of /var exist.
-   */
-  if (mkdirat (dfd, "var/tmp", 0777) < 0)
-    return glnx_throw_errno_prefix (error, "Creating %s", "var/tmp");
-
-  if (fchmodat (dfd, "var/tmp", 01777, 0) < 0)
-    return glnx_throw_errno_prefix (error, "fchmod %s", "var/tmp");
-
-  if (mkdirat (dfd, "var/lib", 0777) < 0)
-    return glnx_throw_errno_prefix (error, "Creating %s", "var/lib");
-
-  /* This needs to be available and properly labeled early during the boot
-   * process (before tmpfiles.d kicks in), so that journald can flush logs from
-   * the first boot there. https://bugzilla.redhat.com/show_bug.cgi?id=1265295
-   * */
-  if (mkdirat (dfd, "var/log", 0755) < 0)
-    return glnx_throw_errno_prefix (error, "Creating %s", "var/log");
-
-  if (symlinkat ("../run", dfd, "var/run") < 0)
-    return glnx_throw_errno_prefix (error, "Symlinking %s", "var/run");
-
-  if (symlinkat ("../run/lock", dfd, "var/lock") < 0)
-    return glnx_throw_errno_prefix (error, "Symlinking %s", "var/lock");
 
   if (!_ostree_sysroot_bump_mtime (self, error))
     return FALSE;

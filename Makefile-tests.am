@@ -105,6 +105,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-admin-deploy-syslinux.sh \
 	tests/test-admin-deploy-bootprefix.sh \
 	tests/test-admin-deploy-composefs.sh \
+	tests/test-admin-deploy-var.sh \
 	tests/test-admin-deploy-2.sh \
 	tests/test-admin-deploy-karg.sh \
 	tests/test-admin-deploy-switch.sh \

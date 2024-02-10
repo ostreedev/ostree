@@ -48,6 +48,9 @@
 #include "ostree.h"
 #include "otcore.h"
 
+// The path to the systemd tmpfiles.d directory.
+#define USRLIB_TMPFILES "usr/lib/tmpfiles.d"
+
 #ifdef HAVE_LIBSYSTEMD
 #define OSTREE_VARRELABEL_ID \
   SD_ID128_MAKE (da, 67, 9b, 08, ac, d3, 45, 04, b7, 89, d9, 6f, 81, 8e, a7, 81)
@@ -657,6 +660,7 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
 
   /* Generate hardlink farm, then opendir it */
   OstreeRepoCheckoutAtOptions checkout_opts = { .process_passthrough_whiteouts = TRUE };
+
   if (!ostree_repo_checkout_at (repo, &checkout_opts, osdeploy_dfd, checkout_target_name, csum,
                                 cancellable, error))
     return FALSE;
@@ -3088,33 +3092,81 @@ _ostree_deployment_set_bootconfig_from_kargs (OstreeDeployment *deployment,
     }
 }
 
-// Perform some basic static analysis and emit warnings for things
-// that are likely to fail later.  This function only returns
-// a hard error if something unexpected (e.g. I/O error) occurs.
+// If the stateroot /var is uninitialized, copy the /var content from the deployment.
+// This is intended to mirror the semantics of Docker volumes.
 static gboolean
-lint_deployment_fs (OstreeSysroot *self, OstreeDeployment *deployment, int deployment_dfd,
-                    GCancellable *cancellable, GError **error)
+prepare_deployment_var (OstreeSysroot *self, OstreeDeployment *deployment, int deployment_dfd,
+                        GCancellable *cancellable, GError **error)
 {
-  g_auto (GLnxDirFdIterator) dfd_iter = {
-    0,
-  };
-  gboolean exists;
+  GLNX_AUTO_PREFIX_ERROR ("Preparing deployment /var", error);
 
-  if (!ot_dfd_iter_init_allow_noent (deployment_dfd, "var", &dfd_iter, &exists, error))
+  // Does the deployment have a var?  If not, we're done.  (Though this will probably
+  // cause problems at boot time)
+  {
+    g_auto (GLnxDirFdIterator) dfd_iter = {
+      0,
+    };
+    gboolean exists;
+
+    if (!ot_dfd_iter_init_allow_noent (deployment_dfd, "var", &dfd_iter, &exists, error))
+      return FALSE;
+    if (!exists)
+      {
+        g_debug ("deployment has no /var");
+        return TRUE;
+      }
+  }
+
+  // Open the stateroot which holds the shared /var
+  const char *stateroot = ostree_deployment_get_osname (deployment);
+  g_autofree char *stateroot_path = g_build_filename ("ostree/deploy/", stateroot, "var", NULL);
+  glnx_autofd int stateroot_dfd = -1;
+  if (!glnx_opendirat (self->sysroot_fd, stateroot_path, FALSE, &stateroot_dfd, error))
+    return glnx_prefix_error (error, "Opening stateroot");
+
+  // Check if the stateroot is empty
+  {
+    g_auto (GLnxDirFdIterator) dfd_iter = {
+      0,
+    };
+
+    if (!glnx_dirfd_iterator_init_at (stateroot_dfd, ".", FALSE, &dfd_iter, error))
+      return FALSE;
+
+    struct dirent *dent;
+
+    if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
+      return FALSE;
+
+    if (dent != NULL)
+      {
+        // We found existing content in the stateroot var, so we're done.
+        // There is no merge semantics.
+        g_debug ("Stateroot %s is non-empty", stateroot);
+        return TRUE;
+      }
+  }
+
+  g_debug ("Copying initial deployment /var");
+  // At this point we should initialize the stateroot var with the content from
+  // the commit/image.  Note we need to force a copy; hopefully reflinks are available.
+  OstreeRepoCheckoutAtOptions co_opts
+      = { .force_copy = TRUE,
+          .subpath = "/var",
+          .overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES };
+  if (!ostree_repo_checkout_at (self->repo, &co_opts, stateroot_dfd, ".",
+                                ostree_deployment_get_csum (deployment), cancellable, error))
     return FALSE;
-  while (exists)
+
+  if (!glnx_fstatat_allow_noent (deployment_dfd, USRLIB_TMPFILES, NULL, AT_SYMLINK_NOFOLLOW, error))
+    return glnx_prefix_error (error, "Querying %s", USRLIB_TMPFILES);
+  if (errno == ENOENT)
     {
-      struct dirent *dent;
-
-      if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
+      g_debug ("deployment has no %s", USRLIB_TMPFILES);
+      // OK, this OS doesn't appear to use systemd (or tmpfiles.d at least).  For full
+      // backwards compatibility we create some standard things in the stateroot var.
+      if (!_ostree_sysroot_stateroot_legacy_var_init (stateroot_dfd, error))
         return FALSE;
-      if (dent == NULL)
-        break;
-
-      fprintf (stderr,
-               "note: Deploying commit %s which contains content in /var/%s that should be in "
-               "/usr/share/factory/var\n",
-               ostree_deployment_get_csum (deployment), dent->d_name);
     }
 
   return TRUE;
@@ -3182,7 +3234,7 @@ sysroot_initialize_deployment (OstreeSysroot *self, const char *osname, const ch
   if (!prepare_deployment_etc (self, repo, new_deployment, deployment_dfd, cancellable, error))
     return FALSE;
 
-  if (!lint_deployment_fs (self, new_deployment, deployment_dfd, cancellable, error))
+  if (!prepare_deployment_var (self, new_deployment, deployment_dfd, cancellable, error))
     return FALSE;
 
   ot_transfer_out_value (out_new_deployment, &new_deployment);
