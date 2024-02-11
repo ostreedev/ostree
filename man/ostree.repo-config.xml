@@ -418,7 +418,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
 
       <varlistentry>
         <term><varname>bls-append-except-default</varname></term>
-        <listitem><para>A semicolon seperated string list of key-value pairs. For example:
+        <listitem><para>A semicolon separated string list of key-value pairs. For example:
         <literal>bls-append-except-default=key1=value1;key2=value2</literal>. These key-value 
         pairs will be injected into the generated BLS fragments of the non-default deployments.
         In other words, the BLS fragment of the default deployment will be unaffected by
