@@ -423,7 +423,7 @@ main (int argc, char *argv[])
           using_composefs = true;
           g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_COMPOSEFS,
                                  g_variant_new_boolean (true));
-          g_print ("composefs: mounted successfully");
+          g_print ("composefs: mounted successfully\n");
         }
       else
         {
