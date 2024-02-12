@@ -295,7 +295,8 @@ AC_COMPILE_IFELSE(
   ],[int foo = MOUNT_ATTR_IDMAP;]
 	)],
 	[AC_MSG_RESULT(yes)
-	 have_mount_attr_idmap=yes],
+		AC_DEFINE([HAVE_MOUNT_ATTR_IDMAP], 1, [Define if MOUNT_ATTR_IDMAP is available in linux/mount.h])
+		have_mount_attr_idmap=yes],
 	[AC_MSG_RESULT(no)])
 dnl These are needed by libcomposefs to use the new mount API optionally
 AC_MSG_CHECKING([for new mount API (fsconfig)])
