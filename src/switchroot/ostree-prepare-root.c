@@ -308,17 +308,6 @@ main (int argc, char *argv[])
   if (mkdirat (AT_FDCWD, OTCORE_RUN_OSTREE_PRIVATE, 0) < 0)
     err (EXIT_FAILURE, "Failed to create %s", OTCORE_RUN_OSTREE_PRIVATE);
 
-  g_autofree char *transient_root_workdir = NULL;
-  g_autofree char *transient_root_upperdir = NULL;
-  if (root_transient)
-    {
-      g_autofree char *backingdir = g_strdup_printf ("../../backing/%s", deploy_directory_name);
-      transient_root_workdir
-          = g_build_filename (backingdir, OSTREE_DEPLOYMENT_ROOT_TRANSIENT_DIR, "work", NULL);
-      transient_root_upperdir
-          = g_build_filename (backingdir, OSTREE_DEPLOYMENT_ROOT_TRANSIENT_DIR, "upper", NULL);
-    }
-
   /* Fall back to querying the repository configuration in the target disk.
    * This is an operating system builder choice.  More info:
    * https://github.com/ostreedev/ostree/pull/1767
@@ -387,11 +376,26 @@ main (int argc, char *argv[])
 
       g_autofree char *expected_digest = NULL;
 
+      // For now we just stick the transient root on the default /run tmpfs;
+      // however, see
+      // https://github.com/systemd/systemd/blob/604b2001081adcbd64ee1fbe7de7a6d77c5209fe/src/basic/mountpoint-util.h#L36
+      // which bumps up these defaults for the rootfs a bit.
+      g_autofree char *root_upperdir
+          = root_transient ? g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "root/upper", NULL)
+                           : NULL;
+      g_autofree char *root_workdir
+          = root_transient ? g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "root/work", NULL) : NULL;
+
       // Propagate these options for transient root, if provided
-      if (transient_root_upperdir)
+      if (root_transient)
         {
-          cfs_options.workdir = transient_root_workdir;
-          cfs_options.upperdir = transient_root_upperdir;
+          if (!glnx_shutil_mkdir_p_at (AT_FDCWD, root_upperdir, 0755, NULL, &error))
+            errx (EXIT_FAILURE, "Failed to create %s: %s", root_upperdir, error->message);
+          if (!glnx_shutil_mkdir_p_at (AT_FDCWD, root_workdir, 0700, NULL, &error))
+            errx (EXIT_FAILURE, "Failed to create %s: %s", root_workdir, error->message);
+
+          cfs_options.workdir = root_workdir;
+          cfs_options.upperdir = root_upperdir;
         }
       else
         {
