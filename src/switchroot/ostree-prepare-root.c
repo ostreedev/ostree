@@ -308,6 +308,17 @@ main (int argc, char *argv[])
   if (mkdirat (AT_FDCWD, OTCORE_RUN_OSTREE_PRIVATE, 0) < 0)
     err (EXIT_FAILURE, "Failed to create %s", OTCORE_RUN_OSTREE_PRIVATE);
 
+  g_autofree char *transient_root_workdir = NULL;
+  g_autofree char *transient_root_upperdir = NULL;
+  if (root_transient)
+    {
+      g_autofree char *backingdir = g_strdup_printf ("../../backing/%s", deploy_directory_name);
+      transient_root_workdir
+          = g_build_filename (backingdir, OSTREE_DEPLOYMENT_ROOT_TRANSIENT_DIR, "work", NULL);
+      transient_root_upperdir
+          = g_build_filename (backingdir, OSTREE_DEPLOYMENT_ROOT_TRANSIENT_DIR, "upper", NULL);
+    }
+
   /* Fall back to querying the repository configuration in the target disk.
    * This is an operating system builder choice.  More info:
    * https://github.com/ostreedev/ostree/pull/1767
@@ -369,12 +380,23 @@ main (int argc, char *argv[])
         1,
       };
 
-      cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
+      cfs_options.flags = 0;
       cfs_options.image_mountdir = OSTREE_COMPOSEFS_LOWERMNT;
       if (mkdirat (AT_FDCWD, OSTREE_COMPOSEFS_LOWERMNT, 0700) < 0)
         err (EXIT_FAILURE, "Failed to create %s", OSTREE_COMPOSEFS_LOWERMNT);
 
       g_autofree char *expected_digest = NULL;
+
+      // Propagate these options for transient root, if provided
+      if (transient_root_upperdir)
+        {
+          cfs_options.workdir = transient_root_workdir;
+          cfs_options.upperdir = transient_root_upperdir;
+        }
+      else
+        {
+          cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
+        }
 
       if (composefs_config->is_signed)
         {
@@ -423,7 +445,7 @@ main (int argc, char *argv[])
           using_composefs = true;
           g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_COMPOSEFS,
                                  g_variant_new_boolean (true));
-          g_print ("composefs: mounted successfully");
+          g_print ("composefs: mounted successfully\n");
         }
       else
         {
@@ -446,26 +468,12 @@ main (int argc, char *argv[])
     errx (EXIT_FAILURE, "composefs: enabled at runtime, but support is not compiled in");
 #endif
 
-  if (root_transient)
+  if (!using_composefs)
     {
-      /* if (using_composefs)
-       * TODO: Add support to libcomposefs to mount writably; for now we end up with two overlayfs
-       * which is a bit silly.
-       */
-
-      g_autofree char *backingdir = g_strdup_printf ("../../backing/%s", deploy_directory_name);
-      g_autofree char *workdir
-          = g_build_filename (backingdir, OSTREE_DEPLOYMENT_ROOT_TRANSIENT_DIR, "work", NULL);
-      g_autofree char *upperdir
-          = g_build_filename (backingdir, OSTREE_DEPLOYMENT_ROOT_TRANSIENT_DIR, "upper", NULL);
-      g_autofree char *ovl_options
-          = g_strdup_printf ("lowerdir=.,upperdir=%s,workdir=%s", upperdir, workdir);
-      if (mount ("overlay", TMP_SYSROOT, "overlay", MS_SILENT, ovl_options) < 0)
-        err (EXIT_FAILURE, "failed to mount transient root overlayfs");
-      g_print ("Enabled transient /\n");
-    }
-  else if (!using_composefs)
-    {
+      if (root_transient)
+        {
+          errx (EXIT_FAILURE, "Must enable composefs with root.transient");
+        }
       g_print ("Using legacy ostree bind mount for /\n");
       /* The deploy root starts out bind mounted to sysroot.tmp */
       if (mount (deploy_path, TMP_SYSROOT, NULL, MS_BIND | MS_SILENT, NULL) < 0)
