@@ -400,7 +400,7 @@ callback_utimens (const char *path, const struct timespec tv[2])
 static int
 do_open (const char *path, mode_t mode, struct fuse_file_info *finfo)
 {
-  int fd;
+  glnx_autofd int fd = -1;
   struct stat stbuf;
 
   path = ENSURE_RELPATH (path);
@@ -416,29 +416,35 @@ do_open (const char *path, mode_t mode, struct fuse_file_info *finfo)
     {
       /* Write */
 
-      /* We need to specially handle O_TRUNC */
+      /* We need to specially handle O_TRUNC.
+       * Also, to files using fs-verity we special case EPERM (which is
+       * reported when opening such files for writing), and delay reporting
+       * the error until after trying to copy-up.
+       */
+      int delayed_errno = 0;
       fd = openat (basefd, path, finfo->flags & ~O_TRUNC, mode);
       if (fd == -1)
+        {
+          if (errno == EPERM)
+            delayed_errno = errno;
+          else
+            return -errno;
+        }
+
+      if (fd != -1 && fstat (fd, &stbuf) == -1)
         return -errno;
 
-      if (fstat (fd, &stbuf) == -1)
-        {
-          (void)close (fd);
-          return -errno;
-        }
-
       gboolean did_copyup;
-      int r = verify_write_or_copyup (path, &stbuf, &did_copyup);
+      int r = verify_write_or_copyup (path, fd != -1 ? &stbuf : NULL, &did_copyup);
       if (r != 0)
-        {
-          (void)close (fd);
-          return r;
-        }
+        return r;
 
       /* In the copyup case, we need to re-open */
       if (did_copyup)
         {
-          (void)close (fd);
+          if (fd != -1)
+            (void)close (fd);
+
           /* Note that unlike the initial open, we will pass through
            * O_TRUNC.  More ideally in this copyup case we'd avoid copying
            * the whole file in the first place, but eh.  It's not like we're
@@ -450,21 +456,21 @@ do_open (const char *path, mode_t mode, struct fuse_file_info *finfo)
         }
       else
         {
+          if (delayed_errno)
+            return -delayed_errno;
+
           /* In the non-copyup case we handle O_TRUNC here, after we've verified
            * the hardlink state above with verify_write_or_copyup().
            */
           if (finfo->flags & O_TRUNC)
             {
               if (ftruncate (fd, 0) == -1)
-                {
-                  (void)close (fd);
-                  return -errno;
-                }
+                return -errno;
             }
         }
     }
 
-  finfo->fh = fd;
+  finfo->fh = g_steal_fd (&fd);
 
   return 0;
 }
