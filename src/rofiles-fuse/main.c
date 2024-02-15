@@ -33,6 +33,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <sys/sysmacros.h>
 #include <sys/types.h>
 #include <sys/xattr.h>
 #include <unistd.h>
@@ -235,16 +236,21 @@ callback_link (const char *from, const char *to)
  * return -EROFS. Otherwise return 0.
  */
 static gboolean
-can_write_stbuf (const struct stat *stbuf)
+can_write_stbuf (const struct statx *stbuf)
 {
   /* If it's not a regular file or symlink, ostree won't hardlink it, so allow
    * writes - it might be a FIFO or device that somehow
    * ended up underneath our mount.
    */
-  if (!(S_ISREG (stbuf->st_mode) || S_ISLNK (stbuf->st_mode)))
+  if (!(S_ISREG (stbuf->stx_mode) || S_ISLNK (stbuf->stx_mode)))
     return TRUE;
+#ifdef STATX_ATTR_VERITY
+  /* Can't write to fsverity files */
+  if (stbuf->stx_attributes & STATX_ATTR_VERITY)
+    return FALSE;
+#endif
   /* If the object isn't hardlinked, it's OK to write */
-  if (stbuf->st_nlink <= 1)
+  if (stbuf->stx_nlink <= 1)
     return TRUE;
   /* Otherwise, it's a hardlinked file or symlink; it must be
    * immutable.
@@ -275,18 +281,55 @@ gioerror_to_errno (GIOErrorEnum e)
     }
 }
 
-static int
-verify_write_or_copyup (const char *path, const struct stat *stbuf, gboolean *out_did_copyup)
+// The libglnx APIs take a stat buffer, so we need to be able to
+// convert from statx.
+static inline void
+statx_to_stat (const struct statx *stxbuf, struct stat *stbuf)
 {
-  struct stat stbuf_local;
+  stbuf->st_dev = makedev (stxbuf->stx_dev_major, stxbuf->stx_dev_minor);
+  stbuf->st_rdev = makedev (stxbuf->stx_rdev_major, stxbuf->stx_rdev_minor);
+  stbuf->st_ino = stxbuf->stx_ino;
+  stbuf->st_mode = stxbuf->stx_mode;
+  stbuf->st_nlink = stxbuf->stx_nlink;
+  stbuf->st_uid = stxbuf->stx_uid;
+  stbuf->st_gid = stxbuf->stx_gid;
+  stbuf->st_size = stxbuf->stx_size;
+  stbuf->st_blksize = stxbuf->stx_blksize;
+}
 
-  if (out_did_copyup)
-    *out_did_copyup = FALSE;
+// A copy of ostree_break_hardlink but without the check for hardlinks, which
+// is mainly relevant for regular files, where we need to handle verity.
+static gboolean
+copyup (int dfd, const char *path, const struct statx *stxbuf, GError **error)
+{
+  if (S_ISREG (stxbuf->stx_mode))
+    {
+      struct stat stbuf;
+      statx_to_stat (stxbuf, &stbuf);
+      // Note GLNX_FILE_COPY_OVERWRITE always uses O_TMPFILE+rename
+      return glnx_file_copy_at (dfd, path, &stbuf, dfd, path, GLNX_FILE_COPY_OVERWRITE, NULL,
+                                error);
+    }
+  else
+    {
+      // For symlinks, we can just directly call the ostree API.  This avoids
+      // more code duplication because atomically copying symlinks requires
+      // a temp-link dance.
+      return ostree_break_hardlink (dfd, path, FALSE, NULL, error);
+    }
+}
+
+static int
+verify_write_or_copyup (const char *path, const struct statx *stbuf)
+{
+  struct statx stbuf_local;
 
   /* If a stbuf wasn't provided, gather it now */
   if (!stbuf)
     {
-      if (fstatat (basefd, path, &stbuf_local, AT_SYMLINK_NOFOLLOW) == -1)
+      if (statx (basefd, path, AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT, STATX_BASIC_STATS,
+                 &stbuf_local)
+          < 0)
         {
           if (errno == ENOENT)
             return 0;
@@ -302,10 +345,8 @@ verify_write_or_copyup (const char *path, const struct stat *stbuf, gboolean *ou
       if (opt_copyup)
         {
           g_autoptr (GError) tmp_error = NULL;
-          if (!ostree_break_hardlink (basefd, path, FALSE, NULL, &tmp_error))
+          if (!copyup (basefd, path, stbuf, &tmp_error))
             return -gioerror_to_errno ((GIOErrorEnum)tmp_error->code);
-          if (out_did_copyup)
-            *out_did_copyup = TRUE;
         }
       else
         return -EROFS;
@@ -322,7 +363,7 @@ verify_write_or_copyup (const char *path, const struct stat *stbuf, gboolean *ou
   do \
     { \
       path = ENSURE_RELPATH (path); \
-      int r = verify_write_or_copyup (path, NULL, NULL); \
+      int r = verify_write_or_copyup (path, NULL); \
       if (r != 0) \
         return r; \
     } \
@@ -401,7 +442,7 @@ static int
 do_open (const char *path, mode_t mode, struct fuse_file_info *finfo)
 {
   int fd;
-  struct stat stbuf;
+  struct statx stbuf;
 
   path = ENSURE_RELPATH (path);
 
@@ -415,53 +456,22 @@ do_open (const char *path, mode_t mode, struct fuse_file_info *finfo)
   else
     {
       /* Write */
-
-      /* We need to specially handle O_TRUNC */
-      fd = openat (basefd, path, finfo->flags & ~O_TRUNC, mode);
-      if (fd == -1)
-        return -errno;
-
-      if (fstat (fd, &stbuf) == -1)
+      if (statx (basefd, path, AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT, STATX_BASIC_STATS, &stbuf)
+          == -1)
         {
-          (void)close (fd);
-          return -errno;
-        }
-
-      gboolean did_copyup;
-      int r = verify_write_or_copyup (path, &stbuf, &did_copyup);
-      if (r != 0)
-        {
-          (void)close (fd);
-          return r;
-        }
-
-      /* In the copyup case, we need to re-open */
-      if (did_copyup)
-        {
-          (void)close (fd);
-          /* Note that unlike the initial open, we will pass through
-           * O_TRUNC.  More ideally in this copyup case we'd avoid copying
-           * the whole file in the first place, but eh.  It's not like we're
-           * high performance anyways.
-           */
-          fd = openat (basefd, path, finfo->flags & ~(O_EXCL | O_CREAT), mode);
-          if (fd == -1)
+          if (errno != ENOENT)
             return -errno;
         }
       else
         {
-          /* In the non-copyup case we handle O_TRUNC here, after we've verified
-           * the hardlink state above with verify_write_or_copyup().
-           */
-          if (finfo->flags & O_TRUNC)
-            {
-              if (ftruncate (fd, 0) == -1)
-                {
-                  (void)close (fd);
-                  return -errno;
-                }
-            }
+          int r = verify_write_or_copyup (path, &stbuf);
+          if (r != 0)
+            return r;
         }
+
+      fd = openat (basefd, path, finfo->flags, mode);
+      if (fd == -1)
+        return -errno;
     }
 
   finfo->fh = fd;

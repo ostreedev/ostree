@@ -26,7 +26,7 @@ skip_without_user_xattrs
 
 setup_test_repository "bare"
 
-echo "1..12"
+echo "1..13"
 
 cd ${test_tmpdir}
 mkdir mnt
@@ -192,3 +192,21 @@ sed -i -e s,first,second, mnt/firstfile
 assert_file_has_content_literal mnt/firstfile "second"
 
 echo "ok copyup"
+
+copyup_reset
+echo nonhardlinked > checkout-test2/nonhardlinked
+if fsverity enable checkout-test2/nonhardlinked 2>err.txt; then
+    orig_inode=$(stat -c %i checkout-test2/nonhardlinked)
+    echo "updated content" > mnt/nonhardlinked
+    new_inode=$(stat -c %i checkout-test2/nonhardlinked)
+    assert_not_streq "${orig_inode}" "${new_inode}"
+    # And via chmod
+    fsverity enable checkout-test2/nonhardlinked
+    orig_inode=$(stat -c %i checkout-test2/nonhardlinked)
+    chmod 0700 mnt/nonhardlinked
+    new_inode=$(stat -c %i checkout-test2/nonhardlinked)
+    assert_not_streq "${orig_inode}" "${new_inode}"
+    echo "ok copyup fsverity"
+else
+    skip "no fsverity support: $(cat err.txt)"
+fi
