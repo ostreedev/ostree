@@ -19,7 +19,7 @@ pkg_install_buildroot
 pkg_builddep ostree
 pkg_install sudo which attr fuse strace \
     libubsan libasan libtsan redhat-rpm-config \
-    elfutils
+    elfutils fsverity-utils
 if test -n "${CI_PKGS:-}"; then
     pkg_install ${CI_PKGS}
 fi

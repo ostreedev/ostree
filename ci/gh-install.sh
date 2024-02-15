@@ -79,6 +79,7 @@ case "$ID" in
             docbook-xsl
             e2fslibs-dev
             elfutils
+            fsverity
             fuse
             gnupg
             gobject-introspection
