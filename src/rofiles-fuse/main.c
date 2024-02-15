@@ -320,11 +320,9 @@ copyup (int dfd, const char *path, const struct statx *stxbuf, GError **error)
 }
 
 static int
-verify_write_or_copyup (const char *path, const struct statx *stbuf, gboolean *out_did_copyup)
+verify_write_or_copyup (const char *path, const struct statx *stbuf)
 {
   struct statx stbuf_local;
-  if (out_did_copyup)
-    *out_did_copyup = FALSE;
 
   /* If a stbuf wasn't provided, gather it now */
   if (!stbuf)
@@ -349,8 +347,6 @@ verify_write_or_copyup (const char *path, const struct statx *stbuf, gboolean *o
           g_autoptr (GError) tmp_error = NULL;
           if (!copyup (basefd, path, stbuf, &tmp_error))
             return -gioerror_to_errno ((GIOErrorEnum)tmp_error->code);
-          if (out_did_copyup)
-            *out_did_copyup = TRUE;
         }
       else
         return -EROFS;
@@ -367,7 +363,7 @@ verify_write_or_copyup (const char *path, const struct statx *stbuf, gboolean *o
   do \
     { \
       path = ENSURE_RELPATH (path); \
-      int r = verify_write_or_copyup (path, NULL, NULL); \
+      int r = verify_write_or_copyup (path, NULL); \
       if (r != 0) \
         return r; \
     } \
@@ -468,8 +464,7 @@ do_open (const char *path, mode_t mode, struct fuse_file_info *finfo)
         }
       else
         {
-          gboolean did_copyup;
-          int r = verify_write_or_copyup (path, &stbuf, &did_copyup);
+          int r = verify_write_or_copyup (path, &stbuf);
           if (r != 0)
             return r;
         }
