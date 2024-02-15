@@ -235,16 +235,16 @@ callback_link (const char *from, const char *to)
  * return -EROFS. Otherwise return 0.
  */
 static gboolean
-can_write_stbuf (const struct stat *stbuf)
+can_write_stbuf (const struct statx *stbuf)
 {
   /* If it's not a regular file or symlink, ostree won't hardlink it, so allow
    * writes - it might be a FIFO or device that somehow
    * ended up underneath our mount.
    */
-  if (!(S_ISREG (stbuf->st_mode) || S_ISLNK (stbuf->st_mode)))
+  if (!(S_ISREG (stbuf->stx_mode) || S_ISLNK (stbuf->stx_mode)))
     return TRUE;
   /* If the object isn't hardlinked, it's OK to write */
-  if (stbuf->st_nlink <= 1)
+  if (stbuf->stx_nlink <= 1)
     return TRUE;
   /* Otherwise, it's a hardlinked file or symlink; it must be
    * immutable.
@@ -276,9 +276,9 @@ gioerror_to_errno (GIOErrorEnum e)
 }
 
 static int
-verify_write_or_copyup (const char *path, const struct stat *stbuf, gboolean *out_did_copyup)
+verify_write_or_copyup (const char *path, const struct statx *stbuf, gboolean *out_did_copyup)
 {
-  struct stat stbuf_local;
+  struct statx stbuf_local;
 
   if (out_did_copyup)
     *out_did_copyup = FALSE;
@@ -286,7 +286,9 @@ verify_write_or_copyup (const char *path, const struct stat *stbuf, gboolean *ou
   /* If a stbuf wasn't provided, gather it now */
   if (!stbuf)
     {
-      if (fstatat (basefd, path, &stbuf_local, AT_SYMLINK_NOFOLLOW) == -1)
+      if (statx (basefd, path, AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT, STATX_BASIC_STATS,
+                 &stbuf_local)
+          < 0)
         {
           if (errno == ENOENT)
             return 0;
@@ -401,7 +403,7 @@ static int
 do_open (const char *path, mode_t mode, struct fuse_file_info *finfo)
 {
   int fd;
-  struct stat stbuf;
+  struct statx stbuf;
 
   path = ENSURE_RELPATH (path);
 
@@ -421,7 +423,7 @@ do_open (const char *path, mode_t mode, struct fuse_file_info *finfo)
       if (fd == -1)
         return -errno;
 
-      if (fstat (fd, &stbuf) == -1)
+      if (statx (fd, "", AT_EMPTY_PATH, STATX_BASIC_STATS, &stbuf) == -1)
         {
           (void)close (fd);
           return -errno;
