@@ -49,7 +49,7 @@ ostree-prepare-root : $(ostree_prepare_root_SOURCES)
 CLEANFILES += ostree-prepare-root
 else
 ostree_boot_PROGRAMS += ostree-prepare-root
-ostree_prepare_root_CFLAGS += $(AM_CFLAGS) -Isrc/switchroot -I$(srcdir)/composefs -I$(srcdir)/src/libostree -I$(srcdir)/src/libotcore -I$(srcdir)/src/libotutil
+ostree_prepare_root_CFLAGS += $(AM_CFLAGS) -Isrc/switchroot -I$(srcdir)/src/libostree -I$(srcdir)/src/libotcore -I$(srcdir)/src/libotutil
 ostree_prepare_root_SOURCES += src/switchroot/ostree-prepare-root.c
 ostree_prepare_root_CPPFLAGS += $(OT_INTERNAL_GIO_UNIX_CFLAGS) $(OT_DEP_CRYPTO_CFLAGS) -I $(srcdir)/libglnx
 ostree_prepare_root_LDADD += $(AM_LDFLAGS) $(OT_INTERNAL_GIO_UNIX_LIBS) $(OT_DEP_CRYPTO_LIBS) libotcore.la libotutil.la libglnx.la
@@ -69,7 +69,7 @@ ostree_remount_LDADD += $(OT_DEP_SELINUX_LIBS)
 endif
 
 if USE_COMPOSEFS
-ostree_prepare_root_LDADD += libcomposefs.la
+ostree_prepare_root_LDADD += $(OT_DEP_COMPOSEFS_LIBS)
 endif
 
 if BUILDOPT_SYSTEMD
