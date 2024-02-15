@@ -19,7 +19,7 @@ jobs:
     container: registry.ci.openshift.org/coreos/fcos-buildroot:testing-devel
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: GH actions checkout post
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
