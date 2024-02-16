@@ -8,6 +8,7 @@ source "https://rubygems.org"
 group :jekyll_plugins do
   gem "github-pages"
   gem "jekyll-remote-theme"
+  gem "webrick"
 end
 
 # Prefer the GitHub flavored markdown version of kramdown.
