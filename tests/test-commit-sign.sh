@@ -33,7 +33,7 @@ fi
 
 echo "1..7"
 
-keyid="472CDAFA"
+keyid="7FCA23D8472CDAFA"
 oldpwd=`pwd`
 mkdir ostree-srv
 cd ostree-srv
