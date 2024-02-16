@@ -183,7 +183,7 @@ test_signature_lookup (TestFixture *fixture, gconstpointer user_data)
   /* Lookup abbreviated key ID. */
   signature_index = 999999;
   signature_found
-      = ostree_gpg_verify_result_lookup (fixture->result, fingerprint + 32, &signature_index);
+      = ostree_gpg_verify_result_lookup (fixture->result, fingerprint + 24, &signature_index);
   g_assert_true (signature_found);
   g_assert_cmpint (signature_index, ==, expected_signature_index);
 
