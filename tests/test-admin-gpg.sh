@@ -34,7 +34,7 @@ setup_os_repository_signed () {
     bootdir=${1:-usr/lib/modules/3.6.0}
 
     oldpwd=`pwd`
-    keyid="472CDAFA"
+    keyid="7FCA23D8472CDAFA"
 
     cd ${test_tmpdir}
     mkdir testos-repo
