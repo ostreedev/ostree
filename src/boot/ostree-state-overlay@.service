@@ -17,7 +17,6 @@
 Description=OSTree State Overlay On /%I
 Documentation=man:ostree(1)
 DefaultDependencies=no
-ConditionKernelCommandLine=ostree
 # run after /var is setup since that's where the upperdir is stored
 # and after boot.mount so we can load the sysroot
 After=var.mount boot.mount

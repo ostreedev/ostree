@@ -17,7 +17,6 @@
 Description=OSTree Prepare OS/
 Documentation=man:ostree(1)
 DefaultDependencies=no
-ConditionKernelCommandLine=ostree
 ConditionPathExists=/etc/initrd-release
 OnFailure=emergency.target
 After=sysroot.mount
