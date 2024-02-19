@@ -19,13 +19,9 @@
 
 set -euo pipefail
 
-if ! ostree --version | grep -q -e '- libarchive'; then
-    echo "1..0 #SKIP no libarchive support compiled in"
-    exit 0
-fi
-
 . $(dirname $0)/libtest.sh
 
+skip_without_ostree_feature libarchive
 setup_test_repository "archive"
 
 echo '1..6'

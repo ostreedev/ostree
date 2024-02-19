@@ -19,11 +19,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-if ! ${CMD_PREFIX} ostree --version | grep -q -e '- composefs'; then
-    echo "1..0 #SKIP no composefs support compiled in"
-    exit 0
-fi
-
+skip_without_ostree_feature composefs
 skip_without_user_xattrs
 
 setup_test_repository "bare-user"
