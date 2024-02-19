@@ -21,7 +21,7 @@ set -euox pipefail
 
 . $(dirname $0)/libtest.sh
 
-if ! echo "$OSTREE_FEATURES" | grep --quiet --no-messages "initial-var"; then
+if ! has_ostree_feature initial-var; then
     fatal missing initial-var
 fi
 
