@@ -27,7 +27,7 @@ set -euo pipefail
 echo "1..2"
 
 COMMIT_SIGN=""
-if has_gpgme; then
+if has_ostree_feature gpgme; then
     COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
 fi
 

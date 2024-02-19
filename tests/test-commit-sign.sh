@@ -21,10 +21,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-if ! has_gpgme; then
-    echo "1..0 #SKIP no gpg support compiled in"
-    exit 0
-fi
+skip_without_ostree_feature gpgme
 
 if test -z "${OSTREE_HTTPD}"; then
     echo "1..0 #SKIP no ostree-trivial-httpd"

@@ -22,10 +22,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-if ! has_gpgme; then
-    echo "1..0 #SKIP no gpgme support compiled in"
-    exit 0
-fi
+skip_without_ostree_feature gpgme
 
 num_tests=1
 

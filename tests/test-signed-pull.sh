@@ -140,7 +140,7 @@ fi
 assert_file_has_content err.txt 'Invalid key reference'
 echo "ok remote add errs"
 
-if ! has_sign_ed25519; then
+if ! has_ostree_feature sign-ed25519; then
     echo "ok ed25519-key pull signed commit # SKIP due libsodium unavailability"
     echo "ok ed25519-key re-pull signature for stored commit # SKIP due libsodium unavailability"
     echo "ok ed25519-key+file pull signed commit # SKIP due libsodium unavailability"

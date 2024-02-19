@@ -24,10 +24,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-if ! has_gpgme; then
-    echo "1..0 #SKIP no gpg support compiled in"
-    exit 0
-fi
+skip_without_ostree_feature gpgme
 
 # Ensure repo caching is in use.
 unset OSTREE_SKIP_CACHE
