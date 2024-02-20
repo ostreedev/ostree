@@ -1,6 +1,7 @@
 ---
 nav_order: 110
 ---
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 # Using composefs with OSTree
 {: .no_toc }
@@ -113,6 +114,3 @@ provides much stronger and more efficient integrity:
 
 - https://github.com/containers/composefs
 - https://www.kernel.org/doc/html/next/filesystems/fsverity.html
-
-<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
-

@@ -1,6 +1,7 @@
 ---
 nav_order: 100
 ---
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 # Handling access to authenticated remote repositories
 {: .no_toc }

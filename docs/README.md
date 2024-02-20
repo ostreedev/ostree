@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
+
 This documentation is written in [Jekyll](https://jekyllrb.com/) format
 to be published on [GitHub Pages](https://pages.github.com/). The
 rendered HTML will be automatically built and published, but you can

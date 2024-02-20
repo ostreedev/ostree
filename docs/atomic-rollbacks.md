@@ -1,6 +1,7 @@
 ---
 nav_order: 60
 ---
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 # Atomic Rollbacks
 {: .no_toc }
@@ -171,6 +172,3 @@ ExecStart=/usr/sbin/ostree-rollback-to-rescue
 [Install]
 WantedBy=sysinit.target
 ```
-
-###### Licensing for this document:
-`SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later)`
