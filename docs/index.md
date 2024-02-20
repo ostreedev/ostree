@@ -37,16 +37,23 @@ version of
  - Binary history on the server side (and client)
  - Introspectable shared library API for build and deployment systems
  - Flexible support for multiple branches and repositories, supporting
-   projects like [flatpak](https://github.com/flatpak/flatpak) which
+   projects like [Flatpak](https://github.com/flatpak/flatpak) which
    use libostree for applications, rather than hosts.
 
 ## Operating systems and distributions using OSTree
 
+[Apertis](https://www.apertis.org/) uses libostree for their host system as
+well as Flatpak. See [update documentation](https://www.apertis.org/guides/ostree/) and
+[apertis-update-manager](https://gitlab.apertis.org/pkg/apertis-update-manager)
+
 [Endless OS](https://endlessos.com/) uses libostree for their host system as
-well as flatpak. See
+well as Flatpak. See
 their [eos-updater](https://github.com/endlessm/eos-updater)
 and [deb-ostree-builder](https://github.com/dbnicholson/deb-ostree-builder)
 projects.
+
+For Debian/apt, see also https://github.com/stb-tester/apt2ostree
+and the LWN article [Merkle trees and build systems](https://lwn.net/Articles/821367/).
 
 Fedora derivatives use rpm-ostree (noted below); there are 4 variants using OSTree:
 
@@ -60,16 +67,22 @@ The [machine-config-operator](https://github.com/openshift/machine-config-operat
 manages upgrades.  RHEL CoreOS is also the successor to RHEL Atomic Host, which
 uses rpm-ostree as well.
 
+[Red Hat In-Vehicle Operating System (RHIVOS)](https://www.redhat.com/en/blog/new-standard-red-hat-vehicle-operating-system-modern-and-future-vehicles) is a derivative of CentOS Automotive Stream Distribution that uses OSTree, it's closest Fedora derivative is Fedora IoT although it was created as it's own distribution.
+
 [GNOME Continuous](https://wiki.gnome.org/Projects/GnomeContinuous) is
 where OSTree was born - as a high performance continuous delivery/testing
 system for GNOME.
 
+[GNOME OS](https://os.gnome.org/) is a testing OS that uses libostree for
+their host system as well as Flatpak.
+
 [Liri OS](https://liri.io/download/silverblue/) has the option to install
 their distribution using ostree.
 
-[Torizon OS](https://developer.toradex.com/torizon/torizoncore/)
-uses libostree and Aktualizr as the base for OTA updates from compatible
-platforms, including [Torizon Cloud](https://developer.toradex.com/torizon/torizon-platform/torizon-platform-services-overview).
+[Torizon OS](https://developer.toradex.com/torizon/torizoncore/torizoncore-technical-overview/)
+is a Linux distribution for embedded systems that updates via OSTree images
+delivered via [Uptane](https://uptane.github.io/) and
+[aktualizr](https://github.com/uptane/aktualizr/).
 
 ## Distribution build tools
 
@@ -83,8 +96,19 @@ which uses libostree.
 The [BuildStream](https://gitlab.com/BuildStream/buildstream) build and
 integration tool supports importing and exporting from libostree repos.
 
+[fedora-iot/otto](https://github.com/fedora-iot/otto) is a tool that helps
+ship ostree commits inside Docker/OCI containers and run a webserver
+to serve the commits.
+
 Fedora [coreos-assembler](https://github.com/coreos/coreos-assembler) is
 the build tool used to generate Fedora CoreOS derivatives.
+
+[debos](https://github.com/go-debos/debos) is a tool-chain for simplifying the
+process of building a Debian-based OS image.
+
+[gardenlinux/ostree-image-builder](https://github.com/gardenlinux/ostree-image-builder)
+is a sample for building Debian-based OS images.
+It is not production ready but it might be useful to get started.
 
 ## Projects linking to libostree
 
@@ -98,11 +122,16 @@ model for image and package systems.
 [eos-updater](https://github.com/endlessm/eos-updater) is a daemon that implements updates
 on EndlessOS.
 
-[flatpak](https://github.com/flatpak/flatpak) uses libostree for desktop
-application containers. Unlike most of the other systems here, flatpak does not
+[Flatpak](https://github.com/flatpak/flatpak) uses libostree for desktop
+application containers. Unlike most of the other systems here, Flatpak does not
 use the "libostree host system" aspects (e.g. bootloader management), just the
-"git-like hardlink dedup". For example, flatpak supports a per-user OSTree
+"git-like hardlink dedup". For example, Flatpak supports a per-user OSTree
 repository.
+
+[aktualizr](https://github.com/uptane/aktualizr/) is an
+[Uptane](https://uptane.github.io/)-conformant software update client library
+intended for use in automotive and other security-sensitive embedded devices.
+It uses OSTree to manage the OS of the host device by default.
 
 ## Language bindings
 
@@ -117,7 +146,7 @@ write higher level manual bindings on top; this is more common
 for statically compiled languages.  Here's a list of such bindings:
 
  - [ostree-go](https://github.com/ostreedev/ostree-go/)
- - [ostree-rs](https://github.com/ostreedev/ostree/tree/main/rust-bindings)
+ - [ostree-rs](./rust-bindings)
 
 ## Building
 
@@ -129,7 +158,7 @@ However, in order to build from a git clone, you must update the
 submodules.  If you're packaging OSTree and want a tarball, I
 recommend using a "recursive git archive" script.  There are several
 available online;
-[this code](https://github.com/ostreedev/ostree/blob/main/packaging/Makefile.dist-packaging#L11)
+[this code](https://github.com/ostreedev/ostree/blob/main/ci/Makefile.dist-packaging#L18)
 in OSTree is an example.
 
 Once you have a git clone or recursive archive, building is the
@@ -150,6 +179,11 @@ The libostree API documentation is available in [Reference](reference/).
 ## Manual Pages
 
 The ostree manual pages are available in [Manual](man/).
+
+## Contact and discussion forums
+
+There is also an `#ostree` channel on [Libera.Chat](ircs://irc.libera.chat/ostree) as
+well as [enabled Github discussions](https://github.com/ostreedev/ostree/discussions/).
 
 ## Contributing
 

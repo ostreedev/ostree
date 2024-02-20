@@ -75,7 +75,10 @@ their host system as well as Flatpak.
 [Liri OS](https://liri.io/download/silverblue/) has the option to install
 their distribution using ostree.
 
-[Torizon OS](https://developer.toradex.com/torizon/torizoncore/torizoncore-technical-overview/) is a Linux distribution for embedded systems that updates via OSTree images delivered via [Uptane](https://uptane.github.io/) and [aktualizr](https://github.com/uptane/aktualizr/).
+[Torizon OS](https://developer.toradex.com/torizon/torizoncore/torizoncore-technical-overview/)
+is a Linux distribution for embedded systems that updates via OSTree images
+delivered via [Uptane](https://uptane.github.io/) and
+[aktualizr](https://github.com/uptane/aktualizr/).
 
 ## Distribution build tools
 
@@ -121,7 +124,10 @@ use the "libostree host system" aspects (e.g. bootloader management), just the
 "git-like hardlink dedup". For example, Flatpak supports a per-user OSTree
 repository.
 
-[aktualizr](https://github.com/uptane/aktualizr/) is an [Uptane](https://uptane.github.io/)-conformant software update client library intended for use in automotive and other security-sensitive embedded devices. It uses OSTree to manage the OS of the host device by default.
+[aktualizr](https://github.com/uptane/aktualizr/) is an
+[Uptane](https://uptane.github.io/)-conformant software update client library
+intended for use in automotive and other security-sensitive embedded devices.
+It uses OSTree to manage the OS of the host device by default.
 
 ## Language bindings
 
