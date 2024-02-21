@@ -327,12 +327,11 @@ main (int argc, char *argv[])
   g_print ("sysroot.readonly configuration value: %d (fs writable: %d)\n", (int)sysroot_readonly,
            (int)sysroot_currently_writable);
 
-  /* Work-around for a kernel bug: for some reason the kernel
-   * refuses switching root if any file systems are mounted
-   * MS_SHARED. Hence remount them MS_PRIVATE here as a
-   * work-around.
+  /* Remount root MS_PRIVATE here to avoid errors due to the kernel-enforced
+   * constraint that disallows MS_SHARED mounts to be moved.
    *
-   * https://bugzilla.redhat.com/show_bug.cgi?id=847418 */
+   * Kernel docs: Documentation/filesystems/sharedsubtree.txt
+   */
   if (mount (NULL, "/", NULL, MS_REC | MS_PRIVATE | MS_SILENT, NULL) < 0)
     err (EXIT_FAILURE, "failed to make \"/\" private mount");
 
