@@ -58,7 +58,8 @@ typedef struct
 void otcore_free_composefs_config (ComposefsConfig *config);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (ComposefsConfig, otcore_free_composefs_config)
 
-ComposefsConfig *otcore_load_composefs_config (GKeyFile *config, GError **error);
+ComposefsConfig *otcore_load_composefs_config (GKeyFile *config, gboolean load_keys,
+                                               GError **error);
 
 // Our directory with transient state (eventually /run/ostree-booted should be a link to
 // /run/ostree/booted)
