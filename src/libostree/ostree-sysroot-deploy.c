@@ -683,8 +683,10 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
     return glnx_prefix_error (error, "Parsing prepare-root config");
   // We always parse the composefs config, because we want to detect and error
   // out if it's enabled, but not supported at compile time.
+  // However, we don't load the keys here, because they may not exist, such
+  // as in the initial deploy
   g_autoptr (ComposefsConfig) composefs_config
-      = otcore_load_composefs_config (prepare_root_config, error);
+      = otcore_load_composefs_config (prepare_root_config, FALSE, error);
   if (!composefs_config)
     return glnx_prefix_error (error, "Reading composefs config");
 

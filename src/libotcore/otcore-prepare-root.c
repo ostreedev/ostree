@@ -154,7 +154,7 @@ otcore_free_composefs_config (ComposefsConfig *config)
 
 // Parse the [composefs] section of the prepare-root.conf.
 ComposefsConfig *
-otcore_load_composefs_config (GKeyFile *config, GError **error)
+otcore_load_composefs_config (GKeyFile *config, gboolean load_keys, GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("Loading composefs config", error);
 
@@ -178,7 +178,7 @@ otcore_load_composefs_config (GKeyFile *config, GError **error)
                                           &ret->signature_pubkey, error))
     return NULL;
 
-  if (ret->is_signed)
+  if (ret->is_signed && load_keys)
     {
       ret->pubkeys = g_ptr_array_new_with_free_func ((GDestroyNotify)g_bytes_unref);
 
