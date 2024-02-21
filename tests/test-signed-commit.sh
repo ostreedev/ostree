@@ -61,7 +61,7 @@ assert_file_has_content_literal err.txt ' No valid signatures found'
 echo "ok dummy sig requires env"
 
 # tests below require libsodium support
-if ! has_sign_ed25519; then
+if ! has_ostree_feature sign-ed25519; then
     echo "ok Detached ed25519 signature # SKIP due libsodium unavailability"
     echo "ok ed25519 signature verified # SKIP due libsodium unavailability"
     echo "ok multiple signing # SKIP due libsodium unavailability"

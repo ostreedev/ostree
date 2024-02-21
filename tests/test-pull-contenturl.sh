@@ -29,7 +29,7 @@ fi
 echo "1..2"
 
 COMMIT_SIGN=""
-if has_gpgme; then
+if has_ostree_feature gpgme; then
   COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
 fi
 
@@ -47,7 +47,7 @@ cp -a ${test_tmpdir}/ostree-srv ostree
 
 # delete all the meta stuff from here
 rm ostree/gnomerepo/summary
-if has_gpgme; then
+if has_ostree_feature gpgme; then
   rm ostree/gnomerepo/summary.sig
   find ostree/gnomerepo/objects -name '*.commitmeta' | xargs rm
 fi
@@ -63,7 +63,7 @@ echo "http://127.0.0.1:${content_port}" > ${test_tmpdir}/httpd-content-address
 cd ${test_tmpdir}
 mkdir repo
 ostree_repo_init repo
-if has_gpgme; then VERIFY=true; else VERIFY=false; fi
+if has_ostree_feature gpgme; then VERIFY=true; else VERIFY=false; fi
 ${CMD_PREFIX} ostree --repo=repo remote add origin \
   --set=gpg-verify=$VERIFY --set=gpg-verify-summary=$VERIFY \
   --contenturl=$(cat httpd-content-address)/ostree/gnomerepo \
@@ -72,7 +72,7 @@ ${CMD_PREFIX} ostree --repo=repo pull origin:main
 
 echo "ok pull objects from contenturl"
 
-if ! has_gpgme; then
+if ! has_ostree_feature gpgme; then
   echo "ok don't pull sigs from contenturl # SKIP not compiled with gpgme"
 else
   echo "ok don't pull sigs from contenturl"

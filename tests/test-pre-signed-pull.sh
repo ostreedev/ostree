@@ -23,7 +23,7 @@ set -euo pipefail
 
 echo "1..1"
 
-if ! has_sign_ed25519; then
+if ! has_ostree_feature sign-ed25519; then
     echo "ok pre-signed pull # SKIP due ed25519 unavailability"
     exit 0
 fi

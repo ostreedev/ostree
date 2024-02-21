@@ -54,7 +54,7 @@ function verify_initial_contents() {
 
 n_base_tests=35
 gpg_tests=3
-if has_gpgme; then
+if has_ostree_feature gpgme; then
     echo "1..$(($n_base_tests+$gpg_tests))"
 else
     echo "1..$((n_base_tests))"
@@ -633,7 +633,7 @@ fi
 assert_file_has_content err.txt "404"
 echo "ok pull repo 404"
 
-if has_gpgme; then
+if has_ostree_feature gpgme; then
     cd ${test_tmpdir}
     repo_init --set=gpg-verify=true
     if ${CMD_PREFIX} ostree --repo=repo --depth=0 pull origin main 2>err.txt; then
@@ -653,7 +653,7 @@ assert_file_has_content err.txt "404"
 find ostree-srv/gnomerepo/objects -name '*.dirtree.orig' | while read f; do mv ${f} $(dirname $f)/$(basename ${f} .orig); done
 echo "ok pull repo 404 on dirtree object"
 
-if has_gpgme; then
+if has_ostree_feature gpgme; then
     cd ${test_tmpdir}
     repo_init --set=gpg-verify=true
     ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit ${COMMIT_ARGS} \

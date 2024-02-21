@@ -61,7 +61,7 @@ cmp checkout1.files checkout2.files
 cmp checkout1.files checkout3.files
 echo "ok checkouts same"
 
-if has_gpgme; then
+if has_ostree_feature gpgme; then
     # These tests are needed GPG support
     mkdir repo4
     ostree_repo_init repo4 --mode="archive"

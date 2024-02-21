@@ -696,18 +696,20 @@ skip_without_fuse () {
     [ -e /etc/mtab ] || skip "no /etc/mtab"
 }
 
-has_gpgme () {
-    local ret
+has_ostree_feature () {
+    local ret=0
+    # Note that this needs to write to a file and then grep the file, to
+    # avoid ostree --version being killed with SIGPIPE and exiting with a
+    # nonzero status under `set -o pipefail`.
     ${CMD_PREFIX} ostree --version > version.txt
-    grep -q -e '- gpgme' version.txt
-    ret=$?
+    grep -q -e "- $1\$" version.txt || ret=$?
     rm -f version.txt
     return ${ret}
 }
 
-skip_without_gpgme() {
-    if ! has_gpgme; then
-        skip "no gpg support compiled in"
+skip_without_ostree_feature () {
+    if ! has_ostree_feature "$1"; then
+        skip "no $1 support compiled in"
     fi
 }
 
@@ -749,21 +751,6 @@ libtest_cleanup_gpg () {
     gpg-connect-agent --homedir "${gpg_homedir}" killagent /bye || true
 }
 libtest_exit_cmds+=(libtest_cleanup_gpg)
-
-has_sign_ed25519 () {
-    local ret
-    ${CMD_PREFIX} ostree --version > version.txt
-    grep -q -e '- sign-ed25519' version.txt
-    ret=$?
-    rm -f version.txt
-    return ${ret}
-}
-
-skip_without_sign_ed25519() {
-    if ! has_sign_ed25519; then
-        skip "no ed25519 support compiled in"
-    fi
-}
 
 # Keys for ed25519 signing tests
 ED25519PUBLIC=

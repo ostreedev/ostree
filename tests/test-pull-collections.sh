@@ -33,7 +33,7 @@ do_commit() {
     mkdir -p files
     pushd files
     local GPG_ARGS=""
-    if has_gpgme; then
+    if has_ostree_feature gpgme; then
         GPG_ARGS="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
     fi
     ${CMD_PREFIX} ostree --repo="../${repo}" commit -s "Test ${repo} commit for branch ${branch}" -b "${branch}" ${GPG_ARGS} "$@" > "../${branch}-checksum"
@@ -45,7 +45,7 @@ do_summary() {
     shift 1
 
     local GPG_ARGS=""
-    if has_gpgme; then
+    if has_ostree_feature gpgme; then
         GPG_ARGS="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
     fi
     ${CMD_PREFIX} ostree "--repo=${repo}" summary --update ${GPG_ARGS}
@@ -103,7 +103,7 @@ do_remote_add() {
     shift 2
 
     local GPG_ARGS=""
-    if has_gpgme; then
+    if has_ostree_feature gpgme; then
         GPG_ARGS="--gpg-import=${test_tmpdir}/gpghome/key1.asc"
     fi
     ${CMD_PREFIX} ostree "--repo=${repo}" remote add "${remote_repo}-remote" "file://$(pwd)/${remote_repo}" "$@" ${GPG_ARGS}

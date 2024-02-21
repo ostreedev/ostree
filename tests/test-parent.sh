@@ -23,7 +23,7 @@ set -euo pipefail
 
 skip_without_user_xattrs
 
-skip_without_gpgme
+skip_without_ostree_feature gpgme
 
 echo '1..2'
 

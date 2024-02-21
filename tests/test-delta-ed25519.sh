@@ -23,7 +23,7 @@ set -euo pipefail
 
 skip_without_user_xattrs
 
-skip_without_sign_ed25519
+skip_without_ostree_feature sign-ed25519
 
 bindatafiles="bash true ostree"
 

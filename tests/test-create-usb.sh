@@ -24,7 +24,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-skip_without_gpgme
+skip_without_ostree_feature gpgme
 
 echo "1..5"
 
