@@ -572,8 +572,10 @@ main (int argc, char *argv[])
    * with ostree admin unlock --hotfix.
    * Note however that root.transient as handled above is effectively a generalization of unlock
    * --hotfix.
+   * Also, hotfixes are incompatible with signed composefs use for security reasons.
    */
-  if (lstat (OTCORE_HOTFIX_USR_OVL_WORK, &stbuf) == 0)
+  if (lstat (OTCORE_HOTFIX_USR_OVL_WORK, &stbuf) == 0
+      && !(using_composefs && composefs_config->is_signed))
     {
       /* Do we have a persistent overlayfs for /usr?  If so, mount it now. */
       const char usr_ovl_options[]
