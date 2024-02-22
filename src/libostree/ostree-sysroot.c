@@ -724,44 +724,24 @@ load_origin (OstreeSysroot *self, OstreeDeployment *deployment, GCancellable *ca
 
 // Parse the kernel argument ostree=
 gboolean
-_ostree_sysroot_parse_bootlink (const char *bootlink, const bool is_aboot,
-                                int *out_entry_bootversion, char **out_osname, char **out_bootcsum,
-                                int *out_treebootserial, GError **error)
+_ostree_sysroot_parse_bootlink (const char *bootlink, int *out_entry_bootversion, char **out_osname,
+                                char **out_bootcsum, int *out_treebootserial, GError **error)
 {
   static gsize regex_initialized;
   static GRegex *regex;
-  const char *to_parse = bootlink;
-  g_autofree char *symlink_val = NULL;
-  if (is_aboot)
-    {
-      symlink_val = glnx_readlinkat_malloc (-1, bootlink, NULL, error);
-      if (!symlink_val)
-        return glnx_throw (error, "Failed to read '%s' symlink", bootlink);
-
-      to_parse = symlink_val;
-    }
-
   if (g_once_init_enter (&regex_initialized))
     {
-      regex = g_regex_new (is_aboot ? "^deploy/([^/]+)/"
-                                    : "^/ostree/boot.([01])/([^/]+)/([^/]+)/([0-9]+)$",
-                           0, 0, NULL);
+      regex = g_regex_new ("^/ostree/boot.([01])/([^/]+)/([^/]+)/([0-9]+)$", 0, 0, NULL);
       g_assert (regex);
       g_once_init_leave (&regex_initialized, 1);
     }
 
   g_autoptr (GMatchInfo) match = NULL;
-  if (!g_regex_match (regex, to_parse, 0, &match))
+  if (!g_regex_match (regex, bootlink, 0, &match))
     return glnx_throw (error,
                        "Invalid ostree= argument '%s', expected "
-                       "ostree=/ostree/boot.BOOTVERSION/OSNAME/BOOTCSUM/TREESERIAL or aboot method",
-                       to_parse);
-
-  if (is_aboot)
-    {
-      *out_osname = g_match_info_fetch (match, 1);
-      return TRUE;
-    }
+                       "ostree=/ostree/boot.BOOTVERSION/OSNAME/BOOTCSUM/TREESERIAL",
+                       bootlink);
 
   g_autofree char *bootversion_str = g_match_info_fetch (match, 1);
   g_autofree char *treebootserial_str = g_match_info_fetch (match, 4);
@@ -798,7 +778,7 @@ parse_deployment (OstreeSysroot *self, const char *boot_link, OstreeDeployment *
 
   // Note is_boot should always be false here, this boot_link is taken from BLS file, not
   // /proc/cmdline, BLS files are present in aboot images
-  if (!_ostree_sysroot_parse_bootlink (boot_link, false, &entry_boot_version, &osname, &bootcsum,
+  if (!_ostree_sysroot_parse_bootlink (boot_link, &entry_boot_version, &osname, &bootcsum,
                                        &treebootserial, error))
     return FALSE;
 

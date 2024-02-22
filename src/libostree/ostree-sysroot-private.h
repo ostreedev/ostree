@@ -19,8 +19,6 @@
 
 #pragma once
 
-#include <stdbool.h>
-
 #include "libglnx.h"
 #include "ostree-bootloader.h"
 #include "ostree.h"
@@ -179,9 +177,8 @@ gboolean _ostree_sysroot_parse_bootdir_name (const char *name, char **out_osname
 gboolean _ostree_sysroot_list_all_boot_directories (OstreeSysroot *self, char ***out_bootdirs,
                                                     GCancellable *cancellable, GError **error);
 
-gboolean _ostree_sysroot_parse_bootlink (const char *bootlink, const bool is_aboot,
-                                         int *out_entry_bootversion, char **out_osname,
-                                         char **out_bootcsum, int *out_treebootserial,
-                                         GError **error);
+gboolean _ostree_sysroot_parse_bootlink (const char *bootlink, int *out_entry_bootversion,
+                                         char **out_osname, char **out_bootcsum,
+                                         int *out_treebootserial, GError **error);
 
 G_END_DECLS
