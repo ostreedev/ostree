@@ -75,7 +75,7 @@ otcore_find_proc_cmdline_key (const char *cmdline, const char *key)
 //
 // If invalid data is found, @error will be set.
 gboolean
-otcore_get_ostree_target (const char *cmdline, char **out_target, GError **error)
+otcore_get_ostree_target (const char *cmdline, bool *is_aboot, char **out_target, GError **error)
 {
   g_assert (cmdline);
   g_assert (out_target && *out_target == NULL);
@@ -84,8 +84,10 @@ otcore_get_ostree_target (const char *cmdline, char **out_target, GError **error
 
   // First, handle the Android boot case
   g_autofree char *slot_suffix = otcore_find_proc_cmdline_key (cmdline, "androidboot.slot_suffix");
+  *is_aboot = false;
   if (slot_suffix)
     {
+      *is_aboot = true;
       if (strcmp (slot_suffix, "_a") == 0)
         {
           *out_target = g_strdup (slot_a);

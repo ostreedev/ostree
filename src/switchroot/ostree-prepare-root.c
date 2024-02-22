@@ -124,7 +124,8 @@ resolve_deploy_path (const char *root_mountpoint)
 
   g_autoptr (GError) error = NULL;
   g_autofree char *ostree_target = NULL;
-  if (!otcore_get_ostree_target (kernel_cmdline, &ostree_target, &error))
+  bool is_aboot = false;
+  if (!otcore_get_ostree_target (kernel_cmdline, &is_aboot, &ostree_target, &error))
     errx (EXIT_FAILURE, "Failed to determine ostree target: %s", error->message);
   if (!ostree_target)
     errx (EXIT_FAILURE, "No ostree target found");

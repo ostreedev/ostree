@@ -128,8 +128,8 @@ require_internal_units (const char *normal_dir, const char *early_dir, const cha
 
 /* Generate var.mount */
 static gboolean
-fstab_generator (const char *ostree_cmdline, const char *normal_dir, const char *early_dir,
-                 const char *late_dir, GError **error)
+fstab_generator (const char *ostree_target, const bool is_aboot, const char *normal_dir,
+                 const char *early_dir, const char *late_dir, GError **error)
 {
 #ifdef HAVE_LIBMOUNT
   /* Not currently cancellable, but define a var in case we care later */
@@ -144,7 +144,8 @@ fstab_generator (const char *ostree_cmdline, const char *normal_dir, const char 
    * mounted yet.
    */
   g_autofree char *stateroot = NULL;
-  if (!_ostree_sysroot_parse_bootlink (ostree_cmdline, NULL, &stateroot, NULL, NULL, error))
+  if (!_ostree_sysroot_parse_bootlink (ostree_target, is_aboot, NULL, &stateroot, NULL, NULL,
+                                       error))
     return glnx_prefix_error (error, "Parsing stateroot");
 
   /* Load /etc/fstab if it exists, and look for a /var mount */
@@ -261,17 +262,19 @@ _ostree_impl_system_generator (const char *normal_dir, const char *early_dir, co
   if (!cmdline)
     return glnx_throw (error, "Failed to read /proc/cmdline");
 
-  g_autofree char *ostree_cmdline = otcore_find_proc_cmdline_key (cmdline, "ostree");
-
+  g_autoptr (GError) otcore_get_ostree_target_error = NULL;
+  g_autofree char *ostree_target = NULL;
+  bool is_aboot = false;
   /* This could happen in CoreOS live environments, where we hackily mock
    * the `ostree=` karg for `ostree-prepare-root.service` specifically, but
    * otherwise that karg doesn't exist on the real command-line. */
-  if (!ostree_cmdline)
+  if (!otcore_get_ostree_target (cmdline, &is_aboot, &ostree_target,
+                                 &otcore_get_ostree_target_error))
     return TRUE;
 
   if (!require_internal_units (normal_dir, early_dir, late_dir, error))
     return FALSE;
-  if (!fstab_generator (ostree_cmdline, normal_dir, early_dir, late_dir, error))
+  if (!fstab_generator (ostree_target, is_aboot, normal_dir, early_dir, late_dir, error))
     return FALSE;
 
   return TRUE;
