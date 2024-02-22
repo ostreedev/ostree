@@ -1,6 +1,7 @@
 ---
 nav_order: 40
 ---
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 # Deployments
 {: .no_toc }
@@ -124,6 +125,3 @@ deployment.
 At present, not all bootloaders implement the BootLoaderSpec, so
 OSTree contains code for some of these to regenerate native config
 files (such as `/boot/syslinux/syslinux.conf`) based on the entries.
-
-###### Licensing for this document:
-`SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later)`

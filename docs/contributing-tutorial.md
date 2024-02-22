@@ -1,6 +1,7 @@
 ---
 nav_order: 200
 ---
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 # OSTree Contributing Tutorial
 {: .no_toc }

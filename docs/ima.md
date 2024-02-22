@@ -1,6 +1,7 @@
 ---
 nav_order: 110
 ---
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 # Using Linux IMA with OSTree
 {: .no_toc }
@@ -110,6 +111,3 @@ signing commits with these "portable" EVM signatures in addition to IMA.
 - https://wiki.gentoo.org/wiki/Integrity_Measurement_Architecture
 - https://fedoraproject.org/wiki/Changes/Signed_RPM_Contents
 - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/enhancing-security-with-the-kernel-integrity-subsystem_managing-monitoring-and-updating-the-kernel
-
-<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
-

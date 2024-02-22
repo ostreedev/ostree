@@ -1,6 +1,7 @@
 ---
 nav_order: 100
 ---
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 # Managing content in OSTree repositories
 {: .no_toc }
@@ -268,6 +269,3 @@ $ ostree --repo=/path/to/repo summary -u
 ```
 
 After that, clients fetching that commit will prefer fetching the "scratch" delta if they don't have the original ref.
-
-###### Licensing for this document:
-`SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later)`

@@ -1,6 +1,7 @@
 ---
 nav_order: 90
 ---
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 # Writing a buildsystem and managing repositories
 {: .no_toc }
@@ -191,6 +192,3 @@ ostree --repo=repo static-delta generate exampleos/x86_64/standard
 
 Next, see [Repository Management](repository-management.md) for the
 next steps in managing content in OSTree repositories.
-
-###### Licensing for this document:
-`SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later)`

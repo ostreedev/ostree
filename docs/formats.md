@@ -1,6 +1,7 @@
 ---
 nav_order: 80
 ---
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 # OSTree data formats
 {: .no_toc }
@@ -204,6 +205,3 @@ For these types of objects, the delta superblock contains an array of
 "fallback objects".  These objects aren't included in the delta
 parts - the client simply fetches them from the underlying `.filez`
 object.
-
-###### Licensing for this document:
-`SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later)`

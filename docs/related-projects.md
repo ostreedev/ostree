@@ -1,6 +1,7 @@
 ---
 nav_order: 110
 ---
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 # Related Projects
 {: .no_toc }
@@ -388,6 +389,3 @@ as the tool abstracts the handling of OSTree concepts from the final users.
 [Torizon Cloud](https://developer.toradex.com/torizon/torizon-platform/torizon-platform-services-overview/)
 is a hosted OTA update system that provides OS updates to Torizon OS using
 OSTree and Aktualizr.
-
-###### Licensing for this document:
-`SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later)`

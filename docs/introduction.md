@@ -1,6 +1,7 @@
 ---
 nav_order: 20
 ---
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 # OSTree Overview
 {: .no_toc }
@@ -186,6 +187,3 @@ Finally, each deployment has its own writable copy of the
 configuration store `/etc`.  On upgrade, OSTree will
 perform a basic 3-way diff, and apply any local changes to the
 new copy, while leaving the old untouched.
-
-###### Licensing for this document:
-`SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later)`
