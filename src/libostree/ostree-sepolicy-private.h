@@ -36,4 +36,6 @@ gboolean _ostree_sepolicy_preparefscreatecon (OstreeSepolicyFsCreatecon *con, Os
 
 GVariant *_ostree_filter_selinux_xattr (GVariant *xattrs);
 
+gboolean _ostree_sepolicy_host_enabled (OstreeSePolicy *self);
+
 G_END_DECLS
