@@ -36,47 +36,45 @@ test_prepare_root_cmdline (void)
 {
   g_autoptr (GError) error = NULL;
   g_autofree char *target = NULL;
-  bool is_aboot = false;
-
   static const char *notfound_cases[]
       = { "", "foo", "foo=bar baz  sometest", "xostree foo", "xostree=blah bar", NULL };
   for (const char **iter = notfound_cases; iter && *iter; iter++)
     {
       const char *tcase = *iter;
-      g_assert (otcore_get_ostree_target (tcase, &is_aboot, &target, &error));
+      g_assert (otcore_get_ostree_target (tcase, NULL, &target, &error));
       g_assert_no_error (error);
       g_assert (target == NULL);
     }
 
   // Test the default ostree=
-  g_assert (otcore_get_ostree_target ("blah baz=blah ostree=/foo/bar somearg", &is_aboot, &target,
-                                      &error));
+  g_assert (
+      otcore_get_ostree_target ("blah baz=blah ostree=/foo/bar somearg", NULL, &target, &error));
   g_assert_no_error (error);
   g_assert_cmpstr (target, ==, "/foo/bar");
   free (g_steal_pointer (&target));
 
   // Test android boot
-  g_assert (otcore_get_ostree_target ("blah baz=blah androidboot.slot_suffix=_b somearg", &is_aboot,
+  g_assert (otcore_get_ostree_target ("blah baz=blah androidboot.slot_suffix=_b somearg", NULL,
                                       &target, &error));
   g_assert_no_error (error);
   g_assert_cmpstr (target, ==, "/ostree/root.b");
   free (g_steal_pointer (&target));
 
-  g_assert (otcore_get_ostree_target ("blah baz=blah androidboot.slot_suffix=_a somearg", &is_aboot,
+  g_assert (otcore_get_ostree_target ("blah baz=blah androidboot.slot_suffix=_a somearg", NULL,
                                       &target, &error));
   g_assert_no_error (error);
   g_assert_cmpstr (target, ==, "/ostree/root.a");
   free (g_steal_pointer (&target));
 
   // And an expected failure to parse a "c" suffix
-  g_assert (!otcore_get_ostree_target ("blah baz=blah androidboot.slot_suffix=_c somearg",
-                                       &is_aboot, &target, &error));
+  g_assert (!otcore_get_ostree_target ("blah baz=blah androidboot.slot_suffix=_c somearg", NULL,
+                                       &target, &error));
   g_assert (error);
   g_assert (target == NULL);
   g_clear_error (&error);
 
   // And non-A/B androidboot
-  g_assert (otcore_get_ostree_target ("blah baz=blah androidboot.somethingelse somearg", &is_aboot,
+  g_assert (otcore_get_ostree_target ("blah baz=blah androidboot.somethingelse somearg", NULL,
                                       &target, &error));
   g_assert_no_error (error);
   g_assert_cmpstr (target, ==, "/ostree/root.a");

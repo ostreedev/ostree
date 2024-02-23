@@ -44,7 +44,7 @@ gboolean otcore_validate_ed25519_signature (GBytes *data, GBytes *pubkey, GBytes
                                             bool *out_valid, GError **error);
 
 char *otcore_find_proc_cmdline_key (const char *cmdline, const char *key);
-gboolean otcore_get_ostree_target (const char *cmdline, bool *is_aboot, char **out_target,
+gboolean otcore_get_ostree_target (const char *cmdline, gboolean *is_aboot, char **out_target,
                                    GError **error);
 
 GKeyFile *otcore_load_config (int rootfs, const char *filename, GError **error);

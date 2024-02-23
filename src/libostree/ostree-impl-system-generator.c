@@ -126,6 +126,34 @@ require_internal_units (const char *normal_dir, const char *early_dir, const cha
 #endif
 }
 
+// Resolve symlink to return osname
+static gboolean
+_ostree_sysroot_parse_bootlink_aboot (const char *bootlink, char **out_osname, GError **error)
+{
+  static gsize regex_initialized;
+  static GRegex *regex;
+  g_autofree char *symlink_val = glnx_readlinkat_malloc (-1, bootlink, NULL, error);
+  if (!symlink_val)
+    return glnx_prefix_error (error, "Failed to read '%s' symlink", bootlink);
+
+  if (g_once_init_enter (&regex_initialized))
+    {
+      regex = g_regex_new ("^deploy/([^/]+)/", 0, 0, NULL);
+      g_assert (regex);
+      g_once_init_leave (&regex_initialized, 1);
+    }
+
+  g_autoptr (GMatchInfo) match = NULL;
+  if (!g_regex_match (regex, symlink_val, 0, &match))
+    return glnx_throw (error,
+                       "Invalid aboot symlink in /ostree, expected symlink to resolve to "
+                       "deploy/OSNAME/... instead it resolves to '%s'",
+                       symlink_val);
+
+  *out_osname = g_match_info_fetch (match, 1);
+  return TRUE;
+}
+
 /* Generate var.mount */
 static gboolean
 fstab_generator (const char *ostree_target, const bool is_aboot, const char *normal_dir,
@@ -144,8 +172,12 @@ fstab_generator (const char *ostree_target, const bool is_aboot, const char *nor
    * mounted yet.
    */
   g_autofree char *stateroot = NULL;
-  if (!_ostree_sysroot_parse_bootlink (ostree_target, is_aboot, NULL, &stateroot, NULL, NULL,
-                                       error))
+  if (is_aboot)
+    {
+      if (!_ostree_sysroot_parse_bootlink_aboot (ostree_target, &stateroot, error))
+        return glnx_prefix_error (error, "Parsing aboot stateroot");
+    }
+  else if (!_ostree_sysroot_parse_bootlink (ostree_target, NULL, &stateroot, NULL, NULL, error))
     return glnx_prefix_error (error, "Parsing stateroot");
 
   /* Load /etc/fstab if it exists, and look for a /var mount */
@@ -262,14 +294,16 @@ _ostree_impl_system_generator (const char *normal_dir, const char *early_dir, co
   if (!cmdline)
     return glnx_throw (error, "Failed to read /proc/cmdline");
 
-  g_autoptr (GError) otcore_get_ostree_target_error = NULL;
   g_autofree char *ostree_target = NULL;
-  bool is_aboot = false;
-  /* This could happen in CoreOS live environments, where we hackily mock
+  gboolean is_aboot = false;
+  if (!otcore_get_ostree_target (cmdline, &is_aboot, &ostree_target, error))
+    return glnx_prefix_error (error, "Invalid aboot ostree target");
+
+  /* If no `ostree=` karg exists, gracefully no-op.
+   * This could happen in CoreOS live environments, where we hackily mock
    * the `ostree=` karg for `ostree-prepare-root.service` specifically, but
    * otherwise that karg doesn't exist on the real command-line. */
-  if (!otcore_get_ostree_target (cmdline, &is_aboot, &ostree_target,
-                                 &otcore_get_ostree_target_error))
+  if (!ostree_target)
     return TRUE;
 
   if (!require_internal_units (normal_dir, early_dir, late_dir, error))
