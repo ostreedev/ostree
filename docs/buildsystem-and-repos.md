@@ -1,13 +1,14 @@
 ---
 nav_order: 90
 ---
-<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 # Writing a buildsystem and managing repositories
 {: .no_toc }
 
 1. TOC
 {:toc}
+
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 OSTree is not a package system.  It does not directly support building
 source code.  Rather, it is a tool for transporting and managing

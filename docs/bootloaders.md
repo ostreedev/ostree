@@ -1,13 +1,14 @@
 ---
 nav_order: 120
 ---
-<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 # Bootloaders
 {: .no_toc }
 
 1. TOC
 {:toc}
+
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 ## OSTree and bootloaders
 

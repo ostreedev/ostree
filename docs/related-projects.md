@@ -1,13 +1,14 @@
 ---
 nav_order: 110
 ---
-<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 # Related Projects
 {: .no_toc }
 
 1. TOC
 {:toc}
+
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 OSTree is in many ways very evolutionary.  It builds on concepts and
 ideas introduced from many different projects such as

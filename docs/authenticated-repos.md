@@ -1,13 +1,14 @@
 ---
 nav_order: 100
 ---
-<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 # Handling access to authenticated remote repositories
 {: .no_toc }
 
 1. TOC
 {:toc}
+
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 There is no default concept of an "ostree server"; ostree expects to talk to a generic webserver, so any tool and technique applicable for generic HTTP can also apply to fetching content via OSTree's builtin HTTP client.
 

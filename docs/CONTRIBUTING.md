@@ -1,13 +1,14 @@
 ---
 nav_order: 190
 ---
-<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 # Contributing
 {: .no_toc }
 
 1. TOC
 {:toc}
+
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 ## Submitting patches
 
