@@ -1,15 +1,14 @@
 ---
 nav_order: 990
-title: Historical OSTree README
 ---
+
+# Historical OSTree README
+
 <!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 **This file is outdated, but some of the text here is still useful for
 historical context.  I'm preserving it (explicitly still in the tree)
 for posterity.**
-
-OSTree
-======
 
 Problem statement
 -----------------
