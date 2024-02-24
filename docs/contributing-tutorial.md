@@ -1,7 +1,6 @@
 ---
 nav_order: 200
 ---
-<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 # OSTree Contributing Tutorial
 {: .no_toc }
@@ -10,6 +9,8 @@ The following guide is about OSTree forking, building, adding a command, testing
 
 1. TOC
 {:toc}
+
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 ## Getting Started
 

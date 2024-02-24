@@ -1,7 +1,6 @@
 ---
 nav_order: 70
 ---
-<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 # OSTree and /var handling
 
@@ -9,6 +8,8 @@ nav_order: 70
 
 1. TOC
 {:toc}
+
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
 
 ## Default commit/image /var handling
 
