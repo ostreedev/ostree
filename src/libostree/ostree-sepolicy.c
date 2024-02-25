@@ -755,13 +755,13 @@ _ostree_filter_selinux_xattr (GVariant *xattrs)
 }
 
 /**
- * ostree_sepolicy_host_enabled:
+ * _ostree_sepolicy_host_enabled:
  * @self: Policy
  *
  * Return if the host has selinux enabled
  */
 gboolean
-ostree_sepolicy_host_enabled (OstreeSePolicy *self)
+_ostree_sepolicy_host_enabled (OstreeSePolicy *self)
 {
 #ifdef HAVE_SELINUX
   return cached_is_selinux_enabled ();
