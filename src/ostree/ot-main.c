@@ -24,6 +24,7 @@
 #include <gio/gio.h>
 
 #include <locale.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mount.h>
@@ -510,6 +511,11 @@ ostree_option_context_parse (GOptionContext *context, const GOptionEntry *main_e
 
   if (opt_version)
     {
+      /* Ignore SIGPIPE so that piping the output to grep or similar
+       * doesn't cause the process to fail. */
+      if (signal (SIGPIPE, SIG_IGN) == SIG_ERR)
+        return glnx_throw_errno_prefix (error, "Ignoring SIGPIPE");
+
       /* This should now be YAML, like `docker version`, so it's both nice to read
        * possible to parse */
       g_auto (GStrv) features = g_strsplit (OSTREE_FEATURES, " ", -1);
