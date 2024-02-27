@@ -26,6 +26,11 @@
 
 #include <string.h>
 
+// Written by bootupd
+#define BOOTUPD_CONFIG "boot/bootupd-state.json"
+// Horrible hack, to avoid including a JSON parser we just grep for this
+#define BOOTUPD_CONFIG_STATIC_JSON_FRAGMENT "\"static-configs\""
+
 /* Maintain backwards compatibility with legacy GRUB
  * installations that might rely on the -16 suffix
  * for real-mode booting.
@@ -74,6 +79,22 @@ _ostree_bootloader_grub2_query (OstreeBootloader *bootloader, gboolean *out_is_a
                                 GCancellable *cancellable, GError **error)
 {
   OstreeBootloaderGrub2 *self = OSTREE_BOOTLOADER_GRUB2 (bootloader);
+
+  g_autoptr (GFile) bootupd_config
+      = g_file_resolve_relative_path (self->sysroot->path, BOOTUPD_CONFIG);
+  if (g_file_query_exists (bootupd_config, NULL))
+    {
+      g_autofree char *bootupd_config_contents = NULL;
+      if (!g_file_load_contents (bootupd_config, cancellable, &bootupd_config_contents, NULL, NULL,
+                                 error))
+        return glnx_prefix_error (error, "Failed to read bootupd config");
+      if (strstr (bootupd_config_contents, BOOTUPD_CONFIG_STATIC_JSON_FRAGMENT) != NULL)
+        {
+          g_debug ("Found static bootupd config");
+          *out_is_active = FALSE;
+          return TRUE;
+        }
+    }
 
   /* Look for the BIOS path first */
   if (g_file_query_exists (self->config_path_bios_1, NULL)
