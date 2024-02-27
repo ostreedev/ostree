@@ -139,8 +139,6 @@ otcore_load_config (int rootfs_fd, const char *filename, GError **error)
       if (fd == -1)
         continue;
 
-      g_print ("Loading %s\n", path);
-
       g_autofree char *buf = glnx_fd_readall_utf8 (fd, NULL, NULL, error);
       if (!buf)
         return NULL;
