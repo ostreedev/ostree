@@ -12,8 +12,8 @@ ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=fals
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull testos testos/buildmain/x86_64-runtime
 ${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=rootfs --os=testos testos:testos/buildmain/x86_64-runtime
 
-assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'root=LABEL=rootfs'
-assert_not_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'init='
+assert_file_has_content sysroot/boot/loader/entries/ostree-1.conf 'root=LABEL=rootfs'
+assert_not_file_has_content sysroot/boot/loader/entries/ostree-1.conf 'init='
 
 echo "ok deployment with initramfs"
 
@@ -63,28 +63,28 @@ for layout in /usr/lib/modules /usr/lib/ostree-boot /boot;
 do
     pull_test_tree "the kernel only"
     ${CMD_PREFIX} ostree admin deploy --os=testos --karg=root=/dev/sda2 --karg=rootwait testos:testos/buildmain/x86_64-runtime
-    assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'rootwait'
-    assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'init='
-    assert_not_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'initrd'
+    assert_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'rootwait'
+    assert_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'init='
+    assert_not_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'initrd'
 
     echo "ok switching to bootdir with no initramfs layout=$layout"
 
     pull_test_tree "the kernel" "initramfs to assist the kernel"
     ${CMD_PREFIX} ostree admin deploy --os=testos --karg-none --karg=root=LABEL=rootfs testos:testos/buildmain/x86_64-runtime
-    assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'initrd'
-    assert_file_has_content sysroot/boot/$(get_key_from_bootloader_conf sysroot/boot/loader/entries/ostree-2-testos.conf "initrd") "initramfs to assist the kernel"
-    assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'root=LABEL=rootfs'
-    assert_not_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'rootwait'
-    assert_not_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'init='
+    assert_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'initrd'
+    assert_file_has_content sysroot/boot/$(get_key_from_bootloader_conf sysroot/boot/loader/entries/ostree-2.conf "initrd") "initramfs to assist the kernel"
+    assert_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'root=LABEL=rootfs'
+    assert_not_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'rootwait'
+    assert_not_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'init='
 
     echo "ok switching from no initramfs to initramfs enabled sysroot layout=$layout"
 
     pull_test_tree "the kernel" "" "my .dtb file"
     ${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmain/x86_64-runtime
 
-    assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'init='
-    assert_file_has_content sysroot/boot/"$(get_key_from_bootloader_conf sysroot/boot/loader/entries/ostree-2-testos.conf 'devicetree')" "my \.dtb file"
-    assert_not_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'initrd'
+    assert_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'init='
+    assert_file_has_content sysroot/boot/"$(get_key_from_bootloader_conf sysroot/boot/loader/entries/ostree-2.conf 'devicetree')" "my \.dtb file"
+    assert_not_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'initrd'
 
     echo "ok switching from initramfs to no initramfs sysroot with devicetree layout=$layout"
 done

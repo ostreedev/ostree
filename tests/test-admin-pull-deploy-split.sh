@@ -44,13 +44,13 @@ ${CMD_PREFIX} ostree admin upgrade --os=testos --pull-only --os=testos > out.txt
 assert_not_file_has_content out.txt 'No update available'
 assert_has_dir sysroot/ostree/deploy/testos/deploy/${parent_rev}.0
 assert_not_has_dir sysroot/ostree/deploy/testos/deploy/${rev}.0
-assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'TestOS 42 1\.0\.9'
+assert_file_has_content sysroot/boot/loader/entries/ostree-1.conf 'TestOS 42 1\.0\.9'
 assert_streq "${rev}" $(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmain/x86_64-runtime)
 # Now, generate new content upstream; we shouldn't pull it
 os_repository_new_commit
 ${CMD_PREFIX} ostree admin upgrade --os=testos --deploy-only --os=testos > out.txt
 assert_not_file_has_content out.txt 'No update available'
-assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'TestOS 42 1\.0\.10'
+assert_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'TestOS 42 1\.0\.10'
 assert_has_dir sysroot/ostree/deploy/testos/deploy/${parent_rev}.0
 assert_has_dir sysroot/ostree/deploy/testos/deploy/${rev}.0
 ${CMD_PREFIX} ostree admin upgrade --os=testos --deploy-only --os=testos > out.txt

@@ -27,8 +27,8 @@ setup_os_repository "archive" "syslinux"
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmain/x86_64-runtime
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo config set sysroot.bootprefix 'true'
 ${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=root --os=testos testos:testos/buildmain/x86_64-runtime
-assert_file_has_content_literal sysroot/boot/loader/entries/ostree-1-testos.conf 'linux /boot/ostree/testos-'
-assert_file_has_content_literal sysroot/boot/loader/entries/ostree-1-testos.conf 'initrd /boot/ostree/testos-'
+assert_file_has_content_literal sysroot/boot/loader/entries/ostree-1.conf 'linux /boot/ostree/testos-'
+assert_file_has_content_literal sysroot/boot/loader/entries/ostree-1.conf 'initrd /boot/ostree/testos-'
 
 tap_ok "bootprefix"
 

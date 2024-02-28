@@ -1853,6 +1853,30 @@ parse_os_release (const char *contents, const char *split)
   return ret;
 }
 
+/* Generate the filename we will use in /boot/loader/entries for this deployment.
+ * The provided n_deployments should be the total number of target deployments (which
+ * might be different from the cached value in the sysroot).
+ */
+static char *
+bootloader_entry_filename (OstreeSysroot *sysroot, guint n_deployments,
+                           OstreeDeployment *deployment)
+{
+  guint index = n_deployments - ostree_deployment_get_index (deployment);
+  // Allow opt-out to dropping the stateroot in case of compatibility issues.
+  // As of 2024.5, we have a new naming scheme because grub2 parses the *filename* and ignores
+  // the version field.  xref https://github.com/ostreedev/ostree/issues/2961
+  bool use_old_naming = (sysroot->opt_flags & OSTREE_SYSROOT_GLOBAL_OPT_BOOTLOADER_NAMING_1) > 0;
+  if (use_old_naming)
+    {
+      const char *stateroot = ostree_deployment_get_osname (deployment);
+      return g_strdup_printf ("ostree-%d-%s.conf", index, stateroot);
+    }
+  else
+    {
+      return g_strdup_printf ("ostree-%d.conf", index);
+    }
+}
+
 /* Given @deployment, prepare it to be booted; basically copying its
  * kernel/initramfs into /boot/ostree (if needed) and writing out an entry in
  * /boot/loader/entries.
@@ -1887,15 +1911,8 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
   const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
   g_autofree char *bootcsumdir = g_strdup_printf ("ostree/%s-%s", osname, bootcsum);
   g_autofree char *bootconfdir = g_strdup_printf ("loader.%d/entries", new_bootversion);
-  g_autofree char *bootconf_name = NULL;
-  guint index = n_deployments - ostree_deployment_get_index (deployment);
-  // Allow opt-in to dropping the stateroot, because grub2 parses the *filename* and ignores
-  // the version field.  xref https://github.com/ostreedev/ostree/issues/2961
-  bool use_new_naming = (sysroot->opt_flags & OSTREE_SYSROOT_GLOBAL_OPT_BOOTLOADER_NAMING_2) > 0;
-  if (use_new_naming)
-    bootconf_name = g_strdup_printf ("ostree-%d.conf", index);
-  else
-    bootconf_name = g_strdup_printf ("ostree-%d-%s.conf", index, osname);
+  g_autofree char *bootconf_name = bootloader_entry_filename (sysroot, n_deployments, deployment);
+
   if (!glnx_shutil_mkdir_p_at (sysroot->boot_fd, bootcsumdir, 0775, cancellable, error))
     return FALSE;
 
@@ -4221,9 +4238,8 @@ ostree_sysroot_deployment_set_kargs_in_place (OstreeSysroot *self, OstreeDeploym
       OstreeBootconfigParser *new_bootconfig = ostree_deployment_get_bootconfig (deployment);
       ostree_bootconfig_parser_set (new_bootconfig, "options", kargs_str);
 
-      g_autofree char *bootconf_name = g_strdup_printf (
-          "ostree-%d-%s.conf", self->deployments->len - ostree_deployment_get_index (deployment),
-          ostree_deployment_get_osname (deployment));
+      g_autofree char *bootconf_name
+          = bootloader_entry_filename (self, self->deployments->len, deployment);
 
       g_autofree char *bootconfdir = g_strdup_printf ("loader.%d/entries", self->bootversion);
       glnx_autofd int bootconf_dfd = -1;

@@ -30,11 +30,11 @@ ${CMD_PREFIX} ostree admin deploy --os=testos --karg=root=LABEL=foo --karg=testk
 origdeployment=$(${CMD_PREFIX} ostree admin --sysroot=sysroot --print-current-dir)
 testconfig=etc/modified-config-file-that-will-be-removed
 touch "${origdeployment}"/"${testconfig}"
-assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf "^options.*root=LABEL=foo.*testkarg"
+assert_file_has_content sysroot/boot/loader/entries/ostree-1.conf "^options.*root=LABEL=foo.*testkarg"
 ${CMD_PREFIX} ostree admin deploy --os=testos --no-merge --karg=root=LABEL=bar testos:testos/buildmain/x86_64-runtime
 deployment=$(${CMD_PREFIX} ostree admin --sysroot=sysroot --print-current-dir)
 assert_not_streq "${origdeployment}" "${deployment}"
 assert_not_has_file "${deployment}/${testconfig}"
-assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf "^options root=LABEL=bar"
-assert_not_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf "^options .*testkarg"
+assert_file_has_content sysroot/boot/loader/entries/ostree-1.conf "^options root=LABEL=bar"
+assert_not_file_has_content sysroot/boot/loader/entries/ostree-1.conf "^options .*testkarg"
 echo "ok no merge deployment"

@@ -31,14 +31,14 @@ ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testo
 ${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmain/x86_64-runtime
 ${CMD_PREFIX} ostree admin kargs edit-in-place --append-if-missing=TESTARG=TESTVALUE --append-if-missing=ARGWITHOUTKEY testos:testos/buildmain/x86_64-runtime
 
-assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*TESTARG=TESTVALUE .*ARGWITHOUTKEY'
+assert_file_has_content sysroot/boot/loader/entries/ostree-1.conf 'options.*TESTARG=TESTVALUE .*ARGWITHOUTKEY'
 
 echo "ok kargs edit-in-place (basic)"
 
 ${CMD_PREFIX} ostree admin kargs edit-in-place --append-if-missing=quiet testos:testos/buildmain/x86_64-runtime
-assert_not_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'quiet$'
+assert_not_file_has_content sysroot/boot/loader/entries/ostree-1.conf 'quiet$'
 
 ${CMD_PREFIX} ostree admin kargs edit-in-place --append-if-missing=TESTARG=TESTVALUE testos:testos/buildmain/x86_64-runtime
-assert_not_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'TESTARG=TESTVALUE$'
+assert_not_file_has_content sysroot/boot/loader/entries/ostree-1.conf 'TESTARG=TESTVALUE$'
 
 echo "ok kargs edit-in-place (duplicate)"

@@ -32,25 +32,25 @@ ${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmain/x86_64-run
 
 ${CMD_PREFIX} ostree admin instutil set-kargs FOO=BAR
 ${CMD_PREFIX} ostree admin instutil set-kargs FOO=BAZ FOO=BIF TESTARG=TESTVALUE KEYWORD EMPTYLIST=
-assert_not_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*FOO=BAR'
-assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*FOO=BAZ .*FOO=BIF'
-assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*TESTARG=TESTVALUE KEYWORD EMPTYLIST='
+assert_not_file_has_content sysroot/boot/loader/entries/ostree-1.conf 'options.*FOO=BAR'
+assert_file_has_content sysroot/boot/loader/entries/ostree-1.conf 'options.*FOO=BAZ .*FOO=BIF'
+assert_file_has_content sysroot/boot/loader/entries/ostree-1.conf 'options.*TESTARG=TESTVALUE KEYWORD EMPTYLIST='
 echo "ok instutil set-kargs (basic)"
 
 ${CMD_PREFIX} ostree admin instutil set-kargs --merge FOO=BAR
-assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*FOO=BAZ .*FOO=BIF .*FOO=BAR'
-assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*TESTARG=TESTVALUE KEYWORD EMPTYLIST='
+assert_file_has_content sysroot/boot/loader/entries/ostree-1.conf 'options.*FOO=BAZ .*FOO=BIF .*FOO=BAR'
+assert_file_has_content sysroot/boot/loader/entries/ostree-1.conf 'options.*TESTARG=TESTVALUE KEYWORD EMPTYLIST='
 echo "ok instutil set-kargs --merge"
 
 ${CMD_PREFIX} ostree admin instutil set-kargs --merge --replace=FOO=XXX
-assert_not_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*FOO=BAR'
-assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*FOO=XXX'
-assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*TESTARG=TESTVALUE KEYWORD EMPTYLIST='
+assert_not_file_has_content sysroot/boot/loader/entries/ostree-1.conf 'options.*FOO=BAR'
+assert_file_has_content sysroot/boot/loader/entries/ostree-1.conf 'options.*FOO=XXX'
+assert_file_has_content sysroot/boot/loader/entries/ostree-1.conf 'options.*TESTARG=TESTVALUE KEYWORD EMPTYLIST='
 echo "ok instutil set-kargs --replace"
 
 ${CMD_PREFIX} ostree admin instutil set-kargs --merge --append=FOO=BAR --append=APPENDARG=VALAPPEND --append=APPENDARG=2NDAPPEND testos:testos/buildmain/x86_64-runtime
-assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*FOO=XXX.*FOO=BAR'
-assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*APPENDARG=VALAPPEND .*APPENDARG=2NDAPPEND'
+assert_file_has_content sysroot/boot/loader/entries/ostree-1.conf 'options.*FOO=XXX.*FOO=BAR'
+assert_file_has_content sysroot/boot/loader/entries/ostree-1.conf 'options.*APPENDARG=VALAPPEND .*APPENDARG=2NDAPPEND'
 echo "ok instutil set-kargs --append"
 
 ${CMD_PREFIX} ostree admin instutil set-kargs --import-proc-cmdline
@@ -60,7 +60,7 @@ for arg in $(cat /proc/cmdline); do
 	   ;;
 	initrd=*|BOOT_IMAGE=*) # Skip options set by bootloader that gets filtered out
 	   ;;
-	*) assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf "options.*$arg"
+	*) assert_file_has_content sysroot/boot/loader/entries/ostree-1.conf "options.*$arg"
 	   ;;
     esac
 done
