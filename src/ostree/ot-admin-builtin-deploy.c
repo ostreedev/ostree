@@ -184,10 +184,7 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeCommandInvocation *invocat
            && (opt_kernel_argv || opt_kernel_argv_append || opt_kernel_argv_delete))
     {
       OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (merge_deployment);
-      g_auto (GStrv) previous_args
-          = g_strsplit (ostree_bootconfig_parser_get (bootconfig, "options"), " ", -1);
-      kargs = ostree_kernel_args_new ();
-      ostree_kernel_args_append_argv (kargs, previous_args);
+      kargs = ostree_kernel_args_from_string (ostree_bootconfig_parser_get (bootconfig, "options"));
     }
 
   /* Now replace/extend the above set.  Note that if no options are specified,

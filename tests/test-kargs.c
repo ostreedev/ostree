@@ -24,8 +24,7 @@
 static gboolean
 check_string_existance (OstreeKernelArgs *karg, const char *string_to_find)
 {
-  g_autofree gchar *string_with_spaces = ostree_kernel_args_to_string (karg);
-  g_auto (GStrv) string_list = g_strsplit (string_with_spaces, " ", -1);
+  g_auto (GStrv) string_list = ostree_kernel_args_to_strv (karg);
   return g_strv_contains ((const char *const *)string_list, string_to_find);
 }
 
@@ -140,6 +139,16 @@ test_kargs_delete (void)
   g_assert_no_error (error);
   g_assert (ret);
   g_assert (!check_string_existance (karg, "nosmt"));
+
+  /* Make sure we also support quotes and spaces */
+  ostree_kernel_args_append (karg, "foo=\"1 2\" bar=0");
+  check_string_existance (karg, "foo=\"1 2\"");
+  check_string_existance (karg, "bar=0");
+  ret = ostree_kernel_args_delete (karg, "foo=\"1 2\" bar=0", &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+  g_assert (!check_string_existance (karg, "foo=\"1 2\""));
+  g_assert (!check_string_existance (karg, "bar=0"));
 }
 
 static void
@@ -189,6 +198,16 @@ test_kargs_replace (void)
   g_assert (ret);
   g_assert (!check_string_existance (karg, "test=firstval"));
   g_assert (check_string_existance (karg, "test=newval"));
+
+  /* Replace with input contains quotes and spaces, it should support */
+  ostree_kernel_args_append (karg, "foo=1 bar=\"1 2\"");
+  ret = ostree_kernel_args_new_replace (karg, "foo=\"1 2\" bar", &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+  g_assert (!check_string_existance (karg, "foo=1"));
+  g_assert (!check_string_existance (karg, "bar=\"1 2\""));
+  g_assert (check_string_existance (karg, "foo=\"1 2\""));
+  g_assert (check_string_existance (karg, "bar"));
 }
 
 /* In this function, we want to verify that ostree_kernel_args_append
@@ -206,6 +225,7 @@ test_kargs_append (void)
   ostree_kernel_args_append (append_arg, "test=");
   ostree_kernel_args_append (append_arg, "test");
   ostree_kernel_args_append (append_arg, "second_test");
+  ostree_kernel_args_append (append_arg, "second_test=0 second_test=\"1 2\"");
 
   /* We loops through the kargs inside table to verify
    * the functionality of append because at this stage
@@ -230,6 +250,10 @@ test_kargs_append (void)
           g_assert_cmpstr (key, ==, "second_test");
           g_assert (ot_ptr_array_find_with_equal_func (value_array, NULL,
                                                        kernel_args_entry_value_equal, NULL));
+          g_assert (ot_ptr_array_find_with_equal_func (value_array, "0",
+                                                       kernel_args_entry_value_equal, NULL));
+          g_assert (ot_ptr_array_find_with_equal_func (value_array, "\"1 2\"",
+                                                       kernel_args_entry_value_equal, NULL));
         }
     }
 
@@ -243,14 +267,15 @@ test_kargs_append (void)
   /* Up till this point, we verified that the above was all correct, we then
    * check ostree_kernel_args_to_string has the right result
    */
-  g_autofree gchar *kargs_str = ostree_kernel_args_to_string (append_arg);
-  g_auto (GStrv) kargs_list = g_strsplit (kargs_str, " ", -1);
+  g_auto (GStrv) kargs_list = ostree_kernel_args_to_strv (append_arg);
   g_assert (g_strv_contains ((const char *const *)kargs_list, "test=valid"));
   g_assert (g_strv_contains ((const char *const *)kargs_list, "test=secondvalid"));
   g_assert (g_strv_contains ((const char *const *)kargs_list, "test="));
   g_assert (g_strv_contains ((const char *const *)kargs_list, "test"));
   g_assert (g_strv_contains ((const char *const *)kargs_list, "second_test"));
-  g_assert_cmpint (5, ==, g_strv_length (kargs_list));
+  g_assert (g_strv_contains ((const char *const *)kargs_list, "second_test=0"));
+  g_assert (g_strv_contains ((const char *const *)kargs_list, "second_test=\"1 2\""));
+  g_assert_cmpint (7, ==, g_strv_length (kargs_list));
 }
 
 int

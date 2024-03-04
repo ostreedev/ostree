@@ -163,6 +163,44 @@ strcmp0_equal (gconstpointer v1, gconstpointer v2)
   return g_strcmp0 (v1, v2) == 0;
 }
 
+/* Split string with spaces, but keep quotes.
+   For example, "test=\"1 2\"" will be saved as whole.
+ */
+static char **
+split_kernel_args (const char *str)
+{
+  gboolean quoted = FALSE;
+  g_return_val_if_fail (str != NULL, NULL);
+
+  GPtrArray *strv = g_ptr_array_new ();
+
+  size_t len = strlen (str);
+  // Skip first spaces
+  const char *start = str + strspn (str, " ");
+  for (const char *iter = start; iter && *iter; iter++)
+    {
+      if (*iter == '"')
+        quoted = !quoted;
+      else if (*iter == ' ' && !quoted)
+        {
+          g_ptr_array_add (strv, g_strndup (start, iter - start));
+          start = iter + 1;
+        }
+    }
+
+  // Add the last slice
+  if (!quoted)
+    g_ptr_array_add (strv, g_strndup (start, str + len - start));
+  else
+    {
+      g_debug ("Missing terminating quote in '%s'.\n", str);
+      g_assert_false (quoted);
+    }
+
+  g_ptr_array_add (strv, NULL);
+  return (char **)g_ptr_array_free (strv, FALSE);
+}
+
 /**
  * ostree_kernel_args_new: (skip)
  *
@@ -285,35 +323,42 @@ _ostree_kernel_arg_get_key_array (OstreeKernelArgs *kargs)
 gboolean
 ostree_kernel_args_new_replace (OstreeKernelArgs *kargs, const char *arg, GError **error)
 {
-  g_autofree char *arg_owned = g_strdup (arg);
-  const char *key = arg_owned;
-  const char *val = split_keyeq (arg_owned);
+  // Split the arg
+  g_auto (GStrv) argv = split_kernel_args (arg);
 
-  GPtrArray *entries = g_hash_table_lookup (kargs->table, key);
-  if (!entries)
-    return glnx_throw (error, "No key '%s' found", key);
-  g_assert_cmpuint (entries->len, >, 0);
-
-  /* first handle the case where the user just wants to replace an old value */
-  if (val && strchr (val, '='))
+  for (char **iter = argv; iter && *iter; iter++)
     {
-      g_autofree char *old_val = g_strdup (val);
-      const char *new_val = split_keyeq (old_val);
-      g_assert (new_val);
+      g_autofree char *arg_owned = g_strdup (*iter);
+      const char *key = arg_owned;
+      const char *val = split_keyeq (arg_owned);
 
-      guint i = 0;
-      if (!ot_ptr_array_find_with_equal_func (entries, old_val, kernel_args_entry_value_equal, &i))
-        return glnx_throw (error, "No karg '%s=%s' found", key, old_val);
+      GPtrArray *entries = g_hash_table_lookup (kargs->table, key);
+      if (!entries)
+        return glnx_throw (error, "No key '%s' found", key);
+      g_assert_cmpuint (entries->len, >, 0);
 
-      kernel_args_entry_replace_value (entries->pdata[i], new_val);
-      return TRUE;
+      /* first handle the case where the user just wants to replace an old value */
+      if (val && strchr (val, '='))
+        {
+          g_autofree char *old_val = g_strdup (val);
+          const char *new_val = split_keyeq (old_val);
+          g_assert (new_val);
+
+          guint i = 0;
+          if (!ot_ptr_array_find_with_equal_func (entries, old_val, kernel_args_entry_value_equal,
+                                                  &i))
+            return glnx_throw (error, "No karg '%s=%s' found", key, old_val);
+
+          kernel_args_entry_replace_value (entries->pdata[i], new_val);
+          continue;
+        }
+
+      /* can't know which val to replace without the old_val=new_val syntax */
+      if (entries->len > 1)
+        return glnx_throw (error, "Multiple values for key '%s' found", key);
+
+      kernel_args_entry_replace_value (entries->pdata[0], val);
     }
-
-  /* can't know which val to replace without the old_val=new_val syntax */
-  if (entries->len > 1)
-    return glnx_throw (error, "Multiple values for key '%s' found", key);
-
-  kernel_args_entry_replace_value (entries->pdata[0], val);
   return TRUE;
 }
 
@@ -381,39 +426,48 @@ ostree_kernel_args_delete_key_entry (OstreeKernelArgs *kargs, const char *key, G
 gboolean
 ostree_kernel_args_delete (OstreeKernelArgs *kargs, const char *arg, GError **error)
 {
-  g_autofree char *arg_owned = g_strdup (arg);
-  const char *key = arg_owned;
-  const char *val = split_keyeq (arg_owned);
+  // Split the arg
+  g_auto (GStrv) argv = split_kernel_args (arg);
 
-  GPtrArray *entries = g_hash_table_lookup (kargs->table, key);
-  if (!entries)
-    return glnx_throw (error, "No key '%s' found", key);
-  g_assert_cmpuint (entries->len, >, 0);
-
-  /* special-case: we allow deleting by key only if there's only one val */
-  if (entries->len == 1)
+  for (char **iter = argv; iter && *iter; iter++)
     {
-      /* but if a specific val was passed, check that it's the same */
-      OstreeKernelArgsEntry *e = entries->pdata[0];
-      if (val && !strcmp0_equal (val, _ostree_kernel_args_entry_get_value (e)))
-        return glnx_throw (error, "No karg '%s=%s' found", key, val);
-      return ostree_kernel_args_delete_key_entry (kargs, key, error);
-    }
+      g_autofree char *arg_owned = g_strdup (*iter);
 
-  /* note val might be NULL here, in which case we're looking for `key`, not `key=` or
-   * `key=val` */
-  guint i = 0;
-  if (!ot_ptr_array_find_with_equal_func (entries, val, kernel_args_entry_value_equal, &i))
-    {
-      if (!val)
-        /* didn't find NULL -> only key= key=val1 key=val2 style things left, so the user
-         * needs to be more specific */
-        return glnx_throw (error, "Multiple values for key '%s' found", arg);
-      return glnx_throw (error, "No karg '%s' found", arg);
-    }
+      const char *key = arg_owned;
+      const char *val = split_keyeq (arg_owned);
 
-  g_assert (g_ptr_array_remove (kargs->order, entries->pdata[i]));
-  g_assert (g_ptr_array_remove_index (entries, i));
+      GPtrArray *entries = g_hash_table_lookup (kargs->table, key);
+      if (!entries)
+        return glnx_throw (error, "No key '%s' found", key);
+      g_assert_cmpuint (entries->len, >, 0);
+
+      /* special-case: we allow deleting by key only if there's only one val */
+      if (entries->len == 1)
+        {
+          /* but if a specific val was passed, check that it's the same */
+          OstreeKernelArgsEntry *e = entries->pdata[0];
+          if (val && !strcmp0_equal (val, _ostree_kernel_args_entry_get_value (e)))
+            return glnx_throw (error, "No karg '%s=%s' found", key, val);
+          if (!ostree_kernel_args_delete_key_entry (kargs, key, error))
+            return glnx_throw (error, "Remove key entry '%s=%s' failed.", key, val);
+          continue;
+        }
+
+      /* note val might be NULL here, in which case we're looking for `key`, not `key=` or
+       * `key=val` */
+      guint i = 0;
+      if (!ot_ptr_array_find_with_equal_func (entries, val, kernel_args_entry_value_equal, &i))
+        {
+          if (!val)
+            /* didn't find NULL -> only key= key=val1 key=val2 style things left, so the user
+             * needs to be more specific */
+            return glnx_throw (error, "Multiple values for key '%s' found", arg);
+          return glnx_throw (error, "No karg '%s' found", arg);
+        }
+
+      g_assert (g_ptr_array_remove (kargs->order, entries->pdata[i]));
+      g_assert (g_ptr_array_remove_index (entries, i));
+    }
   return TRUE;
 }
 
@@ -499,27 +553,34 @@ ostree_kernel_args_replace (OstreeKernelArgs *kargs, const char *arg)
 void
 ostree_kernel_args_append (OstreeKernelArgs *kargs, const char *arg)
 {
-  gboolean existed = TRUE;
-  GPtrArray *entries = NULL;
-  char *duped = g_strdup (arg);
-  const char *val = split_keyeq (duped);
+  // Split the arg
+  g_auto (GStrv) argv = split_kernel_args (arg);
 
-  entries = g_hash_table_lookup (kargs->table, duped);
-  if (!entries)
+  for (char **iter = argv; iter && *iter; iter++)
     {
-      entries = g_ptr_array_new_with_free_func (kernel_args_entry_free_from_table);
-      existed = FALSE;
+      gboolean existed = TRUE;
+      GPtrArray *entries = NULL;
+
+      char *duped = g_strdup (*iter);
+      const char *val = split_keyeq (duped);
+
+      entries = g_hash_table_lookup (kargs->table, duped);
+      if (!entries)
+        {
+          entries = g_ptr_array_new_with_free_func (kernel_args_entry_free_from_table);
+          existed = FALSE;
+        }
+
+      OstreeKernelArgsEntry *entry = _ostree_kernel_args_entry_new ();
+      _ostree_kernel_args_entry_set_key (entry, duped);
+      _ostree_kernel_args_entry_set_value (entry, g_strdup (val));
+
+      g_ptr_array_add (entries, entry);
+      g_ptr_array_add (kargs->order, entry);
+
+      if (!existed)
+        g_hash_table_replace (kargs->table, duped, entries);
     }
-
-  OstreeKernelArgsEntry *entry = _ostree_kernel_args_entry_new ();
-  _ostree_kernel_args_entry_set_key (entry, duped);
-  _ostree_kernel_args_entry_set_value (entry, g_strdup (val));
-
-  g_ptr_array_add (entries, entry);
-  g_ptr_array_add (kargs->order, entry);
-
-  if (!existed)
-    g_hash_table_replace (kargs->table, duped, entries);
 }
 
 /**
@@ -644,7 +705,7 @@ ostree_kernel_args_parse_append (OstreeKernelArgs *kargs, const char *options)
   if (!options)
     return;
 
-  args = g_strsplit (options, " ", -1);
+  args = split_kernel_args (options);
   for (iter = args; *iter; iter++)
     {
       char *arg = *iter;
