@@ -563,7 +563,7 @@ fn suppress_ostree_global_sync(sh: &xshell::Shell) -> Result<()> {
     // Aslo opt-in to the new bootloader naming
     std::fs::write(
         Path::new(dropindir).join("50-test-options.conf"),
-        "[Service]\nEnvironment=OSTREE_SYSROOT_OPTS=skip-sync,bootloader-naming-2\n",
+        "[Service]\nEnvironment=OSTREE_SYSROOT_OPTS=skip-sync\n",
     )?;
     cmd!(sh, "systemctl daemon-reload").run()?;
     Ok(())

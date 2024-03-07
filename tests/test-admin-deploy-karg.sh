@@ -33,12 +33,12 @@ export rev
 ${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmain/x86_64-runtime
 ${CMD_PREFIX} ostree admin deploy --karg=FOO=BAR --os=testos testos:testos/buildmain/x86_64-runtime
 ${CMD_PREFIX} ostree admin deploy --karg=TESTARG=TESTVALUE --os=testos testos:testos/buildmain/x86_64-runtime
-assert_file_has_content sysroot/boot/loader/entries/ostree-1-testos.conf 'options.*FOO=BAR'
-assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*FOO=BAR'
-assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*TESTARG=TESTVALUE'
+assert_file_has_content sysroot/boot/loader/entries/ostree-1.conf 'options.*FOO=BAR'
+assert_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'options.*FOO=BAR'
+assert_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'options.*TESTARG=TESTVALUE'
 ${CMD_PREFIX} ostree admin deploy --karg=ANOTHERARG=ANOTHERVALUE --os=testos testos:testos/buildmain/x86_64-runtime
-assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*TESTARG=TESTVALUE'
-assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*ANOTHERARG=ANOTHERVALUE'
+assert_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'options.*TESTARG=TESTVALUE'
+assert_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'options.*ANOTHERARG=ANOTHERVALUE'
 
 echo "ok deploy with --karg, but same config"
 
@@ -49,7 +49,7 @@ for arg in $(cat /proc/cmdline); do
 	  ;;
 	initrd=*|BOOT_IMAGE=*) # Skip options set by bootloader that gets filtered out
 	   ;;
-	*) assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf "options.*$arg"
+	*) assert_file_has_content sysroot/boot/loader/entries/ostree-2.conf "options.*$arg"
 	   ;;
     esac
 done
@@ -60,20 +60,20 @@ ${CMD_PREFIX} ostree admin status
 ${CMD_PREFIX} ostree admin undeploy 0
 
 ${CMD_PREFIX} ostree admin deploy  --os=testos --karg-append=APPENDARG=VALAPPEND --karg-append=APPENDARG=2NDAPPEND testos:testos/buildmain/x86_64-runtime
-assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*FOO=BAR'
-assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*TESTARG=TESTVALUE'
-assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*APPENDARG=VALAPPEND .*APPENDARG=2NDAPPEND'
+assert_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'options.*FOO=BAR'
+assert_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'options.*TESTARG=TESTVALUE'
+assert_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'options.*APPENDARG=VALAPPEND .*APPENDARG=2NDAPPEND'
 
 # Check correct ordering of different-valued args of the same key.
 ${CMD_PREFIX} ostree admin deploy  --os=testos --karg-append=FOO=TESTORDERED --karg-append=APPENDARG=3RDAPPEND testos:testos/buildmain/x86_64-runtime
-assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*APPENDARG=VALAPPEND .*APPENDARG=2NDAPPEND .*FOO=TESTORDERED .*APPENDARG=3RDAPPEND'
+assert_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'options.*APPENDARG=VALAPPEND .*APPENDARG=2NDAPPEND .*FOO=TESTORDERED .*APPENDARG=3RDAPPEND'
 
 echo "ok deploy --karg-append"
 
-assert_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*quiet .*TESTARG=TESTVALUE .*APPENDARG=VALAPPEND .*APPENDARG=2NDAPPEND'
+assert_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'options.*quiet .*TESTARG=TESTVALUE .*APPENDARG=VALAPPEND .*APPENDARG=2NDAPPEND'
 ${CMD_PREFIX} ostree admin deploy  --os=testos --karg-delete=TESTARG=TESTVALUE --karg-delete=quiet --karg-delete=APPENDARG=VALAPPEND testos:testos/buildmain/x86_64-runtime
-assert_not_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*TESTARG=TESTVALUE'
-assert_not_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*quiet'
-assert_not_file_has_content sysroot/boot/loader/entries/ostree-2-testos.conf 'options.*APPENDARG=VALAPPEND'
+assert_not_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'options.*TESTARG=TESTVALUE'
+assert_not_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'options.*quiet'
+assert_not_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'options.*APPENDARG=VALAPPEND'
 
 echo "ok deploy --karg-delete"
