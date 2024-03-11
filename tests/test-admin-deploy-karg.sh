@@ -24,7 +24,7 @@ set -euo pipefail
 # Exports OSTREE_SYSROOT so --sysroot not needed.
 setup_os_repository "archive" "syslinux"
 
-echo "1..4"
+echo "1..5"
 
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmain/x86_64-runtime
 rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmain/x86_64-runtime)
@@ -77,3 +77,10 @@ assert_not_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'options.*
 assert_not_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'options.*APPENDARG=VALAPPEND'
 
 echo "ok deploy --karg-delete"
+
+${CMD_PREFIX} ostree admin deploy --os=testos --karg-append 'test="1 2"' testos:testos/buildmain/x86_64-runtime
+assert_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'options.*test="1 2"'
+${CMD_PREFIX} ostree admin deploy --os=testos --karg-delete 'test="1 2"' testos:testos/buildmain/x86_64-runtime
+assert_not_file_has_content sysroot/boot/loader/entries/ostree-2.conf 'options.*test="1 2"'
+
+echo "ok deploy --karg-delete with quotes"
