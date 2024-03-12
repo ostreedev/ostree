@@ -2641,6 +2641,9 @@ auto_early_prune_old_deployments (OstreeSysroot *self, GPtrArray *new_deployment
   if (self->booted_deployment == NULL)
     return TRUE;
 
+  if (!_ostree_sysroot_ensure_boot_fd (self, error))
+    return FALSE;
+
   {
     struct stat stbuf;
     if (!glnx_fstatat (self->boot_fd, ".", &stbuf, 0, error))
