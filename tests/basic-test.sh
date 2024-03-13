@@ -1159,6 +1159,18 @@ if touch overlay/baz/.wh.cow && touch overlay/.wh.deeper && touch overlay/baz/an
     assert_has_file overlay-co/baz
     test -L overlay-co/anewdir
 
+    rm overlay-co overlay -rf
+    mkdir -p overlay/somelink overlay/yet/ovlnewdir
+    echo ovlnewf > overlay/yet/ovlnewdir/ovlnewf
+    $OSTREE --repo=repo commit ${COMMIT_ARGS} -b overlay-symlink-convert --tree=dir=overlay
+    for branch in test2 overlay-symlink-convert; do
+        $OSTREE --repo=repo checkout --union --whiteouts ${branch} overlay-co
+    done
+    test -d overlay-co/somelink || fatal "should replace symlink with dir"
+    assert_has_dir overlay-co/yet/another
+    assert_has_dir overlay-co/yet/ovlnewdir
+    assert_file_has_content overlay-co/yet/ovlnewdir/ovlnewf ovlnewf
+    rm overlay-co overlay -rf
     echo "ok whiteouts enabled"
 
     # Now double check whiteouts are not processed without --whiteouts

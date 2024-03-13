@@ -1062,6 +1062,22 @@ checkout_tree_at_recurse (OstreeRepo *self, OstreeRepoCheckoutAtOptions *options
         if (!glnx_shutil_rm_rf_at (destination_parent_fd, destination_name, cancellable, error))
           return FALSE;
       }
+    else if (options->process_whiteouts
+             && options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
+      {
+        /* In this mode, we're flattening in a manner similar to overlayfs, so ensure
+         * any non-directory content there is gone. /
+         */
+        struct stat stbuf;
+        if (!glnx_fstatat_allow_noent (destination_parent_fd, destination_name, &stbuf,
+                                       AT_SYMLINK_NOFOLLOW, error))
+          return FALSE;
+        if (errno == 0 && !S_ISDIR (stbuf.st_mode))
+          {
+            if (!glnx_shutil_rm_rf_at (destination_parent_fd, destination_name, cancellable, error))
+              return FALSE;
+          }
+      }
 
     /* Create initially with mode 0700, then chown/chmod only when we're
      * done.  This avoids anyone else being able to operate on partially
