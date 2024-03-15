@@ -1094,7 +1094,7 @@ on_request_sent (GObject *object, GAsyncResult *result, gpointer user_data)
 #endif
                   break;
                 default:
-                  code = _ostree_fetcher_http_status_code_to_io_error (msg->status_code);
+                  code = _ostree_fetcher_http_status_code_to_io_error (msg->status_code, FALSE);
                   break;
                 }
 

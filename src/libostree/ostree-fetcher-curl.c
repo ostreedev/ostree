@@ -322,6 +322,8 @@ check_multi_info (OstreeFetcher *fetcher)
 
       req = g_task_get_task_data (task);
 
+      gboolean retry_all = (!is_file && req->fetcher->opt_retry_all);
+
       if (req->caught_write_error)
         g_task_return_error (task, g_steal_pointer (&req->caught_write_error));
       else if (curlres != CURLE_OK)
@@ -337,12 +339,9 @@ check_multi_info (OstreeFetcher *fetcher)
               /* When it is not a file, we want to retry the request.
                * We accomplish that by using G_IO_ERROR_TIMED_OUT.
                */
-              gboolean opt_retry_all = req->fetcher->opt_retry_all;
-              int g_io_error_code
-                  = (is_file || !opt_retry_all) ? G_IO_ERROR_FAILED : G_IO_ERROR_TIMED_OUT;
-              g_task_return_new_error (task, G_IO_ERROR, g_io_error_code,
-                                       "While fetching %s: [%u] %s", eff_url, curlres,
-                                       curl_easy_strerror (curlres));
+              g_task_return_new_error (
+                  task, G_IO_ERROR, retry_all ? G_IO_ERROR_TIMED_OUT : G_IO_ERROR,
+                  "While fetching %s: [%u] %s", eff_url, curlres, curl_easy_strerror (curlres));
               _ostree_fetcher_journal_failure (req->fetcher->remote_name, eff_url,
                                                curl_easy_strerror (curlres));
             }
@@ -362,12 +361,13 @@ check_multi_info (OstreeFetcher *fetcher)
 
           if (!is_file && !(response >= 200 && response < 300) && response != 304)
             {
-              GIOErrorEnum giocode = _ostree_fetcher_http_status_code_to_io_error (response);
+              GIOErrorEnum giocode
+                  = _ostree_fetcher_http_status_code_to_io_error (response, retry_all);
 
               if (req->idx + 1 == req->mirrorlist->len)
                 {
-                  g_autofree char *response_msg
-                      = g_strdup_printf ("Server returned HTTP %lu", response);
+                  g_autofree char *response_msg = g_strdup_printf (
+                      "While fetching %s: Server returned HTTP %lu", eff_url, response);
                   g_task_return_new_error (task, G_IO_ERROR, giocode, "%s", response_msg);
                   if (req->fetcher->remote_name
                       && !((req->flags & OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT) > 0
