@@ -497,7 +497,7 @@ ostree_sepolicy_get_path (OstreeSePolicy *self)
  * ostree_sepolicy_get_name:
  * @self:
  *
- * Returns: (transfer none): Type of current policy
+ * Returns: (transfer none) (nullable): Type of current policy
  */
 const char *
 ostree_sepolicy_get_name (OstreeSePolicy *self)
