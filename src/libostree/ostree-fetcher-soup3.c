@@ -621,7 +621,7 @@ on_request_sent (GObject *object, GAsyncResult *result, gpointer user_data)
             {
               g_autofree char *uristring
                   = g_uri_to_string (soup_message_get_uri (request->message));
-              GIOErrorEnum code = _ostree_fetcher_http_status_code_to_io_error (status);
+              GIOErrorEnum code = _ostree_fetcher_http_status_code_to_io_error (status, FALSE);
               {
                 g_autofree char *errmsg = g_strdup_printf ("Server returned status %u: %s", status,
                                                            soup_status_get_phrase (status));

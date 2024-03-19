@@ -224,7 +224,7 @@ _ostree_fetcher_should_retry_request (const GError *error, guint n_retries_remai
  * a #GIOErrorEnum. This will return %G_IO_ERROR_FAILED if the status code is
  * unknown or otherwise unhandled. */
 GIOErrorEnum
-_ostree_fetcher_http_status_code_to_io_error (guint status_code)
+_ostree_fetcher_http_status_code_to_io_error (guint status_code, gboolean should_retry)
 {
   switch (status_code)
     {
@@ -235,8 +235,9 @@ _ostree_fetcher_http_status_code_to_io_error (guint status_code)
     case 408: /* SOUP_STATUS_REQUEST_TIMEOUT */
       return G_IO_ERROR_TIMED_OUT;
     case 500: /* SOUP_STATUS_INTERNAL_SERVER_ERROR */
-      return G_IO_ERROR_BUSY;
+      /* retries are always mapped to timeouts, see similar logic in the curl error handling */
+      return should_retry ? G_IO_ERROR_TIMED_OUT : G_IO_ERROR_BUSY;
     default:
-      return G_IO_ERROR_FAILED;
+      return should_retry ? G_IO_ERROR_TIMED_OUT : G_IO_ERROR_FAILED;
     }
 }
