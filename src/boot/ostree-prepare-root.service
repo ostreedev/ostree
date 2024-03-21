@@ -19,10 +19,12 @@ Documentation=man:ostree(1)
 DefaultDependencies=no
 ConditionKernelCommandLine=ostree
 ConditionPathExists=/etc/initrd-release
-OnFailure=emergency.target
 After=sysroot.mount
 Requires=sysroot.mount
 Before=initrd-root-fs.target
+
+OnFailure=emergency.target
+OnFailureJobMode=isolate
 
 [Service]
 Type=oneshot
