@@ -284,53 +284,25 @@ AS_IF([test x$have_gpgme = xyes],
 )
 AM_CONDITIONAL(USE_GPGME, test "x$have_gpgme" = xyes)
 
-dnl composefs won't work at all without this
-AC_CHECK_HEADERS([endian.h sys/endian.h machine/endian.h])
-AC_CHECK_FUNCS([reallocarray])
-AC_MSG_CHECKING([for MOUNT_ATTR_IDMAP])
-AC_COMPILE_IFELSE(
-	[AC_LANG_PROGRAM([
-			#include <sys/mount.h>
-			#include <linux/mount.h>
-  ],[int foo = MOUNT_ATTR_IDMAP;]
-	)],
-	[AC_MSG_RESULT(yes)
-		AC_DEFINE([HAVE_MOUNT_ATTR_IDMAP], 1, [Define if MOUNT_ATTR_IDMAP is available in linux/mount.h])
-		have_mount_attr_idmap=yes],
-	[AC_MSG_RESULT(no)])
-dnl These are needed by libcomposefs to use the new mount API optionally
-AC_MSG_CHECKING([for new mount API (fsconfig)])
-AC_COMPILE_IFELSE(
-	[AC_LANG_SOURCE([[
-			#include <sys/mount.h>
-			int cmd = FSCONFIG_CMD_CREATE;
-	]])],
-	[AC_MSG_RESULT(yes)
-		 AC_DEFINE([HAVE_FSCONFIG_CMD_CREATE_SYS_MOUNT_H], 1, [Define if FSCONFIG_CMD_CREATE is available in sys/mount.h])],
-	[AC_MSG_RESULT(no)])
-AC_COMPILE_IFELSE(
-	[AC_LANG_SOURCE([[
-			/* also make sure it doesn't conflict with <sys/mount.h> since it is always used.  */
-			#include <sys/mount.h>
-			#include <linux/mount.h>
-			int cmd = FSCONFIG_CMD_CREATE;
-	]])],
-	[AC_MSG_RESULT(yes)
-		 AC_DEFINE([HAVE_FSCONFIG_CMD_CREATE_LINUX_MOUNT_H], 1, [Define if FSCONFIG_CMD_CREATE is available in linux/mount.h])],
-	[AC_MSG_RESULT(no)])
-
-composefs_default=yes
-if test x"$have_mount_attr_idmap" != xyes; then
-  composefs_default=no
-fi
 AC_ARG_WITH(composefs,
-	    AS_HELP_STRING([--with-composefs], [Support composefs]),
-	    :, with_composefs=$composefs_default)
+	    AS_HELP_STRING([--with-composefs], [Support composefs (default yes)]),
+	    :, with_composefs=maybe)
 
-if test x$with_composefs != xno; then OSTREE_FEATURES="$OSTREE_FEATURES composefs";
-   AC_DEFINE([HAVE_COMPOSEFS], 1, [Define if we have libcomposefs])
-fi
-AM_CONDITIONAL(USE_COMPOSEFS, test $with_composefs != no)
+have_composefs=no
+AS_IF([ test x$with_composefs != xno ], [
+    AC_MSG_CHECKING([for composefs])
+    PKG_CHECK_EXISTS(composefs, have_composefs=yes, have_composefs=no)
+    AC_MSG_RESULT([$have_composefs])
+    AS_IF([ test x$have_composefs = xno && test x$with_composefs != xmaybe ], [
+       AC_MSG_ERROR([composefs is enabled but could not be found])
+    ])
+    AS_IF([ test x$have_composefs = xyes], [
+      PKG_CHECK_MODULES(OT_DEP_COMPOSEFS, [composefs])
+      OSTREE_FEATURES="$OSTREE_FEATURES composefs";
+      AC_DEFINE([HAVE_COMPOSEFS], 1, [Define if we have libcomposefs])
+    ])
+])
+AM_CONDITIONAL(USE_COMPOSEFS, test x$have_composefs = xyes)
 
 LIBSODIUM_DEPENDENCY="1.0.14"
 AC_ARG_WITH(ed25519_libsodium,
@@ -737,7 +709,7 @@ echo "
     dracut:                                       $with_dracut
     mkinitcpio:                                   $with_mkinitcpio
     Static compiler for ostree-prepare-root:      $with_static_compiler
-    Composefs:                                    $with_composefs"
+    Composefs:                                    $have_composefs"
 AS_IF([test x$with_builtin_grub2_mkconfig = xyes], [
     echo "    builtin grub2-mkconfig (instead of system):   $with_builtin_grub2_mkconfig"
 ], [
