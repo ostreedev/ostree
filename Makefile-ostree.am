@@ -76,6 +76,7 @@ ostree_SOURCES += \
 	src/ostree/ot-admin-builtin-set-default.c \
 	src/ostree/ot-admin-builtin-instutil.c \
 	src/ostree/ot-admin-builtin-kargs.c \
+        src/ostree/ot-admin-builtin-metadata.c \
 	src/ostree/ot-admin-builtin-cleanup.c \
 	src/ostree/ot-admin-builtin-os-init.c \
 	src/ostree/ot-admin-builtin-set-origin.c \

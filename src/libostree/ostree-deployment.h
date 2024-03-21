@@ -107,4 +107,12 @@ const char *ostree_deployment_unlocked_state_to_string (OstreeDeploymentUnlocked
 _OSTREE_PUBLIC
 OstreeDeploymentUnlockedState ostree_deployment_get_unlocked (OstreeDeployment *self);
 
+_OSTREE_PUBLIC
+gboolean ostree_deployment_set_ext_metadata (OstreeDeployment *self, const char *metadata_key,
+                                             const char *metadata_value, GError **error);
+
+_OSTREE_PUBLIC
+const char *ostree_deployment_get_ext_metadata (OstreeDeployment *self, const char *metadata_key,
+                                                GError **error);
+
 G_END_DECLS
