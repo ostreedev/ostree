@@ -1,0 +1,2226 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>API Reference: OSTree API references</title>
+<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<link rel="home" href="index.html" title="OSTree API references">
+<link rel="up" href="index.html" title="OSTree API references">
+<link rel="prev" href="index.html" title="OSTree API references">
+<link rel="next" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">
+<meta name="generator" content="GTK-Doc V1.33.1 (XML mode)">
+<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table class="navigation" id="top" width="100%" summary="Navigation header" cellpadding="2" cellspacing="5"><tr valign="middle">
+<td width="100%" align="left" class="shortcuts"></td>
+<td><a accesskey="h" href="index.html"><img src="home.png" width="16" height="16" border="0" alt="Home"></a></td>
+<td><img src="up-insensitive.png" width="16" height="16" border="0"></td>
+<td><a accesskey="p" href="index.html"><img src="left.png" width="16" height="16" border="0" alt="Prev"></a></td>
+<td><a accesskey="n" href="ostree-Core-repository-independent-functions.html"><img src="right.png" width="16" height="16" border="0" alt="Next"></a></td>
+</tr></table>
+<div class="chapter">
+<div class="titlepage"><div><div><h1 class="title">
+<a name="reference"></a>API Reference</h1></div></div></div>
+<div class="toc"><dl class="toc">
+<dt>
+<span class="refentrytitle"><a href="ostree-Core-repository-independent-functions.html">Core repository-independent functions</a></span><span class="refpurpose"> — Create, validate, and convert core data types</span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-OstreeRepo.html">OstreeRepo: Content-addressed object store</a></span><span class="refpurpose"> — A git-like storage system for operating system binaries</span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-In-memory-modifiable-filesystem-tree.html">In-memory modifiable filesystem tree</a></span><span class="refpurpose"> — Modifiable filesystem tree</span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-Root-partition-mount-point.html">Root partition mount point</a></span><span class="refpurpose"> — Manage physical root filesystem</span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-Progress-notification-system-for-asynchronous-operations.html">Progress notification system for asynchronous operations</a></span><span class="refpurpose"> — Values representing progress</span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-SELinux-policy-management.html">SELinux policy management</a></span><span class="refpurpose"> — Read SELinux policy and manage filesystem labels</span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-Simple-upgrade-class.html">Simple upgrade class</a></span><span class="refpurpose"> — Upgrade OSTree systems</span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-GPG-signature-verification-results.html">GPG signature verification results</a></span><span class="refpurpose"> — Inspect detached GPG signatures</span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-Signature-management.html">Signature management</a></span><span class="refpurpose"> — Sign and verify commits</span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-ostree-bootconfig-parser.html">ostree-bootconfig-parser</a></span><span class="refpurpose"></span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-ostree-chain-input-stream.html">ostree-chain-input-stream</a></span><span class="refpurpose"></span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-ostree-checksum-input-stream.html">ostree-checksum-input-stream</a></span><span class="refpurpose"></span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-ostree-content-writer.html">ostree-content-writer</a></span><span class="refpurpose"></span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-ostree-deployment.html">ostree-deployment</a></span><span class="refpurpose"></span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-ostree-diff.html">ostree-diff</a></span><span class="refpurpose"></span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-ostree-kernel-args.html">ostree-kernel-args</a></span><span class="refpurpose"></span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-ostree-ref.html">ostree-ref</a></span><span class="refpurpose"></span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-ostree-remote.html">ostree-remote</a></span><span class="refpurpose"></span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-ostree-repo-file.html">ostree-repo-file</a></span><span class="refpurpose"></span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-ostree-repo-finder.html">ostree-repo-finder</a></span><span class="refpurpose"></span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-ostree-repo-remote-finder.html">ostree-repo-remote-finder</a></span><span class="refpurpose"></span>
+</dt>
+<dt>
+<span class="refentrytitle"><a href="ostree-ostree-version.html">ostree-version</a></span><span class="refpurpose"> — ostree version checking</span>
+</dt>
+<dt><span class="index"><a href="reference.html#api-index-full">API Index</a></span></dt>
+</dl></div>
+<div class="index">
+<div class="titlepage"><div><div><h2 class="title">
+<a name="api-index-full"></a>API Index</h2></div></div></div>
+<a name="idx"></a><a name="idxA"></a><h3 class="title">A</h3>
+<dt>
+<a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#OstreeAsyncProgress" title="OstreeAsyncProgress">OstreeAsyncProgress</a>, typedef in <a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html" title="Progress notification system for asynchronous operations">Progress notification system for asynchronous operations</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#ostree-async-progress-copy-state" title="ostree_async_progress_copy_state ()">ostree_async_progress_copy_state</a>, function in <a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html" title="Progress notification system for asynchronous operations">Progress notification system for asynchronous operations</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#ostree-async-progress-finish" title="ostree_async_progress_finish ()">ostree_async_progress_finish</a>, function in <a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html" title="Progress notification system for asynchronous operations">Progress notification system for asynchronous operations</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#ostree-async-progress-get" title="ostree_async_progress_get ()">ostree_async_progress_get</a>, function in <a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html" title="Progress notification system for asynchronous operations">Progress notification system for asynchronous operations</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#ostree-async-progress-get-status" title="ostree_async_progress_get_status ()">ostree_async_progress_get_status</a>, function in <a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html" title="Progress notification system for asynchronous operations">Progress notification system for asynchronous operations</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#ostree-async-progress-get-uint" title="ostree_async_progress_get_uint ()">ostree_async_progress_get_uint</a>, function in <a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html" title="Progress notification system for asynchronous operations">Progress notification system for asynchronous operations</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#ostree-async-progress-get-uint64" title="ostree_async_progress_get_uint64 ()">ostree_async_progress_get_uint64</a>, function in <a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html" title="Progress notification system for asynchronous operations">Progress notification system for asynchronous operations</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#ostree-async-progress-get-variant" title="ostree_async_progress_get_variant ()">ostree_async_progress_get_variant</a>, function in <a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html" title="Progress notification system for asynchronous operations">Progress notification system for asynchronous operations</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#ostree-async-progress-new" title="ostree_async_progress_new ()">ostree_async_progress_new</a>, function in <a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html" title="Progress notification system for asynchronous operations">Progress notification system for asynchronous operations</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#ostree-async-progress-new-and-connect" title="ostree_async_progress_new_and_connect ()">ostree_async_progress_new_and_connect</a>, function in <a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html" title="Progress notification system for asynchronous operations">Progress notification system for asynchronous operations</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#ostree-async-progress-set" title="ostree_async_progress_set ()">ostree_async_progress_set</a>, function in <a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html" title="Progress notification system for asynchronous operations">Progress notification system for asynchronous operations</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#ostree-async-progress-set-status" title="ostree_async_progress_set_status ()">ostree_async_progress_set_status</a>, function in <a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html" title="Progress notification system for asynchronous operations">Progress notification system for asynchronous operations</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#ostree-async-progress-set-uint" title="ostree_async_progress_set_uint ()">ostree_async_progress_set_uint</a>, function in <a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html" title="Progress notification system for asynchronous operations">Progress notification system for asynchronous operations</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#ostree-async-progress-set-uint64" title="ostree_async_progress_set_uint64 ()">ostree_async_progress_set_uint64</a>, function in <a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html" title="Progress notification system for asynchronous operations">Progress notification system for asynchronous operations</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#ostree-async-progress-set-variant" title="ostree_async_progress_set_variant ()">ostree_async_progress_set_variant</a>, function in <a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html" title="Progress notification system for asynchronous operations">Progress notification system for asynchronous operations</a>
+</dt>
+<dd></dd>
+<a name="idxB"></a><h3 class="title">B</h3>
+<dt>
+<a class="link" href="ostree-ostree-bootconfig-parser.html#OstreeBootconfigParser" title="OstreeBootconfigParser">OstreeBootconfigParser</a>, struct in <a class="link" href="ostree-ostree-bootconfig-parser.html" title="ostree-bootconfig-parser">ostree-bootconfig-parser</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-bootconfig-parser.html#ostree-bootconfig-parser-clone" title="ostree_bootconfig_parser_clone ()">ostree_bootconfig_parser_clone</a>, function in <a class="link" href="ostree-ostree-bootconfig-parser.html" title="ostree-bootconfig-parser">ostree-bootconfig-parser</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-bootconfig-parser.html#ostree-bootconfig-parser-get" title="ostree_bootconfig_parser_get ()">ostree_bootconfig_parser_get</a>, function in <a class="link" href="ostree-ostree-bootconfig-parser.html" title="ostree-bootconfig-parser">ostree-bootconfig-parser</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-bootconfig-parser.html#ostree-bootconfig-parser-get-overlay-initrds" title="ostree_bootconfig_parser_get_overlay_initrds ()">ostree_bootconfig_parser_get_overlay_initrds</a>, function in <a class="link" href="ostree-ostree-bootconfig-parser.html" title="ostree-bootconfig-parser">ostree-bootconfig-parser</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-bootconfig-parser.html#ostree-bootconfig-parser-new" title="ostree_bootconfig_parser_new ()">ostree_bootconfig_parser_new</a>, function in <a class="link" href="ostree-ostree-bootconfig-parser.html" title="ostree-bootconfig-parser">ostree-bootconfig-parser</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-bootconfig-parser.html#ostree-bootconfig-parser-parse" title="ostree_bootconfig_parser_parse ()">ostree_bootconfig_parser_parse</a>, function in <a class="link" href="ostree-ostree-bootconfig-parser.html" title="ostree-bootconfig-parser">ostree-bootconfig-parser</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-bootconfig-parser.html#ostree-bootconfig-parser-parse-at" title="ostree_bootconfig_parser_parse_at ()">ostree_bootconfig_parser_parse_at</a>, function in <a class="link" href="ostree-ostree-bootconfig-parser.html" title="ostree-bootconfig-parser">ostree-bootconfig-parser</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-bootconfig-parser.html#ostree-bootconfig-parser-set" title="ostree_bootconfig_parser_set ()">ostree_bootconfig_parser_set</a>, function in <a class="link" href="ostree-ostree-bootconfig-parser.html" title="ostree-bootconfig-parser">ostree-bootconfig-parser</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-bootconfig-parser.html#ostree-bootconfig-parser-set-overlay-initrds" title="ostree_bootconfig_parser_set_overlay_initrds ()">ostree_bootconfig_parser_set_overlay_initrds</a>, function in <a class="link" href="ostree-ostree-bootconfig-parser.html" title="ostree-bootconfig-parser">ostree-bootconfig-parser</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-bootconfig-parser.html#ostree-bootconfig-parser-write" title="ostree_bootconfig_parser_write ()">ostree_bootconfig_parser_write</a>, function in <a class="link" href="ostree-ostree-bootconfig-parser.html" title="ostree-bootconfig-parser">ostree-bootconfig-parser</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-bootconfig-parser.html#ostree-bootconfig-parser-write-at" title="ostree_bootconfig_parser_write_at ()">ostree_bootconfig_parser_write_at</a>, function in <a class="link" href="ostree-ostree-bootconfig-parser.html" title="ostree-bootconfig-parser">ostree-bootconfig-parser</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-break-hardlink" title="ostree_break_hardlink ()">ostree_break_hardlink</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<a name="idxC"></a><h3 class="title">C</h3>
+<dt>
+<a class="link" href="ostree-ostree-chain-input-stream.html#OstreeChainInputStream" title="struct OstreeChainInputStream">OstreeChainInputStream</a>, struct in <a class="link" href="ostree-ostree-chain-input-stream.html" title="ostree-chain-input-stream">ostree-chain-input-stream</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-chain-input-stream.html#ostree-chain-input-stream-new" title="ostree_chain_input_stream_new ()">ostree_chain_input_stream_new</a>, function in <a class="link" href="ostree-ostree-chain-input-stream.html" title="ostree-chain-input-stream">ostree-chain-input-stream</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-checksum-input-stream.html#OstreeChecksumInputStream" title="struct OstreeChecksumInputStream">OstreeChecksumInputStream</a>, struct in <a class="link" href="ostree-ostree-checksum-input-stream.html" title="ostree-checksum-input-stream">ostree-checksum-input-stream</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-b64-from-bytes" title="ostree_checksum_b64_from_bytes ()">ostree_checksum_b64_from_bytes</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-b64-inplace-from-bytes" title="ostree_checksum_b64_inplace_from_bytes ()">ostree_checksum_b64_inplace_from_bytes</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-b64-inplace-to-bytes" title="ostree_checksum_b64_inplace_to_bytes ()">ostree_checksum_b64_inplace_to_bytes</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-b64-to-bytes" title="ostree_checksum_b64_to_bytes ()">ostree_checksum_b64_to_bytes</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-bytes-peek" title="ostree_checksum_bytes_peek ()">ostree_checksum_bytes_peek</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-bytes-peek-validate" title="ostree_checksum_bytes_peek_validate ()">ostree_checksum_bytes_peek_validate</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-file" title="ostree_checksum_file ()">ostree_checksum_file</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-file-async" title="ostree_checksum_file_async ()">ostree_checksum_file_async</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-file-async-finish" title="ostree_checksum_file_async_finish ()">ostree_checksum_file_async_finish</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-file-at" title="ostree_checksum_file_at ()">ostree_checksum_file_at</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-file-from-input" title="ostree_checksum_file_from_input ()">ostree_checksum_file_from_input</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-from-bytes" title="ostree_checksum_from_bytes ()">ostree_checksum_from_bytes</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-from-bytes-v" title="ostree_checksum_from_bytes_v ()">ostree_checksum_from_bytes_v</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-inplace-from-bytes" title="ostree_checksum_inplace_from_bytes ()">ostree_checksum_inplace_from_bytes</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-inplace-to-bytes" title="ostree_checksum_inplace_to_bytes ()">ostree_checksum_inplace_to_bytes</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-checksum-input-stream.html#ostree-checksum-input-stream-new" title="ostree_checksum_input_stream_new ()">ostree_checksum_input_stream_new</a>, function in <a class="link" href="ostree-ostree-checksum-input-stream.html" title="ostree-checksum-input-stream">ostree-checksum-input-stream</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-to-bytes" title="ostree_checksum_to_bytes ()">ostree_checksum_to_bytes</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-checksum-to-bytes-v" title="ostree_checksum_to_bytes_v ()">ostree_checksum_to_bytes_v</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-version.html#OSTREE-CHECK-VERSION:CAPS" title="OSTREE_CHECK_VERSION()">OSTREE_CHECK_VERSION</a>, macro in <a class="link" href="ostree-ostree-version.html" title="ostree-version">ostree-version</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-check-version" title="ostree_check_version ()">ostree_check_version</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-cmp-checksum-bytes" title="ostree_cmp_checksum_bytes ()">ostree_cmp_checksum_bytes</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-ref.html#OstreeCollectionRefv" title="OstreeCollectionRefv">OstreeCollectionRefv</a>, typedef in <a class="link" href="ostree-ostree-ref.html" title="ostree-ref">ostree-ref</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-ref.html#ostree-collection-ref-dup" title="ostree_collection_ref_dup ()">ostree_collection_ref_dup</a>, function in <a class="link" href="ostree-ostree-ref.html" title="ostree-ref">ostree-ref</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-ref.html#ostree-collection-ref-dupv" title="ostree_collection_ref_dupv ()">ostree_collection_ref_dupv</a>, function in <a class="link" href="ostree-ostree-ref.html" title="ostree-ref">ostree-ref</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-ref.html#ostree-collection-ref-equal" title="ostree_collection_ref_equal ()">ostree_collection_ref_equal</a>, function in <a class="link" href="ostree-ostree-ref.html" title="ostree-ref">ostree-ref</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-ref.html#ostree-collection-ref-free" title="ostree_collection_ref_free ()">ostree_collection_ref_free</a>, function in <a class="link" href="ostree-ostree-ref.html" title="ostree-ref">ostree-ref</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-ref.html#ostree-collection-ref-freev" title="ostree_collection_ref_freev ()">ostree_collection_ref_freev</a>, function in <a class="link" href="ostree-ostree-ref.html" title="ostree-ref">ostree-ref</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-ref.html#ostree-collection-ref-hash" title="ostree_collection_ref_hash ()">ostree_collection_ref_hash</a>, function in <a class="link" href="ostree-ostree-ref.html" title="ostree-ref">ostree-ref</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-ref.html#ostree-collection-ref-new" title="ostree_collection_ref_new ()">ostree_collection_ref_new</a>, function in <a class="link" href="ostree-ostree-ref.html" title="ostree-ref">ostree-ref</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-commit-get-content-checksum" title="ostree_commit_get_content_checksum ()">ostree_commit_get_content_checksum</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-commit-get-object-sizes" title="ostree_commit_get_object_sizes ()">ostree_commit_get_object_sizes</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-commit-get-parent" title="ostree_commit_get_parent ()">ostree_commit_get_parent</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-commit-get-timestamp" title="ostree_commit_get_timestamp ()">ostree_commit_get_timestamp</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-COMMIT-GVARIANT-FORMAT:CAPS" title="OSTREE_COMMIT_GVARIANT_FORMAT">OSTREE_COMMIT_GVARIANT_FORMAT</a>, macro in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-COMMIT-GVARIANT-STRING:CAPS" title="OSTREE_COMMIT_GVARIANT_STRING">OSTREE_COMMIT_GVARIANT_STRING</a>, macro in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-commit-metadata-for-bootable" title="ostree_commit_metadata_for_bootable ()">ostree_commit_metadata_for_bootable</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-commit-sizes-entry-copy" title="ostree_commit_sizes_entry_copy ()">ostree_commit_sizes_entry_copy</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-commit-sizes-entry-free" title="ostree_commit_sizes_entry_free ()">ostree_commit_sizes_entry_free</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-commit-sizes-entry-new" title="ostree_commit_sizes_entry_new ()">ostree_commit_sizes_entry_new</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-content-file-parse" title="ostree_content_file_parse ()">ostree_content_file_parse</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-content-file-parse-at" title="ostree_content_file_parse_at ()">ostree_content_file_parse_at</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-content-stream-parse" title="ostree_content_stream_parse ()">ostree_content_stream_parse</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-content-writer.html#ostree-content-writer-finish" title="ostree_content_writer_finish ()">ostree_content_writer_finish</a>, function in <a class="link" href="ostree-ostree-content-writer.html" title="ostree-content-writer">ostree-content-writer</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-create-directory-metadata" title="ostree_create_directory_metadata ()">ostree_create_directory_metadata</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<a name="idxD"></a><h3 class="title">D</h3>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#OstreeDeployment" title="OstreeDeployment">OstreeDeployment</a>, struct in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-clone" title="ostree_deployment_clone ()">ostree_deployment_clone</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-equal" title="ostree_deployment_equal ()">ostree_deployment_equal</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-get-bootconfig" title="ostree_deployment_get_bootconfig ()">ostree_deployment_get_bootconfig</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-get-bootcsum" title="ostree_deployment_get_bootcsum ()">ostree_deployment_get_bootcsum</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-get-bootserial" title="ostree_deployment_get_bootserial ()">ostree_deployment_get_bootserial</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-get-csum" title="ostree_deployment_get_csum ()">ostree_deployment_get_csum</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-get-deployserial" title="ostree_deployment_get_deployserial ()">ostree_deployment_get_deployserial</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-get-index" title="ostree_deployment_get_index ()">ostree_deployment_get_index</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-get-origin" title="ostree_deployment_get_origin ()">ostree_deployment_get_origin</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-get-origin-relpath" title="ostree_deployment_get_origin_relpath ()">ostree_deployment_get_origin_relpath</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-get-osname" title="ostree_deployment_get_osname ()">ostree_deployment_get_osname</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-get-unlocked" title="ostree_deployment_get_unlocked ()">ostree_deployment_get_unlocked</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-hash" title="ostree_deployment_hash ()">ostree_deployment_hash</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-is-finalization-locked" title="ostree_deployment_is_finalization_locked ()">ostree_deployment_is_finalization_locked</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-is-pinned" title="ostree_deployment_is_pinned ()">ostree_deployment_is_pinned</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-is-staged" title="ostree_deployment_is_staged ()">ostree_deployment_is_staged</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-new" title="ostree_deployment_new ()">ostree_deployment_new</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-origin-remove-transient-state" title="ostree_deployment_origin_remove_transient_state ()">ostree_deployment_origin_remove_transient_state</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-set-bootconfig" title="ostree_deployment_set_bootconfig ()">ostree_deployment_set_bootconfig</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-set-bootserial" title="ostree_deployment_set_bootserial ()">ostree_deployment_set_bootserial</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-set-index" title="ostree_deployment_set_index ()">ostree_deployment_set_index</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-set-origin" title="ostree_deployment_set_origin ()">ostree_deployment_set_origin</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-deployment.html#ostree-deployment-unlocked-state-to-string" title="ostree_deployment_unlocked_state_to_string ()">ostree_deployment_unlocked_state_to_string</a>, function in <a class="link" href="ostree-ostree-deployment.html" title="ostree-deployment">ostree-deployment</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-diff.html#OstreeDiffFlags" title="enum OstreeDiffFlags">OstreeDiffFlags</a>, enum in <a class="link" href="ostree-ostree-diff.html" title="ostree-diff">ostree-diff</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-diff.html#OstreeDiffItem" title="struct OstreeDiffItem">OstreeDiffItem</a>, struct in <a class="link" href="ostree-ostree-diff.html" title="ostree-diff">ostree-diff</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-diff.html#ostree-diff-dirs" title="ostree_diff_dirs ()">ostree_diff_dirs</a>, function in <a class="link" href="ostree-ostree-diff.html" title="ostree-diff">ostree-diff</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-diff.html#ostree-diff-dirs-with-options" title="ostree_diff_dirs_with_options ()">ostree_diff_dirs_with_options</a>, function in <a class="link" href="ostree-ostree-diff.html" title="ostree-diff">ostree-diff</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-diff.html#ostree-diff-item-ref" title="ostree_diff_item_ref ()">ostree_diff_item_ref</a>, function in <a class="link" href="ostree-ostree-diff.html" title="ostree-diff">ostree-diff</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-diff.html#ostree-diff-item-unref" title="ostree_diff_item_unref ()">ostree_diff_item_unref</a>, function in <a class="link" href="ostree-ostree-diff.html" title="ostree-diff">ostree-diff</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-diff.html#ostree-diff-print" title="ostree_diff_print ()">ostree_diff_print</a>, function in <a class="link" href="ostree-ostree-diff.html" title="ostree-diff">ostree-diff</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-DIRMETA-GVARIANT-FORMAT:CAPS" title="OSTREE_DIRMETA_GVARIANT_FORMAT">OSTREE_DIRMETA_GVARIANT_FORMAT</a>, macro in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-DIRMETA-GVARIANT-STRING:CAPS" title="OSTREE_DIRMETA_GVARIANT_STRING">OSTREE_DIRMETA_GVARIANT_STRING</a>, macro in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<a name="idxF"></a><h3 class="title">F</h3>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-FILEMETA-GVARIANT-FORMAT:CAPS" title="OSTREE_FILEMETA_GVARIANT_FORMAT">OSTREE_FILEMETA_GVARIANT_FORMAT</a>, macro in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-FILEMETA-GVARIANT-STRING:CAPS" title="OSTREE_FILEMETA_GVARIANT_STRING">OSTREE_FILEMETA_GVARIANT_STRING</a>, macro in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-fs-get-all-xattrs" title="ostree_fs_get_all_xattrs ()">ostree_fs_get_all_xattrs</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-fs-get-all-xattrs-at" title="ostree_fs_get_all_xattrs_at ()">ostree_fs_get_all_xattrs_at</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<a name="idxG"></a><h3 class="title">G</h3>
+<dt>
+<a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgError" title="enum OstreeGpgError">OstreeGpgError</a>, enum in <a class="link" href="ostree-GPG-signature-verification-results.html" title="GPG signature verification results">GPG signature verification results</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgSignatureAttr" title="enum OstreeGpgSignatureAttr">OstreeGpgSignatureAttr</a>, enum in <a class="link" href="ostree-GPG-signature-verification-results.html" title="GPG signature verification results">GPG signature verification results</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgSignatureFormatFlags" title="enum OstreeGpgSignatureFormatFlags">OstreeGpgSignatureFormatFlags</a>, enum in <a class="link" href="ostree-GPG-signature-verification-results.html" title="GPG signature verification results">GPG signature verification results</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-GPG-signature-verification-results.html#OstreeGpgVerifyResult" title="OstreeGpgVerifyResult">OstreeGpgVerifyResult</a>, typedef in <a class="link" href="ostree-GPG-signature-verification-results.html" title="GPG signature verification results">GPG signature verification results</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-count-all" title="ostree_gpg_verify_result_count_all ()">ostree_gpg_verify_result_count_all</a>, function in <a class="link" href="ostree-GPG-signature-verification-results.html" title="GPG signature verification results">GPG signature verification results</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-count-valid" title="ostree_gpg_verify_result_count_valid ()">ostree_gpg_verify_result_count_valid</a>, function in <a class="link" href="ostree-GPG-signature-verification-results.html" title="GPG signature verification results">GPG signature verification results</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-describe" title="ostree_gpg_verify_result_describe ()">ostree_gpg_verify_result_describe</a>, function in <a class="link" href="ostree-GPG-signature-verification-results.html" title="GPG signature verification results">GPG signature verification results</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-describe-variant" title="ostree_gpg_verify_result_describe_variant ()">ostree_gpg_verify_result_describe_variant</a>, function in <a class="link" href="ostree-GPG-signature-verification-results.html" title="GPG signature verification results">GPG signature verification results</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-get" title="ostree_gpg_verify_result_get ()">ostree_gpg_verify_result_get</a>, function in <a class="link" href="ostree-GPG-signature-verification-results.html" title="GPG signature verification results">GPG signature verification results</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-get-all" title="ostree_gpg_verify_result_get_all ()">ostree_gpg_verify_result_get_all</a>, function in <a class="link" href="ostree-GPG-signature-verification-results.html" title="GPG signature verification results">GPG signature verification results</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-lookup" title="ostree_gpg_verify_result_lookup ()">ostree_gpg_verify_result_lookup</a>, function in <a class="link" href="ostree-GPG-signature-verification-results.html" title="GPG signature verification results">GPG signature verification results</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-GPG-signature-verification-results.html#ostree-gpg-verify-result-require-valid-signature" title="ostree_gpg_verify_result_require_valid_signature ()">ostree_gpg_verify_result_require_valid_signature</a>, function in <a class="link" href="ostree-GPG-signature-verification-results.html" title="GPG signature verification results">GPG signature verification results</a>
+</dt>
+<dd></dd>
+<a name="idxH"></a><h3 class="title">H</h3>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-hash-object-name" title="ostree_hash_object_name ()">ostree_hash_object_name</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<a name="idxK"></a><h3 class="title">K</h3>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs">OstreeKernelArgs</a>, struct in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-append" title="ostree_kernel_args_append ()">ostree_kernel_args_append</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-append-argv" title="ostree_kernel_args_append_argv ()">ostree_kernel_args_append_argv</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-append-argv-filtered" title="ostree_kernel_args_append_argv_filtered ()">ostree_kernel_args_append_argv_filtered</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-append-if-missing" title="ostree_kernel_args_append_if_missing ()">ostree_kernel_args_append_if_missing</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-append-proc-cmdline" title="ostree_kernel_args_append_proc_cmdline ()">ostree_kernel_args_append_proc_cmdline</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-cleanup" title="ostree_kernel_args_cleanup ()">ostree_kernel_args_cleanup</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-contains" title="ostree_kernel_args_contains ()">ostree_kernel_args_contains</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-delete" title="ostree_kernel_args_delete ()">ostree_kernel_args_delete</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-delete-if-present" title="ostree_kernel_args_delete_if_present ()">ostree_kernel_args_delete_if_present</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-delete-key-entry" title="ostree_kernel_args_delete_key_entry ()">ostree_kernel_args_delete_key_entry</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-free" title="ostree_kernel_args_free ()">ostree_kernel_args_free</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-from-string" title="ostree_kernel_args_from_string ()">ostree_kernel_args_from_string</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-get-last-value" title="ostree_kernel_args_get_last_value ()">ostree_kernel_args_get_last_value</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-new" title="ostree_kernel_args_new ()">ostree_kernel_args_new</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-new-replace" title="ostree_kernel_args_new_replace ()">ostree_kernel_args_new_replace</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-parse-append" title="ostree_kernel_args_parse_append ()">ostree_kernel_args_parse_append</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-replace" title="ostree_kernel_args_replace ()">ostree_kernel_args_replace</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-replace-argv" title="ostree_kernel_args_replace_argv ()">ostree_kernel_args_replace_argv</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-replace-take" title="ostree_kernel_args_replace_take ()">ostree_kernel_args_replace_take</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-to-string" title="ostree_kernel_args_to_string ()">ostree_kernel_args_to_string</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-to-strv" title="ostree_kernel_args_to_strv ()">ostree_kernel_args_to_strv</a>, function in <a class="link" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">ostree-kernel-args</a>
+</dt>
+<dd></dd>
+<a name="idxM"></a><h3 class="title">M</h3>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-MAX-METADATA-SIZE:CAPS" title="OSTREE_MAX_METADATA_SIZE">OSTREE_MAX_METADATA_SIZE</a>, macro in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-MAX-METADATA-WARN-SIZE:CAPS" title="OSTREE_MAX_METADATA_WARN_SIZE">OSTREE_MAX_METADATA_WARN_SIZE</a>, macro in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-metadata-variant-type" title="ostree_metadata_variant_type ()">ostree_metadata_variant_type</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-remote-finder.html#OSTREE-META-KEY-DEPLOY-COLLECTION-ID:CAPS" title="OSTREE_META_KEY_DEPLOY_COLLECTION_ID">OSTREE_META_KEY_DEPLOY_COLLECTION_ID</a>, macro in <a class="link" href="ostree-ostree-repo-remote-finder.html" title="ostree-repo-remote-finder">ostree-repo-remote-finder</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html#OstreeMutableTree" title="OstreeMutableTree">OstreeMutableTree</a>, typedef in <a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html" title="In-memory modifiable filesystem tree">In-memory modifiable filesystem tree</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html#ostree-mutable-tree-check-error" title="ostree_mutable_tree_check_error ()">ostree_mutable_tree_check_error</a>, function in <a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html" title="In-memory modifiable filesystem tree">In-memory modifiable filesystem tree</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html#ostree-mutable-tree-ensure-dir" title="ostree_mutable_tree_ensure_dir ()">ostree_mutable_tree_ensure_dir</a>, function in <a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html" title="In-memory modifiable filesystem tree">In-memory modifiable filesystem tree</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html#ostree-mutable-tree-ensure-parent-dirs" title="ostree_mutable_tree_ensure_parent_dirs ()">ostree_mutable_tree_ensure_parent_dirs</a>, function in <a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html" title="In-memory modifiable filesystem tree">In-memory modifiable filesystem tree</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html#ostree-mutable-tree-fill-empty-from-dirtree" title="ostree_mutable_tree_fill_empty_from_dirtree ()">ostree_mutable_tree_fill_empty_from_dirtree</a>, function in <a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html" title="In-memory modifiable filesystem tree">In-memory modifiable filesystem tree</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html#ostree-mutable-tree-get-contents-checksum" title="ostree_mutable_tree_get_contents_checksum ()">ostree_mutable_tree_get_contents_checksum</a>, function in <a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html" title="In-memory modifiable filesystem tree">In-memory modifiable filesystem tree</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html#ostree-mutable-tree-get-files" title="ostree_mutable_tree_get_files ()">ostree_mutable_tree_get_files</a>, function in <a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html" title="In-memory modifiable filesystem tree">In-memory modifiable filesystem tree</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html#ostree-mutable-tree-get-metadata-checksum" title="ostree_mutable_tree_get_metadata_checksum ()">ostree_mutable_tree_get_metadata_checksum</a>, function in <a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html" title="In-memory modifiable filesystem tree">In-memory modifiable filesystem tree</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html#ostree-mutable-tree-get-subdirs" title="ostree_mutable_tree_get_subdirs ()">ostree_mutable_tree_get_subdirs</a>, function in <a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html" title="In-memory modifiable filesystem tree">In-memory modifiable filesystem tree</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html#ostree-mutable-tree-lookup" title="ostree_mutable_tree_lookup ()">ostree_mutable_tree_lookup</a>, function in <a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html" title="In-memory modifiable filesystem tree">In-memory modifiable filesystem tree</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html#ostree-mutable-tree-new" title="ostree_mutable_tree_new ()">ostree_mutable_tree_new</a>, function in <a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html" title="In-memory modifiable filesystem tree">In-memory modifiable filesystem tree</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html#ostree-mutable-tree-new-from-checksum" title="ostree_mutable_tree_new_from_checksum ()">ostree_mutable_tree_new_from_checksum</a>, function in <a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html" title="In-memory modifiable filesystem tree">In-memory modifiable filesystem tree</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html#ostree-mutable-tree-new-from-commit" title="ostree_mutable_tree_new_from_commit ()">ostree_mutable_tree_new_from_commit</a>, function in <a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html" title="In-memory modifiable filesystem tree">In-memory modifiable filesystem tree</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html#ostree-mutable-tree-remove" title="ostree_mutable_tree_remove ()">ostree_mutable_tree_remove</a>, function in <a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html" title="In-memory modifiable filesystem tree">In-memory modifiable filesystem tree</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html#ostree-mutable-tree-replace-file" title="ostree_mutable_tree_replace_file ()">ostree_mutable_tree_replace_file</a>, function in <a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html" title="In-memory modifiable filesystem tree">In-memory modifiable filesystem tree</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html#ostree-mutable-tree-set-contents-checksum" title="ostree_mutable_tree_set_contents_checksum ()">ostree_mutable_tree_set_contents_checksum</a>, function in <a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html" title="In-memory modifiable filesystem tree">In-memory modifiable filesystem tree</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html#ostree-mutable-tree-set-metadata-checksum" title="ostree_mutable_tree_set_metadata_checksum ()">ostree_mutable_tree_set_metadata_checksum</a>, function in <a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html" title="In-memory modifiable filesystem tree">In-memory modifiable filesystem tree</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html#ostree-mutable-tree-walk" title="ostree_mutable_tree_walk ()">ostree_mutable_tree_walk</a>, function in <a class="link" href="ostree-In-memory-modifiable-filesystem-tree.html" title="In-memory modifiable filesystem tree">In-memory modifiable filesystem tree</a>
+</dt>
+<dd></dd>
+<a name="idxO"></a><h3 class="title">O</h3>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#OstreeObjectType" title="enum OstreeObjectType">OstreeObjectType</a>, enum in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-object-from-string" title="ostree_object_from_string ()">ostree_object_from_string</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-object-name-deserialize" title="ostree_object_name_deserialize ()">ostree_object_name_deserialize</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-object-name-serialize" title="ostree_object_name_serialize ()">ostree_object_name_serialize</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-object-to-string" title="ostree_object_to_string ()">ostree_object_to_string</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-object-type-from-string" title="ostree_object_type_from_string ()">ostree_object_type_from_string</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-OBJECT-TYPE-IS-META:CAPS" title="OSTREE_OBJECT_TYPE_IS_META()">OSTREE_OBJECT_TYPE_IS_META</a>, macro in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-OBJECT-TYPE-LAST:CAPS" title="OSTREE_OBJECT_TYPE_LAST">OSTREE_OBJECT_TYPE_LAST</a>, macro in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-object-type-to-string" title="ostree_object_type_to_string ()">ostree_object_type_to_string</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<a name="idxP"></a><h3 class="title">P</h3>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-parse-refspec" title="ostree_parse_refspec ()">ostree_parse_refspec</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<a name="idxR"></a><h3 class="title">R</h3>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-raw-file-to-archive-z2-stream" title="ostree_raw_file_to_archive_z2_stream ()">ostree_raw_file_to_archive_z2_stream</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-raw-file-to-archive-z2-stream-with-options" title="ostree_raw_file_to_archive_z2_stream_with_options ()">ostree_raw_file_to_archive_z2_stream_with_options</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-raw-file-to-content-stream" title="ostree_raw_file_to_content_stream ()">ostree_raw_file_to_content_stream</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-version.html#OSTREE-RELEASE-VERSION:CAPS" title="OSTREE_RELEASE_VERSION">OSTREE_RELEASE_VERSION</a>, macro in <a class="link" href="ostree-ostree-version.html" title="ostree-version">ostree-version</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-remote.html#OstreeRemote" title="struct OstreeRemote">OstreeRemote</a>, struct in <a class="link" href="ostree-ostree-remote.html" title="ostree-remote">ostree-remote</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-remote.html#ostree-remote-get-name" title="ostree_remote_get_name ()">ostree_remote_get_name</a>, function in <a class="link" href="ostree-ostree-remote.html" title="ostree-remote">ostree-remote</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-remote.html#ostree-remote-get-url" title="ostree_remote_get_url ()">ostree_remote_get_url</a>, function in <a class="link" href="ostree-ostree-remote.html" title="ostree-remote">ostree-remote</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-remote.html#ostree-remote-ref" title="ostree_remote_ref ()">ostree_remote_ref</a>, function in <a class="link" href="ostree-ostree-remote.html" title="ostree-remote">ostree-remote</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-remote.html#ostree-remote-unref" title="ostree_remote_unref ()">ostree_remote_unref</a>, function in <a class="link" href="ostree-ostree-remote.html" title="ostree-remote">ostree-remote</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo">OstreeRepo</a>, typedef in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepoAutoLock" title="OstreeRepoAutoLock">OstreeRepoAutoLock</a>, typedef in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepoCheckoutMode" title="enum OstreeRepoCheckoutMode">OstreeRepoCheckoutMode</a>, enum in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepoCheckoutOverwriteMode" title="enum OstreeRepoCheckoutOverwriteMode">OstreeRepoCheckoutOverwriteMode</a>, enum in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepoCommitFilter" title="OstreeRepoCommitFilter ()">OstreeRepoCommitFilter</a>, user_function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepoCommitFilterResult" title="enum OstreeRepoCommitFilterResult">OstreeRepoCommitFilterResult</a>, enum in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepoCommitIterResult" title="enum OstreeRepoCommitIterResult">OstreeRepoCommitIterResult</a>, enum in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepoCommitModifier" title="OstreeRepoCommitModifier">OstreeRepoCommitModifier</a>, typedef in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepoCommitModifierFlags" title="enum OstreeRepoCommitModifierFlags">OstreeRepoCommitModifierFlags</a>, enum in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepoCommitModifierXattrCallback" title="OstreeRepoCommitModifierXattrCallback ()">OstreeRepoCommitModifierXattrCallback</a>, user_function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepoCommitState" title="enum OstreeRepoCommitState">OstreeRepoCommitState</a>, enum in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepoCommitTraverseFlags" title="enum OstreeRepoCommitTraverseFlags">OstreeRepoCommitTraverseFlags</a>, enum in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-file.html#OstreeRepoFile" title="OstreeRepoFile">OstreeRepoFile</a>, typedef in <a class="link" href="ostree-ostree-repo-file.html" title="ostree-repo-file">ostree-repo-file</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-finder.html#OstreeRepoFinder" title="OstreeRepoFinder">OstreeRepoFinder</a>, struct in <a class="link" href="ostree-ostree-repo-finder.html" title="ostree-repo-finder">ostree-repo-finder</a>
+</dt>
+<dd></dd>
+<dt>
+OstreeRepoFinderAvahi, struct in OstreeRepoFinderAvahi
+</dt>
+<dd></dd>
+<dt>
+OstreeRepoFinderConfig, struct in OstreeRepoFinderConfig
+</dt>
+<dd></dd>
+<dt>
+OstreeRepoFinderMount, struct in OstreeRepoFinderMount
+</dt>
+<dd></dd>
+<dt>
+OstreeRepoFinderOverride, struct in OstreeRepoFinderOverride
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-finder.html#OstreeRepoFinderResultv" title="OstreeRepoFinderResultv">OstreeRepoFinderResultv</a>, typedef in <a class="link" href="ostree-ostree-repo-finder.html" title="ostree-repo-finder">ostree-repo-finder</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepoListObjectsFlags" title="enum OstreeRepoListObjectsFlags">OstreeRepoListObjectsFlags</a>, enum in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepoListRefsExtFlags" title="enum OstreeRepoListRefsExtFlags">OstreeRepoListRefsExtFlags</a>, enum in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepoLockType" title="enum OstreeRepoLockType">OstreeRepoLockType</a>, enum in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepoMode" title="enum OstreeRepoMode">OstreeRepoMode</a>, enum in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepoPruneFlags" title="enum OstreeRepoPruneFlags">OstreeRepoPruneFlags</a>, enum in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepoPullFlags" title="enum OstreeRepoPullFlags">OstreeRepoPullFlags</a>, enum in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepoRemoteChange" title="enum OstreeRepoRemoteChange">OstreeRepoRemoteChange</a>, enum in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepoResolveRevExtFlags" title="enum OstreeRepoResolveRevExtFlags">OstreeRepoResolveRevExtFlags</a>, enum in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeRepoTransactionStats" title="struct OstreeRepoTransactionStats">OstreeRepoTransactionStats</a>, struct in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-abort-transaction" title="ostree_repo_abort_transaction ()">ostree_repo_abort_transaction</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-add-gpg-signature-summary" title="ostree_repo_add_gpg_signature_summary ()">ostree_repo_add_gpg_signature_summary</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-append-gpg-signature" title="ostree_repo_append_gpg_signature ()">ostree_repo_append_gpg_signature</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-auto-lock-cleanup" title="ostree_repo_auto_lock_cleanup ()">ostree_repo_auto_lock_cleanup</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-auto-lock-push" title="ostree_repo_auto_lock_push ()">ostree_repo_auto_lock_push</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-checkout-at" title="ostree_repo_checkout_at ()">ostree_repo_checkout_at</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-checkout-at-options-set-devino" title="ostree_repo_checkout_at_options_set_devino ()">ostree_repo_checkout_at_options_set_devino</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-checkout-gc" title="ostree_repo_checkout_gc ()">ostree_repo_checkout_gc</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-checkout-tree" title="ostree_repo_checkout_tree ()">ostree_repo_checkout_tree</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-checkout-tree-at" title="ostree_repo_checkout_tree_at ()">ostree_repo_checkout_tree_at</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-commit-add-composefs-metadata" title="ostree_repo_commit_add_composefs_metadata ()">ostree_repo_commit_add_composefs_metadata</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-commit-modifier-new" title="ostree_repo_commit_modifier_new ()">ostree_repo_commit_modifier_new</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-commit-modifier-ref" title="ostree_repo_commit_modifier_ref ()">ostree_repo_commit_modifier_ref</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-commit-modifier-set-devino-cache" title="ostree_repo_commit_modifier_set_devino_cache ()">ostree_repo_commit_modifier_set_devino_cache</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-commit-modifier-set-sepolicy" title="ostree_repo_commit_modifier_set_sepolicy ()">ostree_repo_commit_modifier_set_sepolicy</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-commit-modifier-set-sepolicy-from-commit" title="ostree_repo_commit_modifier_set_sepolicy_from_commit ()">ostree_repo_commit_modifier_set_sepolicy_from_commit</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-commit-modifier-set-xattr-callback" title="ostree_repo_commit_modifier_set_xattr_callback ()">ostree_repo_commit_modifier_set_xattr_callback</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-commit-modifier-unref" title="ostree_repo_commit_modifier_unref ()">ostree_repo_commit_modifier_unref</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-commit-transaction" title="ostree_repo_commit_transaction ()">ostree_repo_commit_transaction</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-commit-traverse-iter-cleanup" title="ostree_repo_commit_traverse_iter_cleanup ()">ostree_repo_commit_traverse_iter_cleanup</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-commit-traverse-iter-clear" title="ostree_repo_commit_traverse_iter_clear ()">ostree_repo_commit_traverse_iter_clear</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-commit-traverse-iter-get-dir" title="ostree_repo_commit_traverse_iter_get_dir ()">ostree_repo_commit_traverse_iter_get_dir</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-commit-traverse-iter-get-file" title="ostree_repo_commit_traverse_iter_get_file ()">ostree_repo_commit_traverse_iter_get_file</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-commit-traverse-iter-init-commit" title="ostree_repo_commit_traverse_iter_init_commit ()">ostree_repo_commit_traverse_iter_init_commit</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-commit-traverse-iter-init-dirtree" title="ostree_repo_commit_traverse_iter_init_dirtree ()">ostree_repo_commit_traverse_iter_init_dirtree</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-commit-traverse-iter-next" title="ostree_repo_commit_traverse_iter_next ()">ostree_repo_commit_traverse_iter_next</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-copy-config" title="ostree_repo_copy_config ()">ostree_repo_copy_config</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-create" title="ostree_repo_create ()">ostree_repo_create</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-create-at" title="ostree_repo_create_at ()">ostree_repo_create_at</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-delete-object" title="ostree_repo_delete_object ()">ostree_repo_delete_object</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-devino-cache-get-type" title="ostree_repo_devino_cache_get_type ()">ostree_repo_devino_cache_get_type</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-devino-cache-new" title="ostree_repo_devino_cache_new ()">ostree_repo_devino_cache_new</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-devino-cache-ref" title="ostree_repo_devino_cache_ref ()">ostree_repo_devino_cache_ref</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-devino-cache-unref" title="ostree_repo_devino_cache_unref ()">ostree_repo_devino_cache_unref</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-equal" title="ostree_repo_equal ()">ostree_repo_equal</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-export-tree-to-archive" title="ostree_repo_export_tree_to_archive ()">ostree_repo_export_tree_to_archive</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-file.html#ostree-repo-file-ensure-resolved" title="ostree_repo_file_ensure_resolved ()">ostree_repo_file_ensure_resolved</a>, function in <a class="link" href="ostree-ostree-repo-file.html" title="ostree-repo-file">ostree-repo-file</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-file.html#ostree-repo-file-get-checksum" title="ostree_repo_file_get_checksum ()">ostree_repo_file_get_checksum</a>, function in <a class="link" href="ostree-ostree-repo-file.html" title="ostree-repo-file">ostree-repo-file</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-file.html#ostree-repo-file-get-repo" title="ostree_repo_file_get_repo ()">ostree_repo_file_get_repo</a>, function in <a class="link" href="ostree-ostree-repo-file.html" title="ostree-repo-file">ostree-repo-file</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-file.html#ostree-repo-file-get-root" title="ostree_repo_file_get_root ()">ostree_repo_file_get_root</a>, function in <a class="link" href="ostree-ostree-repo-file.html" title="ostree-repo-file">ostree-repo-file</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-file.html#ostree-repo-file-get-xattrs" title="ostree_repo_file_get_xattrs ()">ostree_repo_file_get_xattrs</a>, function in <a class="link" href="ostree-ostree-repo-file.html" title="ostree-repo-file">ostree-repo-file</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-file.html#ostree-repo-file-tree-find-child" title="ostree_repo_file_tree_find_child ()">ostree_repo_file_tree_find_child</a>, function in <a class="link" href="ostree-ostree-repo-file.html" title="ostree-repo-file">ostree-repo-file</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-file.html#ostree-repo-file-tree-get-contents" title="ostree_repo_file_tree_get_contents ()">ostree_repo_file_tree_get_contents</a>, function in <a class="link" href="ostree-ostree-repo-file.html" title="ostree-repo-file">ostree-repo-file</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-file.html#ostree-repo-file-tree-get-contents-checksum" title="ostree_repo_file_tree_get_contents_checksum ()">ostree_repo_file_tree_get_contents_checksum</a>, function in <a class="link" href="ostree-ostree-repo-file.html" title="ostree-repo-file">ostree-repo-file</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-file.html#ostree-repo-file-tree-get-metadata" title="ostree_repo_file_tree_get_metadata ()">ostree_repo_file_tree_get_metadata</a>, function in <a class="link" href="ostree-ostree-repo-file.html" title="ostree-repo-file">ostree-repo-file</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-file.html#ostree-repo-file-tree-get-metadata-checksum" title="ostree_repo_file_tree_get_metadata_checksum ()">ostree_repo_file_tree_get_metadata_checksum</a>, function in <a class="link" href="ostree-ostree-repo-file.html" title="ostree-repo-file">ostree-repo-file</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-file.html#ostree-repo-file-tree-query-child" title="ostree_repo_file_tree_query_child ()">ostree_repo_file_tree_query_child</a>, function in <a class="link" href="ostree-ostree-repo-file.html" title="ostree-repo-file">ostree-repo-file</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-file.html#ostree-repo-file-tree-set-metadata" title="ostree_repo_file_tree_set_metadata ()">ostree_repo_file_tree_set_metadata</a>, function in <a class="link" href="ostree-ostree-repo-file.html" title="ostree-repo-file">ostree-repo-file</a>
+</dt>
+<dd></dd>
+<dt>
+ostree_repo_finder_avahi_new, function in OstreeRepoFinderAvahi
+</dt>
+<dd></dd>
+<dt>
+ostree_repo_finder_avahi_start, function in OstreeRepoFinderAvahi
+</dt>
+<dd></dd>
+<dt>
+ostree_repo_finder_avahi_stop, function in OstreeRepoFinderAvahi
+</dt>
+<dd></dd>
+<dt>
+ostree_repo_finder_config_new, function in OstreeRepoFinderConfig
+</dt>
+<dd></dd>
+<dt>
+ostree_repo_finder_mount_new, function in OstreeRepoFinderMount
+</dt>
+<dd></dd>
+<dt>
+ostree_repo_finder_override_add_uri, function in OstreeRepoFinderOverride
+</dt>
+<dd></dd>
+<dt>
+ostree_repo_finder_override_new, function in OstreeRepoFinderOverride
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-resolve-all-async" title="ostree_repo_finder_resolve_all_async ()">ostree_repo_finder_resolve_all_async</a>, function in <a class="link" href="ostree-ostree-repo-finder.html" title="ostree-repo-finder">ostree-repo-finder</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-resolve-all-finish" title="ostree_repo_finder_resolve_all_finish ()">ostree_repo_finder_resolve_all_finish</a>, function in <a class="link" href="ostree-ostree-repo-finder.html" title="ostree-repo-finder">ostree-repo-finder</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-resolve-async" title="ostree_repo_finder_resolve_async ()">ostree_repo_finder_resolve_async</a>, function in <a class="link" href="ostree-ostree-repo-finder.html" title="ostree-repo-finder">ostree-repo-finder</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-resolve-finish" title="ostree_repo_finder_resolve_finish ()">ostree_repo_finder_resolve_finish</a>, function in <a class="link" href="ostree-ostree-repo-finder.html" title="ostree-repo-finder">ostree-repo-finder</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-result-compare" title="ostree_repo_finder_result_compare ()">ostree_repo_finder_result_compare</a>, function in <a class="link" href="ostree-ostree-repo-finder.html" title="ostree-repo-finder">ostree-repo-finder</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-result-dup" title="ostree_repo_finder_result_dup ()">ostree_repo_finder_result_dup</a>, function in <a class="link" href="ostree-ostree-repo-finder.html" title="ostree-repo-finder">ostree-repo-finder</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-result-free" title="ostree_repo_finder_result_free ()">ostree_repo_finder_result_free</a>, function in <a class="link" href="ostree-ostree-repo-finder.html" title="ostree-repo-finder">ostree-repo-finder</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-result-freev" title="ostree_repo_finder_result_freev ()">ostree_repo_finder_result_freev</a>, function in <a class="link" href="ostree-ostree-repo-finder.html" title="ostree-repo-finder">ostree-repo-finder</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-result-new" title="ostree_repo_finder_result_new ()">ostree_repo_finder_result_new</a>, function in <a class="link" href="ostree-ostree-repo-finder.html" title="ostree-repo-finder">ostree-repo-finder</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-remote-finder.html#ostree-repo-find-remotes-async" title="ostree_repo_find_remotes_async ()">ostree_repo_find_remotes_async</a>, function in <a class="link" href="ostree-ostree-repo-remote-finder.html" title="ostree-repo-remote-finder">ostree-repo-remote-finder</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-remote-finder.html#ostree-repo-find-remotes-finish" title="ostree_repo_find_remotes_finish ()">ostree_repo_find_remotes_finish</a>, function in <a class="link" href="ostree-ostree-repo-remote-finder.html" title="ostree-repo-remote-finder">ostree-repo-remote-finder</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-fsck-object" title="ostree_repo_fsck_object ()">ostree_repo_fsck_object</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-get-bootloader" title="ostree_repo_get_bootloader ()">ostree_repo_get_bootloader</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-get-collection-id" title="ostree_repo_get_collection_id ()">ostree_repo_get_collection_id</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-get-config" title="ostree_repo_get_config ()">ostree_repo_get_config</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-get-default-repo-finders" title="ostree_repo_get_default_repo_finders ()">ostree_repo_get_default_repo_finders</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-get-dfd" title="ostree_repo_get_dfd ()">ostree_repo_get_dfd</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-get-disable-fsync" title="ostree_repo_get_disable_fsync ()">ostree_repo_get_disable_fsync</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-get-min-free-space-bytes" title="ostree_repo_get_min_free_space_bytes ()">ostree_repo_get_min_free_space_bytes</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-get-mode" title="ostree_repo_get_mode ()">ostree_repo_get_mode</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-get-parent" title="ostree_repo_get_parent ()">ostree_repo_get_parent</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-get-path" title="ostree_repo_get_path ()">ostree_repo_get_path</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-get-remote-boolean-option" title="ostree_repo_get_remote_boolean_option ()">ostree_repo_get_remote_boolean_option</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-get-remote-list-option" title="ostree_repo_get_remote_list_option ()">ostree_repo_get_remote_list_option</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-get-remote-option" title="ostree_repo_get_remote_option ()">ostree_repo_get_remote_option</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-gpg-sign-data" title="ostree_repo_gpg_sign_data ()">ostree_repo_gpg_sign_data</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-gpg-verify-data" title="ostree_repo_gpg_verify_data ()">ostree_repo_gpg_verify_data</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-hash" title="ostree_repo_hash ()">ostree_repo_hash</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-has-object" title="ostree_repo_has_object ()">ostree_repo_has_object</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-import-archive-to-mtree" title="ostree_repo_import_archive_to_mtree ()">ostree_repo_import_archive_to_mtree</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-import-object-from" title="ostree_repo_import_object_from ()">ostree_repo_import_object_from</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-import-object-from-with-trust" title="ostree_repo_import_object_from_with_trust ()">ostree_repo_import_object_from_with_trust</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-is-system" title="ostree_repo_is_system ()">ostree_repo_is_system</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-is-writable" title="ostree_repo_is_writable ()">ostree_repo_is_writable</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-list-collection-refs" title="ostree_repo_list_collection_refs ()">ostree_repo_list_collection_refs</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-list-commit-objects-starting-with" title="ostree_repo_list_commit_objects_starting_with ()">ostree_repo_list_commit_objects_starting_with</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-list-objects" title="ostree_repo_list_objects ()">ostree_repo_list_objects</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OSTREE-REPO-LIST-OBJECTS-VARIANT-TYPE:CAPS" title="OSTREE_REPO_LIST_OBJECTS_VARIANT_TYPE">OSTREE_REPO_LIST_OBJECTS_VARIANT_TYPE</a>, macro in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-list-refs" title="ostree_repo_list_refs ()">ostree_repo_list_refs</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-list-refs-ext" title="ostree_repo_list_refs_ext ()">ostree_repo_list_refs_ext</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-list-static-delta-indexes" title="ostree_repo_list_static_delta_indexes ()">ostree_repo_list_static_delta_indexes</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-list-static-delta-names" title="ostree_repo_list_static_delta_names ()">ostree_repo_list_static_delta_names</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-load-commit" title="ostree_repo_load_commit ()">ostree_repo_load_commit</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-load-file" title="ostree_repo_load_file ()">ostree_repo_load_file</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-load-object-stream" title="ostree_repo_load_object_stream ()">ostree_repo_load_object_stream</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-load-variant" title="ostree_repo_load_variant ()">ostree_repo_load_variant</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-load-variant-if-exists" title="ostree_repo_load_variant_if_exists ()">ostree_repo_load_variant_if_exists</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-lock-pop" title="ostree_repo_lock_pop ()">ostree_repo_lock_pop</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-lock-push" title="ostree_repo_lock_push ()">ostree_repo_lock_push</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-mark-commit-partial" title="ostree_repo_mark_commit_partial ()">ostree_repo_mark_commit_partial</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-mark-commit-partial-reason" title="ostree_repo_mark_commit_partial_reason ()">ostree_repo_mark_commit_partial_reason</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-remote-finder.html#OSTREE-REPO-METADATA-REF:CAPS" title="OSTREE_REPO_METADATA_REF">OSTREE_REPO_METADATA_REF</a>, macro in <a class="link" href="ostree-ostree-repo-remote-finder.html" title="ostree-repo-remote-finder">ostree-repo-remote-finder</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-mode-from-string" title="ostree_repo_mode_from_string ()">ostree_repo_mode_from_string</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-new" title="ostree_repo_new ()">ostree_repo_new</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-new-default" title="ostree_repo_new_default ()">ostree_repo_new_default</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-new-for-sysroot-path" title="ostree_repo_new_for_sysroot_path ()">ostree_repo_new_for_sysroot_path</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-open" title="ostree_repo_open ()">ostree_repo_open</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-open-at" title="ostree_repo_open_at ()">ostree_repo_open_at</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-prepare-transaction" title="ostree_repo_prepare_transaction ()">ostree_repo_prepare_transaction</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-prune" title="ostree_repo_prune ()">ostree_repo_prune</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-prune-from-reachable" title="ostree_repo_prune_from_reachable ()">ostree_repo_prune_from_reachable</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-prune-static-deltas" title="ostree_repo_prune_static_deltas ()">ostree_repo_prune_static_deltas</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-pull" title="ostree_repo_pull ()">ostree_repo_pull</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-pull-default-console-progress-changed" title="ostree_repo_pull_default_console_progress_changed ()">ostree_repo_pull_default_console_progress_changed</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-remote-finder.html#ostree-repo-pull-from-remotes-async" title="ostree_repo_pull_from_remotes_async ()">ostree_repo_pull_from_remotes_async</a>, function in <a class="link" href="ostree-ostree-repo-remote-finder.html" title="ostree-repo-remote-finder">ostree-repo-remote-finder</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-remote-finder.html#ostree-repo-pull-from-remotes-finish" title="ostree_repo_pull_from_remotes_finish ()">ostree_repo_pull_from_remotes_finish</a>, function in <a class="link" href="ostree-ostree-repo-remote-finder.html" title="ostree-repo-remote-finder">ostree-repo-remote-finder</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-pull-one-dir" title="ostree_repo_pull_one_dir ()">ostree_repo_pull_one_dir</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-pull-with-options" title="ostree_repo_pull_with_options ()">ostree_repo_pull_with_options</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-query-object-storage-size" title="ostree_repo_query_object_storage_size ()">ostree_repo_query_object_storage_size</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-read-commit" title="ostree_repo_read_commit ()">ostree_repo_read_commit</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-read-commit-detached-metadata" title="ostree_repo_read_commit_detached_metadata ()">ostree_repo_read_commit_detached_metadata</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-regenerate-metadata" title="ostree_repo_regenerate_metadata ()">ostree_repo_regenerate_metadata</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-regenerate-summary" title="ostree_repo_regenerate_summary ()">ostree_repo_regenerate_summary</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-reload-config" title="ostree_repo_reload_config ()">ostree_repo_reload_config</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-remote-add" title="ostree_repo_remote_add ()">ostree_repo_remote_add</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-remote-change" title="ostree_repo_remote_change ()">ostree_repo_remote_change</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-remote-delete" title="ostree_repo_remote_delete ()">ostree_repo_remote_delete</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-remote-fetch-summary" title="ostree_repo_remote_fetch_summary ()">ostree_repo_remote_fetch_summary</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-remote-fetch-summary-with-options" title="ostree_repo_remote_fetch_summary_with_options ()">ostree_repo_remote_fetch_summary_with_options</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-remote-get-gpg-keys" title="ostree_repo_remote_get_gpg_keys ()">ostree_repo_remote_get_gpg_keys</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-remote-get-gpg-verify" title="ostree_repo_remote_get_gpg_verify ()">ostree_repo_remote_get_gpg_verify</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-remote-get-gpg-verify-summary" title="ostree_repo_remote_get_gpg_verify_summary ()">ostree_repo_remote_get_gpg_verify_summary</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-remote-get-url" title="ostree_repo_remote_get_url ()">ostree_repo_remote_get_url</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-remote-gpg-import" title="ostree_repo_remote_gpg_import ()">ostree_repo_remote_gpg_import</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-remote-list" title="ostree_repo_remote_list ()">ostree_repo_remote_list</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-remote-list-collection-refs" title="ostree_repo_remote_list_collection_refs ()">ostree_repo_remote_list_collection_refs</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-remote-list-refs" title="ostree_repo_remote_list_refs ()">ostree_repo_remote_list_refs</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-resolve-collection-ref" title="ostree_repo_resolve_collection_ref ()">ostree_repo_resolve_collection_ref</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-repo-remote-finder.html#ostree-repo-resolve-keyring-for-collection" title="ostree_repo_resolve_keyring_for_collection ()">ostree_repo_resolve_keyring_for_collection</a>, function in <a class="link" href="ostree-ostree-repo-remote-finder.html" title="ostree-repo-remote-finder">ostree-repo-remote-finder</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-resolve-rev" title="ostree_repo_resolve_rev ()">ostree_repo_resolve_rev</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-resolve-rev-ext" title="ostree_repo_resolve_rev_ext ()">ostree_repo_resolve_rev_ext</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-scan-hardlinks" title="ostree_repo_scan_hardlinks ()">ostree_repo_scan_hardlinks</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-set-alias-ref-immediate" title="ostree_repo_set_alias_ref_immediate ()">ostree_repo_set_alias_ref_immediate</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-set-cache-dir" title="ostree_repo_set_cache_dir ()">ostree_repo_set_cache_dir</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-set-collection-id" title="ostree_repo_set_collection_id ()">ostree_repo_set_collection_id</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-set-collection-ref-immediate" title="ostree_repo_set_collection_ref_immediate ()">ostree_repo_set_collection_ref_immediate</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-set-disable-fsync" title="ostree_repo_set_disable_fsync ()">ostree_repo_set_disable_fsync</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-set-ref-immediate" title="ostree_repo_set_ref_immediate ()">ostree_repo_set_ref_immediate</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-signature-verify-commit-data" title="ostree_repo_signature_verify_commit_data ()">ostree_repo_signature_verify_commit_data</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-sign-commit" title="ostree_repo_sign_commit ()">ostree_repo_sign_commit</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-sign-delta" title="ostree_repo_sign_delta ()">ostree_repo_sign_delta</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-static-delta-execute-offline" title="ostree_repo_static_delta_execute_offline ()">ostree_repo_static_delta_execute_offline</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-static-delta-execute-offline-with-signature" title="ostree_repo_static_delta_execute_offline_with_signature ()">ostree_repo_static_delta_execute_offline_with_signature</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-static-delta-generate" title="ostree_repo_static_delta_generate ()">ostree_repo_static_delta_generate</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-static-delta-reindex" title="ostree_repo_static_delta_reindex ()">ostree_repo_static_delta_reindex</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-static-delta-verify-signature" title="ostree_repo_static_delta_verify_signature ()">ostree_repo_static_delta_verify_signature</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-transaction-set-collection-ref" title="ostree_repo_transaction_set_collection_ref ()">ostree_repo_transaction_set_collection_ref</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-transaction-set-ref" title="ostree_repo_transaction_set_ref ()">ostree_repo_transaction_set_ref</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-transaction-set-refspec" title="ostree_repo_transaction_set_refspec ()">ostree_repo_transaction_set_refspec</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-traverse-commit" title="ostree_repo_traverse_commit ()">ostree_repo_traverse_commit</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-traverse-commit-union" title="ostree_repo_traverse_commit_union ()">ostree_repo_traverse_commit_union</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-traverse-commit-union-with-parents" title="ostree_repo_traverse_commit_union_with_parents ()">ostree_repo_traverse_commit_union_with_parents</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-traverse-commit-with-flags" title="ostree_repo_traverse_commit_with_flags ()">ostree_repo_traverse_commit_with_flags</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-traverse-new-parents" title="ostree_repo_traverse_new_parents ()">ostree_repo_traverse_new_parents</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-traverse-new-reachable" title="ostree_repo_traverse_new_reachable ()">ostree_repo_traverse_new_reachable</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-traverse-parents-get-commits" title="ostree_repo_traverse_parents_get_commits ()">ostree_repo_traverse_parents_get_commits</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-traverse-reachable-refs" title="ostree_repo_traverse_reachable_refs ()">ostree_repo_traverse_reachable_refs</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-verify-commit" title="ostree_repo_verify_commit ()">ostree_repo_verify_commit</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-verify-commit-ext" title="ostree_repo_verify_commit_ext ()">ostree_repo_verify_commit_ext</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-verify-commit-for-remote" title="ostree_repo_verify_commit_for_remote ()">ostree_repo_verify_commit_for_remote</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-verify-summary" title="ostree_repo_verify_summary ()">ostree_repo_verify_summary</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-archive-to-mtree" title="ostree_repo_write_archive_to_mtree ()">ostree_repo_write_archive_to_mtree</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-archive-to-mtree-from-fd" title="ostree_repo_write_archive_to_mtree_from_fd ()">ostree_repo_write_archive_to_mtree_from_fd</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-commit" title="ostree_repo_write_commit ()">ostree_repo_write_commit</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-commit-detached-metadata" title="ostree_repo_write_commit_detached_metadata ()">ostree_repo_write_commit_detached_metadata</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-commit-with-time" title="ostree_repo_write_commit_with_time ()">ostree_repo_write_commit_with_time</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-config" title="ostree_repo_write_config ()">ostree_repo_write_config</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-content" title="ostree_repo_write_content ()">ostree_repo_write_content</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-content-async" title="ostree_repo_write_content_async ()">ostree_repo_write_content_async</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-content-finish" title="ostree_repo_write_content_finish ()">ostree_repo_write_content_finish</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-content-trusted" title="ostree_repo_write_content_trusted ()">ostree_repo_write_content_trusted</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-dfd-to-mtree" title="ostree_repo_write_dfd_to_mtree ()">ostree_repo_write_dfd_to_mtree</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-directory-to-mtree" title="ostree_repo_write_directory_to_mtree ()">ostree_repo_write_directory_to_mtree</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-metadata" title="ostree_repo_write_metadata ()">ostree_repo_write_metadata</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-metadata-async" title="ostree_repo_write_metadata_async ()">ostree_repo_write_metadata_async</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-metadata-finish" title="ostree_repo_write_metadata_finish ()">ostree_repo_write_metadata_finish</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-metadata-stream-trusted" title="ostree_repo_write_metadata_stream_trusted ()">ostree_repo_write_metadata_stream_trusted</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-metadata-trusted" title="ostree_repo_write_metadata_trusted ()">ostree_repo_write_metadata_trusted</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-mtree" title="ostree_repo_write_mtree ()">ostree_repo_write_mtree</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-regfile" title="ostree_repo_write_regfile ()">ostree_repo_write_regfile</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-regfile-inline" title="ostree_repo_write_regfile_inline ()">ostree_repo_write_regfile_inline</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#ostree-repo-write-symlink" title="ostree_repo_write_symlink ()">ostree_repo_write_symlink</a>, function in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<a name="idxS"></a><h3 class="title">S</h3>
+<dt>
+<a class="link" href="ostree-SELinux-policy-management.html#OstreeSePolicy" title="OstreeSePolicy">OstreeSePolicy</a>, typedef in <a class="link" href="ostree-SELinux-policy-management.html" title="SELinux policy management">SELinux policy management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-SELinux-policy-management.html#OstreeSePolicyRestoreconFlags" title="enum OstreeSePolicyRestoreconFlags">OstreeSePolicyRestoreconFlags</a>, enum in <a class="link" href="ostree-SELinux-policy-management.html" title="SELinux policy management">SELinux policy management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-SELinux-policy-management.html#ostree-sepolicy-fscreatecon-cleanup" title="ostree_sepolicy_fscreatecon_cleanup ()">ostree_sepolicy_fscreatecon_cleanup</a>, function in <a class="link" href="ostree-SELinux-policy-management.html" title="SELinux policy management">SELinux policy management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-SELinux-policy-management.html#ostree-sepolicy-get-csum" title="ostree_sepolicy_get_csum ()">ostree_sepolicy_get_csum</a>, function in <a class="link" href="ostree-SELinux-policy-management.html" title="SELinux policy management">SELinux policy management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-SELinux-policy-management.html#ostree-sepolicy-get-label" title="ostree_sepolicy_get_label ()">ostree_sepolicy_get_label</a>, function in <a class="link" href="ostree-SELinux-policy-management.html" title="SELinux policy management">SELinux policy management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-SELinux-policy-management.html#ostree-sepolicy-get-name" title="ostree_sepolicy_get_name ()">ostree_sepolicy_get_name</a>, function in <a class="link" href="ostree-SELinux-policy-management.html" title="SELinux policy management">SELinux policy management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-SELinux-policy-management.html#ostree-sepolicy-get-path" title="ostree_sepolicy_get_path ()">ostree_sepolicy_get_path</a>, function in <a class="link" href="ostree-SELinux-policy-management.html" title="SELinux policy management">SELinux policy management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-SELinux-policy-management.html#ostree-sepolicy-new" title="ostree_sepolicy_new ()">ostree_sepolicy_new</a>, function in <a class="link" href="ostree-SELinux-policy-management.html" title="SELinux policy management">SELinux policy management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-SELinux-policy-management.html#ostree-sepolicy-new-at" title="ostree_sepolicy_new_at ()">ostree_sepolicy_new_at</a>, function in <a class="link" href="ostree-SELinux-policy-management.html" title="SELinux policy management">SELinux policy management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-SELinux-policy-management.html#ostree-sepolicy-new-from-commit" title="ostree_sepolicy_new_from_commit ()">ostree_sepolicy_new_from_commit</a>, function in <a class="link" href="ostree-SELinux-policy-management.html" title="SELinux policy management">SELinux policy management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-SELinux-policy-management.html#ostree-sepolicy-restorecon" title="ostree_sepolicy_restorecon ()">ostree_sepolicy_restorecon</a>, function in <a class="link" href="ostree-SELinux-policy-management.html" title="SELinux policy management">SELinux policy management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-SELinux-policy-management.html#ostree-sepolicy-setfscreatecon" title="ostree_sepolicy_setfscreatecon ()">ostree_sepolicy_setfscreatecon</a>, function in <a class="link" href="ostree-SELinux-policy-management.html" title="SELinux policy management">SELinux policy management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Signature-management.html#OstreeSign" title="OstreeSign">OstreeSign</a>, struct in <a class="link" href="ostree-Signature-management.html" title="Signature management">Signature management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Signature-management.html#ostree-sign-add-pk" title="ostree_sign_add_pk ()">ostree_sign_add_pk</a>, function in <a class="link" href="ostree-Signature-management.html" title="Signature management">Signature management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Signature-management.html#ostree-sign-clear-keys" title="ostree_sign_clear_keys ()">ostree_sign_clear_keys</a>, function in <a class="link" href="ostree-Signature-management.html" title="Signature management">Signature management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Signature-management.html#ostree-sign-commit" title="ostree_sign_commit ()">ostree_sign_commit</a>, function in <a class="link" href="ostree-Signature-management.html" title="Signature management">Signature management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Signature-management.html#ostree-sign-commit-verify" title="ostree_sign_commit_verify ()">ostree_sign_commit_verify</a>, function in <a class="link" href="ostree-Signature-management.html" title="Signature management">Signature management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Signature-management.html#ostree-sign-data" title="ostree_sign_data ()">ostree_sign_data</a>, function in <a class="link" href="ostree-Signature-management.html" title="Signature management">Signature management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Signature-management.html#ostree-sign-data-verify" title="ostree_sign_data_verify ()">ostree_sign_data_verify</a>, function in <a class="link" href="ostree-Signature-management.html" title="Signature management">Signature management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Signature-management.html#ostree-sign-get-all" title="ostree_sign_get_all ()">ostree_sign_get_all</a>, function in <a class="link" href="ostree-Signature-management.html" title="Signature management">Signature management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Signature-management.html#ostree-sign-get-by-name" title="ostree_sign_get_by_name ()">ostree_sign_get_by_name</a>, function in <a class="link" href="ostree-Signature-management.html" title="Signature management">Signature management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Signature-management.html#ostree-sign-get-name" title="ostree_sign_get_name ()">ostree_sign_get_name</a>, function in <a class="link" href="ostree-Signature-management.html" title="Signature management">Signature management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Signature-management.html#ostree-sign-load-pk" title="ostree_sign_load_pk ()">ostree_sign_load_pk</a>, function in <a class="link" href="ostree-Signature-management.html" title="Signature management">Signature management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Signature-management.html#ostree-sign-metadata-format" title="ostree_sign_metadata_format ()">ostree_sign_metadata_format</a>, function in <a class="link" href="ostree-Signature-management.html" title="Signature management">Signature management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Signature-management.html#ostree-sign-metadata-key" title="ostree_sign_metadata_key ()">ostree_sign_metadata_key</a>, function in <a class="link" href="ostree-Signature-management.html" title="Signature management">Signature management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Signature-management.html#ostree-sign-set-pk" title="ostree_sign_set_pk ()">ostree_sign_set_pk</a>, function in <a class="link" href="ostree-Signature-management.html" title="Signature management">Signature management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Signature-management.html#ostree-sign-set-sk" title="ostree_sign_set_sk ()">ostree_sign_set_sk</a>, function in <a class="link" href="ostree-Signature-management.html" title="Signature management">Signature management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Signature-management.html#ostree-sign-summary" title="ostree_sign_summary ()">ostree_sign_summary</a>, function in <a class="link" href="ostree-Signature-management.html" title="Signature management">Signature management</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-OstreeRepo.html#OstreeStaticDeltaGenerateOpt" title="enum OstreeStaticDeltaGenerateOpt">OstreeStaticDeltaGenerateOpt</a>, enum in <a class="link" href="ostree-OstreeRepo.html" title="OstreeRepo: Content-addressed object store">OstreeRepo</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-SUMMARY-GVARIANT-FORMAT:CAPS" title="OSTREE_SUMMARY_GVARIANT_FORMAT">OSTREE_SUMMARY_GVARIANT_FORMAT</a>, macro in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-SUMMARY-GVARIANT-STRING:CAPS" title="OSTREE_SUMMARY_GVARIANT_STRING">OSTREE_SUMMARY_GVARIANT_STRING</a>, macro in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysroot" title="OstreeSysroot">OstreeSysroot</a>, typedef in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#OstreeSysrootSimpleWriteDeploymentFlags" title="enum OstreeSysrootSimpleWriteDeploymentFlags">OstreeSysrootSimpleWriteDeploymentFlags</a>, enum in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgrader" title="OstreeSysrootUpgrader">OstreeSysrootUpgrader</a>, typedef in <a class="link" href="ostree-Simple-upgrade-class.html" title="Simple upgrade class">Simple upgrade class</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgraderFlags" title="enum OstreeSysrootUpgraderFlags">OstreeSysrootUpgraderFlags</a>, enum in <a class="link" href="ostree-Simple-upgrade-class.html" title="Simple upgrade class">Simple upgrade class</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Simple-upgrade-class.html#OstreeSysrootUpgraderPullFlags" title="enum OstreeSysrootUpgraderPullFlags">OstreeSysrootUpgraderPullFlags</a>, enum in <a class="link" href="ostree-Simple-upgrade-class.html" title="Simple upgrade class">Simple upgrade class</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-change-finalization" title="ostree_sysroot_change_finalization ()">ostree_sysroot_change_finalization</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-cleanup" title="ostree_sysroot_cleanup ()">ostree_sysroot_cleanup</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-cleanup-prune-repo" title="ostree_sysroot_cleanup_prune_repo ()">ostree_sysroot_cleanup_prune_repo</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-deployment-set-kargs" title="ostree_sysroot_deployment_set_kargs ()">ostree_sysroot_deployment_set_kargs</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-deployment-set-kargs-in-place" title="ostree_sysroot_deployment_set_kargs_in_place ()">ostree_sysroot_deployment_set_kargs_in_place</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-deployment-set-mutable" title="ostree_sysroot_deployment_set_mutable ()">ostree_sysroot_deployment_set_mutable</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-deployment-set-pinned" title="ostree_sysroot_deployment_set_pinned ()">ostree_sysroot_deployment_set_pinned</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-deployment-unlock" title="ostree_sysroot_deployment_unlock ()">ostree_sysroot_deployment_unlock</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-deploy-tree" title="ostree_sysroot_deploy_tree ()">ostree_sysroot_deploy_tree</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-deploy-tree-with-options" title="ostree_sysroot_deploy_tree_with_options ()">ostree_sysroot_deploy_tree_with_options</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-ensure-initialized" title="ostree_sysroot_ensure_initialized ()">ostree_sysroot_ensure_initialized</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-booted-deployment" title="ostree_sysroot_get_booted_deployment ()">ostree_sysroot_get_booted_deployment</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-bootversion" title="ostree_sysroot_get_bootversion ()">ostree_sysroot_get_bootversion</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-deployments" title="ostree_sysroot_get_deployments ()">ostree_sysroot_get_deployments</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-deployment-directory" title="ostree_sysroot_get_deployment_directory ()">ostree_sysroot_get_deployment_directory</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-deployment-dirpath" title="ostree_sysroot_get_deployment_dirpath ()">ostree_sysroot_get_deployment_dirpath</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-deployment-origin-path" title="ostree_sysroot_get_deployment_origin_path ()">ostree_sysroot_get_deployment_origin_path</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-fd" title="ostree_sysroot_get_fd ()">ostree_sysroot_get_fd</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-merge-deployment" title="ostree_sysroot_get_merge_deployment ()">ostree_sysroot_get_merge_deployment</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-path" title="ostree_sysroot_get_path ()">ostree_sysroot_get_path</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-repo" title="ostree_sysroot_get_repo ()">ostree_sysroot_get_repo</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-staged-deployment" title="ostree_sysroot_get_staged_deployment ()">ostree_sysroot_get_staged_deployment</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-get-subbootversion" title="ostree_sysroot_get_subbootversion ()">ostree_sysroot_get_subbootversion</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-initialize" title="ostree_sysroot_initialize ()">ostree_sysroot_initialize</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-initialize-with-mount-namespace" title="ostree_sysroot_initialize_with_mount_namespace ()">ostree_sysroot_initialize_with_mount_namespace</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-init-osname" title="ostree_sysroot_init_osname ()">ostree_sysroot_init_osname</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-is-booted" title="ostree_sysroot_is_booted ()">ostree_sysroot_is_booted</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-load" title="ostree_sysroot_load ()">ostree_sysroot_load</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-load-if-changed" title="ostree_sysroot_load_if_changed ()">ostree_sysroot_load_if_changed</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-lock" title="ostree_sysroot_lock ()">ostree_sysroot_lock</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-lock-async" title="ostree_sysroot_lock_async ()">ostree_sysroot_lock_async</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-lock-finish" title="ostree_sysroot_lock_finish ()">ostree_sysroot_lock_finish</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-new" title="ostree_sysroot_new ()">ostree_sysroot_new</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-new-default" title="ostree_sysroot_new_default ()">ostree_sysroot_new_default</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-origin-new-from-refspec" title="ostree_sysroot_origin_new_from_refspec ()">ostree_sysroot_origin_new_from_refspec</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-prepare-cleanup" title="ostree_sysroot_prepare_cleanup ()">ostree_sysroot_prepare_cleanup</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-query-deployments-for" title="ostree_sysroot_query_deployments_for ()">ostree_sysroot_query_deployments_for</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-repo" title="ostree_sysroot_repo ()">ostree_sysroot_repo</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-require-booted-deployment" title="ostree_sysroot_require_booted_deployment ()">ostree_sysroot_require_booted_deployment</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-set-mount-namespace-in-use" title="ostree_sysroot_set_mount_namespace_in_use ()">ostree_sysroot_set_mount_namespace_in_use</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-simple-write-deployment" title="ostree_sysroot_simple_write_deployment ()">ostree_sysroot_simple_write_deployment</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-stage-overlay-initrd" title="ostree_sysroot_stage_overlay_initrd ()">ostree_sysroot_stage_overlay_initrd</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-stage-tree" title="ostree_sysroot_stage_tree ()">ostree_sysroot_stage_tree</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-stage-tree-with-options" title="ostree_sysroot_stage_tree_with_options ()">ostree_sysroot_stage_tree_with_options</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-try-lock" title="ostree_sysroot_try_lock ()">ostree_sysroot_try_lock</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-unload" title="ostree_sysroot_unload ()">ostree_sysroot_unload</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-unlock" title="ostree_sysroot_unlock ()">ostree_sysroot_unlock</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-update-post-copy" title="ostree_sysroot_update_post_copy ()">ostree_sysroot_update_post_copy</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-check-timestamps" title="ostree_sysroot_upgrader_check_timestamps ()">ostree_sysroot_upgrader_check_timestamps</a>, function in <a class="link" href="ostree-Simple-upgrade-class.html" title="Simple upgrade class">Simple upgrade class</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-deploy" title="ostree_sysroot_upgrader_deploy ()">ostree_sysroot_upgrader_deploy</a>, function in <a class="link" href="ostree-Simple-upgrade-class.html" title="Simple upgrade class">Simple upgrade class</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-dup-origin" title="ostree_sysroot_upgrader_dup_origin ()">ostree_sysroot_upgrader_dup_origin</a>, function in <a class="link" href="ostree-Simple-upgrade-class.html" title="Simple upgrade class">Simple upgrade class</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-get-origin" title="ostree_sysroot_upgrader_get_origin ()">ostree_sysroot_upgrader_get_origin</a>, function in <a class="link" href="ostree-Simple-upgrade-class.html" title="Simple upgrade class">Simple upgrade class</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-get-origin-description" title="ostree_sysroot_upgrader_get_origin_description ()">ostree_sysroot_upgrader_get_origin_description</a>, function in <a class="link" href="ostree-Simple-upgrade-class.html" title="Simple upgrade class">Simple upgrade class</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-new" title="ostree_sysroot_upgrader_new ()">ostree_sysroot_upgrader_new</a>, function in <a class="link" href="ostree-Simple-upgrade-class.html" title="Simple upgrade class">Simple upgrade class</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-new-for-os" title="ostree_sysroot_upgrader_new_for_os ()">ostree_sysroot_upgrader_new_for_os</a>, function in <a class="link" href="ostree-Simple-upgrade-class.html" title="Simple upgrade class">Simple upgrade class</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-new-for-os-with-flags" title="ostree_sysroot_upgrader_new_for_os_with_flags ()">ostree_sysroot_upgrader_new_for_os_with_flags</a>, function in <a class="link" href="ostree-Simple-upgrade-class.html" title="Simple upgrade class">Simple upgrade class</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-pull" title="ostree_sysroot_upgrader_pull ()">ostree_sysroot_upgrader_pull</a>, function in <a class="link" href="ostree-Simple-upgrade-class.html" title="Simple upgrade class">Simple upgrade class</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-pull-one-dir" title="ostree_sysroot_upgrader_pull_one_dir ()">ostree_sysroot_upgrader_pull_one_dir</a>, function in <a class="link" href="ostree-Simple-upgrade-class.html" title="Simple upgrade class">Simple upgrade class</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Simple-upgrade-class.html#ostree-sysroot-upgrader-set-origin" title="ostree_sysroot_upgrader_set_origin ()">ostree_sysroot_upgrader_set_origin</a>, function in <a class="link" href="ostree-Simple-upgrade-class.html" title="Simple upgrade class">Simple upgrade class</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-write-deployments" title="ostree_sysroot_write_deployments ()">ostree_sysroot_write_deployments</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-write-deployments-with-options" title="ostree_sysroot_write_deployments_with_options ()">ostree_sysroot_write_deployments_with_options</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Root-partition-mount-point.html#ostree-sysroot-write-origin-file" title="ostree_sysroot_write_origin_file ()">ostree_sysroot_write_origin_file</a>, function in <a class="link" href="ostree-Root-partition-mount-point.html" title="Root partition mount point">Root partition mount point</a>
+</dt>
+<dd></dd>
+<a name="idxT"></a><h3 class="title">T</h3>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-TREE-GVARIANT-FORMAT:CAPS" title="OSTREE_TREE_GVARIANT_FORMAT">OSTREE_TREE_GVARIANT_FORMAT</a>, macro in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#OSTREE-TREE-GVARIANT-STRING:CAPS" title="OSTREE_TREE_GVARIANT_STRING">OSTREE_TREE_GVARIANT_STRING</a>, macro in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<a name="idxV"></a><h3 class="title">V</h3>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-checksum-string" title="ostree_validate_checksum_string ()">ostree_validate_checksum_string</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-collection-id" title="ostree_validate_collection_id ()">ostree_validate_collection_id</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-remote-name" title="ostree_validate_remote_name ()">ostree_validate_remote_name</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-rev" title="ostree_validate_rev ()">ostree_validate_rev</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-structureof-checksum-string" title="ostree_validate_structureof_checksum_string ()">ostree_validate_structureof_checksum_string</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-structureof-commit" title="ostree_validate_structureof_commit ()">ostree_validate_structureof_commit</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-structureof-csum-v" title="ostree_validate_structureof_csum_v ()">ostree_validate_structureof_csum_v</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-structureof-dirmeta" title="ostree_validate_structureof_dirmeta ()">ostree_validate_structureof_dirmeta</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-structureof-dirtree" title="ostree_validate_structureof_dirtree ()">ostree_validate_structureof_dirtree</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-structureof-file-mode" title="ostree_validate_structureof_file_mode ()">ostree_validate_structureof_file_mode</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-Core-repository-independent-functions.html#ostree-validate-structureof-objtype" title="ostree_validate_structureof_objtype ()">ostree_validate_structureof_objtype</a>, function in <a class="link" href="ostree-Core-repository-independent-functions.html" title="Core repository-independent functions">Core repository-independent functions</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-version.html#OSTREE-VERSION:CAPS" title="OSTREE_VERSION">OSTREE_VERSION</a>, macro in <a class="link" href="ostree-ostree-version.html" title="ostree-version">ostree-version</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-version.html#OSTREE-VERSION-HEX:CAPS" title="OSTREE_VERSION_HEX">OSTREE_VERSION_HEX</a>, macro in <a class="link" href="ostree-ostree-version.html" title="ostree-version">ostree-version</a>
+</dt>
+<dd></dd>
+<dt>
+<a class="link" href="ostree-ostree-version.html#OSTREE-VERSION-S:CAPS" title="OSTREE_VERSION_S">OSTREE_VERSION_S</a>, macro in <a class="link" href="ostree-ostree-version.html" title="ostree-version">ostree-version</a>
+</dt>
+<dd></dd>
+<a name="idxY"></a><h3 class="title">Y</h3>
+<dt>
+<a class="link" href="ostree-ostree-version.html#OSTREE-YEAR-VERSION:CAPS" title="OSTREE_YEAR_VERSION">OSTREE_YEAR_VERSION</a>, macro in <a class="link" href="ostree-ostree-version.html" title="ostree-version">ostree-version</a>
+</dt>
+<dd></dd>
+</div>
+</div>
+<div class="footer">
+<hr>Generated by GTK-Doc V1.33.1</div>
+</body>
+</html>

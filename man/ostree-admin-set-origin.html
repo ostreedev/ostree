@@ -1,0 +1,12 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree admin set-origin</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-admin-set-origin &#8212; Change the "origin" (location for upgrades)</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree admin set-origin </code>  {REMOTENAME} {URL} [BRANCH]</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            Add a new remote named
+            <em class="replaceable"><code>REMOTENAME</code></em> (if it does not
+            already exist).  Then change the origin file for the
+            current deployment.  This is the ref that will be
+            "tracked" and upgraded with <span class="command"><strong>ostree admin
+            upgrade</strong></span>.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--set</code>=KEY=VALUE</span></dt><dd><p>
+		  Set an option for the remote.
+                </p></dd><dt><span class="term"><code class="option">--index</code>=INDEX</span></dt><dd><p> Change the origin of the deployment
+                numbered <em class="replaceable"><code>INDEX</code></em> (starting
+                from 0).  </p></dd></dl></div></div><div class="refsect1"><a name="id1339"></a><h2>Example</h2><p><span class="command"><strong>$ ostree admin set-origin exampleos http://os.example.com/repo exampleos/10.0/main/router</strong></span></p></div></div></body></html>

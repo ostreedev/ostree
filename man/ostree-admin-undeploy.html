@@ -1,0 +1,15 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree admin undeploy</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-admin-undeploy &#8212; Delete deployment at a given index</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree admin undeploy</code>  {INDEX}</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            Deletes the deployment at INDEX.  INDEX must be in range and not reference the currently booted deployment.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Example</h2><p><span class="command"><strong>$ ostree admin status</strong></span></p><pre class="programlisting">
+        * gnome-ostree 67e382b11d213a402a5313e61cbc69dfd5ab93cb07.0
+            origin refspec: gnome-ostree/buildmain/x86_64-runtime
+          gnome-ostree ce19c41036cc45e49b0cecf6b157523c2105c4de1c.0
+            origin refspec: gnome-ostree/buildmain/x86_64-runtime
+</pre><p><span class="command"><strong>$ ostree admin undeploy 1</strong></span></p><pre class="programlisting">
+        Transaction complete; bootconfig swap: no deployment count change: -1)
+        Freed objects: 326.5 kB
+        Deleted deployment ce19c41036cc45e49b0cecf6b157523c2105c4de1c.0
+</pre><p><span class="command"><strong>$ ostree admin status</strong></span></p><pre class="programlisting">
+        * gnome-ostree 67e382b11d213a402a5313e61cbc69dfd5ab93cb07.0
+            origin refspec: gnome-ostree/buildmain/x86_64-runtime
+</pre></div></div></body></html>

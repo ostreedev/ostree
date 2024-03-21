@@ -1,0 +1,25 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree admin upgrade</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-admin-upgrade &#8212; Construct new tree from current origin and deploy it, if it changed</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree admin upgrade</code>  [OPTIONS...]</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            Downloads the latest version of the current ref from the build
+            server and deploys it, if it changed. Reboot the machine for the
+            changes to take effect. These phases can be split via
+            <code class="option">--pull-only</code> and <code class="option">--deploy-only</code>.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--os</code>="STATEROOT"</span></dt><dd><p>
+                    Use a different operating system root than the current one.
+                </p></dd><dt><span class="term"><code class="option">--pull-only</code></span></dt><dd><p> Only perform a pull into the repository; do not
+                create a deployment. This option can hence safely be used in a
+                background scheduled job with the assurance of not changing
+                system state.</p></dd><dt><span class="term"><code class="option">--deploy-only</code></span></dt><dd><p>Create a new deployment from the latest commit
+                in the tracked origin refspec.  This option is intended to be used
+                by a scheduled system that detected changes via <code class="option">--pull-only</code>,
+                and is ready to deploy them.</p></dd><dt><span class="term"><code class="option">--stage</code></span></dt><dd><p>
+                    Perform deployment finalization at shutdown time.  Recommended,
+                    and will likely become the default in the future.
+                </p></dd><dt><span class="term"><code class="option">--reboot</code>,<code class="option">-r</code></span></dt><dd><p>
+                    Reboot after a successful upgrade.
+                </p></dd><dt><span class="term"><code class="option">--allow-downgrade</code></span></dt><dd><p>
+                    Permit deployment of chronologically older trees.
+                </p></dd><dt><span class="term"><code class="option">--override-commit</code>="CHECKSUM"</span></dt><dd><p>
+                    Deploy CHECKSUM instead of the latest tree.
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1339"></a><h2>Example</h2><p><span class="command"><strong>$ ostree admin upgrade</strong></span></p><pre class="programlisting">
+        No update available.
+</pre></div></div></body></html>

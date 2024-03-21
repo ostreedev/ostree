@@ -1,0 +1,373 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>ostree-ref: OSTree API references</title>
+<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<link rel="home" href="index.html" title="OSTree API references">
+<link rel="up" href="reference.html" title="API Reference">
+<link rel="prev" href="ostree-ostree-kernel-args.html" title="ostree-kernel-args">
+<link rel="next" href="ostree-ostree-remote.html" title="ostree-remote">
+<meta name="generator" content="GTK-Doc V1.33.1 (XML mode)">
+<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table class="navigation" id="top" width="100%" summary="Navigation header" cellpadding="2" cellspacing="5"><tr valign="middle">
+<td width="100%" align="left" class="shortcuts">
+<a href="#" class="shortcut">Top</a><span id="nav_description">  <span class="dim">|</span> 
+                  <a href="#ostree-ostree-ref.description" class="shortcut">Description</a></span>
+</td>
+<td><a accesskey="h" href="index.html"><img src="home.png" width="16" height="16" border="0" alt="Home"></a></td>
+<td><a accesskey="u" href="reference.html"><img src="up.png" width="16" height="16" border="0" alt="Up"></a></td>
+<td><a accesskey="p" href="ostree-ostree-kernel-args.html"><img src="left.png" width="16" height="16" border="0" alt="Prev"></a></td>
+<td><a accesskey="n" href="ostree-ostree-remote.html"><img src="right.png" width="16" height="16" border="0" alt="Next"></a></td>
+</tr></table>
+<div class="refentry">
+<a name="ostree-ostree-ref"></a><div class="titlepage"></div>
+<div class="refnamediv"><table width="100%"><tr>
+<td valign="top">
+<h2><span class="refentrytitle"><a name="ostree-ostree-ref.top_of_page"></a>ostree-ref</span></h2>
+<p>ostree-ref</p>
+</td>
+<td class="gallery_image" valign="top" align="right"></td>
+</tr></table></div>
+<div class="refsect1">
+<a name="ostree-ostree-ref.functions"></a><h2>Functions</h2>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="functions_proto_type">
+<col class="functions_proto_name">
+</colgroup>
+<tbody>
+<tr>
+<td class="function_type">
+<span class="returnvalue">OstreeCollectionRef</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-ref.html#ostree-collection-ref-new" title="ostree_collection_ref_new ()">ostree_collection_ref_new</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">OstreeCollectionRef</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-ref.html#ostree-collection-ref-dup" title="ostree_collection_ref_dup ()">ostree_collection_ref_dup</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-ref.html#ostree-collection-ref-free" title="ostree_collection_ref_free ()">ostree_collection_ref_free</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">guint</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-ref.html#ostree-collection-ref-hash" title="ostree_collection_ref_hash ()">ostree_collection_ref_hash</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-ref.html#ostree-collection-ref-equal" title="ostree_collection_ref_equal ()">ostree_collection_ref_equal</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">OstreeCollectionRef</span> **
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-ref.html#ostree-collection-ref-dupv" title="ostree_collection_ref_dupv ()">ostree_collection_ref_dupv</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-ref.html#ostree-collection-ref-freev" title="ostree_collection_ref_freev ()">ostree_collection_ref_freev</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-ref.other"></a><h2>Types and Values</h2>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="other_proto_type">
+<col class="other_proto_name">
+</colgroup>
+<tbody><tr>
+<td class="typedef_keyword">typedef</td>
+<td class="function_name"><a class="link" href="ostree-ostree-ref.html#OstreeCollectionRefv" title="OstreeCollectionRefv">OstreeCollectionRefv</a></td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-ref.description"></a><h2>Description</h2>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-ref.functions_details"></a><h2>Functions</h2>
+<div class="refsect2">
+<a name="ostree-collection-ref-new"></a><h3>ostree_collection_ref_new ()</h3>
+<pre class="programlisting"><span class="returnvalue">OstreeCollectionRef</span> *
+ostree_collection_ref_new (<em class="parameter"><code>const <span class="type">gchar</span> *collection_id</code></em>,
+                           <em class="parameter"><code>const <span class="type">gchar</span> *ref_name</code></em>);</pre>
+<p>Create a new <span class="type">OstreeCollectionRef</span> containing (<em class="parameter"><code>collection_id</code></em>
+, <em class="parameter"><code>ref_name</code></em>
+). If
+<em class="parameter"><code>collection_id</code></em>
+ is <code class="literal">NULL</code>, this is equivalent to a plain ref name string (not a
+refspec; no remote name is included), which can be used for non-P2P
+operations.</p>
+<div class="refsect3">
+<a name="ostree-collection-ref-new.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>collection_id</p></td>
+<td class="parameter_description"><p>a collection ID, or <code class="literal">NULL</code> for a plain ref. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>ref_name</p></td>
+<td class="parameter_description"><p>a ref name</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-collection-ref-new.returns"></a><h4>Returns</h4>
+<p>a new <span class="type">OstreeCollectionRef</span>. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-collection-ref-dup"></a><h3>ostree_collection_ref_dup ()</h3>
+<pre class="programlisting"><span class="returnvalue">OstreeCollectionRef</span> *
+ostree_collection_ref_dup (<em class="parameter"><code>const <span class="type">OstreeCollectionRef</span> *ref</code></em>);</pre>
+<p>Create a copy of the given <em class="parameter"><code>ref</code></em>
+.</p>
+<div class="refsect3">
+<a name="ostree-collection-ref-dup.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>ref</p></td>
+<td class="parameter_description"><p>an <span class="type">OstreeCollectionRef</span>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/not%20nullable"><span class="acronym">not nullable</span></a>]</span></td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-collection-ref-dup.returns"></a><h4>Returns</h4>
+<p>a newly allocated copy of <em class="parameter"><code>ref</code></em>
+. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-collection-ref-free"></a><h3>ostree_collection_ref_free ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_collection_ref_free (<em class="parameter"><code><span class="type">OstreeCollectionRef</span> *ref</code></em>);</pre>
+<p>Free the given <em class="parameter"><code>ref</code></em>
+.</p>
+<div class="refsect3">
+<a name="ostree-collection-ref-free.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>ref</p></td>
+<td class="parameter_description"><p>an <span class="type">OstreeCollectionRef</span>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></td>
+</tr></tbody>
+</table></div>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-collection-ref-hash"></a><h3>ostree_collection_ref_hash ()</h3>
+<pre class="programlisting"><span class="returnvalue">guint</span>
+ostree_collection_ref_hash (<em class="parameter"><code><span class="type">gconstpointer</span> ref</code></em>);</pre>
+<p>Hash the given <em class="parameter"><code>ref</code></em>
+. This function is suitable for use with <span class="type">GHashTable</span>.
+<em class="parameter"><code>ref</code></em>
+ must be non-<code class="literal">NULL</code>.</p>
+<div class="refsect3">
+<a name="ostree-collection-ref-hash.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>ref</p></td>
+<td class="parameter_description"><p>an <span class="type">OstreeCollectionRef</span>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/not%20nullable"><span class="acronym">not nullable</span></a>][<a href="http://foldoc.org/type"><span class="acronym">type</span></a> OstreeCollectionRef]</span></td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-collection-ref-hash.returns"></a><h4>Returns</h4>
+<p> hash value for <em class="parameter"><code>ref</code></em>
+</p>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-collection-ref-equal"></a><h3>ostree_collection_ref_equal ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_collection_ref_equal (<em class="parameter"><code><span class="type">gconstpointer</span> ref1</code></em>,
+                             <em class="parameter"><code><span class="type">gconstpointer</span> ref2</code></em>);</pre>
+<p>Compare <em class="parameter"><code>ref1</code></em>
+ and <em class="parameter"><code>ref2</code></em>
+ and return <code class="literal">TRUE</code> if they have the same collection ID and
+ref name, and <code class="literal">FALSE</code> otherwise. Both <em class="parameter"><code>ref1</code></em>
+ and <em class="parameter"><code>ref2</code></em>
+ must be non-<code class="literal">NULL</code>.</p>
+<div class="refsect3">
+<a name="ostree-collection-ref-equal.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>ref1</p></td>
+<td class="parameter_description"><p>an <span class="type">OstreeCollectionRef</span>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/not%20nullable"><span class="acronym">not nullable</span></a>][<a href="http://foldoc.org/type"><span class="acronym">type</span></a> OstreeCollectionRef]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>ref2</p></td>
+<td class="parameter_description"><p>another <span class="type">OstreeCollectionRef</span>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/not%20nullable"><span class="acronym">not nullable</span></a>][<a href="http://foldoc.org/type"><span class="acronym">type</span></a> OstreeCollectionRef]</span></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-collection-ref-equal.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> if <em class="parameter"><code>ref1</code></em>
+and <em class="parameter"><code>ref2</code></em>
+are equal, <code class="literal">FALSE</code> otherwise</p>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-collection-ref-dupv"></a><h3>ostree_collection_ref_dupv ()</h3>
+<pre class="programlisting"><span class="returnvalue">OstreeCollectionRef</span> **
+ostree_collection_ref_dupv (<em class="parameter"><code>const <span class="type">OstreeCollectionRef</span> *const *refs</code></em>);</pre>
+<p>Copy an array of <span class="type">OstreeCollectionRefs</span>, including deep copies of all its
+elements. <em class="parameter"><code>refs</code></em>
+ must be <code class="literal">NULL</code>-terminated; it may be empty, but must not be
+<code class="literal">NULL</code>.</p>
+<div class="refsect3">
+<a name="ostree-collection-ref-dupv.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>refs</p></td>
+<td class="parameter_description"><p><code class="literal">NULL</code>-terminated array of <span class="type">OstreeCollectionRefs</span>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/array"><span class="acronym">array</span></a> zero-terminated=1]</span></td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-collection-ref-dupv.returns"></a><h4>Returns</h4>
+<p>a newly allocated copy of <em class="parameter"><code>refs</code></em>
+. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>][<a href="http://foldoc.org/array"><span class="acronym">array</span></a> zero-terminated=1]</span></p>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-collection-ref-freev"></a><h3>ostree_collection_ref_freev ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_collection_ref_freev (<em class="parameter"><code><span class="type">OstreeCollectionRef</span> **refs</code></em>);</pre>
+<p>Free the given array of <em class="parameter"><code>refs</code></em>
+, including freeing all its elements. <em class="parameter"><code>refs</code></em>
+
+must be <code class="literal">NULL</code>-terminated; it may be empty, but must not be <code class="literal">NULL</code>.</p>
+<div class="refsect3">
+<a name="ostree-collection-ref-freev.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>refs</p></td>
+<td class="parameter_description"><p>an array of <span class="type">OstreeCollectionRefs</span>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>][<a href="http://foldoc.org/array"><span class="acronym">array</span></a> zero-terminated=1]</span></td>
+</tr></tbody>
+</table></div>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-ref.other_details"></a><h2>Types and Values</h2>
+<div class="refsect2">
+<a name="OstreeCollectionRefv"></a><h3>OstreeCollectionRefv</h3>
+<pre class="programlisting">typedef OstreeCollectionRef **OstreeCollectionRefv;
+</pre>
+<p>A <code class="literal">NULL</code>-terminated array of <span class="type">OstreeCollectionRef</span> instances, designed to
+be used with <code class="function">g_auto()</code>:</p>
+<div class="informalexample">
+  <table class="listing_frame" border="0" cellpadding="0" cellspacing="0">
+    <tbody>
+      <tr>
+        <td class="listing_lines" align="right"><pre>1</pre></td>
+        <td class="listing_code"><pre class="programlisting"><span class="n">g_auto</span><span class="p">(</span><span class="n">OstreeCollectionRefv</span><span class="p">)</span><span class="w"> </span><span class="n">refs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span></pre></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p></p>
+<p class="since">Since: 2018.6</p>
+</div>
+</div>
+</div>
+<div class="footer">
+<hr>Generated by GTK-Doc V1.33.1</div>
+</body>
+</html>

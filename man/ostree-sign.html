@@ -1,0 +1,35 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree sign</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-sign &#8212; Sign a commit</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree sign</code>  [OPTIONS...] {COMMIT} {KEY-ID...}</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            Add a new signature to a commit.
+
+            Note that currently, this will append a new signature even if
+            the commit is already signed with a given key.
+        </p><p>
+            There are several "well-known" system places for `ed25519` trusted and revoked public keys -- expected single <code class="literal">base64</code>-encoded key per line.
+        </p><p>Files:
+            </p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p><code class="filename">/etc/ostree/trusted.ed25519</code></p></li><li class="listitem"><p><code class="filename">/etc/ostree/revoked.ed25519</code></p></li><li class="listitem"><p><code class="filename">/usr/share/ostree/trusted.ed25519</code></p></li><li class="listitem"><p><code class="filename">/usr/share/ostree/revoked.ed25519</code></p></li></ul></div><p>
+        </p><p>Directories containing files with keys:
+            </p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p><code class="filename">/etc/ostree/trusted.ed25519.d</code></p></li><li class="listitem"><p><code class="filename">/etc/ostree/revoked.ed25519.d</code></p></li><li class="listitem"><p><code class="filename">/usr/share/ostree/trusted.ed25519.d</code></p></li><li class="listitem"><p><code class="filename">/usr/share/ostree/rvokeded.ed25519.d</code></p></li></ul></div><p>
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">KEY-ID</code></span></dt><dd><p>
+                        </p><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">for ed25519:</code></span></dt><dd><p>
+                                        <code class="literal">base64</code>-encoded secret (for signing) or public key (for verifying).
+                                </p></dd><dt><span class="term"><code class="option">for dummy:</code></span></dt><dd><p>
+                                            ASCII-string used as secret key and public key.
+                                </p></dd></dl></div><p>
+                </p></dd><dt><span class="term"><code class="option">--verify</code></span></dt><dd><p>
+                    Verify signatures
+                </p></dd><dt><span class="term"><code class="option">-s, --sign-type</code></span></dt><dd><p>
+                    Use particular signature mechanism. Currently
+                    available  ed25519  and   dummy 
+                    signature types.
+
+                    The default is   ed25519 .
+                </p></dd><dt><span class="term"><code class="option">--keys-file</code></span></dt><dd><p>
+                    Read key(s) from file <code class="filename">filename</code>.
+                </p><p>
+                    Valid for <code class="literal">ed25519</code> signature type.
+                    For <code class="literal">ed25519</code> this file must contain <code class="literal">base64</code>-encoded
+                    secret key(s) (for signing) or public key(s) (for verifying) per line.
+                </p></dd><dt><span class="term"><code class="option">--keys-dir</code></span></dt><dd><p>
+                    Redefine the system path, where to search files and subdirectories with
+                    well-known and revoked keys.
+                </p></dd></dl></div></div></div></body></html>

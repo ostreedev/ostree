@@ -1,0 +1,9 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree admin pin</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-admin-pin &#8212; Explicitly retain deployment at a given index</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree admin pin</code>  {INDEX}</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+          Ensures the deployment at <code class="literal">INDEX</code>, will not be garbage
+          collected by default. This is termed "pinning". If the
+          <code class="literal">-u</code> option is provided, undoes a pinning operation.
+          <code class="literal">INDEX</code> can be &gt;= 0 or one of booted, pending or
+          rollback strings.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--unpin</code>,<code class="option">-u</code></span></dt><dd><p>
+                    Undoes a pinning operation.
+                </p></dd></dl></div></div></div></body></html>

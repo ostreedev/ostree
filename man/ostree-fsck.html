@@ -1,0 +1,25 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree fsck</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-fsck &#8212; Check the repository for consistency</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree fsck</code>  [OPTIONS...]</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            Checks the repository to verify the content integrity of commit objects.  Looks for missing and corrupted objects and metadata, and validates directory structure and metadata.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--quiet</code>,<code class="option">-q</code></span></dt><dd><p>
+                    Only print error messages.
+                </p></dd><dt><span class="term"><code class="option">--delete</code></span></dt><dd><p>
+                   Remove corrupted objects.
+                </p></dd><dt><span class="term"><code class="option">--add-tombstones</code></span></dt><dd><p>
+                   Add tombstone commit for referenced but missing commits.
+                </p></dd><dt><span class="term"><code class="option">--verify-bindings</code></span></dt><dd><p>
+                  Verify that the commits pointed to by each ref have that
+                  ref in the binding set.  You should usually add this
+                  option; it only defaults to off for backwards compatibility.
+                </p></dd><dt><span class="term"><code class="option">--verify-back-refs</code></span></dt><dd><p>
+                  Verify that all the refs listed in a commit&#8217;s ref-bindings
+                  point to that commit. This cannot be used in repositories
+                  where the target of refs is changed over time as new commits
+                  are added, but can be used in repositories which are
+                  regenerated from scratch for each commit.
+                  Implies <code class="literal">--verify-bindings</code> as well.
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1339"></a><h2>Example</h2><p><span class="command"><strong>$ ostree fsck</strong></span></p><pre class="programlisting">
+        Enumerating objects...
+        Verifying content integrity of of 2 commit objects
+        0/2572 objects
+        2571/2572 objects
+</pre></div></div></body></html>

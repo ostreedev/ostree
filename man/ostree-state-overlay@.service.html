@@ -1,0 +1,35 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree-state-overlay</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree-state-overlay@.service"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-state-overlay@.service &#8212; Set up state overlays</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><p><code class="filename">ostree-state-overlay@.service</code></p></div><div class="refsect1"><a name="id1337"></a><h2>Experimental</h2><p>
+      <span class="bold"><strong>Note this feature is currently considered
+      experimental.</strong></span> It may not work correctly and some of its
+      semantics may be subject to change. Positive or negative feedback are both
+      welcome and may be provided at
+      <a class="ulink" href="https://github.com/ostreedev/ostree/discussions" target="_top">https://github.com/ostreedev/ostree/discussions</a>. If using
+      the feature via rpm-ostree, feedback may also be provided at
+      <a class="ulink" href="https://github.com/coreos/rpm-ostree/issues/233" target="_top">https://github.com/coreos/rpm-ostree/issues/233</a>.
+    </p></div><div class="refsect1"><a name="id1338"></a><h2>Description</h2><p>
+      In some cases, it's useful to be able to have a directory as part of the
+      OSTree commit yet still have this directory be writable client-side. One
+      example is software that ships in <code class="filename">/opt</code>.
+      <code class="filename">/opt</code> is its own vendor-namespaced alternate file
+      hierarchy which may contain both code and state. With state overlays, it's
+      possible to have the code part baked in the OSTree, but still allowing the
+      directory to be writable so that state can be kept there.
+    </p><p>
+      Since it's writable, nothing prevents sufficiently privileged code to
+      modify or delete content that comes from the OSTree commit. This is in
+      sharp contrast with content in <code class="filename">/usr</code>, and more
+      closely matches a package manager-based distro.
+    </p><p>
+      Crucially, this state is automatically rebased during upgrades (or more
+      generally, anytime a different OSTree commit is booted). The semantics
+      of the rebase are as follows: any state file or directory that modified
+      OSTree content is deleted, otherwise it is kept and merged onto the new
+      base content (using overlayfs). This mostly matches the semantics of a
+      package manager.
+    </p><p>
+      To enable this feature, simply instantiate the unit template, using the
+      target path (in escaped systemd path notation) as the instance name. For
+      example, to enable it on <code class="filename">/opt</code>:
+    </p><div class="literallayout"><p><br>
+    $ systemctl enable --now ostree-state-overlay@opt.service<br>
+    </p></div></div></div></body></html>

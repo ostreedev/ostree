@@ -1,0 +1,14 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree admin lock-finalization</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-admin-lock-finalization &#8212; Change whether staged deployment will be queued for next boot</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree admin lock-finalization</code>  [OPTIONS...]</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            This command requires a staged deployment.  By default, this command ensures the deployment
+            will be set into a "finalization locked" state, which means it will not be queued for the next boot by default.
+        </p><p>
+            This is the same as the <code class="literal">--lock-finalization</code> argument for <code class="literal">ostree admin deploy</code>,
+            which is the recommended way to use this feature in a race-free way.
+        </p><p>
+            However more commonly, one will use the <code class="literal">--unlock</code> argument for this command to later unlock
+            a deployment which was finalization locked.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--sysroot</code>="PATH"</span></dt><dd><p>
+                    Path to the system to use rather than the current one.
+                </p></dd><dt><span class="term"><code class="option">--unlock</code>,<code class="option">-u</code></span></dt><dd><p>
+                    Unlock the deployment finalization state.
+                </p></dd></dl></div></div></div></body></html>

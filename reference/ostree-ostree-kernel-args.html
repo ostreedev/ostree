@@ -1,0 +1,1005 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>ostree-kernel-args: OSTree API references</title>
+<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<link rel="home" href="index.html" title="OSTree API references">
+<link rel="up" href="reference.html" title="API Reference">
+<link rel="prev" href="ostree-ostree-diff.html" title="ostree-diff">
+<link rel="next" href="ostree-ostree-ref.html" title="ostree-ref">
+<meta name="generator" content="GTK-Doc V1.33.1 (XML mode)">
+<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table class="navigation" id="top" width="100%" summary="Navigation header" cellpadding="2" cellspacing="5"><tr valign="middle">
+<td width="100%" align="left" class="shortcuts">
+<a href="#" class="shortcut">Top</a><span id="nav_description">  <span class="dim">|</span> 
+                  <a href="#ostree-ostree-kernel-args.description" class="shortcut">Description</a></span>
+</td>
+<td><a accesskey="h" href="index.html"><img src="home.png" width="16" height="16" border="0" alt="Home"></a></td>
+<td><a accesskey="u" href="reference.html"><img src="up.png" width="16" height="16" border="0" alt="Up"></a></td>
+<td><a accesskey="p" href="ostree-ostree-diff.html"><img src="left.png" width="16" height="16" border="0" alt="Prev"></a></td>
+<td><a accesskey="n" href="ostree-ostree-ref.html"><img src="right.png" width="16" height="16" border="0" alt="Next"></a></td>
+</tr></table>
+<div class="refentry">
+<a name="ostree-ostree-kernel-args"></a><div class="titlepage"></div>
+<div class="refnamediv"><table width="100%"><tr>
+<td valign="top">
+<h2><span class="refentrytitle"><a name="ostree-ostree-kernel-args.top_of_page"></a>ostree-kernel-args</span></h2>
+<p>ostree-kernel-args</p>
+</td>
+<td class="gallery_image" valign="top" align="right"></td>
+</tr></table></div>
+<div class="refsect1">
+<a name="ostree-ostree-kernel-args.functions"></a><h2>Functions</h2>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="functions_proto_type">
+<col class="functions_proto_name">
+</colgroup>
+<tbody>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-free" title="ostree_kernel_args_free ()">ostree_kernel_args_free</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="returnvalue">OstreeKernelArgs</span></a> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-new" title="ostree_kernel_args_new ()">ostree_kernel_args_new</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-cleanup" title="ostree_kernel_args_cleanup ()">ostree_kernel_args_cleanup</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-replace-take" title="ostree_kernel_args_replace_take ()">ostree_kernel_args_replace_take</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-replace" title="ostree_kernel_args_replace ()">ostree_kernel_args_replace</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-replace-argv" title="ostree_kernel_args_replace_argv ()">ostree_kernel_args_replace_argv</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-append" title="ostree_kernel_args_append ()">ostree_kernel_args_append</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-append-argv" title="ostree_kernel_args_append_argv ()">ostree_kernel_args_append_argv</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-append-argv-filtered" title="ostree_kernel_args_append_argv_filtered ()">ostree_kernel_args_append_argv_filtered</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-append-if-missing" title="ostree_kernel_args_append_if_missing ()">ostree_kernel_args_append_if_missing</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-new-replace" title="ostree_kernel_args_new_replace ()">ostree_kernel_args_new_replace</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-delete" title="ostree_kernel_args_delete ()">ostree_kernel_args_delete</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-delete-key-entry" title="ostree_kernel_args_delete_key_entry ()">ostree_kernel_args_delete_key_entry</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-append-proc-cmdline" title="ostree_kernel_args_append_proc_cmdline ()">ostree_kernel_args_append_proc_cmdline</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-parse-append" title="ostree_kernel_args_parse_append ()">ostree_kernel_args_parse_append</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">const <span class="returnvalue">char</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-get-last-value" title="ostree_kernel_args_get_last_value ()">ostree_kernel_args_get_last_value</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="returnvalue">OstreeKernelArgs</span></a> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-from-string" title="ostree_kernel_args_from_string ()">ostree_kernel_args_from_string</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">char</span> **
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-to-strv" title="ostree_kernel_args_to_strv ()">ostree_kernel_args_to_strv</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">char</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-to-string" title="ostree_kernel_args_to_string ()">ostree_kernel_args_to_string</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-contains" title="ostree_kernel_args_contains ()">ostree_kernel_args_contains</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-kernel-args.html#ostree-kernel-args-delete-if-present" title="ostree_kernel_args_delete_if_present ()">ostree_kernel_args_delete_if_present</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-kernel-args.other"></a><h2>Types and Values</h2>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="other_proto_type">
+<col class="other_proto_name">
+</colgroup>
+<tbody><tr>
+<td class="datatype_keyword"> </td>
+<td class="function_name"><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs">OstreeKernelArgs</a></td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-kernel-args.description"></a><h2>Description</h2>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-kernel-args.functions_details"></a><h2>Functions</h2>
+<div class="refsect2">
+<a name="ostree-kernel-args-free"></a><h3>ostree_kernel_args_free ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_kernel_args_free (<em class="parameter"><code><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="type">OstreeKernelArgs</span></a> *kargs</code></em>);</pre>
+<p>Frees the kargs structure</p>
+<div class="refsect3">
+<a name="ostree-kernel-args-free.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>kargs</p></td>
+<td class="parameter_description"><p>An OstreeKernelArgs that represents kernel arguments</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<p class="since">Since: 2019.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-kernel-args-new"></a><h3>ostree_kernel_args_new ()</h3>
+<pre class="programlisting"><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="returnvalue">OstreeKernelArgs</span></a> *
+ostree_kernel_args_new (<em class="parameter"><code><span class="type">void</span></code></em>);</pre>
+<p>Initializes a new OstreeKernelArgs structure and returns it</p>
+<p><span class="annotation">[<a href="http://foldoc.org/skip"><span class="acronym">skip</span></a>]</span></p>
+<div class="refsect3">
+<a name="ostree-kernel-args-new.returns"></a><h4>Returns</h4>
+<p>A newly created <a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="type">OstreeKernelArgs</span></a> for kernel arguments. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+<p class="since">Since: 2019.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-kernel-args-cleanup"></a><h3>ostree_kernel_args_cleanup ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_kernel_args_cleanup (<em class="parameter"><code><span class="type">void</span> *loc</code></em>);</pre>
+<p>Frees the OstreeKernelArgs structure pointed by *loc</p>
+<div class="refsect3">
+<a name="ostree-kernel-args-cleanup.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>loc</p></td>
+<td class="parameter_description"><p>Address of an OstreeKernelArgs pointer</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<p class="since">Since: 2019.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-kernel-args-replace-take"></a><h3>ostree_kernel_args_replace_take ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_kernel_args_replace_take (<em class="parameter"><code><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="type">OstreeKernelArgs</span></a> *kargs</code></em>,
+                                 <em class="parameter"><code><span class="type">char</span> *arg</code></em>);</pre>
+<p>Finds and replaces the old key if <em class="parameter"><code>arg</code></em>
+ is already in the hash table,
+otherwise adds <em class="parameter"><code>arg</code></em>
+ as new key and split_keyeq (arg) as value.
+Note that when replacing old key, the old values are freed.</p>
+<div class="refsect3">
+<a name="ostree-kernel-args-replace-take.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>kargs</p></td>
+<td class="parameter_description"><p>a OstreeKernelArgs instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>arg</p></td>
+<td class="parameter_description"><p>key or key/value pair for replacement. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2019.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-kernel-args-replace"></a><h3>ostree_kernel_args_replace ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_kernel_args_replace (<em class="parameter"><code><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="type">OstreeKernelArgs</span></a> *kargs</code></em>,
+                            <em class="parameter"><code>const <span class="type">char</span> *arg</code></em>);</pre>
+<p>Finds and replaces the old key if <em class="parameter"><code>arg</code></em>
+ is already in the hash table,
+otherwise adds <em class="parameter"><code>arg</code></em>
+ as new key and split_keyeq (arg) as value.
+Note that when replacing old key value pair, the old values are freed.</p>
+<div class="refsect3">
+<a name="ostree-kernel-args-replace.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>kargs</p></td>
+<td class="parameter_description"><p>a OstreeKernelArgs instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>arg</p></td>
+<td class="parameter_description"><p>key or key/value pair for replacement</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2019.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-kernel-args-replace-argv"></a><h3>ostree_kernel_args_replace_argv ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_kernel_args_replace_argv (<em class="parameter"><code><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="type">OstreeKernelArgs</span></a> *kargs</code></em>,
+                                 <em class="parameter"><code><span class="type">char</span> **argv</code></em>);</pre>
+<p>Finds and replaces each non-null arguments of <em class="parameter"><code>argv</code></em>
+ in the hash table,
+otherwise adds individual arg as new key and split_keyeq (arg) as value.
+Note that when replacing old key value pair, the old values are freed.</p>
+<div class="refsect3">
+<a name="ostree-kernel-args-replace-argv.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>kargs</p></td>
+<td class="parameter_description"><p>a OstreeKernelArgs instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>argv</p></td>
+<td class="parameter_description"><p>an array of key or key/value pairs</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2019.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-kernel-args-append"></a><h3>ostree_kernel_args_append ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_kernel_args_append (<em class="parameter"><code><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="type">OstreeKernelArgs</span></a> *kargs</code></em>,
+                           <em class="parameter"><code>const <span class="type">char</span> *arg</code></em>);</pre>
+<p>Appends <em class="parameter"><code>arg</code></em>
+ which is in the form of key=value pair to the hash table kargs-&gt;table
+(appends to the value list if key is already in the hash table)
+and appends key to kargs-&gt;order if it is not in the hash table already.</p>
+<div class="refsect3">
+<a name="ostree-kernel-args-append.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>kargs</p></td>
+<td class="parameter_description"><p>a OstreeKernelArgs instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>arg</p></td>
+<td class="parameter_description"><p>key or key/value pair to be added</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2019.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-kernel-args-append-argv"></a><h3>ostree_kernel_args_append_argv ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_kernel_args_append_argv (<em class="parameter"><code><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="type">OstreeKernelArgs</span></a> *kargs</code></em>,
+                                <em class="parameter"><code><span class="type">char</span> **argv</code></em>);</pre>
+<p>Appends each value in <em class="parameter"><code>argv</code></em>
+ to the corresponding value array and
+appends key to kargs-&gt;order if it is not in the hash table already.</p>
+<div class="refsect3">
+<a name="ostree-kernel-args-append-argv.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>kargs</p></td>
+<td class="parameter_description"><p>a OstreeKernelArgs instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>argv</p></td>
+<td class="parameter_description"><p>an array of key=value argument pairs. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/array"><span class="acronym">array</span></a> zero-terminated=1]</span></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2019.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-kernel-args-append-argv-filtered"></a><h3>ostree_kernel_args_append_argv_filtered ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_kernel_args_append_argv_filtered
+                               (<em class="parameter"><code><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="type">OstreeKernelArgs</span></a> *kargs</code></em>,
+                                <em class="parameter"><code><span class="type">char</span> **argv</code></em>,
+                                <em class="parameter"><code><span class="type">char</span> **prefixes</code></em>);</pre>
+<p>Appends each argument that does not have one of the <em class="parameter"><code>prefixes</code></em>
+ as prefix to the <em class="parameter"><code>kargs</code></em>
+</p>
+<div class="refsect3">
+<a name="ostree-kernel-args-append-argv-filtered.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>kargs</p></td>
+<td class="parameter_description"><p>a OstreeKernelArgs instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>argv</p></td>
+<td class="parameter_description"><p>an array of key=value argument pairs. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/array"><span class="acronym">array</span></a> zero-terminated=1]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>prefixes</p></td>
+<td class="parameter_description"><p>an array of prefix strings. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/array"><span class="acronym">array</span></a> zero-terminated=1]</span></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2019.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-kernel-args-append-if-missing"></a><h3>ostree_kernel_args_append_if_missing ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_kernel_args_append_if_missing (<em class="parameter"><code><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="type">OstreeKernelArgs</span></a> *kargs</code></em>,
+                                      <em class="parameter"><code>const <span class="type">char</span> *arg</code></em>);</pre>
+<p>Appends <em class="parameter"><code>arg</code></em>
+ which is in the form of key=value pair to the hash table kargs-&gt;table
+(appends to the value list if key is not in the hash table)
+and appends key to kargs-&gt;order if it is not in the hash table.</p>
+<div class="refsect3">
+<a name="ostree-kernel-args-append-if-missing.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>kargs</p></td>
+<td class="parameter_description"><p>a OstreeKernelArgs instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>arg</p></td>
+<td class="parameter_description"><p>key or key/value pair to be added</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2022.5</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-kernel-args-new-replace"></a><h3>ostree_kernel_args_new_replace ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_kernel_args_new_replace (<em class="parameter"><code><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="type">OstreeKernelArgs</span></a> *kargs</code></em>,
+                                <em class="parameter"><code>const <span class="type">char</span> *arg</code></em>,
+                                <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>This function implements the basic logic behind key/value pair
+replacement. Do note that the arg need to be properly formatted</p>
+<p>When replacing key with exact one value, the arg can be in
+the form:
+key, key=new_val, or key=old_val=new_val
+The first one swaps the old_val with the key to an empty value
+The second and third replace the old_val into the new_val</p>
+<p>When replacing key with multiple values, the arg can only be
+in the form of:
+key=old_val=new_val. Unless there is a special case where
+there is an empty value associated with the key, then
+key=new_val will work because old_val is empty. The empty
+val will be swapped with the new_val in that case</p>
+<div class="refsect3">
+<a name="ostree-kernel-args-new-replace.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>kargs</p></td>
+<td class="parameter_description"><p>OstreeKernelArgs instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>arg</p></td>
+<td class="parameter_description"><p>a string argument</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>error instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-kernel-args-new-replace.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> on success, <code class="literal">FALSE</code> on failure (and in some other instances such as:</p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><p>key not found in <em class="parameter"><code>kargs</code></em>
+</p></li>
+<li class="listitem"><p>old value not found when <em class="parameter"><code>arg</code></em>
+is in the form of key=old_val=new_val</p></li>
+<li class="listitem"><p>multiple old values found when <em class="parameter"><code>arg</code></em>
+is in the form of key=old_val)</p></li>
+</ol></div>
+</div>
+<p class="since">Since: 2019.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-kernel-args-delete"></a><h3>ostree_kernel_args_delete ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_kernel_args_delete (<em class="parameter"><code><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="type">OstreeKernelArgs</span></a> *kargs</code></em>,
+                           <em class="parameter"><code>const <span class="type">char</span> *arg</code></em>,
+                           <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>There are few scenarios being handled for deletion:</p>
+<p> 1: for input arg with a single key(i.e without = for split),
+ the key/value pair will be deleted if there is only
+ one value that is associated with the key</p>
+<p> 2: for input arg wth key/value pair, the specific key
+ value pair will be deleted from the pointer array
+ if those exist.</p>
+<p> 3: If the found key has only one value
+ associated with it, the key entry in the table will also
+ be removed, and the key will be removed from order table</p>
+<div class="refsect3">
+<a name="ostree-kernel-args-delete.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>kargs</p></td>
+<td class="parameter_description"><p>a OstreeKernelArgs instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>arg</p></td>
+<td class="parameter_description"><p>key or key/value pair for deletion</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>an GError instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-kernel-args-delete.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> on success, <code class="literal">FALSE</code> on failure</p>
+</div>
+<p class="since">Since: 2019.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-kernel-args-delete-key-entry"></a><h3>ostree_kernel_args_delete_key_entry ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_kernel_args_delete_key_entry (<em class="parameter"><code><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="type">OstreeKernelArgs</span></a> *kargs</code></em>,
+                                     <em class="parameter"><code>const <span class="type">char</span> *key</code></em>,
+                                     <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>This function removes the key entry from the hashtable
+as well from the order pointer array inside kargs</p>
+<p>Note: since both table and order inside kernel args
+are with free function, no extra free functions are
+being called as they are done automatically by GLib</p>
+<div class="refsect3">
+<a name="ostree-kernel-args-delete-key-entry.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>kargs</p></td>
+<td class="parameter_description"><p>an OstreeKernelArgs instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>key</p></td>
+<td class="parameter_description"><p>the key to remove</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>an GError instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-kernel-args-delete-key-entry.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> on success, <code class="literal">FALSE</code> on failure</p>
+</div>
+<p class="since">Since: 2019.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-kernel-args-append-proc-cmdline"></a><h3>ostree_kernel_args_append_proc_cmdline ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_kernel_args_append_proc_cmdline
+                               (<em class="parameter"><code><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="type">OstreeKernelArgs</span></a> *kargs</code></em>,
+                                <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Appends the command line arguments in the file "/proc/cmdline"
+that does not have "BOOT_IMAGE=" and "initrd=" as prefixes to the <em class="parameter"><code>kargs</code></em>
+</p>
+<div class="refsect3">
+<a name="ostree-kernel-args-append-proc-cmdline.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>kargs</p></td>
+<td class="parameter_description"><p>a OstreeKernelArgs instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>optional GCancellable object, NULL to ignore</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>an GError instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-kernel-args-append-proc-cmdline.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> on success, <code class="literal">FALSE</code> on failure</p>
+</div>
+<p class="since">Since: 2019.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-kernel-args-parse-append"></a><h3>ostree_kernel_args_parse_append ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_kernel_args_parse_append (<em class="parameter"><code><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="type">OstreeKernelArgs</span></a> *kargs</code></em>,
+                                 <em class="parameter"><code>const <span class="type">char</span> *options</code></em>);</pre>
+<p>Parses <em class="parameter"><code>options</code></em>
+ by separating it by whitespaces and appends each argument to <em class="parameter"><code>kargs</code></em>
+</p>
+<div class="refsect3">
+<a name="ostree-kernel-args-parse-append.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>kargs</p></td>
+<td class="parameter_description"><p>a OstreeKernelArgs instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>options</p></td>
+<td class="parameter_description"><p>a string representing command line arguments</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2019.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-kernel-args-get-last-value"></a><h3>ostree_kernel_args_get_last_value ()</h3>
+<pre class="programlisting">const <span class="returnvalue">char</span> *
+ostree_kernel_args_get_last_value (<em class="parameter"><code><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="type">OstreeKernelArgs</span></a> *kargs</code></em>,
+                                   <em class="parameter"><code>const <span class="type">char</span> *key</code></em>);</pre>
+<p>Finds and returns the last element of value array
+corresponding to the <em class="parameter"><code>key</code></em>
+ in <em class="parameter"><code>kargs</code></em>
+ hash table. Note that the application
+will be terminated if the <em class="parameter"><code>key</code></em>
+ is found but the value array is empty</p>
+<div class="refsect3">
+<a name="ostree-kernel-args-get-last-value.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>kargs</p></td>
+<td class="parameter_description"><p>a OstreeKernelArgs instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>key</p></td>
+<td class="parameter_description"><p>a key to look for in <em class="parameter"><code>kargs</code></em>
+hash table</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-kernel-args-get-last-value.returns"></a><h4>Returns</h4>
+<p><code class="literal">NULL</code> if <em class="parameter"><code>key</code></em>
+is not found in the <em class="parameter"><code>kargs</code></em>
+hash table,
+otherwise returns last element of value array corresponding to <em class="parameter"><code>key</code></em>
+. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></p>
+</div>
+<p class="since">Since: 2019.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-kernel-args-from-string"></a><h3>ostree_kernel_args_from_string ()</h3>
+<pre class="programlisting"><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="returnvalue">OstreeKernelArgs</span></a> *
+ostree_kernel_args_from_string (<em class="parameter"><code>const <span class="type">char</span> *options</code></em>);</pre>
+<p>Initializes a new OstreeKernelArgs then parses and appends <em class="parameter"><code>options</code></em>
+
+to the empty OstreeKernelArgs</p>
+<p><span class="annotation">[<a href="http://foldoc.org/skip"><span class="acronym">skip</span></a>]</span></p>
+<div class="refsect3">
+<a name="ostree-kernel-args-from-string.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>options</p></td>
+<td class="parameter_description"><p>a string representing command line arguments</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-kernel-args-from-string.returns"></a><h4>Returns</h4>
+<p>newly allocated <a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="type">OstreeKernelArgs</span></a> with <em class="parameter"><code>options</code></em>
+appended. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+<p class="since">Since: 2019.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-kernel-args-to-strv"></a><h3>ostree_kernel_args_to_strv ()</h3>
+<pre class="programlisting"><span class="returnvalue">char</span> **
+ostree_kernel_args_to_strv (<em class="parameter"><code><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="type">OstreeKernelArgs</span></a> *kargs</code></em>);</pre>
+<p>Extracts all key value pairs in <em class="parameter"><code>kargs</code></em>
+ and appends to a temporary
+array in forms of "key=value" or "key" if value is NULL, and returns
+the temporary array with the GPtrArray wrapper freed</p>
+<div class="refsect3">
+<a name="ostree-kernel-args-to-strv.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>kargs</p></td>
+<td class="parameter_description"><p>a OstreeKernelArgs instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-kernel-args-to-strv.returns"></a><h4>Returns</h4>
+<p>an array of "key=value" pairs or "key" if value is NULL. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+<p class="since">Since: 2019.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-kernel-args-to-string"></a><h3>ostree_kernel_args_to_string ()</h3>
+<pre class="programlisting"><span class="returnvalue">char</span> *
+ostree_kernel_args_to_string (<em class="parameter"><code><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="type">OstreeKernelArgs</span></a> *kargs</code></em>);</pre>
+<p>Extracts all key value pairs in <em class="parameter"><code>kargs</code></em>
+ and appends to a temporary
+GString in forms of "key=value" or "key" if value is NULL separated
+by a single whitespace, and returns the temporary string with the
+GString wrapper freed</p>
+<p>Note: the application will be terminated if one of the values array
+in <em class="parameter"><code>kargs</code></em>
+ is NULL</p>
+<div class="refsect3">
+<a name="ostree-kernel-args-to-string.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>kargs</p></td>
+<td class="parameter_description"><p>a OstreeKernelArgs instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-kernel-args-to-string.returns"></a><h4>Returns</h4>
+<p>a string of "key=value" pairs or "key" if value is NULL,
+separated by single whitespaces. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+<p class="since">Since: 2019.3</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-kernel-args-contains"></a><h3>ostree_kernel_args_contains ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_kernel_args_contains (<em class="parameter"><code><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="type">OstreeKernelArgs</span></a> *kargs</code></em>,
+                             <em class="parameter"><code>const <span class="type">char</span> *arg</code></em>);</pre>
+<p>Search for <em class="parameter"><code>arg</code></em>
+ which is in the form of key=value pair at the hash table kargs-&gt;table
+and returns true if finds it.</p>
+<div class="refsect3">
+<a name="ostree-kernel-args-contains.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>kargs</p></td>
+<td class="parameter_description"><p>a OstreeKernelArgs instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>arg</p></td>
+<td class="parameter_description"><p>key or key/value pair to check</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-kernel-args-contains.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> if <em class="parameter"><code>arg</code></em>
+is contained in <em class="parameter"><code>kargs</code></em>
+, <code class="literal">FALSE</code> otherwise.</p>
+</div>
+<p class="since">Since: 2022.7</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-kernel-args-delete-if-present"></a><h3>ostree_kernel_args_delete_if_present ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_kernel_args_delete_if_present (<em class="parameter"><code><a class="link" href="ostree-ostree-kernel-args.html#OstreeKernelArgs" title="OstreeKernelArgs"><span class="type">OstreeKernelArgs</span></a> *kargs</code></em>,
+                                      <em class="parameter"><code>const <span class="type">char</span> *arg</code></em>,
+                                      <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Deletes <em class="parameter"><code>arg</code></em>
+ which is in the form of key=value pair from the hash table kargs-&gt;table.</p>
+<div class="refsect3">
+<a name="ostree-kernel-args-delete-if-present.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>kargs</p></td>
+<td class="parameter_description"><p>a OstreeKernelArgs instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>arg</p></td>
+<td class="parameter_description"><p>key or key/value pair to be deleted</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>an GError instance</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-kernel-args-delete-if-present.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> on success, <code class="literal">FALSE</code> on failure</p>
+</div>
+<p class="since">Since: 2022.7</p>
+</div>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-kernel-args.other_details"></a><h2>Types and Values</h2>
+<div class="refsect2">
+<a name="OstreeKernelArgs"></a><h3>OstreeKernelArgs</h3>
+<pre class="programlisting">typedef struct _OstreeKernelArgs OstreeKernelArgs;</pre>
+</div>
+</div>
+</div>
+<div class="footer">
+<hr>Generated by GTK-Doc V1.33.1</div>
+</body>
+</html>

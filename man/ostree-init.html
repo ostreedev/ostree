@@ -1,0 +1,33 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree init</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-init &#8212; Initialize a new empty repository</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree init</code>  [OPTIONS...]</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            Creates a new empty repository.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--mode</code>="MODE"</span></dt><dd><p>
+                    Initialize repository in given mode
+                    (<code class="literal">bare</code>, <code class="literal">bare-user</code>,
+                    <code class="literal">bare-user-only</code>, <code class="literal">archive</code>).
+                    The default is <code class="literal">bare</code>. Note that for
+                    <code class="literal">archive</code> the repository configuration file
+                    will actually have <code class="literal">archive-z2</code>, as that's
+                    the historical name.</p><p>See the manual for differences between these modes.
+                    Briefly, <code class="literal">bare</code> mode stores files as they
+                    are, so they can be directly hardlinked,
+                    <code class="literal">bare-user</code> uses extended attributes to
+                    store ownership and xattr information, allowing non-root
+                    operations, <code class="literal">bare-user-only</code> does not store
+                    ownership information, and <code class="literal">archive</code> stores
+                    files compressed, to be served over the network.
+                </p></dd><dt><span class="term"><code class="option">--collection-id</code>=COLLECTION-ID</span></dt><dd><p>
+                    Set the collection ID of the repository. Remotes in clones
+                    of this repository must configure the same value in order to
+                    pull refs which originated in this repository over peer to
+                    peer.</p><p>This collection ID must be persistent and globally
+                    unique. It is formatted as a reverse DNS name (like a D-Bus
+                    interface). It must be set to a reverse DNS domain under your
+                    control.</p><p>This option may be omitted (the default) to leave
+                    peer to peer distribution unsupported for the repository. A
+                    collection ID may be added to an existing repository in
+                    future to enable peer to peer distribution from that point
+                    onwards.</p><p>If the collection ID is changed for the repository
+                    in future, peer to peer distribution of refs from the
+                    repository will break for all peers who do not update their
+                    remote configuration to the new collection ID.
+                </p></dd></dl></div></div></div></body></html>

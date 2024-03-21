@@ -1,0 +1,63 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree pull</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-pull &#8212; Download data from a remote repository</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree pull {REMOTE}  [BRANCH]</code> </p></div></div><div class="refsect1"><a name="id1337"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--commit-metadata-only</code></span></dt><dd><p>
+                    Fetch only the commit metadata.
+                </p></dd><dt><span class="term"><code class="option">--cache-dir</code>=DIR</span></dt><dd><p>
+                    Use an alternate cache directory in <code class="literal">DIR</code>.
+                </p></dd><dt><span class="term"><code class="option">--disable-fsync</code></span></dt><dd><p>
+                    Do no invoke fsync().
+                </p></dd><dt><span class="term"><code class="option">--localcache-repo</code></span></dt><dd><p>
+                Like git's <code class="literal">clone --reference</code>.  Reuse the provided
+                OSTree repo as a local object cache when doing HTTP fetches.
+                May be specified multiple times.
+              </p></dd><dt><span class="term"><code class="option">--untrusted</code></span></dt><dd><p>
+                    Do not trust local sources, verify checksums and don't hardlink into source.
+                </p></dd><dt><span class="term"><code class="option">--disable-static-deltas</code></span></dt><dd><p>
+                    Do not use static deltas.
+                </p></dd><dt><span class="term"><code class="option">--mirror</code></span></dt><dd><p>
+                    Write refs suitable for a mirror, i.e. refs are stored in the
+                    <code class="literal">heads/</code> directory rather than the
+                    <code class="literal">remotes/</code> directory. This makes the target repo
+                    suitable to be exported for other clients to pull from as an ostree
+                    remote. If no specific refs are specified, all refs will be fetched (the
+                    remote must have a summary file present).
+                </p></dd><dt><span class="term"><code class="option">--subpath</code>=SUBPATH</span></dt><dd><p>
+                    Only pull the provided subpath.
+                </p></dd><dt><span class="term"><code class="option">--depth</code>=DEPTH</span></dt><dd><p>
+                    Traverse DEPTH parents (-1=infinite) (default: 0).
+                </p></dd><dt><span class="term"><code class="option">--network-retries</code>=N</span></dt><dd><p>
+                    Specifies how many times each download should be retried upon error (default: 5)
+                </p></dd><dt><span class="term"><code class="option">--disable-retry-on-network-errors</code></span></dt><dd><p>
+                    Do not retry when network issues happen, instead fail automatically. (Currently only affects libcurl)
+                </p></dd><dt><span class="term"><code class="option">--low-speed-limit-bytes</code>=N</span></dt><dd><p>
+                    The average transfer speed per second of a transfer during the
+                    time set via 'low-speed-time-seconds' for libcurl to abort
+                    (default: 1000)
+                </p></dd><dt><span class="term"><code class="option">--low-speed-time-seconds</code>=N</span></dt><dd><p>
+                    The time in number seconds that the transfer speed should be
+                    below the 'low-speed-limit-bytes' setting for libcurl to abort
+                    (default: 30)
+                </p></dd><dt><span class="term"><code class="option">--max-outstanding-fetcher-requests</code>=N</span></dt><dd><p>
+                    The max amount of concurrent connections allowed. (default: 8)
+                </p></dd><dt><span class="term"><code class="option">--disable-verify-bindings</code></span></dt><dd><p>
+                    Disable verification of commit metadata bindings.
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1338"></a><h2>Description</h2><p>
+	  Without --mirror, this command will create new refs
+	  under <code class="literal">remotes/REMOTE/</code> directory
+	  for each pulled branch unless they are already created. Such
+	  refs can be then referenced by <code class="literal">REMOTE:BRANCH</code> in
+	  <code class="literal">ostree</code> subcommands (e.g. <code class="literal">ostree log origin:exampleos/x86_64/standard</code>).
+      </p><p>
+	  This command can retrieve just a specific commit, or go all
+	  the way to performing a full mirror of the remote
+	  repository.  If no <code class="literal">BRANCH</code> is specified,
+	  all configured branches are retrieved.
+        </p><p>
+    A special syntax in the <code class="literal">@</code> character allows
+    specifying a specific commit to retrieve from a branch.  The
+    use cases for this are somewhat similar to pulling a specific
+    git tag; one could e.g. script a system upgrade to a known-good
+    version, rather than the latest from the content provider.
+	</p></div><div class="refsect1"><a name="id1339"></a><h2>Example</h2><p><span class="command"><strong>$ ostree --repo=repo pull --depth=-1 --mirror remote_name</strong></span></p><p>Perform a complete mirror of the remote.  (This is
+	likely most useful if your repository is also
+	<code class="literal">archive</code> mode)</p><p><span class="command"><strong>$ ostree --repo=repo pull remote_name exampleos/x86_64/standard</strong></span></p><p>Fetch the most recent commit to <code class="literal">exampleos/x86_64/standard</code>.</p><p><span class="command"><strong>$ ostree --repo=repo pull remote_name exampleos/x86_64/standard@98ea6e4f216f2fb4b69fff9b3a44842c38686ca685f3f55dc48c5d3fb1107be4</strong></span></p><p>Download the specific commit starting with
+	<code class="literal">98ea6e</code> as if it was the latest commit for
+	<code class="literal">exampleos/x86_64/standard</code>.</p></div></div></body></html>

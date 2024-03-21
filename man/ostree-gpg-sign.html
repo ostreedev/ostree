@@ -1,0 +1,10 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree gpg-sign</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-gpg-sign &#8212; Sign a commit</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree gpg-sign</code>  [OPTIONS...] {COMMIT} {KEY-ID...}</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            Add a new signature to a commit for each specified GPG key.
+
+            Note that currently, this will append a new signature even if
+            the commit is already signed with a given key.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--delete</code></span></dt><dd><p>
+                    Delete signatures having any of the GPG KEY-IDs.
+                </p></dd><dt><span class="term"><code class="option">--gpg-homedir</code>="HOMEDIR"</span></dt><dd><p>
+                    GPG Homedir to use when looking for keyrings.
+                </p></dd></dl></div></div></div></body></html>

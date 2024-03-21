@@ -1,0 +1,27 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree show</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-show &#8212; Output a metadata object</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree show</code>  [OPTIONS...] {OBJECT}</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            Given an object, shows the metadata for that object.  For a particular revision, it will show the data for the most recent commit to that revision.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--print-related</code></span></dt><dd><p>
+                    Show the "related" commits.
+                </p></dd><dt><span class="term"><code class="option">--print-variant-type</code>="TYPE"</span></dt><dd><p>
+                    Memory map <em class="replaceable"><code>OBJECT</code></em> (in this case a filename) to the GVariant type string.
+                </p></dd><dt><span class="term"><code class="option">--list-metadata-keys</code></span></dt><dd><p>
+                    List the available metadata keys.
+                </p></dd><dt><span class="term"><code class="option">--print-metadata-key</code>="KEY"</span></dt><dd><p>
+                    Print string value of metadata key.
+                </p></dd><dt><span class="term"><code class="option">--list-detached-metadata-keys</code></span></dt><dd><p>
+                    List the available detached metadata keys.
+                </p></dd><dt><span class="term"><code class="option">--print-detached-metadata-key</code>="KEY"</span></dt><dd><p>
+                    Print string value of detached metadata key.
+                </p></dd><dt><span class="term"><code class="option">--print-sizes</code></span></dt><dd><p>
+                    Show the commit size metadata. This in only supported for
+                    commits that contain <code class="varname">ostree.sizes</code>
+                    metadata. This can be included when creating commits with
+                    <span class="command"><strong>ostree commit --generate-sizes</strong></span>.
+                </p></dd><dt><span class="term"><code class="option">--raw</code></span></dt><dd><p>
+                    Show raw variant data.
+                </p></dd><dt><span class="term"><code class="option">--gpg-homedir</code>="HOMEDIR"</span></dt><dd><p>
+                    GPG home directory to use when looking for keyrings (if have GPGME - GNU Privacy Guard Made Easy).
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1339"></a><h2>Example</h2><p><span class="command"><strong>$ ostree show my-branch</strong></span></p><pre class="programlisting">
+        commit 67e382b11d213a402a5313e61cbc69dfd5ab93cb07
+        Date:  2014-06-12 13:42:54 +0000
+</pre></div></div></body></html>

@@ -1,0 +1,35 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree create-usb</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-create-usb &#8212; Put the given refs on an external drive for P2P distribution.</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree create-usb</code>  [OPTIONS...] {MOUNT-PATH} {COLLECTION-ID REF} [COLLECTION-ID REF...]</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            This command creates a repository in MOUNT-PATH and pulls the given
+            REF(s) into it so they can be found and pulled from (perhaps by another computer that's offline).
+            See
+            <a href="ostree-find-remotes.html"><span class="citerefentry"><span class="refentrytitle">ostree-find-remotes</span>(1)</span></a>
+            for more information on P2P distribution.
+        </p><p>
+            In order for ostree to pull refs from a mounted filesystem (such as
+            a USB drive) the repo must be in a standard location. Specifically,
+            subdirectories of <code class="filename">.ostree/repos.d</code> are checked,
+            then <code class="filename">.ostree/repo</code>, <code class="filename">ostree/repo</code>,
+            and <code class="filename">var/lib/flatpak/repo</code> are checked. By default
+            <span class="command"><strong>ostree create-usb</strong></span> uses <code class="filename">.ostree/repo</code>,
+            but if you specify another location using <code class="option">--destination-repo</code>
+            a symbolic link will be created for you in <code class="filename">.ostree/repos.d</code>.
+        </p><p>
+            This command will regenerate the <code class="filename">summary</code> file
+            in the destination repo so that it stays accurate, so you shouldn't
+            try to use summary signatures in the destination repo. This
+            shouldn't be a concern because clients that support pulling from
+            USB mounts use signed per-repo and per-commit metadata instead of
+            summary signatures.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--disable-fsync</code></span></dt><dd><p>
+                  Do not invoke fsync().
+                </p></dd><dt><span class="term"><code class="option">--destination-repo</code>=DEST</span></dt><dd><p>
+                  Create the repository in DEST under MOUNT-PATH, rather than
+                  the default location.
+                </p></dd><dt><span class="term"><code class="option">--commit</code>=COMMIT</span></dt><dd><p>
+                  Pull COMMIT instead of whatever REF points to. This can only
+                  be used if a single ref is specified.
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1339"></a><h2>Example</h2><p><span class="command"><strong>ostree --repo=/var/lib/flatpak/repo create-usb /run/media/mwleeds/f6d04c7a-60f6-4ba3-bb96-0f40498675be com.exampleos.Apps app/org.kde.Khangman/x86_64/stable com.exampleos.Apps ostree-metadata com.exampleos.Apps appstream/x86_64</strong></span></p><pre class="programlisting">
+
+5 metadata, 213 content objects imported; 1 KiB transferred in 1 seconds                                                                                                                      Copied 3/3 refs successfully from &#8216;/var/lib/flatpak/repo&#8217; to &#8216;.ostree/repo&#8217; repository in &#8216;/run/media/mwleeds/f6d04c7a-60f6-4ba3-bb96-0f40498675be&#8217;.
+
+</pre></div></div></body></html>

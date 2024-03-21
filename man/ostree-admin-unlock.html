@@ -1,0 +1,16 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree admin unlock</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-admin-unlock &#8212; Prepare the current deployment for hotfix or development</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree admin unlock</code>  [OPTIONS...]</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+	  Remove the read-only bind mount on <code class="literal">/usr</code>
+	  and replace it with a writable overlay filesystem.  This
+	  default invocation of "unlock" is intended for
+	  development/testing purposes.  All changes in the overlay
+	  are lost on reboot.  However, this command also supports
+	  "hotfixes", see below.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--hotfix</code></span></dt><dd><p>If this option is provided, the
+                current deployment will be cloned as a rollback
+                target.  This option is intended for things like
+                emergency security updates to userspace components
+                such as <code class="literal">sshd</code>.  The semantics here
+		differ from the default "development" unlock mode
+		in that reboots will retain any changes (which is what
+		you likely want for security hotfixes).
+                </p></dd></dl></div></div></div></body></html>

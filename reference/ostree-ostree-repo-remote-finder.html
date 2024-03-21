@@ -1,0 +1,516 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>ostree-repo-remote-finder: OSTree API references</title>
+<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<link rel="home" href="index.html" title="OSTree API references">
+<link rel="up" href="reference.html" title="API Reference">
+<link rel="prev" href="ostree-ostree-repo-finder.html" title="ostree-repo-finder">
+<link rel="next" href="ostree-ostree-version.html" title="ostree-version">
+<meta name="generator" content="GTK-Doc V1.33.1 (XML mode)">
+<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table class="navigation" id="top" width="100%" summary="Navigation header" cellpadding="2" cellspacing="5"><tr valign="middle">
+<td width="100%" align="left" class="shortcuts">
+<a href="#" class="shortcut">Top</a><span id="nav_description">  <span class="dim">|</span> 
+                  <a href="#ostree-ostree-repo-remote-finder.description" class="shortcut">Description</a></span>
+</td>
+<td><a accesskey="h" href="index.html"><img src="home.png" width="16" height="16" border="0" alt="Home"></a></td>
+<td><a accesskey="u" href="reference.html"><img src="up.png" width="16" height="16" border="0" alt="Up"></a></td>
+<td><a accesskey="p" href="ostree-ostree-repo-finder.html"><img src="left.png" width="16" height="16" border="0" alt="Prev"></a></td>
+<td><a accesskey="n" href="ostree-ostree-version.html"><img src="right.png" width="16" height="16" border="0" alt="Next"></a></td>
+</tr></table>
+<div class="refentry">
+<a name="ostree-ostree-repo-remote-finder"></a><div class="titlepage"></div>
+<div class="refnamediv"><table width="100%"><tr>
+<td valign="top">
+<h2><span class="refentrytitle"><a name="ostree-ostree-repo-remote-finder.top_of_page"></a>ostree-repo-remote-finder</span></h2>
+<p>ostree-repo-remote-finder</p>
+</td>
+<td class="gallery_image" valign="top" align="right"></td>
+</tr></table></div>
+<div class="refsect1">
+<a name="ostree-ostree-repo-remote-finder.functions"></a><h2>Functions</h2>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="functions_proto_type">
+<col class="functions_proto_name">
+</colgroup>
+<tbody>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-repo-remote-finder.html#ostree-repo-find-remotes-async" title="ostree_repo_find_remotes_async ()">ostree_repo_find_remotes_async</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">OstreeRepoFinderResult</span> **
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-repo-remote-finder.html#ostree-repo-find-remotes-finish" title="ostree_repo_find_remotes_finish ()">ostree_repo_find_remotes_finish</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-repo-remote-finder.html#ostree-repo-pull-from-remotes-async" title="ostree_repo_pull_from_remotes_async ()">ostree_repo_pull_from_remotes_async</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gboolean</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-repo-remote-finder.html#ostree-repo-pull-from-remotes-finish" title="ostree_repo_pull_from_remotes_finish ()">ostree_repo_pull_from_remotes_finish</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<a class="link" href="ostree-ostree-remote.html#OstreeRemote" title="struct OstreeRemote"><span class="returnvalue">OstreeRemote</span></a> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-repo-remote-finder.html#ostree-repo-resolve-keyring-for-collection" title="ostree_repo_resolve_keyring_for_collection ()">ostree_repo_resolve_keyring_for_collection</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-repo-remote-finder.other"></a><h2>Types and Values</h2>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="other_proto_type">
+<col class="other_proto_name">
+</colgroup>
+<tbody>
+<tr>
+<td class="define_keyword">#define</td>
+<td class="function_name"><a class="link" href="ostree-ostree-repo-remote-finder.html#OSTREE-REPO-METADATA-REF:CAPS" title="OSTREE_REPO_METADATA_REF">OSTREE_REPO_METADATA_REF</a></td>
+</tr>
+<tr>
+<td class="define_keyword">#define</td>
+<td class="function_name"><a class="link" href="ostree-ostree-repo-remote-finder.html#OSTREE-META-KEY-DEPLOY-COLLECTION-ID:CAPS" title="OSTREE_META_KEY_DEPLOY_COLLECTION_ID">OSTREE_META_KEY_DEPLOY_COLLECTION_ID</a></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-repo-remote-finder.description"></a><h2>Description</h2>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-repo-remote-finder.functions_details"></a><h2>Functions</h2>
+<div class="refsect2">
+<a name="ostree-repo-find-remotes-async"></a><h3>ostree_repo_find_remotes_async ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_repo_find_remotes_async (<em class="parameter"><code><a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="type">OstreeRepo</span></a> *self</code></em>,
+                                <em class="parameter"><code>const <span class="type">OstreeCollectionRef</span> *const *refs</code></em>,
+                                <em class="parameter"><code><span class="type">GVariant</span> *options</code></em>,
+                                <em class="parameter"><code><a class="link" href="ostree-ostree-repo-finder.html#OstreeRepoFinder" title="OstreeRepoFinder"><span class="type">OstreeRepoFinder</span></a> **finders</code></em>,
+                                <em class="parameter"><code><a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#OstreeAsyncProgress" title="OstreeAsyncProgress"><span class="type">OstreeAsyncProgress</span></a> *progress</code></em>,
+                                <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                <em class="parameter"><code><span class="type">GAsyncReadyCallback</span> callback</code></em>,
+                                <em class="parameter"><code><span class="type">gpointer</span> user_data</code></em>);</pre>
+<p>Find reachable remote URIs which claim to provide any of the given named
+<em class="parameter"><code>refs</code></em>
+. This will search for configured remotes (<span class="type">OstreeRepoFinderConfig</span>),
+mounted volumes (<span class="type">OstreeRepoFinderMount</span>) and (if enabled at compile time)
+local network peers (<span class="type">OstreeRepoFinderAvahi</span>). In order to use a custom
+configuration of <a class="link" href="ostree-ostree-repo-finder.html#OstreeRepoFinder" title="OstreeRepoFinder"><span class="type">OstreeRepoFinder</span></a> instances, call
+<a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-resolve-all-async" title="ostree_repo_finder_resolve_all_async ()"><code class="function">ostree_repo_finder_resolve_all_async()</code></a> on them individually.</p>
+<p>Any remote which is found and which claims to support any of the given <em class="parameter"><code>refs</code></em>
+
+will be returned in the results. It is possible that a remote claims to
+support a given ref, but turns out not to — it is not possible to verify this
+until <a class="link" href="ostree-ostree-repo-remote-finder.html#ostree-repo-pull-from-remotes-async" title="ostree_repo_pull_from_remotes_async ()"><code class="function">ostree_repo_pull_from_remotes_async()</code></a> is called.</p>
+<p>The returned results will be sorted with the most useful first — this is
+typically the remote which claims to provide the most of <em class="parameter"><code>refs</code></em>
+, at the lowest
+latency.</p>
+<p>Each result contains a list of the subset of <em class="parameter"><code>refs</code></em>
+ it claims to provide. It
+is possible for a non-empty list of results to be returned, but for some of
+<em class="parameter"><code>refs</code></em>
+ to not be listed in any of the results. Callers must check for this.</p>
+<p>Pass the results to <a class="link" href="ostree-ostree-repo-remote-finder.html#ostree-repo-pull-from-remotes-async" title="ostree_repo_pull_from_remotes_async ()"><code class="function">ostree_repo_pull_from_remotes_async()</code></a> to pull the given <em class="parameter"><code>refs</code></em>
+
+from those remotes.</p>
+<p>The following <em class="parameter"><code>options</code></em>
+ are currently defined:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p><code class="literal">override-commit-ids</code> (<code class="literal">as</code>): Array of specific commit IDs to fetch. The nth
+commit ID applies to the nth ref, so this must be the same length as <em class="parameter"><code>refs</code></em>
+, if
+provided.</p></li>
+<li class="listitem"><p><code class="literal">n-network-retries</code> (<code class="literal">u</code>): Number of times to retry each download on
+receiving a transient network error, such as a socket timeout; default is
+5, 0 means return errors without retrying. Since: 2018.6</p></li>
+</ul></div>
+<p><em class="parameter"><code>finders</code></em>
+ must be a non-empty <code class="literal">NULL</code>-terminated array of the <a class="link" href="ostree-ostree-repo-finder.html#OstreeRepoFinder" title="OstreeRepoFinder"><span class="type">OstreeRepoFinder</span></a>
+instances to use, or <code class="literal">NULL</code> to use the system default set of finders, which
+will typically be all available finders using their default options (but
+this is not guaranteed).</p>
+<p>GPG verification of commits will be used unconditionally.</p>
+<p>This will use the thread-default <span class="type">GMainContext</span>, but will not iterate it.</p>
+<div class="refsect3">
+<a name="ostree-repo-find-remotes-async.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="type">OstreeRepo</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>refs</p></td>
+<td class="parameter_description"><p>non-empty array of collection–ref pairs to find remotes for. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/array"><span class="acronym">array</span></a> zero-terminated=1]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>options</p></td>
+<td class="parameter_description"><p>a GVariant <code class="literal">a{sv}</code> with an extensible set of flags. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>finders</p></td>
+<td class="parameter_description"><p>non-empty array of
+<a class="link" href="ostree-ostree-repo-finder.html#OstreeRepoFinder" title="OstreeRepoFinder"><span class="type">OstreeRepoFinder</span></a> instances to use, or <code class="literal">NULL</code> to use the system defaults. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/array"><span class="acronym">array</span></a> zero-terminated=1][<a href="http://foldoc.org/transfer%20none"><span class="acronym">transfer none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>progress</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#OstreeAsyncProgress" title="OstreeAsyncProgress"><span class="type">OstreeAsyncProgress</span></a> to update with the operation’s
+progress, or <code class="literal">NULL</code>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>a <span class="type">GCancellable</span>, or <code class="literal">NULL</code>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>callback</p></td>
+<td class="parameter_description"><p>asynchronous completion callback</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>user_data</p></td>
+<td class="parameter_description"><p>data to pass to <em class="parameter"><code>callback</code></em>
+</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-repo-find-remotes-finish"></a><h3>ostree_repo_find_remotes_finish ()</h3>
+<pre class="programlisting"><span class="returnvalue">OstreeRepoFinderResult</span> **
+ostree_repo_find_remotes_finish (<em class="parameter"><code><a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="type">OstreeRepo</span></a> *self</code></em>,
+                                 <em class="parameter"><code><span class="type">GAsyncResult</span> *result</code></em>,
+                                 <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Finish an asynchronous pull operation started with
+<a class="link" href="ostree-ostree-repo-remote-finder.html#ostree-repo-find-remotes-async" title="ostree_repo_find_remotes_async ()"><code class="function">ostree_repo_find_remotes_async()</code></a>.</p>
+<div class="refsect3">
+<a name="ostree-repo-find-remotes-finish.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="type">OstreeRepo</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>result</p></td>
+<td class="parameter_description"><p>the asynchronous result</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>return location for a <span class="type">GError</span>, or <code class="literal">NULL</code></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-repo-find-remotes-finish.returns"></a><h4>Returns</h4>
+<p>a potentially empty array
+of <span class="type">OstreeRepoFinderResults</span>, followed by a <code class="literal">NULL</code> terminator element; or
+<code class="literal">NULL</code> on error. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>][<a href="http://foldoc.org/array"><span class="acronym">array</span></a> zero-terminated=1]</span></p>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-repo-pull-from-remotes-async"></a><h3>ostree_repo_pull_from_remotes_async ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_repo_pull_from_remotes_async (<em class="parameter"><code><a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="type">OstreeRepo</span></a> *self</code></em>,
+                                     <em class="parameter"><code>const <span class="type">OstreeRepoFinderResult</span> *const *results</code></em>,
+                                     <em class="parameter"><code><span class="type">GVariant</span> *options</code></em>,
+                                     <em class="parameter"><code><a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#OstreeAsyncProgress" title="OstreeAsyncProgress"><span class="type">OstreeAsyncProgress</span></a> *progress</code></em>,
+                                     <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                     <em class="parameter"><code><span class="type">GAsyncReadyCallback</span> callback</code></em>,
+                                     <em class="parameter"><code><span class="type">gpointer</span> user_data</code></em>);</pre>
+<p>Pull refs from multiple remotes which have been found using
+<a class="link" href="ostree-ostree-repo-remote-finder.html#ostree-repo-find-remotes-async" title="ostree_repo_find_remotes_async ()"><code class="function">ostree_repo_find_remotes_async()</code></a>.</p>
+<p><em class="parameter"><code>results</code></em>
+ are expected to be in priority order, with the best remotes to pull
+from listed first. <a class="link" href="ostree-ostree-repo-remote-finder.html#ostree-repo-pull-from-remotes-async" title="ostree_repo_pull_from_remotes_async ()"><code class="function">ostree_repo_pull_from_remotes_async()</code></a> will generally pull
+from the remotes in order, but may parallelise its downloads.</p>
+<p>If an error is encountered when pulling from a given remote, that remote will
+be ignored and another will be tried instead. If any refs have not been
+downloaded successfully after all remotes have been tried, <code class="literal">G_IO_ERROR_FAILED</code>
+will be returned. The results of any successful downloads will remain cached
+in the local repository.</p>
+<p>If <em class="parameter"><code>cancellable</code></em>
+ is cancelled, <code class="literal">G_IO_ERROR_CANCELLED</code> will be returned
+immediately. The results of any successfully completed downloads at that
+point will remain cached in the local repository.</p>
+<p>GPG verification of commits will be used unconditionally.</p>
+<p>The following <em class="parameter"><code>options</code></em>
+ are currently defined:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p><code class="literal">flags</code> (<code class="literal">i</code>): <a class="link" href="ostree-OstreeRepo.html#OstreeRepoPullFlags" title="enum OstreeRepoPullFlags"><span class="type">OstreeRepoPullFlags</span></a> to apply to the pull operation</p></li>
+<li class="listitem"><p><code class="literal">inherit-transaction</code> (<code class="literal">b</code>): <code class="literal">TRUE</code> to inherit an ongoing transaction on
+the <a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="type">OstreeRepo</span></a>, rather than encapsulating the pull in a new one</p></li>
+<li class="listitem"><p><code class="literal">depth</code> (<code class="literal">i</code>): How far in the history to traverse; default is 0, -1 means infinite</p></li>
+<li class="listitem"><p><code class="literal">disable-static-deltas</code> (<code class="literal">b</code>): Do not use static deltas</p></li>
+<li class="listitem"><p><code class="literal">http-headers</code> (<code class="literal">a(ss)</code>): Additional headers to add to all HTTP requests</p></li>
+<li class="listitem"><p><code class="literal">subdirs</code> (<code class="literal">as</code>): Pull just these subdirectories</p></li>
+<li class="listitem"><p><code class="literal">update-frequency</code> (<code class="literal">u</code>): Frequency to call the async progress callback in
+milliseconds, if any; only values higher than 0 are valid</p></li>
+<li class="listitem"><p><code class="literal">append-user-agent</code> (<code class="literal">s</code>): Additional string to append to the user agent</p></li>
+<li class="listitem"><p><code class="literal">n-network-retries</code> (<code class="literal">u</code>): Number of times to retry each download on receiving
+a transient network error, such as a socket timeout; default is 5, 0
+means return errors without retrying. Since: 2018.6</p></li>
+<li class="listitem"><p><code class="literal">ref-keyring-map</code> (<code class="literal">a(sss)</code>): Array of (collection ID, ref name, keyring
+remote name) tuples specifying which remote's keyring should be used when
+doing GPG verification of each collection-ref. This is useful to prevent a
+remote from serving malicious updates to refs which did not originate from
+it. This can be a subset or superset of the refs being pulled; any ref
+not being pulled will be ignored and any ref without a keyring remote
+will be verified with the keyring of the remote being pulled from.</p></li>
+</ul></div>
+<div class="refsect3">
+<a name="ostree-repo-pull-from-remotes-async.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="type">OstreeRepo</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>results</p></td>
+<td class="parameter_description"><p><code class="literal">NULL</code>-terminated array of remotes to
+pull from, including the refs to pull from each. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/array"><span class="acronym">array</span></a> zero-terminated=1]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>options</p></td>
+<td class="parameter_description"><p>A GVariant <code class="literal">a{sv}</code> with an extensible set of flags. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>progress</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-Progress-notification-system-for-asynchronous-operations.html#OstreeAsyncProgress" title="OstreeAsyncProgress"><span class="type">OstreeAsyncProgress</span></a> to update with the operation’s
+progress, or <code class="literal">NULL</code>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>a <span class="type">GCancellable</span>, or <code class="literal">NULL</code>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>callback</p></td>
+<td class="parameter_description"><p>asynchronous completion callback</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>user_data</p></td>
+<td class="parameter_description"><p>data to pass to <em class="parameter"><code>callback</code></em>
+</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-repo-pull-from-remotes-finish"></a><h3>ostree_repo_pull_from_remotes_finish ()</h3>
+<pre class="programlisting"><span class="returnvalue">gboolean</span>
+ostree_repo_pull_from_remotes_finish (<em class="parameter"><code><a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="type">OstreeRepo</span></a> *self</code></em>,
+                                      <em class="parameter"><code><span class="type">GAsyncResult</span> *result</code></em>,
+                                      <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Finish an asynchronous pull operation started with
+<a class="link" href="ostree-ostree-repo-remote-finder.html#ostree-repo-pull-from-remotes-async" title="ostree_repo_pull_from_remotes_async ()"><code class="function">ostree_repo_pull_from_remotes_async()</code></a>.</p>
+<div class="refsect3">
+<a name="ostree-repo-pull-from-remotes-finish.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="type">OstreeRepo</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>result</p></td>
+<td class="parameter_description"><p>the asynchronous result</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>return location for a <span class="type">GError</span>, or <code class="literal">NULL</code></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-repo-pull-from-remotes-finish.returns"></a><h4>Returns</h4>
+<p> <code class="literal">TRUE</code> on success, <code class="literal">FALSE</code> otherwise</p>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-repo-resolve-keyring-for-collection"></a><h3>ostree_repo_resolve_keyring_for_collection ()</h3>
+<pre class="programlisting"><a class="link" href="ostree-ostree-remote.html#OstreeRemote" title="struct OstreeRemote"><span class="returnvalue">OstreeRemote</span></a> *
+ostree_repo_resolve_keyring_for_collection
+                               (<em class="parameter"><code><a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="type">OstreeRepo</span></a> *self</code></em>,
+                                <em class="parameter"><code>const <span class="type">gchar</span> *collection_id</code></em>,
+                                <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Find the GPG keyring for the given <em class="parameter"><code>collection_id</code></em>
+, using the local
+configuration from the given <a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="type">OstreeRepo</span></a>. This will search the configured
+remotes for ones whose <code class="literal">collection-id</code> key matches <em class="parameter"><code>collection_id</code></em>
+, and will
+return the first matching remote.</p>
+<p>If multiple remotes match and have different keyrings, a debug message will
+be emitted, and the first result will be returned. It is expected that the
+keyrings should match.</p>
+<p>If no match can be found, a <code class="literal">G_IO_ERROR_NOT_FOUND</code> error will be returned.</p>
+<div class="refsect3">
+<a name="ostree-repo-resolve-keyring-for-collection.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="type">OstreeRepo</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>collection_id</p></td>
+<td class="parameter_description"><p>the collection ID to look up a keyring for</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>a <span class="type">GCancellable</span>, or <code class="literal">NULL</code>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>return location for a <span class="type">GError</span>, or <code class="literal">NULL</code></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-repo-resolve-keyring-for-collection.returns"></a><h4>Returns</h4>
+<p><a class="link" href="ostree-ostree-remote.html#OstreeRemote" title="struct OstreeRemote"><span class="type">OstreeRemote</span></a> containing the GPG keyring for
+<em class="parameter"><code>collection_id</code></em>
+. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-repo-remote-finder.other_details"></a><h2>Types and Values</h2>
+<div class="refsect2">
+<a name="OSTREE-REPO-METADATA-REF:CAPS"></a><h3>OSTREE_REPO_METADATA_REF</h3>
+<pre class="programlisting">#define OSTREE_REPO_METADATA_REF "ostree-metadata"
+</pre>
+<p>The name of a ref which is used to store metadata for the entire repository,
+such as its expected update time (<code class="literal">ostree.summary.expires</code>), name, or new
+GPG keys. Metadata is stored on contentless commits in the ref, and hence is
+signed with the commits.</p>
+<p>This supersedes the additional metadata dictionary in the <code class="literal">summary</code> file
+(see <a class="link" href="ostree-OstreeRepo.html#ostree-repo-regenerate-summary" title="ostree_repo_regenerate_summary ()"><code class="function">ostree_repo_regenerate_summary()</code></a>), as the use of a ref means that the
+metadata for multiple upstream repositories can be included in a single mirror
+repository, disambiguating the refs using collection IDs. In order to support
+peer to peer redistribution of repository metadata, repositories must set a
+collection ID (<a class="link" href="ostree-OstreeRepo.html#ostree-repo-set-collection-id" title="ostree_repo_set_collection_id ()"><code class="function">ostree_repo_set_collection_id()</code></a>).</p>
+<p>Users of OSTree may place arbitrary metadata in commits on this ref, but the
+keys must be namespaced by product or developer. For example,
+<code class="literal">exampleos.end-of-life</code>. The <code class="literal">ostree.</code> prefix is reserved.</p>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OSTREE-META-KEY-DEPLOY-COLLECTION-ID:CAPS"></a><h3>OSTREE_META_KEY_DEPLOY_COLLECTION_ID</h3>
+<pre class="programlisting">#define OSTREE_META_KEY_DEPLOY_COLLECTION_ID "ostree.deploy-collection-id"
+</pre>
+<p>GVariant type <code class="literal">s</code>. This key can be used in the repo metadata which is stored
+in OSTREE_REPO_METADATA_REF as well as in the summary. The semantics of this
+are that the remote repository wants clients to update their remote config
+to add this collection ID (clients can't do P2P operations involving a
+remote without a collection ID configured on it, even if one is configured
+on the server side). Clients must never change or remove a collection ID
+already set in their remote config.</p>
+<p>Currently, OSTree does not implement changing a remote config based on this
+key, but it may do so in a later release, and until then clients such as
+Flatpak may implement it.</p>
+<p>This is a replacement for the similar metadata key implemented by flatpak,
+<code class="literal">xa.collection-id</code>, which is now deprecated as clients which supported it had
+bugs with their P2P implementations.</p>
+<p class="since">Since: 2018.9</p>
+</div>
+</div>
+</div>
+<div class="footer">
+<hr>Generated by GTK-Doc V1.33.1</div>
+</body>
+</html>

@@ -1,0 +1,230 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>ostree-remote: OSTree API references</title>
+<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<link rel="home" href="index.html" title="OSTree API references">
+<link rel="up" href="reference.html" title="API Reference">
+<link rel="prev" href="ostree-ostree-ref.html" title="ostree-ref">
+<link rel="next" href="ostree-ostree-repo-file.html" title="ostree-repo-file">
+<meta name="generator" content="GTK-Doc V1.33.1 (XML mode)">
+<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table class="navigation" id="top" width="100%" summary="Navigation header" cellpadding="2" cellspacing="5"><tr valign="middle">
+<td width="100%" align="left" class="shortcuts">
+<a href="#" class="shortcut">Top</a><span id="nav_description">  <span class="dim">|</span> 
+                  <a href="#ostree-ostree-remote.description" class="shortcut">Description</a></span>
+</td>
+<td><a accesskey="h" href="index.html"><img src="home.png" width="16" height="16" border="0" alt="Home"></a></td>
+<td><a accesskey="u" href="reference.html"><img src="up.png" width="16" height="16" border="0" alt="Up"></a></td>
+<td><a accesskey="p" href="ostree-ostree-ref.html"><img src="left.png" width="16" height="16" border="0" alt="Prev"></a></td>
+<td><a accesskey="n" href="ostree-ostree-repo-file.html"><img src="right.png" width="16" height="16" border="0" alt="Next"></a></td>
+</tr></table>
+<div class="refentry">
+<a name="ostree-ostree-remote"></a><div class="titlepage"></div>
+<div class="refnamediv"><table width="100%"><tr>
+<td valign="top">
+<h2><span class="refentrytitle"><a name="ostree-ostree-remote.top_of_page"></a>ostree-remote</span></h2>
+<p>ostree-remote</p>
+</td>
+<td class="gallery_image" valign="top" align="right"></td>
+</tr></table></div>
+<div class="refsect1">
+<a name="ostree-ostree-remote.functions"></a><h2>Functions</h2>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="functions_proto_type">
+<col class="functions_proto_name">
+</colgroup>
+<tbody>
+<tr>
+<td class="function_type">
+<a class="link" href="ostree-ostree-remote.html#OstreeRemote" title="struct OstreeRemote"><span class="returnvalue">OstreeRemote</span></a> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-remote.html#ostree-remote-ref" title="ostree_remote_ref ()">ostree_remote_ref</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-remote.html#ostree-remote-unref" title="ostree_remote_unref ()">ostree_remote_unref</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">const <span class="returnvalue">gchar</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-remote.html#ostree-remote-get-name" title="ostree_remote_get_name ()">ostree_remote_get_name</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gchar</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-remote.html#ostree-remote-get-url" title="ostree_remote_get_url ()">ostree_remote_get_url</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-remote.other"></a><h2>Types and Values</h2>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="other_proto_type">
+<col class="other_proto_name">
+</colgroup>
+<tbody><tr>
+<td class="datatype_keyword">struct</td>
+<td class="function_name"><a class="link" href="ostree-ostree-remote.html#OstreeRemote" title="struct OstreeRemote">OstreeRemote</a></td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-remote.description"></a><h2>Description</h2>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-remote.functions_details"></a><h2>Functions</h2>
+<div class="refsect2">
+<a name="ostree-remote-ref"></a><h3>ostree_remote_ref ()</h3>
+<pre class="programlisting"><a class="link" href="ostree-ostree-remote.html#OstreeRemote" title="struct OstreeRemote"><span class="returnvalue">OstreeRemote</span></a> *
+ostree_remote_ref (<em class="parameter"><code><a class="link" href="ostree-ostree-remote.html#OstreeRemote" title="struct OstreeRemote"><span class="type">OstreeRemote</span></a> *remote</code></em>);</pre>
+<p>Increase the reference count on the given <em class="parameter"><code>remote</code></em>
+.</p>
+<div class="refsect3">
+<a name="ostree-remote-ref.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>remote</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-ostree-remote.html#OstreeRemote" title="struct OstreeRemote"><span class="type">OstreeRemote</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-remote-ref.returns"></a><h4>Returns</h4>
+<p>a copy of <em class="parameter"><code>remote</code></em>
+, for convenience. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-remote-unref"></a><h3>ostree_remote_unref ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_remote_unref (<em class="parameter"><code><a class="link" href="ostree-ostree-remote.html#OstreeRemote" title="struct OstreeRemote"><span class="type">OstreeRemote</span></a> *remote</code></em>);</pre>
+<p>Decrease the reference count on the given <em class="parameter"><code>remote</code></em>
+ and free it if the
+reference count reaches 0.</p>
+<div class="refsect3">
+<a name="ostree-remote-unref.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>remote</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-ostree-remote.html#OstreeRemote" title="struct OstreeRemote"><span class="type">OstreeRemote</span></a>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></td>
+</tr></tbody>
+</table></div>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-remote-get-name"></a><h3>ostree_remote_get_name ()</h3>
+<pre class="programlisting">const <span class="returnvalue">gchar</span> *
+ostree_remote_get_name (<em class="parameter"><code><a class="link" href="ostree-ostree-remote.html#OstreeRemote" title="struct OstreeRemote"><span class="type">OstreeRemote</span></a> *remote</code></em>);</pre>
+<p>Get the human-readable name of the remote. This is what the user configured,
+if the remote was explicitly configured; and will otherwise be a stable,
+arbitrary, string.</p>
+<div class="refsect3">
+<a name="ostree-remote-get-name.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>remote</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-ostree-remote.html#OstreeRemote" title="struct OstreeRemote"><span class="type">OstreeRemote</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-remote-get-name.returns"></a><h4>Returns</h4>
+<p> remote’s name</p>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-remote-get-url"></a><h3>ostree_remote_get_url ()</h3>
+<pre class="programlisting"><span class="returnvalue">gchar</span> *
+ostree_remote_get_url (<em class="parameter"><code><a class="link" href="ostree-ostree-remote.html#OstreeRemote" title="struct OstreeRemote"><span class="type">OstreeRemote</span></a> *remote</code></em>);</pre>
+<p>Get the URL from the remote.</p>
+<div class="refsect3">
+<a name="ostree-remote-get-url.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>remote</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-ostree-remote.html#OstreeRemote" title="struct OstreeRemote"><span class="type">OstreeRemote</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-remote-get-url.returns"></a><h4>Returns</h4>
+<p>the remote's URL. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>][<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></p>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-remote.other_details"></a><h2>Types and Values</h2>
+<div class="refsect2">
+<a name="OstreeRemote"></a><h3>struct OstreeRemote</h3>
+<pre class="programlisting">struct OstreeRemote {
+  int ref_count;      /* atomic */
+  char *name;         /* (not nullable) */
+  char *refspec_name; /* (nullable) */
+  char *group;        /* group name in options (not nullable) */
+  char *keyring;      /* keyring name ($refspec_name.trustedkeys.gpg) (not nullable) */
+  GFile *file;        /* NULL if remote defined in repo/config */
+  GKeyFile *options;
+};
+</pre>
+<p>This represents the configuration for a single remote repository. Currently,
+remotes can only be passed around as (reference counted) opaque handles. In
+future, more API may be added to create and interrogate them.</p>
+<p class="since">Since: 2018.6</p>
+</div>
+</div>
+</div>
+<div class="footer">
+<hr>Generated by GTK-Doc V1.33.1</div>
+</body>
+</html>

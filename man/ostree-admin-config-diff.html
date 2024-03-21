@@ -1,0 +1,8 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree admin config-diff</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-admin-config-diff &#8212; Diff current /etc configuration versus default</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree admin config-diff</code>  [OPTIONS...]</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            Prints the differences between the current /etc directory and the default configuration in /usr/etc.  Newly added files (present in /etc but not in /usr/etc) will be prefixed with 'A'. Modified files will be prefixed with 'M', and deleted files with 'D'.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--os</code>="STATEROOT"</span></dt><dd><p>
+                    Use a different operating system stateroot than the current one.
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1339"></a><h2>Example</h2><p><span class="command"><strong>$ ostree admin config-diff</strong></span></p><pre class="programlisting">
+        M   shadow
+        A   example.txt
+	</pre></div></div></body></html>

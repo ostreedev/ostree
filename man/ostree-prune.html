@@ -1,0 +1,31 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree prune</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-prune &#8212; Search for unreachable objects</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree prune</code>  [OPTIONS...]</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            This searches for unreachable objects in the current repository.  If unreachable objects are found, the command delete them to free space.  If the <code class="option">--no-prune</code> option is invoked, the command will just print unreachable objects and recommend deleting them.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--no-prune</code></span></dt><dd><p>
+                    Only display unreachable objects; don't delete.
+                </p></dd><dt><span class="term"><code class="option">--refs-only</code></span></dt><dd><p>
+                    Only compute reachability via refs.
+                </p></dd><dt><span class="term"><code class="option">--delete-commit</code>=COMMIT</span></dt><dd><p>
+                    Specify a COMMIT to delete.
+                </p></dd><dt><span class="term"><code class="option">--keep-younger-than</code>=DATE</span></dt><dd><p>
+		  All commits older than DATE will be
+                  pruned.  The format of DATE is the same as that
+                  accepted by GNU <code class="literal">date</code> utility - for more information
+                  see <code class="literal">info date</code>.
+		</p></dd><dt><span class="term"><code class="option">--depth</code>=DEPTH</span></dt><dd><p>
+                    Only traverse DEPTH (integer) parents for each commit (default: -1=infinite).
+                </p></dd><dt><span class="term"><code class="option">--static-deltas-only</code>=DEPTH</span></dt><dd><p>
+                  This option may currently <span class="emphasis"><em>only</em></span> be used in combination with
+                  <code class="option">--delete-commit</code>.  Previous versions of ostree silently accepted
+                  the option without that, and ignored it.  However, there are desired use
+                  cases for pruning just static deltas (while retaining the commits), and it's
+                  likely at some point this option will be supported for use cases outside of just
+                  <code class="option">--delete-commit</code>.
+                </p></dd><dt><span class="term"><code class="option">--commit-only</code></span></dt><dd><p>
+                    Only traverse and delete commit objects. This leaves orphaned meta and 
+                    content objects, which can be cleaned up with another prune invocation.
+                    One may want to use this option to cheaply delete multiple commits,
+                    and then clean up with a more expensive prune at the end.
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1339"></a><h2>Example</h2><p><span class="command"><strong>$ ostree prune</strong></span></p><pre class="programlisting">
+        Total objects: 25627
+        No unreachable objects
+</pre></div></div></body></html>

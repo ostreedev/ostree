@@ -1,0 +1,577 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>ostree-repo-finder: OSTree API references</title>
+<meta name="generator" content="DocBook XSL Stylesheets Vsnapshot">
+<link rel="home" href="index.html" title="OSTree API references">
+<link rel="up" href="reference.html" title="API Reference">
+<link rel="prev" href="ostree-ostree-repo-file.html" title="ostree-repo-file">
+<link rel="next" href="ostree-ostree-repo-remote-finder.html" title="ostree-repo-remote-finder">
+<meta name="generator" content="GTK-Doc V1.33.1 (XML mode)">
+<link rel="stylesheet" href="style.css" type="text/css">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table class="navigation" id="top" width="100%" summary="Navigation header" cellpadding="2" cellspacing="5"><tr valign="middle">
+<td width="100%" align="left" class="shortcuts">
+<a href="#" class="shortcut">Top</a><span id="nav_description">  <span class="dim">|</span> 
+                  <a href="#ostree-ostree-repo-finder.description" class="shortcut">Description</a></span>
+</td>
+<td><a accesskey="h" href="index.html"><img src="home.png" width="16" height="16" border="0" alt="Home"></a></td>
+<td><a accesskey="u" href="reference.html"><img src="up.png" width="16" height="16" border="0" alt="Up"></a></td>
+<td><a accesskey="p" href="ostree-ostree-repo-file.html"><img src="left.png" width="16" height="16" border="0" alt="Prev"></a></td>
+<td><a accesskey="n" href="ostree-ostree-repo-remote-finder.html"><img src="right.png" width="16" height="16" border="0" alt="Next"></a></td>
+</tr></table>
+<div class="refentry">
+<a name="ostree-ostree-repo-finder"></a><div class="titlepage"></div>
+<div class="refnamediv"><table width="100%"><tr>
+<td valign="top">
+<h2><span class="refentrytitle"><a name="ostree-ostree-repo-finder.top_of_page"></a>ostree-repo-finder</span></h2>
+<p>ostree-repo-finder</p>
+</td>
+<td class="gallery_image" valign="top" align="right"></td>
+</tr></table></div>
+<div class="refsect1">
+<a name="ostree-ostree-repo-finder.functions"></a><h2>Functions</h2>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="functions_proto_type">
+<col class="functions_proto_name">
+</colgroup>
+<tbody>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-resolve-async" title="ostree_repo_finder_resolve_async ()">ostree_repo_finder_resolve_async</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">GPtrArray</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-resolve-finish" title="ostree_repo_finder_resolve_finish ()">ostree_repo_finder_resolve_finish</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-resolve-all-async" title="ostree_repo_finder_resolve_all_async ()">ostree_repo_finder_resolve_all_async</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">GPtrArray</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-resolve-all-finish" title="ostree_repo_finder_resolve_all_finish ()">ostree_repo_finder_resolve_all_finish</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">OstreeRepoFinderResult</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-result-new" title="ostree_repo_finder_result_new ()">ostree_repo_finder_result_new</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">OstreeRepoFinderResult</span> *
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-result-dup" title="ostree_repo_finder_result_dup ()">ostree_repo_finder_result_dup</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-result-free" title="ostree_repo_finder_result_free ()">ostree_repo_finder_result_free</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">gint</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-result-compare" title="ostree_repo_finder_result_compare ()">ostree_repo_finder_result_compare</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+<tr>
+<td class="function_type">
+<span class="returnvalue">void</span>
+</td>
+<td class="function_name">
+<a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-result-freev" title="ostree_repo_finder_result_freev ()">ostree_repo_finder_result_freev</a> <span class="c_punctuation">()</span>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-repo-finder.other"></a><h2>Types and Values</h2>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="other_proto_type">
+<col class="other_proto_name">
+</colgroup>
+<tbody>
+<tr>
+<td class="datatype_keyword"> </td>
+<td class="function_name"><a class="link" href="ostree-ostree-repo-finder.html#OstreeRepoFinder" title="OstreeRepoFinder">OstreeRepoFinder</a></td>
+</tr>
+<tr>
+<td class="typedef_keyword">typedef</td>
+<td class="function_name"><a class="link" href="ostree-ostree-repo-finder.html#OstreeRepoFinderResultv" title="OstreeRepoFinderResultv">OstreeRepoFinderResultv</a></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-repo-finder.description"></a><h2>Description</h2>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-repo-finder.functions_details"></a><h2>Functions</h2>
+<div class="refsect2">
+<a name="ostree-repo-finder-resolve-async"></a><h3>ostree_repo_finder_resolve_async ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_repo_finder_resolve_async (<em class="parameter"><code><a class="link" href="ostree-ostree-repo-finder.html#OstreeRepoFinder" title="OstreeRepoFinder"><span class="type">OstreeRepoFinder</span></a> *self</code></em>,
+                                  <em class="parameter"><code>const <span class="type">OstreeCollectionRef</span> *const *refs</code></em>,
+                                  <em class="parameter"><code><a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="type">OstreeRepo</span></a> *parent_repo</code></em>,
+                                  <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                  <em class="parameter"><code><span class="type">GAsyncReadyCallback</span> callback</code></em>,
+                                  <em class="parameter"><code><span class="type">gpointer</span> user_data</code></em>);</pre>
+<p>Find reachable remote URIs which claim to provide any of the given <em class="parameter"><code>refs</code></em>
+. The
+specific method for finding the remotes depends on the <a class="link" href="ostree-ostree-repo-finder.html#OstreeRepoFinder" title="OstreeRepoFinder"><span class="type">OstreeRepoFinder</span></a>
+implementation.</p>
+<p>Any remote which is found and which claims to support any of the given <em class="parameter"><code>refs</code></em>
+
+will be returned in the results. It is possible that a remote claims to
+support a given ref, but turns out not to — it is not possible to verify this
+until <a class="link" href="ostree-ostree-repo-remote-finder.html#ostree-repo-pull-from-remotes-async" title="ostree_repo_pull_from_remotes_async ()"><code class="function">ostree_repo_pull_from_remotes_async()</code></a> is called.</p>
+<p>The returned results will be sorted with the most useful first — this is
+typically the remote which claims to provide the most <em class="parameter"><code>refs</code></em>
+, at the lowest
+latency.</p>
+<p>Each result contains a mapping of <em class="parameter"><code>refs</code></em>
+ to the checksums of the commits
+which the result provides. If the result provides the latest commit for a ref
+across all of the results, the checksum will be set. Otherwise, if the
+result provides an outdated commit, or doesn’t provide a given ref at all,
+the checksum will not be set. Results which provide none of the requested
+<em class="parameter"><code>refs</code></em>
+ may be listed with an empty refs map.</p>
+<p>Pass the results to <a class="link" href="ostree-ostree-repo-remote-finder.html#ostree-repo-pull-from-remotes-async" title="ostree_repo_pull_from_remotes_async ()"><code class="function">ostree_repo_pull_from_remotes_async()</code></a> to pull the given
+<em class="parameter"><code>refs</code></em>
+ from those remotes.</p>
+<div class="refsect3">
+<a name="ostree-repo-finder-resolve-async.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-ostree-repo-finder.html#OstreeRepoFinder" title="OstreeRepoFinder"><span class="type">OstreeRepoFinder</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>refs</p></td>
+<td class="parameter_description"><p>non-empty array of collection–ref pairs to find remotes for. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/array"><span class="acronym">array</span></a> zero-terminated=1]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>parent_repo</p></td>
+<td class="parameter_description"><p>the local repository which the refs are being resolved for,
+which provides configuration information and GPG keys. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/transfer%20none"><span class="acronym">transfer none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>a <span class="type">GCancellable</span>, or <code class="literal">NULL</code>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>callback</p></td>
+<td class="parameter_description"><p>asynchronous completion callback</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>user_data</p></td>
+<td class="parameter_description"><p>data to pass to <em class="parameter"><code>callback</code></em>
+</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-repo-finder-resolve-finish"></a><h3>ostree_repo_finder_resolve_finish ()</h3>
+<pre class="programlisting"><span class="returnvalue">GPtrArray</span> *
+ostree_repo_finder_resolve_finish (<em class="parameter"><code><a class="link" href="ostree-ostree-repo-finder.html#OstreeRepoFinder" title="OstreeRepoFinder"><span class="type">OstreeRepoFinder</span></a> *self</code></em>,
+                                   <em class="parameter"><code><span class="type">GAsyncResult</span> *result</code></em>,
+                                   <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Get the results from a <a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-resolve-async" title="ostree_repo_finder_resolve_async ()"><code class="function">ostree_repo_finder_resolve_async()</code></a> operation.</p>
+<div class="refsect3">
+<a name="ostree-repo-finder-resolve-finish.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>self</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-ostree-repo-finder.html#OstreeRepoFinder" title="OstreeRepoFinder"><span class="type">OstreeRepoFinder</span></a></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>result</p></td>
+<td class="parameter_description"><p><span class="type">GAsyncResult</span> from the callback</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>return location for a <span class="type">GError</span></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-repo-finder-resolve-finish.returns"></a><h4>Returns</h4>
+<p>array of zero
+or more results. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>][<a href="http://foldoc.org/element-type"><span class="acronym">element-type</span></a> OstreeRepoFinderResult]</span></p>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-repo-finder-resolve-all-async"></a><h3>ostree_repo_finder_resolve_all_async ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_repo_finder_resolve_all_async (<em class="parameter"><code><a class="link" href="ostree-ostree-repo-finder.html#OstreeRepoFinder" title="OstreeRepoFinder"><span class="type">OstreeRepoFinder</span></a> *const *finders</code></em>,
+                                      <em class="parameter"><code>const <span class="type">OstreeCollectionRef</span> *const *refs</code></em>,
+                                      <em class="parameter"><code><a class="link" href="ostree-OstreeRepo.html#OstreeRepo" title="OstreeRepo"><span class="type">OstreeRepo</span></a> *parent_repo</code></em>,
+                                      <em class="parameter"><code><span class="type">GCancellable</span> *cancellable</code></em>,
+                                      <em class="parameter"><code><span class="type">GAsyncReadyCallback</span> callback</code></em>,
+                                      <em class="parameter"><code><span class="type">gpointer</span> user_data</code></em>);</pre>
+<p>A version of <a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-resolve-async" title="ostree_repo_finder_resolve_async ()"><code class="function">ostree_repo_finder_resolve_async()</code></a> which queries one or more
+<em class="parameter"><code>finders</code></em>
+ in parallel and combines the results.</p>
+<div class="refsect3">
+<a name="ostree-repo-finder-resolve-all-async.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>finders</p></td>
+<td class="parameter_description"><p>non-empty array of <a href="ostree-ostree-repo-finder.html#OstreeRepoFinder"><span class="type">OstreeRepoFinders</span></a>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/array"><span class="acronym">array</span></a> zero-terminated=1]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>refs</p></td>
+<td class="parameter_description"><p>non-empty array of collection–ref pairs to find remotes for. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/array"><span class="acronym">array</span></a> zero-terminated=1]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>parent_repo</p></td>
+<td class="parameter_description"><p>the local repository which the refs are being resolved for,
+which provides configuration information and GPG keys. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/transfer%20none"><span class="acronym">transfer none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>cancellable</p></td>
+<td class="parameter_description"><p>a <span class="type">GCancellable</span>, or <code class="literal">NULL</code>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/nullable"><span class="acronym">nullable</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>callback</p></td>
+<td class="parameter_description"><p>asynchronous completion callback</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>user_data</p></td>
+<td class="parameter_description"><p>data to pass to <em class="parameter"><code>callback</code></em>
+</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-repo-finder-resolve-all-finish"></a><h3>ostree_repo_finder_resolve_all_finish ()</h3>
+<pre class="programlisting"><span class="returnvalue">GPtrArray</span> *
+ostree_repo_finder_resolve_all_finish (<em class="parameter"><code><span class="type">GAsyncResult</span> *result</code></em>,
+                                       <em class="parameter"><code><span class="type">GError</span> **error</code></em>);</pre>
+<p>Get the results from a <a class="link" href="ostree-ostree-repo-finder.html#ostree-repo-finder-resolve-all-async" title="ostree_repo_finder_resolve_all_async ()"><code class="function">ostree_repo_finder_resolve_all_async()</code></a> operation.</p>
+<div class="refsect3">
+<a name="ostree-repo-finder-resolve-all-finish.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>result</p></td>
+<td class="parameter_description"><p><span class="type">GAsyncResult</span> from the callback</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>error</p></td>
+<td class="parameter_description"><p>return location for a <span class="type">GError</span></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-repo-finder-resolve-all-finish.returns"></a><h4>Returns</h4>
+<p>array of zero
+or more results. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>][<a href="http://foldoc.org/element-type"><span class="acronym">element-type</span></a> OstreeRepoFinderResult]</span></p>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-repo-finder-result-new"></a><h3>ostree_repo_finder_result_new ()</h3>
+<pre class="programlisting"><span class="returnvalue">OstreeRepoFinderResult</span> *
+ostree_repo_finder_result_new (<em class="parameter"><code><a class="link" href="ostree-ostree-remote.html#OstreeRemote" title="struct OstreeRemote"><span class="type">OstreeRemote</span></a> *remote</code></em>,
+                               <em class="parameter"><code><a class="link" href="ostree-ostree-repo-finder.html#OstreeRepoFinder" title="OstreeRepoFinder"><span class="type">OstreeRepoFinder</span></a> *finder</code></em>,
+                               <em class="parameter"><code><span class="type">gint</span> priority</code></em>,
+                               <em class="parameter"><code><span class="type">GHashTable</span> *ref_to_checksum</code></em>,
+                               <em class="parameter"><code><span class="type">GHashTable</span> *ref_to_timestamp</code></em>,
+                               <em class="parameter"><code><span class="type">guint64</span> summary_last_modified</code></em>);</pre>
+<p>Create a new <span class="type">OstreeRepoFinderResult</span> instance. The semantics for the arguments
+are as described in the <span class="type">OstreeRepoFinderResult</span> documentation.</p>
+<div class="refsect3">
+<a name="ostree-repo-finder-result-new.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>remote</p></td>
+<td class="parameter_description"><p>an <a class="link" href="ostree-ostree-remote.html#OstreeRemote" title="struct OstreeRemote"><span class="type">OstreeRemote</span></a> containing the transport details
+for the result. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/transfer%20none"><span class="acronym">transfer none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>finder</p></td>
+<td class="parameter_description"><p>the <a class="link" href="ostree-ostree-repo-finder.html#OstreeRepoFinder" title="OstreeRepoFinder"><span class="type">OstreeRepoFinder</span></a> instance which produced the
+result. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/transfer%20none"><span class="acronym">transfer none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>priority</p></td>
+<td class="parameter_description"><p>static priority of the result, where higher numbers indicate lower
+priority</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>ref_to_checksum</p></td>
+<td class="parameter_description"><p>map of collection–ref pairs to checksums provided by this result. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/element-type"><span class="acronym">element-type</span></a> OstreeCollectionRef utf8][<a href="http://foldoc.org/transfer%20none"><span class="acronym">transfer none</span></a>]</span></td>
+</tr>
+<tr>
+<td class="parameter_name"><p>ref_to_timestamp</p></td>
+<td class="parameter_description"><p>(element-type OstreeCollectionRef guint64) (nullable)
+(transfer none): map of collection–ref pairs to timestamps provided by this
+result</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>summary_last_modified</p></td>
+<td class="parameter_description"><p>Unix timestamp (seconds since the epoch, UTC) when
+the summary file for the result was last modified, or <code class="literal">0</code> if this is unknown</p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-repo-finder-result-new.returns"></a><h4>Returns</h4>
+<p>a new <span class="type">OstreeRepoFinderResult</span>. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-repo-finder-result-dup"></a><h3>ostree_repo_finder_result_dup ()</h3>
+<pre class="programlisting"><span class="returnvalue">OstreeRepoFinderResult</span> *
+ostree_repo_finder_result_dup (<em class="parameter"><code><span class="type">OstreeRepoFinderResult</span> *result</code></em>);</pre>
+<p>Copy an <span class="type">OstreeRepoFinderResult</span>.</p>
+<div class="refsect3">
+<a name="ostree-repo-finder-result-dup.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>result</p></td>
+<td class="parameter_description"><p>an <span class="type">OstreeRepoFinderResult</span> to copy. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/transfer%20none"><span class="acronym">transfer none</span></a>]</span></td>
+</tr></tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-repo-finder-result-dup.returns"></a><h4>Returns</h4>
+<p>a newly allocated copy of <em class="parameter"><code>result</code></em>
+. </p>
+<p><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></p>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-repo-finder-result-free"></a><h3>ostree_repo_finder_result_free ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_repo_finder_result_free (<em class="parameter"><code><span class="type">OstreeRepoFinderResult</span> *result</code></em>);</pre>
+<p>Free the given <em class="parameter"><code>result</code></em>
+.</p>
+<div class="refsect3">
+<a name="ostree-repo-finder-result-free.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>result</p></td>
+<td class="parameter_description"><p>an <span class="type">OstreeRepoFinderResult</span>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></td>
+</tr></tbody>
+</table></div>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-repo-finder-result-compare"></a><h3>ostree_repo_finder_result_compare ()</h3>
+<pre class="programlisting"><span class="returnvalue">gint</span>
+ostree_repo_finder_result_compare (<em class="parameter"><code>const <span class="type">OstreeRepoFinderResult</span> *a</code></em>,
+                                   <em class="parameter"><code>const <span class="type">OstreeRepoFinderResult</span> *b</code></em>);</pre>
+<p>Compare two <span class="type">OstreeRepoFinderResult</span> instances to work out which one is better
+to pull from, and hence needs to be ordered before the other.</p>
+<div class="refsect3">
+<a name="ostree-repo-finder-result-compare.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody>
+<tr>
+<td class="parameter_name"><p>a</p></td>
+<td class="parameter_description"><p>an <span class="type">OstreeRepoFinderResult</span></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+<tr>
+<td class="parameter_name"><p>b</p></td>
+<td class="parameter_description"><p>an <span class="type">OstreeRepoFinderResult</span></p></td>
+<td class="parameter_annotations"> </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="refsect3">
+<a name="ostree-repo-finder-result-compare.returns"></a><h4>Returns</h4>
+<p> &lt;0 if <em class="parameter"><code>a</code></em>
+is ordered before <em class="parameter"><code>b</code></em>
+, 0 if they are ordered equally,
+&gt;0 if <em class="parameter"><code>b</code></em>
+is ordered before <em class="parameter"><code>a</code></em>
+</p>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+<hr>
+<div class="refsect2">
+<a name="ostree-repo-finder-result-freev"></a><h3>ostree_repo_finder_result_freev ()</h3>
+<pre class="programlisting"><span class="returnvalue">void</span>
+ostree_repo_finder_result_freev (<em class="parameter"><code><span class="type">OstreeRepoFinderResult</span> **results</code></em>);</pre>
+<p>Free the given <em class="parameter"><code>results</code></em>
+ array, freeing each element and the container.</p>
+<div class="refsect3">
+<a name="ostree-repo-finder-result-freev.parameters"></a><h4>Parameters</h4>
+<div class="informaltable"><table class="informaltable" width="100%" border="0">
+<colgroup>
+<col width="150px" class="parameters_name">
+<col class="parameters_description">
+<col width="200px" class="parameters_annotations">
+</colgroup>
+<tbody><tr>
+<td class="parameter_name"><p>results</p></td>
+<td class="parameter_description"><p>an <span class="type">OstreeRepoFinderResult</span>. </p></td>
+<td class="parameter_annotations"><span class="annotation">[<a href="http://foldoc.org/array"><span class="acronym">array</span></a> zero-terminated=1][<a href="http://foldoc.org/transfer%20full"><span class="acronym">transfer full</span></a>]</span></td>
+</tr></tbody>
+</table></div>
+</div>
+<p class="since">Since: 2018.6</p>
+</div>
+</div>
+<div class="refsect1">
+<a name="ostree-ostree-repo-finder.other_details"></a><h2>Types and Values</h2>
+<div class="refsect2">
+<a name="OstreeRepoFinder"></a><h3>OstreeRepoFinder</h3>
+<pre class="programlisting">typedef struct _OstreeRepoFinder OstreeRepoFinder;</pre>
+</div>
+<hr>
+<div class="refsect2">
+<a name="OstreeRepoFinderResultv"></a><h3>OstreeRepoFinderResultv</h3>
+<pre class="programlisting">typedef OstreeRepoFinderResult **OstreeRepoFinderResultv;
+</pre>
+<p>A <code class="literal">NULL</code>-terminated array of <span class="type">OstreeRepoFinderResult</span> instances, designed to
+be used with <code class="function">g_auto()</code>:</p>
+<div class="informalexample">
+  <table class="listing_frame" border="0" cellpadding="0" cellspacing="0">
+    <tbody>
+      <tr>
+        <td class="listing_lines" align="right"><pre>1</pre></td>
+        <td class="listing_code"><pre class="programlisting"><span class="n">g_auto</span><span class="p">(</span><span class="n">OstreeRepoFinderResultv</span><span class="p">)</span><span class="w"> </span><span class="n">results</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span></pre></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p></p>
+<p class="since">Since: 2018.6</p>
+</div>
+</div>
+</div>
+<div class="footer">
+<hr>Generated by GTK-Doc V1.33.1</div>
+</body>
+</html>
