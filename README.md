@@ -63,7 +63,7 @@ The [machine-config-operator](https://github.com/openshift/machine-config-operat
 manages upgrades.  RHEL CoreOS is also the successor to RHEL Atomic Host, which
 uses rpm-ostree as well.
 
-[Red Hat In-Vehicle Operating System (RHIVOS)](https://www.redhat.com/en/blog/new-standard-red-hat-vehicle-operating-system-modern-and-future-vehicles) is a derivative of CentOS Automotive Stream Distribution that uses OSTree, it's closest Fedora derivative is Fedora IoT although it was created as it's own distribution.
+[Red Hat In-Vehicle Operating System](https://www.redhat.com/en/blog/new-standard-red-hat-vehicle-operating-system-modern-and-future-vehicles) is a derivative of CentOS Automotive Stream Distribution that uses OSTree, it's closest Fedora derivative is Fedora IoT although it was created as it's own distribution.
 
 [GNOME Continuous](https://wiki.gnome.org/Projects/GnomeContinuous) is
 where OSTree was born - as a high performance continuous delivery/testing
