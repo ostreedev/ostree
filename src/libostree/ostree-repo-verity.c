@@ -224,9 +224,10 @@ _ostree_tmpf_fsverity (OstreeRepo *self, GLnxTmpfile *tmpf, GBytes *signature, G
 
 gboolean
 _ostree_ensure_fsverity (OstreeRepo *self, gboolean allow_enoent, int dirfd, const char *path,
-                         gboolean *supported, GError **error)
+                         gboolean *supported_out, GError **error)
 {
   struct stat buf;
+  gboolean supported;
 
   if (fstatat (dirfd, path, &buf, AT_SYMLINK_NOFOLLOW) != 0)
     {
@@ -243,11 +244,14 @@ _ostree_ensure_fsverity (OstreeRepo *self, gboolean allow_enoent, int dirfd, con
   if (fd < 0)
     return glnx_throw_errno_prefix (error, "openat(%s)", path);
 
-  if (!_ostree_fsverity_enable (fd, TRUE, supported, NULL, error))
+  if (!_ostree_fsverity_enable (fd, TRUE, &supported, NULL, error))
     return FALSE;
 
   if (!supported && self->fs_verity_wanted == _OSTREE_FEATURE_YES)
     return glnx_throw (error, "fsverity required but filesystem does not support it");
+
+  if (supported_out)
+    *supported_out = supported;
 
   return TRUE;
 }
