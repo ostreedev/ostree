@@ -57,17 +57,48 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
         <title>Description</title>
 
         <para>
-            Initialize an empty physical root filesystem in the designated PATH, with normal toplevels and correct permissions for each directory.  Primarily useful for operating system installers.
+            Initialize an empty physical root filesystem in the designated PATH, with normal toplevels and correct permissions for each directory.
+            Primarily useful for operating system installers.
         </para>
     </refsect1>
+
+
+    <refsect1>
+        <title>Options</title>
+
+        <variablelist>
+            <varlistentry>
+                <term><option>--modern</option></term>
+                <listitem><para>
+                    Equivalent to <literal>--epoch=1</literal>.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--epoch</option></term>
+                <listitem><para>
+                    This accepts an integer value in the range [0-1], inclusive.  The default is zero
+                    for compatibility.
+                </para>
+                <para>
+                    When set to 1, the command will skip adding a number of toplevel "API filesystems"
+                    such as <literal>/proc</literal>
+                    to the toplevel of the physical root.  These should be unnecessary, as they
+                    should only be mounted in the final deployment root.  The main exception
+                    is <literal>/boot</literal>, which may need to be mounted in some setups
+                    before the target root.
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>          
 
     <refsect1>
         <title>Example</title>
         <para><command>$ mkdir /example</command></para>
-        <para><command>$ ostree admin init-fs /example</command></para>
+        <para><command>$ ostree admin init-fs --epoch=1 /example</command></para>
         <para><command>$ ls /example </command></para>
         <para>
-            <emphasis>boot</emphasis>&nbsp;&nbsp; <emphasis>dev</emphasis>&nbsp;&nbsp; <emphasis>home</emphasis>&nbsp;&nbsp; <emphasis>ostree</emphasis>&nbsp;&nbsp; <emphasis>proc</emphasis>&nbsp;&nbsp; <emphasis>root</emphasis>&nbsp;&nbsp; <emphasis>run</emphasis>&nbsp;&nbsp; <emphasis>sys</emphasis>&nbsp;&nbsp; <emphasis>tmp</emphasis>
+            <emphasis>boot</emphasis>&nbsp;&nbsp;
         </para>
     </refsect1>
 </refentry>

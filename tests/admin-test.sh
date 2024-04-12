@@ -21,13 +21,15 @@ set -euo pipefail
 
 echo "1..$((31 + ${extra_admin_tests:-0}))"
 
-mkdir sysrootmin
-${CMD_PREFIX} ostree admin init-fs --modern sysrootmin
-assert_has_dir sysrootmin/boot
-assert_has_dir sysrootmin/ostree/repo
-assert_not_has_dir sysrootmin/home
-rm sysrootmin -rf
-echo "ok init-fs --modern"
+for flag in --modern --epoch=1; do
+    mkdir sysrootmin
+    ${CMD_PREFIX} ostree admin init-fs --modern sysrootmin
+    assert_has_dir sysrootmin/boot
+    assert_has_dir sysrootmin/ostree/repo
+    assert_not_has_dir sysrootmin/home
+    rm sysrootmin -rf
+done
+echo "ok init-fs"
 
 function validate_bootloader() {
     cd ${test_tmpdir};
