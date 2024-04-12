@@ -21,6 +21,8 @@ set -euox pipefail
 
 . $(dirname $0)/libtest.sh
 
+skip_without_ostree_feature composefs
+
 # Exports OSTREE_SYSROOT so --sysroot not needed.
 setup_os_repository "archive" "syslinux"
 
