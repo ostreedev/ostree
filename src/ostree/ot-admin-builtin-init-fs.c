@@ -99,6 +99,14 @@ ot_admin_builtin_init_fs (int argc, char **argv, OstreeCommandInvocation *invoca
           return FALSE;
         }
     }
+  else if (opt_epoch == 2)
+    {
+      /* In epoch 2, ostree is 0700 - no access from unprivileged code.  See
+       * https://github.com/ostreedev/ostree/issues/3211
+       */
+      if (!glnx_shutil_mkdir_p_at (root_dfd, "ostree", 0700, cancellable, error))
+        return FALSE;
+    }
 
   g_autoptr (GFile) dir = g_file_new_for_path (sysroot_path);
   g_autoptr (OstreeSysroot) sysroot = ostree_sysroot_new (dir);

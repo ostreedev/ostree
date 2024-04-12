@@ -29,6 +29,10 @@ for flag in --modern --epoch=1; do
     assert_not_has_dir sysrootmin/home
     rm sysrootmin -rf
 done
+mkdir sysrootmin
+${CMD_PREFIX} ostree admin init-fs --epoch=2 sysrootmin
+assert_streq "$(stat -c '%f' sysrootmin/ostree)" 41c0
+assert_not_has_dir sysrootmin/home
 echo "ok init-fs"
 
 function validate_bootloader() {
