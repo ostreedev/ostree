@@ -87,7 +87,15 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                     should only be mounted in the final deployment root.  The main exception
                     is <literal>/boot</literal>, which may need to be mounted in some setups
                     before the target root.
-                </para></listitem>
+                </para>
+                <para>
+                    Epoch 2 is the same as 1, except that the toplevel <literal>ostree</literal>
+                    directory is mode 0700, denying access from unprivileged code.  This
+                    is a new recommended best practice as it avoids access to old configuration
+                    files in <literal>/etc</literal> in previous deployments, as well as
+                    potentially old setuid binaries in <literal>/ostree/repo</literal>.
+                </para>
+                </listitem>
             </varlistentry>
         </variablelist>
     </refsect1>          
