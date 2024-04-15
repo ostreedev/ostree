@@ -111,6 +111,8 @@ otcore_get_ostree_target (const char *cmdline, gboolean *is_aboot, char **out_ta
    */
   if (proc_cmdline_has_key_starting_with (cmdline, "androidboot."))
     {
+      if (is_aboot)
+        *is_aboot = true;
       *out_target = g_strdup (slot_a);
       return TRUE;
     }
