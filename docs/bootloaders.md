@@ -41,19 +41,19 @@ We have two accompanying scripts that work with this type of environment:
 [aboot-deploy](https://gitlab.com/CentOS/automotive/rpms/aboot-deploy) reads what the current slot is according to the `androidboot.slot_suffix=` karg, writes to the alternate boot_a or boot_b slot and sets a symlink either /ostree/root.a or /ostree/root.b so that it is known which userspace directory to boot into based on the `androidboot.slot_suffix=` karg, on subsequent boots.
 
 ```
-+-----------------------------+                            +---------------------------------+
-|                             |    +------------------+    |                                 |
-|  firmware appends:          |    |                  |    |                                 |
+                                                           +---------------------------------+
++-----------------------------+    +------------------+    |                                 |
+|  bootloader_a appends karg: |    |                  |    |                                 |
 |                             +--->+ boot_a partition +--->+                                 |
 |  androidboot.slot_suffix=_a |    |                  |    |                  /ostree/root.a |
-|                             |    +------------------+    |                                 |
-|  or                         |                            | system_a partition              |
-|                             |    +------------------+    |                                 |
-|  androidboot.slot_suffix=_b |    |                  |    |                  /ostree/root.b |
++-----------------------------+    +------------------+    |                                 |
+                                                           | system partition                |
++-----------------------------+    +------------------+    |                                 |
+|  bootloader_b appends karg: |    |                  |    |                  /ostree/root.b |
 |                             +--->+ boot_b partition +--->+                                 |
-|  to cmdline                 |    |                  |    |                                 |
-|                             |    +------------------+    |                                 |
-+-----------------------------+                            +---------------------------------+
+|  androidboot.slot_suffix=_b |    |                  |    |                                 |
++-----------------------------+    +------------------+    |                                 |
+                                                           +---------------------------------+
 ```
 
 ## GRUB and os-prober
