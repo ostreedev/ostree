@@ -30,9 +30,9 @@ For historical reasons, OSTree defaults to detecting the bootloader; if some GRU
 
 ## OSTree and aboot
 
-The Android bootloader is another bootloader than may be used with ostree. It still uses the files in `/boot/loader/entries` as metadata, but the boootloader does not read these files. Android bootloaders package their kernel+initramfs+cmdline+dtb in a signed binary blob called an [Android Boot Image](https://source.android.com/docs/core/architecture/bootloader/boot-image-header). This binary blob then is written to either partition boot_a or boot_b depending on which slot is suitable.
+The Android bootloader is another bootloader that may be used with ostree. It still uses the files in `/boot/loader/entries` as metadata, but the boootloader does not read these files. Android bootloaders package their kernel+initramfs+cmdline+dtb in a signed binary blob called an [Android Boot Image](https://source.android.com/docs/core/architecture/bootloader/boot-image-header). This binary blob then is written to either partition boot_a or boot_b depending on which slot is suitable.
 
-Android bootloaders by design inject kargs into the cmdline, some patches may be required in the Android bootloader implementation to ensure that the firmware does not switch between system_a and system_b partitions by populating a `root=` karg, or that a `ro` karg that is incompatible with ostree is not inserted. Conversly leaving the `androidboot.slot_suffix=` karg injecting functionality is required but this is commonplace for any Android Bootloader that does AB updates.
+Android bootloaders by design inject kargs into the cmdline, some patches may be required in the Android bootloader implementation to ensure that the firmware does not switch between system_a and system_b partitions by populating a `root=` karg, or that a `ro` karg is not inserted (this karg is incompatible with ostree).
 
 We have two accompanying scripts that work with this type of environment:
 
