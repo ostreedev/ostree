@@ -51,6 +51,14 @@ ${CMD_PREFIX} ostree --repo=repo summary --update
 # Generate a signed summary file.
 ${CMD_PREFIX} ostree --repo=repo summary --update ${COMMIT_SIGN}
 
+# If the signature file was created, it should have the same
+# modification time as the summary file.
+if [ -n "${COMMIT_SIGN}" ]; then
+    stat -c '%y' repo/summary > summary-mtime
+    stat -c '%y' repo/summary.sig > summary.sig-mtime
+    assert_files_equal summary-mtime summary.sig-mtime
+fi
+
 # Try various ways of adding additional data.
 ${CMD_PREFIX} ostree --repo=repo summary --update --add-metadata key="'value'" --add-metadata=key2=true
 ${CMD_PREFIX} ostree --repo=repo summary --update -m some-int='@t 123'
@@ -86,6 +94,14 @@ ${CMD_PREFIX} ostree --repo=repo summary --update
 
 # Generate a signed summary file.
 ${CMD_PREFIX} ostree --repo=repo summary --update ${COMMIT_SIGN}
+
+# If the signature file was created, it should have the same
+# modification time as the summary file.
+if [ -n "${COMMIT_SIGN}" ]; then
+    stat -c '%y' repo/summary > summary-mtime
+    stat -c '%y' repo/summary.sig > summary.sig-mtime
+    assert_files_equal summary-mtime summary.sig-mtime
+fi
 
 # Try various ways of adding additional data.
 ${CMD_PREFIX} ostree --repo=repo summary --update --add-metadata key="'value'" --add-metadata=key2=true

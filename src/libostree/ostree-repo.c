@@ -6092,6 +6092,23 @@ regenerate_metadata (OstreeRepo *self, gboolean do_metadata_commit, GVariant *ad
       && !_ostree_sign_summary_at (sign, self, summary_tmpdir.fd, sign_keys, cancellable, error))
     return FALSE;
 
+  /* If a signature was made, sync the summary times to it. This way an
+   * HTTP client will consider the files expired at the same time.
+   */
+  if (gpg_key_ids != NULL || sign_keys != NULL)
+    {
+      struct stat stbuf;
+      if (!glnx_fstatat (summary_tmpdir.fd, "summary.sig", &stbuf, AT_SYMLINK_NOFOLLOW, error))
+        return glnx_prefix_error (error, "Unable to get summary.sig status");
+
+      struct timespec ts[2];
+      ts[0] = stbuf.st_atim;
+      ts[1] = stbuf.st_mtim;
+      if (TEMP_FAILURE_RETRY (utimensat (summary_tmpdir.fd, "summary", ts, AT_SYMLINK_NOFOLLOW))
+          != 0)
+        return glnx_throw_errno_prefix (error, "Unable to change summary timestamps");
+    }
+
   /* Rename them into place */
   if (!glnx_renameat (summary_tmpdir.fd, "summary", self->repo_dir_fd, "summary", error))
     return glnx_prefix_error (error, "Unable to rename summary file: ");
