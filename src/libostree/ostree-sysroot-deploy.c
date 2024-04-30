@@ -2383,6 +2383,12 @@ deployment_bootconfigs_equal (OstreeRepo *repo, OstreeDeployment *a, OstreeDeplo
   if (g_strcmp0 (a_version, b_version) != 0)
     return FALSE;
 
+  /* same stateroot? */
+  const char *a_stateroot = ostree_deployment_get_osname (a);
+  const char *b_stateroot = ostree_deployment_get_osname (b);
+  if (g_strcmp0 (a_stateroot, b_stateroot) != 0)
+    return FALSE;
+
   return TRUE;
 }
 
