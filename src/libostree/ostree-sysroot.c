@@ -2239,9 +2239,9 @@ ostree_sysroot_deployment_unlock (OstreeSysroot *self, OstreeDeployment *deploym
         g_autofree char *devpath
             = unlocked_state == OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT
                   ? _ostree_sysroot_get_runstate_path (
-                      deployment, _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_FLAG_DEVELOPMENT)
+                        deployment, _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_FLAG_DEVELOPMENT)
                   : _ostree_sysroot_get_runstate_path (
-                      deployment, _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_FLAG_TRANSIENT);
+                        deployment, _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_FLAG_TRANSIENT);
         g_autofree char *devpath_parent = dirname (g_strdup (devpath));
 
         if (!glnx_shutil_mkdir_p_at (AT_FDCWD, devpath_parent, 0755, cancellable, error))
