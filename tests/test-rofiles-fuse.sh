@@ -208,5 +208,5 @@ if fsverity enable checkout-test2/nonhardlinked 2>err.txt; then
     assert_not_streq "${orig_inode}" "${new_inode}"
     echo "ok copyup fsverity"
 else
-    skip "no fsverity support: $(cat err.txt)"
+    echo "ok copyup fsverity # SKIP no fsverity support: $(cat err.txt)"
 fi
