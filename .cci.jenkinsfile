@@ -9,6 +9,10 @@ stage("Build") {
   def n = 5
   buildPod(memory: "2Gi", cpu: "${n}") {
       checkout scm
+      stage("Verify container env1") {
+          shwrap("env")
+          shwrap("""if test -z "\${container:-}"; then echo missing container env; sleep 15m; exit 1; fi""")
+      }
       stage("Static analysis") {
           shwrap("./ci/codestyle.sh")
       }
