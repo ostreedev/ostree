@@ -629,7 +629,9 @@ test_libarchive_selinux (gconstpointer data)
 
   if (skip_if_no_xattr (td))
     goto out;
-  if (getenv ("container"))
+  // xref https://bugzilla.redhat.com/show_bug.cgi?id=2278652
+  if (getenv ("container") || g_file_test ("/run/.containerenv", G_FILE_TEST_EXISTS)
+      || g_file_test ("/.dockerenv", G_FILE_TEST_EXISTS))
     {
       // FIXME dedup this with libtest.sh have_selinux_relabel
       g_test_skip ("skip in containers for now");
