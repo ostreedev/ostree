@@ -229,6 +229,9 @@ _ostree_ensure_fsverity (OstreeRepo *self, gboolean allow_enoent, int dirfd, con
   struct stat buf;
   gboolean supported;
 
+  if (supported_out)
+    *supported_out = TRUE;
+
   if (fstatat (dirfd, path, &buf, AT_SYMLINK_NOFOLLOW) != 0)
     {
       if (errno == ENOENT && allow_enoent)
