@@ -1261,7 +1261,7 @@ ostree_sysroot_load_if_changed (OstreeSysroot *self, gboolean *out_changed,
   if (!glnx_fstatat (self->sysroot_fd, "ostree/deploy", &stbuf, 0, error))
     return FALSE;
 
-  if (self->loaded_ts.tv_sec == stbuf.st_mtim.tv_sec
+  if (self->has_loaded && self->loaded_ts.tv_sec == stbuf.st_mtim.tv_sec
       && self->loaded_ts.tv_nsec == stbuf.st_mtim.tv_nsec)
     {
       if (out_changed)
@@ -1280,6 +1280,7 @@ ostree_sysroot_load_if_changed (OstreeSysroot *self, gboolean *out_changed,
     return FALSE;
 
   self->loaded_ts = stbuf.st_mtim;
+  self->has_loaded = TRUE;
 
   if (out_changed)
     *out_changed = TRUE;

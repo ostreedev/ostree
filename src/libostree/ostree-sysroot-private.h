@@ -85,6 +85,8 @@ struct OstreeSysroot
   OstreeDeployment *booted_deployment;
   OstreeDeployment *staged_deployment;
   GVariant *staged_deployment_data;
+  // True if loaded_ts is initialized
+  gboolean has_loaded;
   struct timespec loaded_ts;
 
   /* Only access through ostree_sysroot_[_get]repo() */
