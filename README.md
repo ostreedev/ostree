@@ -65,6 +65,11 @@ uses rpm-ostree as well.
 
 [Red Hat In-Vehicle Operating System](https://www.redhat.com/en/blog/new-standard-red-hat-vehicle-operating-system-modern-and-future-vehicles) is a derivative of CentOS Automotive Stream Distribution that uses OSTree, it's closest Fedora derivative is Fedora IoT although it was created as it's own distribution.
 
+[webOS](https://www.webosose.org/) is an OS for smart devices such as
+smart TVs. From version 2.0.0, webOS Open Source Edition (OSE) supports
+[Firmware-Over-the-Air (FOTA)](https://www.webosose.org/docs/guides/setup/setting-up-fota/)
+based on libostree.
+
 [GNOME Continuous](https://wiki.gnome.org/Projects/GnomeContinuous) is
 where OSTree was born - as a high performance continuous delivery/testing
 system for GNOME.
