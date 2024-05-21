@@ -45,11 +45,11 @@ We have two accompanying scripts that work with this type of environment:
 +-----------------------------+    +------------------+    |                                 |
 |  bootloader_a appends karg: |    |                  |    |                                 |
 |                             +--->+ boot_a partition +--->+                                 |
-|  androidboot.slot_suffix=_a |    |                  |    |                  /ostree/root.a |
+|  androidboot.slot_suffix=_a |    |                  |    |           /ostree/root.a -> ... |
 +-----------------------------+    +------------------+    |                                 |
                                                            | system partition                |
 +-----------------------------+    +------------------+    |                                 |
-|  bootloader_b appends karg: |    |                  |    |                  /ostree/root.b |
+|  bootloader_b appends karg: |    |                  |    |           /ostree/root.b -> ... |
 |                             +--->+ boot_b partition +--->+                                 |
 |  androidboot.slot_suffix=_b |    |                  |    |                                 |
 +-----------------------------+    +------------------+    |                                 |
