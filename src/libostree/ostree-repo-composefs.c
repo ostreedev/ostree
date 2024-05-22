@@ -180,14 +180,6 @@ _composefs_write_cb (void *file, void *buf, size_t len)
 
 #else /* HAVE_COMPOSEFS */
 
-static gboolean
-composefs_not_supported (GError **error)
-{
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-               "composefs is not supported in this ostree build");
-  return FALSE;
-}
-
 #endif
 
 /**
@@ -520,7 +512,7 @@ ensure_lcfs_dir (struct lcfs_node_s *parent, const char *name, GError **error)
 #endif /* HAVE_COMPOSEFS */
 
 /**
- * ostree_repo_checkout_composefs:
+ * _ostree_repo_checkout_composefs:
  * @self: Repo
  * @target: A target for the checkout
  * @source: Source tree
@@ -538,8 +530,8 @@ ensure_lcfs_dir (struct lcfs_node_s *parent, const char *name, GError **error)
  * Returns: %TRUE on success, %FALSE on failure
  */
 gboolean
-ostree_repo_checkout_composefs (OstreeRepo *self, OstreeComposefsTarget *target,
-                                OstreeRepoFile *source, GCancellable *cancellable, GError **error)
+_ostree_repo_checkout_composefs (OstreeRepo *self, OstreeComposefsTarget *target,
+                                 OstreeRepoFile *source, GCancellable *cancellable, GError **error)
 {
 #ifdef HAVE_COMPOSEFS
   GLNX_AUTO_PREFIX_ERROR ("Checking out composefs", error);
@@ -601,7 +593,7 @@ ostree_repo_commit_add_composefs_metadata (OstreeRepo *self, guint format_versio
 
   g_autoptr (OstreeComposefsTarget) target = ostree_composefs_target_new ();
 
-  if (!ostree_repo_checkout_composefs (self, target, repo_root, cancellable, error))
+  if (!_ostree_repo_checkout_composefs (self, target, repo_root, cancellable, error))
     return FALSE;
 
   g_autofree guchar *fsverity_digest = NULL;

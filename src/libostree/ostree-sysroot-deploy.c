@@ -600,37 +600,6 @@ merge_configuration_from (OstreeSysroot *sysroot, OstreeDeployment *merge_deploy
   return TRUE;
 }
 
-#ifdef HAVE_COMPOSEFS
-static gboolean
-compare_verity_digests (GVariant *metadata_composefs, const guchar *fsverity_digest, GError **error)
-{
-  const guchar *expected_digest;
-
-  if (metadata_composefs == NULL)
-    return TRUE;
-
-  if (g_variant_n_children (metadata_composefs) != OSTREE_SHA256_DIGEST_LEN)
-    return glnx_throw (error, "Expected composefs fs-verity in metadata has the wrong size");
-
-  expected_digest = g_variant_get_data (metadata_composefs);
-  if (memcmp (fsverity_digest, expected_digest, OSTREE_SHA256_DIGEST_LEN) != 0)
-    {
-      char actual_checksum[OSTREE_SHA256_STRING_LEN + 1];
-      char expected_checksum[OSTREE_SHA256_STRING_LEN + 1];
-
-      ostree_checksum_inplace_from_bytes (fsverity_digest, actual_checksum);
-      ostree_checksum_inplace_from_bytes (expected_digest, expected_checksum);
-
-      return glnx_throw (error,
-                         "Generated composefs image digest (%s) doesn't match expected digest (%s)",
-                         actual_checksum, expected_checksum);
-    }
-
-  return TRUE;
-}
-
-#endif
-
 /* Look up @revision in the repository, and check it out in
  * /ostree/deploy/OS/deploy/${treecsum}.${deployserial}.
  * A dfd for the result is returned in @out_deployment_dfd.
@@ -696,54 +665,8 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
     composefs_enabled = repo->composefs_wanted;
   if (composefs_enabled == OT_TRISTATE_YES)
     {
-      g_autofree guchar *fsverity_digest = NULL;
-      g_auto (GLnxTmpfile) tmpf = {
-        0,
-      };
-      g_autoptr (GVariant) commit_variant = NULL;
-
-      if (!ostree_repo_load_commit (repo, revision, &commit_variant, NULL, error))
-        return FALSE;
-
-      g_autoptr (GVariant) metadata = g_variant_get_child_value (commit_variant, 0);
-      g_autoptr (GVariant) metadata_composefs = g_variant_lookup_value (
-          metadata, OSTREE_COMPOSEFS_DIGEST_KEY_V0, G_VARIANT_TYPE_BYTESTRING);
-
-      /* Create a composefs image and put in deploy dir */
-      g_autoptr (OstreeComposefsTarget) target = ostree_composefs_target_new ();
-
-      g_autoptr (GFile) commit_root = NULL;
-      if (!ostree_repo_read_commit (repo, csum, &commit_root, NULL, cancellable, error))
-        return FALSE;
-
-      if (!ostree_repo_checkout_composefs (repo, target, (OstreeRepoFile *)commit_root, cancellable,
-                                           error))
-        return FALSE;
-
-      g_autofree char *composefs_cfs_path
-          = g_strdup_printf ("%s/" OSTREE_COMPOSEFS_NAME, checkout_target_name);
-
-      g_debug ("writing %s", composefs_cfs_path);
-
-      if (!glnx_open_tmpfile_linkable_at (osdeploy_dfd, checkout_target_name, O_WRONLY | O_CLOEXEC,
-                                          &tmpf, error))
-        return FALSE;
-
-      if (!ostree_composefs_target_write (target, tmpf.fd, &fsverity_digest, cancellable, error))
-        return FALSE;
-
-      /* If the commit specified a composefs digest, verify it */
-      if (!compare_verity_digests (metadata_composefs, fsverity_digest, error))
-        return FALSE;
-
-      if (!glnx_fchmod (tmpf.fd, 0644, error))
-        return FALSE;
-
-      if (!_ostree_tmpf_fsverity (repo, &tmpf, NULL, error))
-        return FALSE;
-
-      if (!glnx_link_tmpfile_at (&tmpf, GLNX_LINK_TMPFILE_REPLACE, osdeploy_dfd, composefs_cfs_path,
-                                 error))
+      if (!ostree_repo_checkout_composefs (repo, NULL, ret_deployment_dfd, OSTREE_COMPOSEFS_NAME,
+                                           csum, cancellable, error))
         return FALSE;
     }
   else

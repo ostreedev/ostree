@@ -473,9 +473,16 @@ gboolean ostree_composefs_target_write (OstreeComposefsTarget *target, int fd,
                                         guchar **out_fsverity_digest, GCancellable *cancellable,
                                         GError **error);
 
-gboolean ostree_repo_checkout_composefs (OstreeRepo *self, OstreeComposefsTarget *target,
-                                         OstreeRepoFile *source, GCancellable *cancellable,
-                                         GError **error);
+gboolean _ostree_repo_checkout_composefs (OstreeRepo *self, OstreeComposefsTarget *target,
+                                          OstreeRepoFile *source, GCancellable *cancellable,
+                                          GError **error);
+static inline gboolean
+composefs_not_supported (GError **error)
+{
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+               "composefs is not supported in this ostree build");
+  return FALSE;
+}
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeComposefsTarget, ostree_composefs_target_unref)
 
