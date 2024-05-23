@@ -166,6 +166,8 @@ load_variant (const char *root_mountpoint, const char *digest, const char *exten
   return g_variant_ref_sink (g_variant_new_from_data (type, data, data_size, FALSE, g_free, data));
 }
 
+// Given a mount point, directly load the .commit object.  At the current time this tool
+// doesn't link to libostree.
 static gboolean
 load_commit_for_deploy (const char *root_mountpoint, const char *deploy_path, GVariant **commit_out,
                         GVariant **commitmeta_out, GError **error)
@@ -198,6 +200,14 @@ load_commit_for_deploy (const char *root_mountpoint, const char *deploy_path, GV
   return TRUE;
 }
 
+/**
+ * validate_signature:
+ * @data: The raw data whose signature must be validated
+ * @signatures: A variant of type "ay" (byte array) containing signatures
+ * @pubkeys: an array of type GBytes*
+ *
+ * Verify that @data is signed using @signatures and @pubkeys.
+ */
 static gboolean
 validate_signature (GBytes *data, GVariant *signatures, GPtrArray *pubkeys)
 {
@@ -219,6 +229,7 @@ validate_signature (GBytes *data, GVariant *signatures, GPtrArray *pubkeys)
 
           if (!otcore_validate_ed25519_signature (data, pubkey, signature, &valid, &local_error))
             errx (EXIT_FAILURE, "signature verification failed: %s", local_error->message);
+          // At least one valid signature is enough.
           if (valid)
             return TRUE;
         }
@@ -304,6 +315,7 @@ main (int argc, char *argv[])
   // filename.
   g_assert (deploy_directory_name && *deploy_directory_name);
 
+  /* These are global state directories underneath /run */
   if (mkdirat (AT_FDCWD, OTCORE_RUN_OSTREE, 0755) < 0)
     err (EXIT_FAILURE, "Failed to create %s", OTCORE_RUN_OSTREE);
   if (mkdirat (AT_FDCWD, OTCORE_RUN_OSTREE_PRIVATE, 0) < 0)
@@ -358,7 +370,7 @@ main (int argc, char *argv[])
   bool using_composefs = false;
 
 #ifdef HAVE_COMPOSEFS
-  /* We construct the new sysroot in /sysroot.tmp, which is either the composfs
+  /* We construct the new sysroot in /sysroot.tmp, which is either the composefs
      mount or a bind mount of the deploy-dir */
   if (composefs_config->enabled != OT_TRISTATE_NO)
     {
@@ -663,18 +675,15 @@ main (int argc, char *argv[])
   if (rmdir (TMP_SYSROOT) < 0)
     err (EXIT_FAILURE, "couldn't remove temporary sysroot %s", TMP_SYSROOT);
 
+  /* Now that we've set up all the mount points, if configured we remount the physical
+   * rootfs as read-only; what is visibly mutable to the OS by default is just /etc and /var.
+   * But ostree knows how to mount /boot and /sysroot read-write to perform operations.
+   */
   if (sysroot_readonly)
     {
       if (mount ("sysroot", "sysroot", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL)
           < 0)
         err (EXIT_FAILURE, "failed to make /sysroot read-only");
-
-      /* TODO(lucab): This will make the final '/' read-only.
-       * Stabilize read-only '/sysroot' first, then enable this additional hardening too.
-       *
-       * if (mount (".", ".", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL) < 0)
-       *   err (EXIT_FAILURE, "failed to make / read-only");
-       */
     }
 
   /* The /sysroot mount needs to be private to avoid having a mount for e.g. /var/cache
