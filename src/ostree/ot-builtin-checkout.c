@@ -28,6 +28,7 @@
 #include "ot-builtins.h"
 #include "otutil.h"
 
+static gboolean opt_composefs;
 static gboolean opt_user_mode;
 static gboolean opt_allow_noent;
 static gboolean opt_disable_cache;
@@ -107,6 +108,7 @@ static GOptionEntry options[] = {
     "PATH" },
   { "selinux-prefix", 0, 0, G_OPTION_ARG_STRING, &opt_selinux_prefix,
     "When setting SELinux labels, prefix all paths by PREFIX", "PREFIX" },
+  { "composefs", 0, 0, G_OPTION_ARG_NONE, &opt_composefs, "Only create a composefs blob", NULL },
   { NULL }
 };
 
@@ -136,10 +138,22 @@ process_one_checkout (OstreeRepo *repo, const char *resolved_commit, const char 
    * `ostree_repo_checkout_at` until such time as we have a more
    * convenient infrastructure for testing C APIs with data.
    */
-  if (opt_disable_cache || opt_whiteouts || opt_require_hardlinks || opt_union_add || opt_force_copy
-      || opt_force_copy_zerosized || opt_bareuseronly_dirs || opt_union_identical
-      || opt_skiplist_file || opt_selinux_policy || opt_selinux_prefix
-      || opt_process_passthrough_whiteouts)
+  gboolean new_options_set = opt_disable_cache || opt_whiteouts || opt_require_hardlinks
+                             || opt_union_add || opt_force_copy || opt_force_copy_zerosized
+                             || opt_bareuseronly_dirs || opt_union_identical || opt_skiplist_file
+                             || opt_selinux_policy || opt_selinux_prefix
+                             || opt_process_passthrough_whiteouts;
+
+  /* If we're doing composefs, then this is it */
+  if (opt_composefs)
+    {
+      if (new_options_set)
+        return glnx_throw (error, "Specified options are incompatible with --composefs");
+      return ostree_repo_checkout_composefs (repo, NULL, AT_FDCWD, destination, resolved_commit,
+                                             cancellable, error);
+    }
+
+  if (new_options_set)
     {
       OstreeRepoCheckoutAtOptions checkout_options = {
         0,

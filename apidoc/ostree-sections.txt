@@ -435,6 +435,7 @@ OstreeRepoCheckoutOverwriteMode
 ostree_repo_checkout_tree
 ostree_repo_checkout_tree_at
 ostree_repo_checkout_at
+ostree_repo_checkout_composefs
 ostree_repo_checkout_gc
 ostree_repo_read_commit
 OstreeRepoListObjectsFlags

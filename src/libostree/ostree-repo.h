@@ -841,6 +841,11 @@ gboolean ostree_repo_checkout_at (OstreeRepo *self, OstreeRepoCheckoutAtOptions 
                                   const char *commit, GCancellable *cancellable, GError **error);
 
 _OSTREE_PUBLIC
+gboolean ostree_repo_checkout_composefs (OstreeRepo *self, GVariant *options, int destination_dfd,
+                                         const char *destination_path, const char *checksum,
+                                         GCancellable *cancellable, GError **error);
+
+_OSTREE_PUBLIC
 gboolean ostree_repo_checkout_gc (OstreeRepo *self, GCancellable *cancellable, GError **error);
 
 _OSTREE_PUBLIC
