@@ -25,6 +25,24 @@
 // which can be used to fully verify the target filesystem tree.
 #define BINDING_KEYPATH "/etc/ostree/initramfs-root-binding.key"
 
+bool
+proc_cmdline_has_key (const char *cmdline, const char *key)
+{
+  for (const char *iter = cmdline; iter;)
+    {
+      if (g_str_equal (iter, key))
+        return true;
+
+      iter = strchr (iter, ' ');
+      if (iter == NULL)
+        return false;
+
+      iter += strspn (iter, " ");
+    }
+
+  return false;
+}
+
 static bool
 proc_cmdline_has_key_starting_with (const char *cmdline, const char *key)
 {

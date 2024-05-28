@@ -97,6 +97,30 @@
 
 #include "ostree-mount-util.h"
 
+static bool enable_debug = false;
+
+__attribute__ ((__format__ (printf, 1, 2))) static void
+dbg (const char *format, ...)
+{
+  if (enable_debug)
+    {
+      va_list args;
+      va_start (args, format);
+      vprintf (format, args);
+      va_end (args);
+    }
+}
+
+static int
+ostree_mount (const char *source, const char *target, const char *filesystemtype,
+              const unsigned long mountflags, const char *options)
+{
+  const int ret = mount (source, target, filesystemtype, mountflags, options);
+  dbg ("mount (\"%s\", \"%s\", \"%s\", %lu, \"%s\"): %s\n", source, target, filesystemtype,
+       mountflags, options, strerror (errno));
+  return ret;
+}
+
 static bool
 sysroot_is_configured_ro (const char *sysroot)
 {
@@ -124,6 +148,7 @@ resolve_deploy_path (const char *root_mountpoint)
 
   g_autoptr (GError) error = NULL;
   g_autofree char *ostree_target = NULL;
+  enable_debug = proc_cmdline_has_key (kernel_cmdline, "ostree-prepare-root.debug");
   if (!otcore_get_ostree_target (kernel_cmdline, NULL, &ostree_target, &error))
     errx (EXIT_FAILURE, "Failed to determine ostree target: %s", error->message);
   if (!ostree_target)
@@ -344,7 +369,7 @@ main (int argc, char *argv[])
    *
    * Kernel docs: Documentation/filesystems/sharedsubtree.txt
    */
-  if (mount (NULL, "/", NULL, MS_REC | MS_PRIVATE | MS_SILENT, NULL) < 0)
+  if (ostree_mount (NULL, "/", NULL, MS_REC | MS_PRIVATE | MS_SILENT, NULL) < 0)
     err (EXIT_FAILURE, "failed to make \"/\" private mount");
 
   if (mkdir (TMP_SYSROOT, 0755) < 0)
@@ -492,7 +517,7 @@ main (int argc, char *argv[])
         }
       g_print ("Using legacy ostree bind mount for /\n");
       /* The deploy root starts out bind mounted to sysroot.tmp */
-      if (mount (deploy_path, TMP_SYSROOT, NULL, MS_BIND | MS_SILENT, NULL) < 0)
+      if (ostree_mount (deploy_path, TMP_SYSROOT, NULL, MS_BIND | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to make initial bind mount %s", deploy_path);
     }
 
@@ -522,7 +547,7 @@ main (int argc, char *argv[])
         {
           if (snprintf (srcpath, sizeof (srcpath), "%s/boot", root_mountpoint) < 0)
             err (EXIT_FAILURE, "failed to assemble /boot path");
-          if (mount (srcpath, TMP_SYSROOT "/boot", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+          if (ostree_mount (srcpath, TMP_SYSROOT "/boot", NULL, MS_BIND | MS_SILENT, NULL) < 0)
             err (EXIT_FAILURE, "failed to bind mount %s to boot", srcpath);
         }
     }
@@ -564,16 +589,16 @@ main (int argc, char *argv[])
 
           g_autofree char *ovl_options
               = g_strdup_printf ("lowerdir=%s,upperdir=%s,workdir=%s", lowerdir, upperdir, workdir);
-          if (mount ("overlay", TMP_SYSROOT "/etc", "overlay", MS_SILENT, ovl_options) < 0)
+          if (ostree_mount ("overlay", TMP_SYSROOT "/etc", "overlay", MS_SILENT, ovl_options) < 0)
             err (EXIT_FAILURE, "failed to mount transient etc overlayfs");
         }
       else
         {
           /* Bind-mount /etc (at deploy path), and remount as writable. */
-          if (mount ("etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+          if (ostree_mount ("etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_SILENT, NULL) < 0)
             err (EXIT_FAILURE, "failed to prepare /etc bind-mount at /sysroot.tmp/etc");
-          if (mount (TMP_SYSROOT "/etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_REMOUNT | MS_SILENT,
-                     NULL)
+          if (ostree_mount (TMP_SYSROOT "/etc", TMP_SYSROOT "/etc", NULL,
+                            MS_BIND | MS_REMOUNT | MS_SILENT, NULL)
               < 0)
             err (EXIT_FAILURE, "failed to make writable /etc bind-mount at /sysroot.tmp/etc");
         }
@@ -598,16 +623,18 @@ main (int argc, char *argv[])
       // Propagate readonly state
       if (!sysroot_currently_writable)
         mflags |= MS_RDONLY;
-      if (mount ("overlay", TMP_SYSROOT "/usr", "overlay", mflags, usr_ovl_options) < 0)
+
+      if (ostree_mount ("overlay", TMP_SYSROOT "/usr", "overlay", mflags, usr_ovl_options) < 0)
         err (EXIT_FAILURE, "failed to mount /usr overlayfs");
     }
   else if (!using_composefs)
     {
       /* Otherwise, a read-only bind mount for /usr. (Not needed for composefs) */
-      if (mount (TMP_SYSROOT "/usr", TMP_SYSROOT "/usr", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+      if (ostree_mount (TMP_SYSROOT "/usr", TMP_SYSROOT "/usr", NULL, MS_BIND | MS_SILENT, NULL)
+          < 0)
         err (EXIT_FAILURE, "failed to bind mount (class:readonly) /usr");
-      if (mount (TMP_SYSROOT "/usr", TMP_SYSROOT "/usr", NULL,
-                 MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL)
+      if (ostree_mount (TMP_SYSROOT "/usr", TMP_SYSROOT "/usr", NULL,
+                        MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL)
           < 0)
         err (EXIT_FAILURE, "failed to bind mount (class:readonly) /usr");
     }
@@ -618,9 +645,9 @@ main (int argc, char *argv[])
   if (sysroot_readonly)
     {
       /* Bind-mount /var (at stateroot path), and remount as writable. */
-      if (mount ("../../var", "../../var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+      if (ostree_mount ("../../var", "../../var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to prepare /var bind-mount at %s", srcpath);
-      if (mount ("../../var", "../../var", NULL, MS_BIND | MS_REMOUNT | MS_SILENT, NULL) < 0)
+      if (ostree_mount ("../../var", "../../var", NULL, MS_BIND | MS_REMOUNT | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to make writable /var bind-mount at %s", srcpath);
     }
 
@@ -641,7 +668,7 @@ main (int argc, char *argv[])
    */
   if (mount_var)
     {
-      if (mount ("../../var", TMP_SYSROOT "/var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+      if (ostree_mount ("../../var", TMP_SYSROOT "/var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to bind mount ../../var to var");
     }
 
@@ -663,10 +690,10 @@ main (int argc, char *argv[])
    * root under /sysroot/sysroot as systemd will be responsible for
    * moving /sysroot to /.
    */
-  if (mount (root_mountpoint, "sysroot", NULL, MS_MOVE | MS_SILENT, NULL) < 0)
+  if (ostree_mount (root_mountpoint, "sysroot", NULL, MS_MOVE | MS_SILENT, NULL) < 0)
     err (EXIT_FAILURE, "failed to MS_MOVE '%s' to 'sysroot'", root_mountpoint);
 
-  if (mount (".", root_mountpoint, NULL, MS_MOVE | MS_SILENT, NULL) < 0)
+  if (ostree_mount (".", root_mountpoint, NULL, MS_MOVE | MS_SILENT, NULL) < 0)
     err (EXIT_FAILURE, "failed to MS_MOVE %s to %s", ".", root_mountpoint);
 
   if (chdir (root_mountpoint) < 0)
@@ -681,7 +708,8 @@ main (int argc, char *argv[])
    */
   if (sysroot_readonly)
     {
-      if (mount ("sysroot", "sysroot", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL)
+      if (ostree_mount ("sysroot", "sysroot", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT,
+                        NULL)
           < 0)
         err (EXIT_FAILURE, "failed to make /sysroot read-only");
     }
@@ -694,7 +722,7 @@ main (int argc, char *argv[])
    * at the very start (perhaps down the line systemd will have compile/runtime option
    * to say that the initramfs environment did everything right from the start).
    */
-  if (mount ("none", "sysroot", NULL, MS_PRIVATE | MS_SILENT, NULL) < 0)
+  if (ostree_mount ("none", "sysroot", NULL, MS_PRIVATE | MS_SILENT, NULL) < 0)
     err (EXIT_FAILURE, "remounting 'sysroot' private");
 
   exit (EXIT_SUCCESS);

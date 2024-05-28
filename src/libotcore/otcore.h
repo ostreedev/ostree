@@ -43,6 +43,7 @@ bool otcore_ed25519_init (void);
 gboolean otcore_validate_ed25519_signature (GBytes *data, GBytes *pubkey, GBytes *signature,
                                             bool *out_valid, GError **error);
 
+bool proc_cmdline_has_key (const char *cmdline, const char *key);
 char *otcore_find_proc_cmdline_key (const char *cmdline, const char *key);
 gboolean otcore_get_ostree_target (const char *cmdline, gboolean *is_aboot, char **out_target,
                                    GError **error);
