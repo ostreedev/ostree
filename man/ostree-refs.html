@@ -1,0 +1,36 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree refs</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-refs &#8212; List refs</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree refs</code>  [OPTIONS...] [PREFIX]</p></div><div class="cmdsynopsis"><p><code class="command">ostree refs</code>  {EXISTING} {--create=NEWREF}</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            Lists all refs available on the host.  If specified, PREFIX assigns the refspec prefix; default
+            prefix is null, which lists all refs. This command can also be used to create or delete refs.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--list</code></span></dt><dd><p> For historical reasons, <code class="literal">refs</code>
+                without this option will strip the specified prefix
+                from the output.  Normally, one wants to see the full
+                ref, so providing this option ensures the refs are
+                printed in full, rather than
+                truncated. </p></dd><dt><span class="term"><code class="option">--create</code>=NEWREF</span></dt><dd><p>
+                    Create a ref pointing to the commit EXISTING. NEWREF must not already exist, and EXISTING
+                    must be an existing commit. More than one ref can point to the same commit.
+                </p></dd><dt><span class="term"><code class="option">--delete</code></span></dt><dd><p>
+                  Delete refs which match PREFIX, rather than listing them.  If you are trying to reclaim space,
+		  you will then need to <span class="command"><strong>ostree prune</strong></span> or <span class="command"><strong>ostree admin cleanup</strong></span>.
+                </p></dd><dt><span class="term"><code class="option">--revision</code>, <code class="option">-r</code></span></dt><dd><p>
+                    When listing refs, also print their revisions. The revisions
+                    will be separated by a tab character.
+                </p></dd><dt><span class="term"><code class="option">--alias</code>, <code class="option">-A</code></span></dt><dd><p>
+                    If used with <code class="option">--create</code>, create an alias. Otherwise just list aliases.
+                </p></dd><dt><span class="term"><code class="option">--collections</code>, <code class="option">-c</code></span></dt><dd><p>
+                  Enable interactions with refs using the combination of their
+                  collection IDs and ref names. When listing refs, this changes
+                  the output format to include collection IDs, and enables
+                  listing remote mirrored refs.</p><p>When creating refs, the refspec value passed to the
+                  <code class="option">--create</code> option is treated as
+                  <code class="literal">COLLECTION-ID:REF-NAME</code> and a mirrored ref
+                  is created. (This is an abuse of the refspec syntax.)</p><p>When deleting refs, all refs whose collection ID equals
+                  PREFIX are deleted.
+                </p></dd><dt><span class="term"><code class="option">--force</code></span></dt><dd><p>
+                  When creating <code class="literal">NEWREF</code> with
+                  <code class="option">--create</code>, allow an existing ref to be
+                  updated instead of erroring.
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1339"></a><h2>Example</h2><p><span class="command"><strong>$ ostree refs</strong></span></p><pre class="programlisting">
+        my-branch
+        gnome-ostree/buildmain/x86_64-runtime
+</pre></div></div></body></html>

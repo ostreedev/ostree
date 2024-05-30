@@ -1,0 +1,383 @@
+
+
+<!DOCTYPE html>
+
+<html lang="en-US">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+
+  <link rel="stylesheet" href="/ostree/assets/css/just-the-docs-default.css">
+
+  
+
+  
+    <script src="/ostree/assets/js/vendor/lunr.min.js"></script>
+  
+
+  
+
+  <script src="/ostree/assets/js/just-the-docs.js"></script>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  
+
+  <!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>OSTree and /var handling | ostreedev/ostree</title>
+<meta name="generator" content="Jekyll v3.9.5" />
+<meta property="og:title" content="OSTree and /var handling" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="ostree documentation" />
+<meta property="og:description" content="ostree documentation" />
+<link rel="canonical" href="https://ostreedev.github.io/ostree/var/" />
+<meta property="og:url" content="https://ostreedev.github.io/ostree/var/" />
+<meta property="og:site_name" content="ostreedev/ostree" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="OSTree and /var handling" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebPage","description":"ostree documentation","headline":"OSTree and /var handling","url":"https://ostreedev.github.io/ostree/var/"}</script>
+<!-- End Jekyll SEO tag -->
+
+
+  
+
+</head>
+
+<body>
+  <a class="skip-to-main" href="#main-content">Skip to main content</a>
+  <svg xmlns="http://www.w3.org/2000/svg" class="d-none">
+  <symbol id="svg-link" viewBox="0 0 24 24">
+  <title>Link</title>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-link">
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+  </svg>
+</symbol>
+
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+  <title>Menu</title>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-menu">
+    <line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>
+  </svg>
+</symbol>
+
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+  <title>Expand</title>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right">
+    <polyline points="9 18 15 12 9 6"></polyline>
+  </svg>
+</symbol>
+
+  <!-- Feather. MIT License: https://github.com/feathericons/feather/blob/master/LICENSE -->
+<symbol id="svg-external-link" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-external-link">
+  <title id="svg-external-link-title">(external link)</title>
+  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>
+</symbol>
+
+  
+    <symbol id="svg-doc" viewBox="0 0 24 24">
+  <title>Document</title>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file">
+    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline>
+  </svg>
+</symbol>
+
+    <symbol id="svg-search" viewBox="0 0 24 24">
+  <title>Search</title>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-search">
+    <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+  </svg>
+</symbol>
+
+  
+  
+    <!-- Bootstrap Icons. MIT License: https://github.com/twbs/icons/blob/main/LICENSE.md -->
+<symbol id="svg-copy" viewBox="0 0 16 16">
+  <title>Copy</title>
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clipboard" viewBox="0 0 16 16">
+    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+    <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+  </svg>
+</symbol>
+<symbol id="svg-copied" viewBox="0 0 16 16">
+  <title>Copied</title>
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clipboard-check-fill" viewBox="0 0 16 16">
+    <path d="M6.5 0A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3Zm3 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3Z"/>
+    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1A2.5 2.5 0 0 1 9.5 5h-3A2.5 2.5 0 0 1 4 2.5v-1Zm6.854 7.354-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 0 1 .708-.708L7.5 10.793l2.646-2.647a.5.5 0 0 1 .708.708Z"/>
+  </svg>
+</symbol>
+
+  
+</svg>
+
+  <div class="side-bar">
+  <div class="site-header">
+    <a href="/ostree/" class="site-title lh-tight">
+  ostreedev/ostree
+
+</a>
+    <a href="#" id="menu-button" class="site-button">
+      <svg viewBox="0 0 24 24" class="icon"><use xlink:href="#svg-menu"></use></svg>
+    </a>
+  </div>
+  <nav aria-label="Main" id="site-nav" class="site-nav">
+    
+    
+      <ul class="nav-list"><li class="nav-list-item"><a href="/ostree/" class="nav-list-link">libostree</a></li><li class="nav-list-item"><a href="/ostree/introduction/" class="nav-list-link">OSTree Overview</a></li><li class="nav-list-item"><a href="/ostree/repo/" class="nav-list-link">Anatomy of an OSTree repository</a></li><li class="nav-list-item"><a href="/ostree/deployment/" class="nav-list-link">Deployments</a></li><li class="nav-list-item"><a href="/ostree/atomic-upgrades/" class="nav-list-link">Atomic Upgrades</a></li><li class="nav-list-item"><a href="/ostree/atomic-rollbacks/" class="nav-list-link">Atomic Rollbacks</a></li><li class="nav-list-item"><a href="/ostree/adapting-existing/" class="nav-list-link">Adapting existing mainstream distributions</a></li><li class="nav-list-item active"><a href="/ostree/var/" class="nav-list-link active">OSTree and /var handling</a></li><li class="nav-list-item"><a href="/ostree/formats/" class="nav-list-link">OSTree data formats</a></li><li class="nav-list-item"><a href="/ostree/buildsystem-and-repos/" class="nav-list-link">Writing a buildsystem and managing repositories</a></li><li class="nav-list-item"><a href="/ostree/authenticated-repos/" class="nav-list-link">Handling access to authenticated remote repositories</a></li><li class="nav-list-item"><a href="/ostree/repository-management/" class="nav-list-link">Managing content in OSTree repositories</a></li><li class="nav-list-item"><a href="/ostree/copying-deltas/" class="nav-list-link">Static deltas for offline updates</a></li><li class="nav-list-item"><a href="/ostree/ima/" class="nav-list-link">Using Linux IMA with OSTree</a></li><li class="nav-list-item"><a href="/ostree/related-projects/" class="nav-list-link">Related Projects</a></li><li class="nav-list-item"><a href="/ostree/composefs/" class="nav-list-link">Using composefs with OSTree</a></li><li class="nav-list-item"><a href="/ostree/bootloaders/" class="nav-list-link">Bootloaders</a></li><li class="nav-list-item"><a href="/ostree/CONTRIBUTING/" class="nav-list-link">Contributing</a></li><li class="nav-list-item"><a href="/ostree/contributing-tutorial/" class="nav-list-link">OSTree Contributing Tutorial</a></li><li class="nav-list-item"><a href="/ostree/README-historical/" class="nav-list-link">Historical OSTree README</a></li></ul>
+    
+  </nav>
+
+  
+  
+    <footer class="site-footer">
+      This site uses <a href="https://github.com/just-the-docs/just-the-docs">Just the Docs</a>, a documentation theme for Jekyll.
+    </footer>
+  
+</div>
+
+  <div class="main" id="top">
+    <div id="main-header" class="main-header">
+  
+    
+
+<div class="search">
+  <div class="search-input-wrap">
+    <input type="text" id="search-input" class="search-input" tabindex="0" placeholder="Search ostreedev/ostree" aria-label="Search ostreedev/ostree" autocomplete="off">
+    <label for="search-input" class="search-label"><svg viewBox="0 0 24 24" class="search-icon"><use xlink:href="#svg-search"></use></svg></label>
+  </div>
+  <div id="search-results" class="search-results"></div>
+</div>
+
+  
+  
+  
+    <nav aria-label="Auxiliary" class="aux-nav">
+  <ul class="aux-nav-list">
+    
+      <li class="aux-nav-list-item">
+        <a href="https://github.com/ostreedev/ostree" class="site-button"
+          
+        >
+          OSTree on GitHub
+        </a>
+      </li>
+    
+  </ul>
+</nav>
+
+  
+</div>
+
+    <div id="main-content-wrap" class="main-content-wrap">
+      
+  
+
+
+      <div id="main-content" class="main-content" role="main">
+        
+          <h1 id="ostree-and-var-handling">
+  
+  
+    <a href="#ostree-and-var-handling" class="anchor-heading" aria-labelledby="ostree-and-var-handling"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> OSTree and /var handling
+  
+  
+</h1>
+    
+
+<ol class="no_toc" id="markdown-toc">
+  <li><a href="#ostree-and-var-handling" id="markdown-toc-ostree-and-var-handling">OSTree and /var handling</a>    <ol>
+      <li><a href="#default-commitimage-var-handling" id="markdown-toc-default-commitimage-var-handling">Default commit/image /var handling</a></li>
+      <li><a href="#pitfalls" id="markdown-toc-pitfalls">Pitfalls</a></li>
+      <li><a href="#examples" id="markdown-toc-examples">Examples</a>        <ol>
+          <li><a href="#debsrpms-which-drop-files-into-opt-ie-varopt" id="markdown-toc-debsrpms-which-drop-files-into-opt-ie-varopt">debs/RPMs which drop files into <code class="language-plaintext highlighter-rouge">/opt</code> (i.e. <code class="language-plaintext highlighter-rouge">/var/opt</code>)</a></li>
+          <li><a href="#apache-default-content-in-varwwwhtml" id="markdown-toc-apache-default-content-in-varwwwhtml">Apache default content in <code class="language-plaintext highlighter-rouge">/var/www/html</code></a></li>
+          <li><a href="#user-home-directories-and-databases" id="markdown-toc-user-home-directories-and-databases">User home directories and databases</a></li>
+          <li><a href="#varlibcontainers" id="markdown-toc-varlibcontainers"><code class="language-plaintext highlighter-rouge">/var/lib/containers</code></a></li>
+          <li><a href="#dnf-varlibdnfhistorysqlite" id="markdown-toc-dnf-varlibdnfhistorysqlite">dnf <code class="language-plaintext highlighter-rouge">/var/lib/dnf/history.sqlite</code></a></li>
+        </ol>
+      </li>
+      <li><a href="#previous-ostree-var-and-tmpfilesd-usrsharefactoryvar" id="markdown-toc-previous-ostree-var-and-tmpfilesd-usrsharefactoryvar">Previous ostree /var and tmpfiles.d /usr/share/factory/var</a></li>
+    </ol>
+  </li>
+</ol>
+
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
+<h2 id="default-commitimage-var-handling">
+  
+  
+    <a href="#default-commitimage-var-handling" class="anchor-heading" aria-labelledby="default-commitimage-var-handling"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Default commit/image /var handling
+  
+  
+</h2>
+    
+
+<p>As of OSTree 2024.3, when a commit is “deployed” (queued to boot),
+the initial content of <code class="language-plaintext highlighter-rouge">/var</code> in a commit will be placed into the
+“stateroot” (default <code class="language-plaintext highlighter-rouge">var</code>) if the stateroot <code class="language-plaintext highlighter-rouge">var</code> is empty.</p>
+
+<p>The semantics of this are intended to match that of Docker “volumes”;
+consider that ostree systems have the equivalent of
+<code class="language-plaintext highlighter-rouge">VOLUME /var</code>
+by default.</p>
+
+<p>It is still strongly recommended to use systemd <code class="language-plaintext highlighter-rouge">tmpfiles.d</code> snippets
+to populate directory structure and the like in <code class="language-plaintext highlighter-rouge">/var</code> on firstboot,
+because this is more resilent.</p>
+
+<p>Even better, use <code class="language-plaintext highlighter-rouge">StateDirectory=</code> for systemd units.</p>
+<h2 id="pitfalls">
+  
+  
+    <a href="#pitfalls" class="anchor-heading" aria-labelledby="pitfalls"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Pitfalls
+  
+  
+</h2>
+    
+
+<p>On subsequent upgrades, normally <code class="language-plaintext highlighter-rouge">/var</code> would not be empty anymore
+(as it’s typically expected that basics like <code class="language-plaintext highlighter-rouge">/var/tmp</code> etc. are created,
+ if not also other local state such as <code class="language-plaintext highlighter-rouge">/var/log</code> etc.).  Hence,
+<em>no updates</em> from the commit/container will be applied.</p>
+
+<p>To be clear then:</p>
+
+<ul>
+  <li>Any files which already exist will <em>not</em> be updated.</li>
+  <li>Any files which are deleted in the new version will not be deleted on existing systems.</li>
+</ul>
+<h2 id="examples">
+  
+  
+    <a href="#examples" class="anchor-heading" aria-labelledby="examples"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Examples
+  
+  
+</h2>
+    
+<h3 id="debsrpms-which-drop-files-into-opt-ie-varopt">
+  
+  
+    <a href="#debsrpms-which-drop-files-into-opt-ie-varopt" class="anchor-heading" aria-labelledby="debsrpms-which-drop-files-into-opt-ie-varopt"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> debs/RPMs which drop files into <code class="language-plaintext highlighter-rouge">/opt</code> (i.e. <code class="language-plaintext highlighter-rouge">/var/opt</code>)
+  
+  
+</h3>
+    
+
+<p>The default OSTree “strict” layout has <code class="language-plaintext highlighter-rouge">/opt</code> be a symlink to <code class="language-plaintext highlighter-rouge">/var/opt</code>.
+Including any packaged content that “straddles” <code class="language-plaintext highlighter-rouge">/usr</code> and <code class="language-plaintext highlighter-rouge">/var</code> (i.e. <code class="language-plaintext highlighter-rouge">/var/opt</code>)
+will over time cause drift because changes in the package will not be reflected on disk.</p>
+
+<p>For situations like this, it’s strongly recommended to enable either
+<code class="language-plaintext highlighter-rouge">composefs.enabled = true</code> or the <code class="language-plaintext highlighter-rouge">root.transient = true</code> option for <code class="language-plaintext highlighter-rouge">ostree-prepare-root.conf</code>
+and change ensure your commit/container image has <code class="language-plaintext highlighter-rouge">/opt</code> as a plain directory.  In the former case,
+content in <code class="language-plaintext highlighter-rouge">/opt</code> will be immutable at runtime, the same as everything else in <code class="language-plaintext highlighter-rouge">/usr</code>.
+In the latter case content it will be writable but transient.</p>
+
+<p>There’s also a currently-experimental <a href="ostree-state-overlay@.service">../man/ostree-state-overlay@.service.xml</a>
+which can manage stateful writable overlays for individual mounts.</p>
+<h3 id="apache-default-content-in-varwwwhtml">
+  
+  
+    <a href="#apache-default-content-in-varwwwhtml" class="anchor-heading" aria-labelledby="apache-default-content-in-varwwwhtml"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Apache default content in <code class="language-plaintext highlighter-rouge">/var/www/html</code>
+  
+  
+</h3>
+    
+
+<p>In general, such static content would much better live in <code class="language-plaintext highlighter-rouge">/usr</code> - or even better, in an application container.</p>
+<h3 id="user-home-directories-and-databases">
+  
+  
+    <a href="#user-home-directories-and-databases" class="anchor-heading" aria-labelledby="user-home-directories-and-databases"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> User home directories and databases
+  
+  
+</h3>
+    
+
+<p>The semantics here are likely OK for the use case of “default users”.</p>
+<h3 id="varlibcontainers">
+  
+  
+    <a href="#varlibcontainers" class="anchor-heading" aria-labelledby="varlibcontainers"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> <code class="language-plaintext highlighter-rouge">/var/lib/containers</code>
+  
+  
+</h3>
+    
+
+<p>Pulling container images into OSTree commits like this would be a bad idea; similar problems as RPM content.</p>
+<h3 id="dnf-varlibdnfhistorysqlite">
+  
+  
+    <a href="#dnf-varlibdnfhistorysqlite" class="anchor-heading" aria-labelledby="dnf-varlibdnfhistorysqlite"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> dnf <code class="language-plaintext highlighter-rouge">/var/lib/dnf/history.sqlite</code>
+  
+  
+</h3>
+    
+
+<p>For $reasons dnf has its own database for state distinct from the RPM database, which on rpm-ostree systems is in <code class="language-plaintext highlighter-rouge">/usr/share/rpm</code> (under the read-only bind mount, managed by OS updates).</p>
+
+<p>In an image/container-oriented flow, we don’t really care about this database which mainly holds things like “was this package user installed”.  This data could move to <code class="language-plaintext highlighter-rouge">/usr</code>.</p>
+<h2 id="previous-ostree-var-and-tmpfilesd-usrsharefactoryvar">
+  
+  
+    <a href="#previous-ostree-var-and-tmpfilesd-usrsharefactoryvar" class="anchor-heading" aria-labelledby="previous-ostree-var-and-tmpfilesd-usrsharefactoryvar"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Previous ostree /var and tmpfiles.d /usr/share/factory/var
+  
+  
+</h2>
+    
+
+<p>From OSTree versions 2023.8 to v2024.3 the <code class="language-plaintext highlighter-rouge">/usr/lib/tmpfiles.d/ostree-tmpfiles.conf</code> file included this snippet:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code># Automatically propagate all /var content from /usr/share/factory/var;
+# the ostree-container stack is being changed to do this, and we want to
+# encourage ostree use cases in general to follow this pattern.
+C+! /var - - - - -
+</code></pre></div></div>
+
+<p>Until version 0.13.2 of the ostree-ext project, content in <code class="language-plaintext highlighter-rouge">/var</code> in fetched container images is moved to <code class="language-plaintext highlighter-rouge">/usr/share/factory/var</code>, but this no longer happens when targeting ostree v2024.3.</p>
+
+<p>Together, this will have the semantic that on OS updates, on the next boot (early in boot), any new files/directories will be copied.  For more information on this, see <a href="https://man7.org/linux/man-pages/man5/tmpfiles.d.5.html"><code class="language-plaintext highlighter-rouge">man tmpfiles.d</code></a>.</p>
+
+<p>This has been reverted, and the semantics defer to the above ostree semantic.</p>
+
+        
+
+        
+
+        
+
+  <hr>
+  <footer>
+    
+
+    <p class="text-small text-grey-dk-100 mb-0">Copyright &copy; <a href="https://www.redhat.com">Red Hat, Inc.</a> and <a href="https://github.com/ostreedev">others</a>.</p>
+
+    
+      <div class="d-flex mt-2">
+        
+        
+          <p class="text-small text-grey-dk-000 mb-0">
+            <a href="https://github.com/ostreedev/ostree/tree/main/docs/var.md" id="edit-this-page">Edit this page on GitHub</a>
+          </p>
+        
+      </div>
+    
+  </footer>
+
+
+
+      </div>
+    </div>
+    
+      
+
+<div class="search-overlay"></div>
+
+    
+  </div>
+
+  
+</body>
+</html>
+

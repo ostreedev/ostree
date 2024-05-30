@@ -1,0 +1,10 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree admin instutil</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-admin-instutil &#8212; Utility functions intended primarily for operating system installation programs</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree admin instutil</code>  {SUBCOMMAND} [ARGS]</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            Use the subcommands to toggle admin installation utilities for selinux policies and kernel arguments.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Subcommands</h2><div class="variablelist"><div class="cmdsynopsis"><p><code class="command">selinux-ensure-labeled</code>  [SUBPATH PREFIX]</p></div><dl class="variablelist"><dt></dt><dd><p>
+                    Ensure all files and directories are labeled according to SELinux policy of the first deployment.
+                </p></dd></dl></div><div class="variablelist"><div class="cmdsynopsis"><p><code class="command">set-kargs</code>  [--merge] [--import-proc-cmdline] [--append="NAME=VALUE"] [--replace="NAME=VALUE"] [MORE_APPEND_ARGS]</p></div><dl class="variablelist"><dt></dt><dd><p>
+                    Replace the kernel arguments of the default deployment. The new arguments are based
+                    on an empty list (the default), the current options (--merge), or the arguments
+                    of the loaded kernel (--import-proc-cmdline), and new options either are added to the
+                    end (--append="NAME=VALUE") or replace existing arguments of the same name (--replace="NAME=VALUE").
+                </p></dd></dl></div></div></div></body></html>

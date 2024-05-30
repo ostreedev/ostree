@@ -1,0 +1,47 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree find-remotes</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-find-remotes &#8212; Find remotes to serve the given refs</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree find-remotes</code>  [OPTIONS...] {COLLECTION-ID} {REF} [COLLECTION-ID REF...]</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            OSTree has the ability to pull not just from the configured remote
+            servers but also from peer computers on the LAN and from mounted
+            filesystems such as USB drives. This functionality requires the use
+            of collection IDs and GPG verification.
+        </p><p>
+            The <span class="command"><strong>find-remotes</strong></span> command searches for remotes
+            which claim to provide one or more of the given COLLECTION-ID REF
+            pairs and prints information about them, with remotes sorted by
+            latency (Mounts &gt; LAN &gt; Internet). By default, OSTree searches for
+            remotes in configuration files, on mounted filesystems (in a
+            well-known location), and on the LAN using Avahi. Searching for LAN
+            remotes requires OSTree to have been compiled with Avahi support,
+            and it requires an Avahi daemon to be running. You can override the
+            default set of finders (sources for remotes) using the
+            <code class="option">--finders</code> option documented below.
+        </p><p>
+            The <span class="command"><strong>create-usb</strong></span> command is the recommended way to
+            put refs on a USB such that <span class="command"><strong>find-remotes</strong></span> will
+            discover them. See
+            <a href="ostree-create-usb.html"><span class="citerefentry"><span class="refentrytitle">ostree-create-usb</span>(1)</span></a>.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--cache-dir</code>=DIR</span></dt><dd><p>
+                    Use an alternate cache directory in <code class="literal">DIR</code>.
+                </p></dd><dt><span class="term"><code class="option">--disable-fsync</code></span></dt><dd><p>
+                  Do not invoke fsync().
+                </p></dd><dt><span class="term"><code class="option">--finders</code>=FINDERS</span></dt><dd><p>
+                  Use the specified comma separated list of finders rather than
+                  the default set. Possible values: <code class="literal">config</code>,
+                  <code class="literal">lan</code>, and <code class="literal">mount</code> (or any
+                  combination thereof).
+                </p></dd><dt><span class="term"><code class="option">--pull</code></span></dt><dd><p>
+                  Pull the most recent commit found for each ref.
+                </p></dd><dt><span class="term"><code class="option">--mirror</code></span></dt><dd><p>
+                  Do a mirror pull (see the documentation for
+                  <span class="command"><strong>ostree pull --mirror</strong></span>). This option can
+                  only be used in combination with <code class="option">--pull</code>.
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1339"></a><h2>Example</h2><p><span class="command"><strong>$ ostree find-remotes --finders=mount,lan com.exampleos.Os exampleos/x86_64/standard</strong></span></p><pre class="programlisting">
+Result 0: http://10.0.64.202:43381/0
+ - Finder: OstreeRepoFinderAvahi
+ - Keyring: exampleos.trustedkeys.gpg
+ - Priority: 60
+ - Summary last modified: 2018-01-12T19:00:28Z
+ - Refs:
+    - (com.exampleos.Os, exampleos/x86_64/standard) = c91acd964b3fda561b87bfb7f7c80e36220d76b567f0ce90c0e60742ef33c360
+
+1/1 refs were found.
+</pre></div></div></body></html>

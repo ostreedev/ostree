@@ -1,0 +1,15 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree pull-local</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-pull-local &#8212; Copy data from a source repository</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree pull-local</code>  [OPTIONS...] {SOURCE_REPO} [REFS...]</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            Copies data from a given repository; optimized for copies only between repositories on the same system.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--remote</code>="REMOTE"</span></dt><dd><p>
+                    Add REMOTE to refspec.
+                </p></dd><dt><span class="term"><code class="option">--disable-fsync</code></span></dt><dd><p>
+                    Do no invoke fsync().
+                </p></dd><dt><span class="term"><code class="option">--untrusted</code></span></dt><dd><p>
+                    Do not trust source, verify checksums and don't hardlink into source.
+                </p></dd><dt><span class="term"><code class="option">--disable-verify-bindings</code></span></dt><dd><p>
+                    Disable verification of commit metadata bindings.
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1339"></a><h2>Example</h2><p><span class="command"><strong>$ ostree pull-local /ostree/repo</strong></span></p><pre class="programlisting">
+        Enumerating objects...
+        pull: 25709/25709 scanned, 0 objects copied
+        Writing 5 refs
+</pre></div></div></body></html>

@@ -1,0 +1,219 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree.repo-config</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree.repo-config"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree.repo-config &#8212; OSTree repository configuration</p></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+      The <code class="filename">config</code> file in an OSTree
+      repository is a "keyfile" in the <a class="ulink" href="http://standards.freedesktop.org/desktop-entry-spec/latest/" target="_top">XDG
+      Desktop Entry Specification</a> format.  It has
+      several global flags, as well as zero or more remote
+      entries which describe how to access remote
+      repositories.
+    </p><p>
+      See <a href="ostree.repo.html"><span class="citerefentry"><span class="refentrytitle">ostree.repo</span>(5)</span></a> for more information
+      about OSTree repositories.
+    </p></div><div class="refsect1"><a name="id1338"></a><h2>[core] Section Options</h2><p>
+      Repository-global options.  The following entries are defined:
+    </p><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="varname">mode</code></span></dt><dd><p>One of <code class="literal">bare</code>, <code class="literal">bare-user</code>, <code class="literal">bare-user-only</code>, or <code class="literal">archive-z2</code> (note that <code class="literal">archive</code> is used everywhere else.)</p></dd><dt><span class="term"><code class="varname">repo_version</code></span></dt><dd><p>Currently, this must be set to <code class="literal">1</code>.</p></dd><dt><span class="term"><code class="varname">auto-update-summary</code></span></dt><dd><p>Boolean value controlling whether or not to
+        automatically update the summary file after any ref is added,
+        removed, or updated. Other modifications which may render a
+        summary file stale (like static deltas, or collection IDs) do
+        not currently trigger an auto-update.
+        </p></dd><dt><span class="term"><code class="varname">commit-update-summary</code></span></dt><dd><p>This option is deprecated. Use
+        <code class="literal">auto-update-summary</code> instead, for which this
+        option is now an alias.</p></dd><dt><span class="term"><code class="varname">fsync</code></span></dt><dd><p>Boolean value controlling whether or not to
+        ensure files are on stable storage when performing operations
+        such as commits, pulls, and checkouts.  Defaults to
+        <code class="literal">true</code>.</p><p>
+          If you disable fsync, OSTree will no longer be robust
+          against kernel crashes or power loss.
+        </p><p>
+          You might choose to disable this for local development
+          repositories, under the assumption they can be recreated from
+          source.  Similarly, you could disable for a mirror where you could
+          re-pull.
+        </p><p>
+          For the system repository, you might choose to disable fsync
+          if you have uninterruptable power supplies and a well tested
+          kernel.
+        </p></dd><dt><span class="term"><code class="varname">per-object-fsync</code></span></dt><dd><p>By default, OSTree will batch fsync() after
+        writing everything; however, this can cause latency spikes
+        for other processes which are also invoking fsync().
+        Turn on this boolean to reduce potential latency spikes,
+        at the cost of slowing down OSTree updates.  You most
+        likely want this on by default for "background" OS updates.
+        </p></dd><dt><span class="term"><code class="varname">min-free-space-percent</code></span></dt><dd><p>
+            Integer percentage value (0-99) that specifies a minimum percentage
+            of total space (in blocks) in the underlying filesystem to keep
+            free. The default value is 3, which is enforced when neither this
+            option nor <code class="varname">min-free-space-size</code> are set.
+          </p><p>
+            If <code class="varname">min-free-space-size</code> is set to a non-zero
+            value, <code class="varname">min-free-space-percent</code> is ignored. Note
+            that, <code class="varname">min-free-space-percent</code> is not enforced on
+            metadata objects. It is assumed that metadata objects are relatively
+            small in size compared to content objects and thus kept outside the
+            scope of this option.
+          </p></dd><dt><span class="term"><code class="varname">min-free-space-size</code></span></dt><dd><p>
+            Value (in power-of-2 MB, GB or TB) that specifies a minimum space
+            in the underlying filesystem to keep free. Examples of acceptable
+            values: <code class="literal">500MB</code> (524 288 000 bytes),
+            <code class="literal">1GB</code> (1 073 741 824 bytes),
+            <code class="literal">1TB</code> (1 099 511 627 776 bytes).
+          </p><p>
+            If this option is set to a non-zero value, and
+            <code class="varname">min-free-space-percent</code> is also set, this option
+            takes priority. Note that, <code class="varname">min-free-space-size</code> is
+            not enforced on metadata objects. It is assumed that metadata objects
+            are relatively small in size compared to content objects and thus kept
+            outside the scope of this option.
+          </p></dd><dt><span class="term"><code class="varname">add-remotes-config-dir</code></span></dt><dd><p>
+            Boolean value controlling whether new remotes will be added
+            in the remotes configuration directory. Defaults to
+            <code class="literal">true</code> for system ostree repositories. When
+            this is <code class="literal">false</code>, remotes will be added in
+            the repository's <code class="filename">config</code> file.
+          </p><p>
+            This only applies to repositories that use a remotes
+            configuration directory such as system ostree repositories,
+            which use <code class="filename">/etc/ostree/remotes.d</code>.
+            Non-system repositories do not use a remotes configuration
+            directory unless one is specified when the repository is
+            opened.
+          </p></dd><dt><span class="term"><code class="varname">payload-link-threshold</code></span></dt><dd><p>An integer value that specifies a minimum file size for creating
+        a payload link.  By default it is disabled.
+        </p></dd><dt><span class="term"><code class="varname">collection-id</code></span></dt><dd><p>A reverse DNS domain name under your control, which enables peer
+        to peer distribution of refs in this repository. See the
+        <code class="literal">--collection-id</code> section in
+        <a href="ostree-init.html"><span class="citerefentry"><span class="refentrytitle">ostree-init</span>(1)</span></a>
+        </p></dd><dt><span class="term"><code class="varname">locking</code></span></dt><dd><p>Boolean value controlling whether or not OSTree does
+        repository locking internally. This uses file locks and is
+        hence for multiple process exclusion (e.g. Flatpak and OSTree
+        writing to the same repository separately). This is enabled by
+        default since 2018.5.
+        </p></dd><dt><span class="term"><code class="varname">lock-timeout-secs</code></span></dt><dd><p>Integer value controlling the number of seconds to
+        block while attempting to acquire a lock (see above). A value
+        of -1 means block indefinitely. The default value is 300.  This timeout
+        is now regarded as a mistake; because it's likely to cause flakes.
+        It's recommended to set it to -1, and have timeouts at a higher application
+        level if desired.
+        </p></dd><dt><span class="term"><code class="varname">default-repo-finders</code></span></dt><dd><p>Semicolon separated default list of finders (sources
+        for refs) to use when pulling. This can be used to disable
+        pulling from mounted filesystems, peers on the local network,
+        or the Internet. However note that it only applies when a set
+        of finders isn't explicitly specified, either by a consumer of
+        libostree API or on the command line. Possible values:
+        <code class="literal">config</code>, <code class="literal">lan</code>, and
+        <code class="literal">mount</code> (or any combination thereof). If unset, this
+        defaults to <code class="literal">config;mount;</code> (since the LAN finder is
+        costly).
+        </p></dd><dt><span class="term"><code class="varname">no-deltas-in-summary</code></span></dt><dd><p>Boolean value controlling whether OSTree should skip
+        putting an index of available deltas in the summary file. Defaults to false.
+        </p><p>
+        Since 2020.7 OSTree can use delta indexes outside the summary file,
+        making the summary file smaller (especially for larger repositories). However
+        by default we still create the index in the summary file to make older clients
+        work. If you know all clients will be 2020.7 later you can enable this to
+        save network bandwidth.
+        </p></dd></dl></div></div><div class="refsect1"><a name="id1339"></a><h2>[remote "name"] Section Options</h2><p>
+      Describes a remote repository location.
+    </p><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="varname">url</code></span></dt><dd><p>Must be present; declares URL for accessing metadata and
+        content for remote. See also <code class="literal">contenturl</code>. The
+        supported schemes are documented below.</p></dd><dt><span class="term"><code class="varname">contenturl</code></span></dt><dd><p>Declares URL for accessing content (filez, static delta
+        parts). When specified, <code class="literal">url</code> is used just for
+        metadata: summary, static delta "superblocks".</p></dd><dt><span class="term"><code class="varname">branches</code></span></dt><dd><p>A list of strings. Represents the default configured
+        branches to fetch from the remote when no specific branches are
+        requested during a pull operation.</p></dd><dt><span class="term"><code class="varname">proxy</code></span></dt><dd><p>A string value, if given should be a URL for a
+        HTTP proxy to use for access to this repository.</p></dd><dt><span class="term"><code class="varname">gpg-verify</code></span></dt><dd><p>A boolean value, defaults to true.
+        Controls whether or not OSTree will require commits to be
+        signed by a known GPG key.  For more information, see the
+        <a href="ostree.html"><span class="citerefentry"><span class="refentrytitle">ostree</span>(1)</span></a>
+        manual under GPG.</p></dd><dt><span class="term"><code class="varname">gpg-verify-summary</code></span></dt><dd><p>A boolean value, defaults to false.
+        Controls whether or not OSTree will check if the summary
+        is signed by a known GPG key.
+        For more information, see the <a href="ostree.html"><span class="citerefentry"><span class="refentrytitle">ostree</span>(1)</span></a>
+        manual under GPG.</p></dd><dt><span class="term"><code class="varname">tls-permissive</code></span></dt><dd><p>A boolean value, defaults to false.  By
+        default, server TLS certificates will be checked against the
+        system certificate store.  If this variable is set, any
+        certificate will be accepted.</p></dd><dt><span class="term"><code class="varname">tls-client-cert-path</code></span></dt><dd><p>Path to file for client-side certificate, to present when making requests to this repository.</p></dd><dt><span class="term"><code class="varname">tls-client-key-path</code></span></dt><dd><p>Path to file containing client-side certificate key, to present when making requests to this repository.</p></dd><dt><span class="term"><code class="varname">tls-ca-path</code></span></dt><dd><p>Path to file containing trusted anchors instead of the system CA database.</p></dd><dt><span class="term"><code class="varname">http2</code></span></dt><dd><p>A boolean value, defaults to true.  By
+        default, libostree will use HTTP2; setting this to <code class="literal">false</code>
+        will disable it.  May be useful to work around broken servers.
+        </p></dd><dt><span class="term"><code class="varname">unconfigured-state</code></span></dt><dd><p>If set, pulls from this remote will fail with the configured text.  This is intended for OS vendors which have a subscription process to access content.</p></dd><dt><span class="term"><code class="varname">custom-backend</code></span></dt><dd><p>If set, pulls from this remote via libostree will fail with an error that mentions the value.
+                        It is recommended to make this a software identifier token (e.g. "examplecorp-fetcher"), not freeform text ("ExampleCorp Fetcher").
+                        This is intended to be used by higher level software that wants to fetch ostree commits via some other mechanism, while still reusing the core libostree infrastructure around e.g. signatures.
+                        </p></dd></dl></div></div><div class="refsect1"><a name="id1340"></a><h2>[sysroot] Section Options</h2><p>
+      Options for the sysroot, which contains the OSTree repository,
+      deployments, and stateroots.  The following entries are defined:
+    </p><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="varname">readonly</code></span></dt><dd><p>A boolean value. If this is set to <code class="literal">true</code>, then the
+        <code class="literal">/sysroot</code> mount point is mounted read-only. This is configured a
+        legacy repository configuration and the equivalent option in <code class="literal">ostree/prepare-root.conf</code>
+        should be used instead - see <a href="ostree-prepare-root.html"><span class="citerefentry"><span class="refentrytitle">ostree-prepare-root</span>(1)</span></a>.
+        </p></dd><dt><span class="term"><code class="varname">bootloader</code></span></dt><dd><p>Configure the bootloader that OSTree uses when
+        deploying the sysroot.  This may take the values
+        <code class="literal">bootloader=none</code>, <code class="literal">bootloader=auto</code>,
+        <code class="literal">bootloader=grub2</code>, <code class="literal">bootloader=syslinux</code>,
+        <code class="literal">bootloader=uboot</code> or <code class="literal">bootloader=zipl</code>.
+        Default is <code class="literal">auto</code>.
+        </p><p>
+          If <code class="literal">none</code>, then OSTree will generate only BLS (Boot
+          Loader Specification) fragments in <code class="literal">sysroot/boot/loader/entries/</code>
+          for the deployment.
+        </p><p>
+          If <code class="literal">auto</code>, then in addition to generating BLS
+          fragments, OSTree will dynamically check for the existence of grub2,
+          uboot, and syslinux bootloaders.  If one of the bootloaders is found,
+          then OSTree will generate a config for the bootloader found.  For
+          example, <code class="literal">grub2-mkconfig</code> is run for the grub2 case.
+        </p><p>
+          A specific bootloader type may also be explicitly requested by choosing
+          <code class="literal">grub2</code>, <code class="literal">syslinux</code>, <code class="literal">uboot</code> or
+          <code class="literal">zipl</code>.
+        </p></dd><dt><span class="term"><code class="varname">bls-append-except-default</code></span></dt><dd><p>A semicolon separated string list of key-value pairs. For example:
+        <code class="literal">bls-append-except-default=key1=value1;key2=value2</code>. These key-value 
+        pairs will be injected into the generated BLS fragments of the non-default deployments.
+        In other words, the BLS fragment of the default deployment will be unaffected by
+        <code class="literal">bls-append-except-default</code>.
+        </p></dd><dt><span class="term"><code class="varname">bootprefix</code></span></dt><dd><p>A boolean value; defaults to false.  If set to true, the bootloader entries
+        generated will include <code class="literal">/boot</code> as a prefix.  This will likely be turned
+        on by default in the future.
+        </p></dd></dl></div></div><div class="refsect1"><a name="id1341"></a><h2>[ex-integrity] Section Options</h2><p>
+      The "ex-" prefix here signifies experimental options.  The <code class="literal">ex-integrity</code> section
+      contains options related to system integrity.  Information about experimental
+      options is canonically found in upstream tracking issues.
+    </p></div><div class="refsect1"><a name="id1342"></a><h2>/etc/ostree/remotes.d</h2><p>
+      In addition to the <code class="filename">/ostree/repo/config</code>
+      file, remotes may also be specified in
+      <code class="filename">/etc/ostree/remotes.d</code>.  The remote
+      configuration file must end in <code class="literal">.conf</code>; files
+      whose name does not end in <code class="literal">.conf</code> will be
+      ignored.
+    </p></div><div class="refsect1"><a name="id1343"></a><h2>Repository url/contenturl</h2><p>
+      Originally, OSTree had just a <code class="literal">url</code> option
+      for remotes.  Since then, the <code class="literal">contenturl</code>
+      option was introduced.  Both of these support 
+      <code class="literal">file</code>, <code class="literal">http</code>, and
+      <code class="literal">https</code> schemes.
+    </p><p>
+      Additionally, both of these can be prefixed with the string
+      <code class="literal">mirrorlist=</code>, which instructs the client
+      that the target url is a "mirrorlist" format, which is
+      a plain text file of newline-separated URLs.  Earlier
+      URLs will be given precedence.
+    </p><p>
+      Note that currently, the <code class="literal">tls-ca-path</code> and
+      <code class="literal">tls-client-cert-path</code> options apply to every HTTP
+      request, even when <code class="literal">contenturl</code> and/or
+      <code class="literal">mirrorlist</code> are in use. This may change in the future to
+      only apply to metadata (i.e. <code class="literal">url</code>, not
+      <code class="literal">contenturl</code>) fetches.
+    </p></div><div class="refsect1"><a name="id1344"></a><h2>Per-remote GPG keyrings and verification</h2><p>
+      OSTree supports a per-remote GPG keyring, as well as a
+      <code class="literal">gpgkeypath</code> option.  For more information see
+      <a href="ostree.html"><span class="citerefentry"><span class="refentrytitle">ostree</span>(1)</span></a>.
+      in the section <code class="literal">GPG verification</code>.
+    </p></div><div class="refsect1"><a name="id1345"></a><h2>Per-remote HTTP cookies</h2><p>
+      Some content providers may want to control access to remote
+      repositories via HTTP cookies.  The <span class="command"><strong>ostree remote
+      add-cookie</strong></span> and <span class="command"><strong>ostree remote
+      delete-cookie</strong></span> commands will update a per-remote
+      lookaside cookie jar, named
+      <code class="filename">$remotename.cookies.txt</code>.
+    </p></div><div class="refsect1"><a name="id1346"></a><h2>See Also</h2><p>
+      <a href="ostree.html"><span class="citerefentry"><span class="refentrytitle">ostree</span>(1)</span></a>, <a href="ostree.repo.html"><span class="citerefentry"><span class="refentrytitle">ostree.repo</span>(5)</span></a>
+    </p></div></div></body></html>

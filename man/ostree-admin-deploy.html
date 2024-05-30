@@ -1,0 +1,42 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree admin deploy</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-admin-deploy &#8212; Checkout a revision as the new default deployment</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree admin deploy</code>  [OPTIONS...] {REFSPEC}</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            Takes a commit or revision REFSPEC, and queues the new deployment as default upon reboot.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--stateroot</code>="STATEROOT"</span></dt><dd><p>
+                    Use a different operating system stateroot than the current one.
+                </p></dd><dt><span class="term"><code class="option">--os</code>="STATEROOT"</span></dt><dd><p>
+                    Alias for <code class="literal">--stateroot</code>.
+                </p></dd><dt><span class="term"><code class="option">--origin-file</code>="FILENAME"</span></dt><dd><p>
+                    Use FILENAME as the origin, which is where OSTree will look for updated versions of the tree.
+                </p></dd><dt><span class="term"><code class="option">--retain</code></span></dt><dd><p>
+                    Do not delete previous deployment.
+                </p></dd><dt><span class="term"><code class="option">--retain-pending</code></span></dt><dd><p>
+                    Do not delete pending deployments.
+                </p></dd><dt><span class="term"><code class="option">--retain-rollback</code></span></dt><dd><p>
+                    Do not delete rollback deployments.
+                </p></dd><dt><span class="term"><code class="option">--not-as-default</code></span></dt><dd><p>
+                    Append rather than prepend new deployment.
+                </p></dd><dt><span class="term"><code class="option">--lock-finalization</code></span></dt><dd><p>
+                    The deployment will not be "finalized" by default on shutdown; to later
+                    queue it, use <code class="literal">ostree admin lock-finalization --unlock</code>.
+                </p></dd><dt><span class="term"><code class="option">--karg-proc-cmdline</code></span></dt><dd><p>
+                    Import current /proc/cmdline.
+                </p></dd><dt><span class="term"><code class="option">--karg</code>="NAME=VALUE"</span></dt><dd><p>
+                    Set kernel argument, like root=/dev/sda1; this overrides any earlier argument with the same name.
+                </p></dd><dt><span class="term"><code class="option">--karg-append</code>="NAME=VALUE"</span></dt><dd><p>
+                    Append kernel argument; useful with e.g. console= that can be used multiple times.
+                </p></dd><dt><span class="term"><code class="option">--karg-delete</code>="NAME=VALUE"</span></dt><dd><p>
+                    Delete kernel argument if exists, can be used multiple times.
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1339"></a><h2>Example</h2><p><span class="command"><strong>$ ostree admin status</strong></span></p><pre class="programlisting">
+        * gnome-ostree 67e382b11d213a402a5313e61cbc69dfd5ab93cb07.0
+            origin refspec: gnome-ostree/buildmain/x86_64-runtime
+          gnome-ostree ce19c41036cc45e49b0cecf6b157523c2105c4de1ce3.0
+            origin refspec: gnome-ostree/buildmain/x86_64-runtime
+</pre><p><span class="command"><strong>$ ostree admin deploy gnome-ostree/buildmain/x86_64-runtime</strong></span></p><pre class="programlisting">
+        ostadmin: Creating deployment /ostree/deploy/gnome-ostree/deploy/7e382b11d213a402a5313e61cbc69dfd5ab93cb07.1
+        ostadmin: Processing /etc: 3 modified, 0 removed, 29 added
+        Transaction complete: bootconfig swap: no deployment count change: 0)
+</pre><p><span class="command"><strong>$ ostree admin status</strong></span></p><pre class="programlisting">
+          gnome-ostree 67e382b11d213a402a5313e61cbc69dfd5ab93cb07.1
+            origin refspec: gnome-ostree/buildmain/x86_64-runtime
+        * gnome-ostree 67e382b11d213a402a5313e61cbc69dfd5ab93cb07.0
+            origin refspec: gnome-ostree/buildmain/x86_64-runtime
+</pre></div></div></body></html>

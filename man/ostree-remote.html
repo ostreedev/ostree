@@ -1,0 +1,60 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree remote</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-remote &#8212; Control remote repository configuration</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree remote add</code>  [OPTIONS...] {NAME} {URL} [BRANCH...]</p></div><div class="cmdsynopsis"><p><code class="command">ostree remote delete</code>  {NAME}</p></div><div class="cmdsynopsis"><p><code class="command">ostree remote show-url</code>  {NAME}</p></div><div class="cmdsynopsis"><p><code class="command">ostree remote list</code>  [OPTIONS...] {NAME}</p></div><div class="cmdsynopsis"><p><code class="command">ostree remote gpg-import</code>  [OPTIONS...] {NAME} [KEY-ID...]</p></div><div class="cmdsynopsis"><p><code class="command">ostree remote gpg-list-keys</code>  {NAME}</p></div><div class="cmdsynopsis"><p><code class="command">ostree remote refs</code>  {NAME}</p></div><div class="cmdsynopsis"><p><code class="command">ostree remote summary</code>  [OPTIONS...] {NAME}</p></div><div class="cmdsynopsis"><p><code class="command">ostree remote add-cookie</code>  {NAME} {DOMAIN} {PATH} {COOKIE_NAME} {VALUE}</p></div><div class="cmdsynopsis"><p><code class="command">ostree remote delete-cookie</code>  {NAME} {DOMAIN} {PATH} {COOKIE_NAME} {VALUE}</p></div><div class="cmdsynopsis"><p><code class="command">ostree remote list-cookies</code>  {NAME}</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            Changes remote repository configurations.  The NAME refers to the name of the remote.
+        </p><p>
+            The <code class="literal">BRANCH</code> arguments to the
+            <span class="command"><strong>add</strong></span> subcommand specifies the configured branches
+            for the remote. See the <code class="literal">branches</code> section in
+            <a href="ostree.repo-config.html"><span class="citerefentry"><span class="refentrytitle">ostree.repo-config</span>(5)</span></a>
+            for more information.
+        </p><p>
+            The <span class="command"><strong>gpg-import</strong></span> subcommand can associate GPG
+            keys to a specific remote repository for use when pulling signed
+            commits from that repository (if GPG verification is enabled). The
+            <span class="command"><strong>gpg-list-keys</strong></span> subcommand can be used to see the
+            GPG keys currently associated with a remote repository.
+        </p><p>
+            The GPG keys to import may be in binary OpenPGP format or ASCII armored.  The optional [KEY-ID] list can restrict which keys are imported from a keyring file or input stream.  All keys are imported if this list is omitted.  If neither <code class="option">--keyring</code> nor <code class="option">--stdin</code> options are given, then keys are imported from the user's personal GPG keyring.
+        </p><p>
+            The various cookie related command allow management of a remote specific cookie jar.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>'Add' Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--set</code>="KEY=VALUE"</span></dt><dd><p>
+                    Set config option KEY=VALUE for remote.
+                </p></dd><dt><span class="term"><code class="option">--if-not-exists</code></span></dt><dd><p>
+                    Do nothing if the provided remote exists.
+                </p></dd><dt><span class="term"><code class="option">--force</code></span></dt><dd><p>
+                    Replace the provided remote if it exists.
+                </p></dd><dt><span class="term"><code class="option">--no-gpg-verify</code></span></dt><dd><p>
+                    Disable GPG verification.
+                </p></dd><dt><span class="term"><code class="option">--gpg-import</code>=FILE</span></dt><dd><p>
+                  Import one or more GPG keys from a file.
+                </p><p>
+                  Equivalent to
+                  <span class="command"><strong>ostree remote gpg-import --keyring=FILE</strong></span>.
+                </p></dd><dt><span class="term"><code class="option">--collection-id</code>=COLLECTION-ID</span></dt><dd><p>
+                  Set the collection ID for the remote to a value provided by
+                  the repository owner, which allows refs from this remote to be
+                  shared peer to peer.
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1339"></a><h2>'List' Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">-u, --show-urls</code></span></dt><dd><p>
+                    Show remote URLs in list
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1340"></a><h2>'Refs' Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--revision</code>, <code class="option">-r</code></span></dt><dd><p>
+                    Also print the revisions for each ref. The revisions will
+                    be separated by a tab character.
+                </p></dd></dl></div><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--cache-dir</code>=DIR</span></dt><dd><p>
+                    Use an alternate cache directory in <code class="literal">DIR</code>.
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1341"></a><h2>'GPG-Import' Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">-k, --keyring</code>=FILE</span></dt><dd><p>
+                    Import one or more keys from a file.
+                </p><p>
+                    This option may be repeated to import from multiple files,
+                    but may not be used in combination with
+                    <code class="option">--stdin</code>.
+                </p></dd><dt><span class="term"><code class="option">--stdin</code></span></dt><dd><p>
+                    Import one or more keys from standard input.
+                </p><p>
+                    This option may not be used in combination with
+                    <code class="option">--keyring</code>.
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1342"></a><h2>'Summary' Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--cache-dir</code>=DIR</span></dt><dd><p>
+                    Use an alternate cache directory in <code class="literal">DIR</code>.
+                </p></dd><dt><span class="term"><code class="option">--raw</code></span></dt><dd><p>
+                    Show raw variant data
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1343"></a><h2>Example</h2><p><span class="command"><strong>$ ostree remote show-url local</strong></span></p><pre class="programlisting">
+        http://192.168.122.1/repo
+</pre></div></div></body></html>

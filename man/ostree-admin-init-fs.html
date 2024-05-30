@@ -1,0 +1,24 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree admin init-fs</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-admin-init-fs &#8212; Initialize a new root filesystem</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree admin init-fs</code>  [OPTIONS...] {PATH}</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            Initialize an empty physical root filesystem in the designated PATH, with normal toplevels and correct permissions for each directory.
+            Primarily useful for operating system installers.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--modern</code></span></dt><dd><p>
+                    Equivalent to <code class="literal">--epoch=1</code>.
+                </p></dd><dt><span class="term"><code class="option">--epoch</code></span></dt><dd><p>
+                    This accepts an integer value in the range [0-1], inclusive.  The default is zero
+                    for compatibility.
+                </p><p>
+                    When set to 1, the command will skip adding a number of toplevel "API filesystems"
+                    such as <code class="literal">/proc</code>
+                    to the toplevel of the physical root.  These should be unnecessary, as they
+                    should only be mounted in the final deployment root.  The main exception
+                    is <code class="literal">/boot</code>, which may need to be mounted in some setups
+                    before the target root.
+                </p><p>
+                    Epoch 2 is the same as 1, except that the toplevel <code class="literal">ostree</code>
+                    directory is mode 0700, denying access from unprivileged code.  This
+                    is a new recommended best practice as it avoids access to old configuration
+                    files in <code class="literal">/etc</code> in previous deployments, as well as
+                    potentially old setuid binaries in <code class="literal">/ostree/repo</code>.
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1339"></a><h2>Example</h2><p><span class="command"><strong>$ mkdir /example</strong></span></p><p><span class="command"><strong>$ ostree admin init-fs --epoch=1 /example</strong></span></p><p><span class="command"><strong>$ ls /example </strong></span></p><p>
+            <span class="emphasis"><em>boot</em></span>  
+        </p></div></div></body></html>

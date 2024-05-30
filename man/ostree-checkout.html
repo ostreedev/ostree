@@ -1,0 +1,50 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree checkout</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-checkout &#8212; Check out a commit into a filesystem</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree checkout</code>  [OPTIONS...] {COMMIT} [DESTINATION]</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            Checks out the given commit into the filesystem under directory DESTINATION.  If DESTINATION is not specified, the COMMIT will become the destination checkout target.  If COMMIT destination already exists, command will error unless <code class="option">--union</code> option is selected.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--user-mode</code>, <code class="option">-U</code></span></dt><dd><p>
+                    Do not change file ownership or initialize extended attributes.
+                </p></dd><dt><span class="term"><code class="option">--subpath</code>="PATH"</span></dt><dd><p>
+                    Checkout sub-directory PATH.
+                </p></dd><dt><span class="term"><code class="option">--union</code></span></dt><dd><p>
+                    Keep existing directories and unchanged files, overwrite existing files.
+                </p></dd><dt><span class="term"><code class="option">--union-add</code></span></dt><dd><p>
+                    Keep existing directories and files.
+                </p></dd><dt><span class="term"><code class="option">--union-identical</code></span></dt><dd><p>Like <code class="literal">--union</code>, but error out
+                if a file would be replaced with a different file. Add new files
+                and directories, ignore identical files, and keep existing
+                directories. Requires <code class="literal">-H</code>.</p></dd><dt><span class="term"><code class="option">--whiteouts</code></span></dt><dd><p>
+                    Process whiteout files (Docker style).
+                </p></dd><dt><span class="term"><code class="option">--process-passthrough-whiteouts</code></span></dt><dd><p>
+                   Enable overlayfs whiteout extraction into 0:0 character devices.
+                   Overlayfs whiteouts are encoded inside ostree as <code class="literal">.ostree-wh.filename</code>
+                   and extracted as 0:0 character devices. This is useful to carry
+                   container storage embedded into ostree.
+                </p></dd><dt><span class="term"><code class="option">--allow-noent</code></span></dt><dd><p>
+                    Do nothing if specified path does not exist.
+                </p></dd><dt><span class="term"><code class="option">--from-stdin</code></span></dt><dd><p>
+                    Process many checkouts from standard input.
+                </p></dd><dt><span class="term"><code class="option">--from-file</code>="FILE"</span></dt><dd><p>
+                    Process many checkouts from input file.
+                </p></dd><dt><span class="term"><code class="option">--fsync</code>="POLICY"</span></dt><dd><p>
+                    POLICY is a boolean which specifies whether fsync should be
+                    used or not. Default to true.
+                </p></dd><dt><span class="term"><code class="option">--require-hardlinks</code>,
+                <code class="option">-H</code></span></dt><dd><p>
+                    Do not fall back to full copies if hardlinking fails.
+                </p></dd><dt><span class="term"><code class="option">--force-copy-zerosized</code>,
+                <code class="option">-z</code></span></dt><dd><p>
+                    This option does nothing; the functionality is now always on by default.
+                </p></dd><dt><span class="term"><code class="option">--force-copy</code>, <code class="option">-C</code></span></dt><dd><p>
+                    Never hardlink (but may reflink if available).
+                </p></dd><dt><span class="term"><code class="option">--bareuseronly-dirs</code>,
+                <code class="option">-M</code></span></dt><dd><p>
+                    Suppress mode bits outside of 0775 for directories (suid,
+                    world writable, etc.).
+                </p></dd><dt><span class="term"><code class="option">--skip-list</code>="FILE"</span></dt><dd><p>
+                    Skip checking out the absolute file paths listed in FILE,
+                    one per line.
+                </p></dd><dt><span class="term"><code class="option">--selinux-policy</code></span></dt><dd><p>
+                    Set SELinux labels based on policy in root filesystem PATH
+                    (may be /). This implies <code class="literal">--force-copy</code>.
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1339"></a><h2>Example</h2><p><span class="command"><strong>$ ostree checkout my-branch</strong></span></p><p><span class="command"><strong>$ ls</strong></span></p><pre class="programlisting">
+        file1    file2    <span class="emphasis"><em>my-branch</em></span>
+</pre></div></div></body></html>

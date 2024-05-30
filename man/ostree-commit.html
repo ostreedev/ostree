@@ -1,0 +1,89 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree commit</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-commit &#8212; Commit a new revision</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree commit</code>  [OPTIONS...] --branch= {BRANCH} [PATH]</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            This allows you to commit changes to a branch.  The specification of the branch is required.  The command will print the checksum of a successful commit.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--subject</code>, <code class="option">-s</code>="SUBJECT"</span></dt><dd><p>
+                    One line subject. (optional)
+                </p></dd><dt><span class="term"><code class="option">--body</code>, <code class="option">-m</code>="BODY"</span></dt><dd><p>
+                    Full description. (optional)
+                </p></dd><dt><span class="term"><code class="option">--body-file</code>, <code class="option">-F</code>="FILE"</span></dt><dd><p>
+                    Full commit description from a file. (optional)
+                </p></dd><dt><span class="term"><code class="option">--editor</code>, <code class="option">-e</code></span></dt><dd><p>
+                    Open a text editor for the commit description.  It will use OSTREE_EDITOR, VISUAL, EDITOR, or vi, in descending order of preference.  The commit will be aborted if the message is left empty.
+                </p></dd><dt><span class="term"><code class="option">--branch</code>, <code class="option">-b</code>="BRANCH"</span></dt><dd><p>
+                    Branch.  Required, unless --orphan is given.
+                </p></dd><dt><span class="term"><code class="option">--parent</code>="COMMIT"</span></dt><dd><p>
+                    Parent checksum or "none" to explicitly use no parent.  If not specified, <code class="literal">BRANCH</code> is used as parent (no parent in case <code class="literal">BRANCH</code> does not exist).
+                </p></dd><dt><span class="term"><code class="option">--tree</code>="dir=PATH" or "tar=TARFILE" or "ref=COMMIT"</span></dt><dd><p>
+                    Overlay the given argument as a tree. When committing an archive, the TARFILE can be specified as <code class="literal">-</code> to read the archive from standard input.
+                </p></dd><dt><span class="term"><code class="option">--base</code>="REV"</span></dt><dd><p>
+                    Start from the content in a commit.  This differs from <code class="literal">--tree=ref=REV</code> in that no commit modifiers are applied.  This is usually what you want when
+                    creating a derived commit.  This is also used for <code class="literal">--selinux-policy-from-base</code>.
+                </p></dd><dt><span class="term"><code class="option">--add-metadata-string</code>="KEY=VALUE"</span></dt><dd><p>
+                    Add a key/value pair to metadata. Can be specified multiple times.
+                </p></dd><dt><span class="term"><code class="option">--add-metadata</code>="KEY=VALUE"</span></dt><dd><p>
+                    Add a key/value pair to metadata, where the KEY is a string, and VALUE is g_variant_parse() formatted. Can be specified multiple times.
+                </p></dd><dt><span class="term"><code class="option">--keep-metadata</code>="KEY"</span></dt><dd><p>
+                    Keep metadata KEY and its associated VALUE from parent. Can be specified multiple times.
+                </p></dd><dt><span class="term"><code class="option">--add-detached-metadata-string</code>="KEY=VALUE"</span></dt><dd><p>
+                    Add a key/value pair to detached metadata.
+                </p></dd><dt><span class="term"><code class="option">--owner-uid</code>="UID"</span></dt><dd><p>
+                    Set file ownership user id.
+                </p></dd><dt><span class="term"><code class="option">--owner-gid</code>="GID"</span></dt><dd><p>
+                    Set file ownership group id.
+                </p></dd><dt><span class="term"><code class="option">--no-xattrs</code></span></dt><dd><p>
+                    Do not import extended attributes.
+                </p></dd><dt><span class="term"><code class="option">--selinux-labeling-epoch</code>0 | 1</span></dt><dd><p>
+                    When SELinux labeling is enabled, epoch <code class="literal">1</code> ensures that <code class="literal">/usr/etc</code> is labeled as if it was <code class="literal">/etc</code>.
+                </p></dd><dt><span class="term"><code class="option">--bootable</code></span></dt><dd><p>
+                    Inject standard metadata for a bootable Linux filesystem tree.
+                </p></dd><dt><span class="term"><code class="option">--link-checkout-speedup</code></span></dt><dd><p>
+                    Optimize for commits of trees composed of hardlinks into the repository.
+                </p></dd><dt><span class="term"><code class="option">--tar-autocreate-parents</code></span></dt><dd><p>
+                    When loading tar archives, automatically create parent directories as needed.
+                </p></dd><dt><span class="term"><code class="option">--skip-if-unchanged</code></span></dt><dd><p>
+                    If the contents are unchanged from previous commit, do nothing.
+                </p></dd><dt><span class="term"><code class="option">--consume</code></span></dt><dd><p>
+                  When committing from a local directory (i.e. not an archive or --tree=ref),
+                  assume ownership of the content.  This may simply involve deleting it,
+                  but if possible, the content may simply be <code class="literal">rename()</code>ed
+                  into the repository rather than creating a new copy.
+                </p></dd><dt><span class="term"><code class="option">--statoverride</code>="PATH"</span></dt><dd><p>
+                    File containing list of modifications to make permissions (file mode in
+                    decimal, followed by space, followed by file path).  The specified mode
+                    is ORed with the file's original mode unless preceded by "=".
+                </p></dd><dt><span class="term"><code class="option">--skip-list</code>="PATH"</span></dt><dd><p>
+                    File containing list of file paths to skip (one path per line).
+                </p></dd><dt><span class="term"><code class="option">--table-output</code></span></dt><dd><p>
+                    Output more information in  a KEY: VALUE format.
+                </p></dd><dt><span class="term"><code class="option">--generate-sizes</code></span></dt><dd><p>
+                    Generate size information along with commit metadata.
+                </p></dd><dt><span class="term"><code class="option">--gpg-sign</code>="KEY-ID"</span></dt><dd><p>
+                    GPG Key ID with which to sign the commit (if have GPGME - GNU Privacy Guard Made Easy).
+                </p></dd><dt><span class="term"><code class="option">--gpg-homedir</code>="HOMEDIR"</span></dt><dd><p>
+                    GPG home directory to use when looking for keyrings (if have GPGME - GNU Privacy Guard Made Easy).
+                </p></dd><dt><span class="term"><code class="option">--timestamp</code>="TIMESTAMP"</span></dt><dd><p>
+                    Override the timestamp of the commit to TIMESTAMP.
+                </p></dd><dt><span class="term"><code class="option">--orphan</code></span></dt><dd><p>
+                    Create a commit without writing to a ref (branch)
+                </p></dd><dt><span class="term"><code class="option">--fsync</code>="POLICY"</span></dt><dd><p>
+                    POLICY is a boolean which specifies whether fsync should be used or not.  Default to true.
+                </p></dd><dt><span class="term"><code class="option">-s, --sign-type</code></span></dt><dd><p>
+                    Use particular signature engine. Currently
+                    available  ed25519  and   dummy 
+                    signature types.
+
+                    The default is   ed25519 .
+                </p></dd><dt><span class="term"><code class="option">--sign-from-file</code>="PATH"</span></dt><dd><p>
+                        This will read a key (corresponding to the provided <code class="literal">--sign-type</code> from the provided path.  The key should be base64 encoded.
+                </p></dd><dt><span class="term"><code class="option">--sign</code>="KEY-ID"</span></dt><dd><p>
+                        In new code, avoid using this because passing private keys via command line arguments
+                        are prone to leakage in logs and process listings.
+                        </p><p>
+                        The <code class="literal">KEY-ID</code> is:
+                        </p><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">for ed25519:</code></span></dt><dd><p>
+                                        <code class="literal">base64</code>-encoded secret key for commit signing.
+                                </p></dd><dt><span class="term"><code class="option">for dummy:</code></span></dt><dd><p>
+                                            ASCII-string used as secret key.
+                                </p></dd></dl></div><p>
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1339"></a><h2>Example</h2><p><span class="command"><strong>$ ostree commit --branch=my-branch --subject="Initial commit"</strong></span></p><pre class="programlisting">
+        67e382b11d213a402a5313e61cbc69dfd5ab93cb07fbb8b71c2e84f79fa5d7dc
+</pre></div></div></body></html>

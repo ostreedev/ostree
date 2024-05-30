@@ -1,0 +1,52 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree summary</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-summary &#8212; Regenerate or view the summary metadata file</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree summary</code>  [--gpg-sign=KEYID] [--gpg-homedir=HOMEDIR] [--sign=KEYID] [--sign-type=ENGINE] {--update} [--add-metadata=<em class="replaceable"><code>KEY</code></em>=<em class="replaceable"><code>VALUE</code></em>...]</p></div><div class="cmdsynopsis"><p><code class="command">ostree summary</code>  { --view  |   --raw }</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+	  The <code class="filename">summary</code> file is an optional higher
+	  level form of repository metadata that describes the
+	  available branches.  It needs to be manually regenerated after
+	  a series of commits.  Among other things, this allows atomically
+	  updating multiple commits.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--update</code>,<code class="option">-u</code></span></dt><dd><p>
+                        Update the summary file. This option can be combined
+                        with <code class="option">--add-metadata</code> to add metadata
+                        fields to the summary.
+                    </p><p>If the repository has a collection ID configured, the
+                  <code class="filename">ostree-metadata</code> branch for that collection ID
+                  will also be updated with a new commit containing the given metadata,
+                  which will be signed if the summary file is signed.</p></dd><dt><span class="term"><code class="option">--add-metadata</code>,<code class="option">-m</code>=KEY=VALUE</span></dt><dd><p>
+                    Specify an additional metadata field to add to the summary.
+                    It must be in the format
+                    <span class="command"><strong><em class="replaceable"><code>KEY</code></em>=<em class="replaceable"><code>VALUE</code></em></strong></span>
+                    or as two separate arguments. The keys must be namespaced
+                    for your organisation or repository using a dot prefix. The
+                    values must be in GVariant text format. For example,
+                    <span class="command"><strong>exampleos.end-of-life "@t 1445385600"</strong></span>.
+                    This option can be used multiple times.
+                </p></dd><dt><span class="term"><code class="option">--view</code>,<code class="option">-v</code></span></dt><dd><p>
+                    View the contents of the summary file in a human readable format.
+                </p></dd><dt><span class="term"><code class="option">--raw</code></span></dt><dd><p>
+                    View the raw bytes of the summary file.
+                </p></dd><dt><span class="term"><code class="option">--gpg-sign</code>=KEYID</span></dt><dd><p>
+                    GPG Key ID to sign the summary with.
+                </p></dd><dt><span class="term"><code class="option">--gpg-homedir</code>=HOMEDIR</span></dt><dd><p>
+                    GPG Homedir to use when looking for keyrings.
+                </p></dd><dt><span class="term"><code class="option">--sign-type</code>=ENGINE</span></dt><dd><p>
+                    Use particular signature engine. Currently
+                    available  ed25519  and   dummy 
+                    signature types.
+
+                    The default is   ed25519 .
+                </p></dd><dt><span class="term"><code class="option">--sign</code>="KEY-ID"</span></dt><dd><p>
+                        There <code class="literal">KEY-ID</code> is:
+                        </p><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">for ed25519:</code></span></dt><dd><p>
+                                        <code class="literal">base64</code>-encoded secret key for commit signing.
+                                </p></dd><dt><span class="term"><code class="option">for dummy:</code></span></dt><dd><p>
+                                            ASCII-string used as secret key.
+                                </p></dd></dl></div><p>
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1339"></a><h2>Examples</h2><p><span class="command"><strong>$ ostree summary -u</strong></span></p><p><span class="command"><strong>$ ostree summary -u -m key="'value'"</strong></span></p><p><span class="command"><strong>$ ostree summary -v</strong></span></p><pre class="programlisting">
+* ostree/1/1/0
+    Latest Commit (4.2 MB):
+      9828ab80f357459b4ab50f0629beab2ae3b67318fc3d161d10a89fae353afa90
+    Timestamp (ostree.commit.timestamp): 2017-11-21T01:41:10-08
+    Version (ostree.commit.version): 1.2.3
+
+Last-Modified (ostree.summary.last-modified): 2018-01-12T22:06:38-08
+</pre></div></div></body></html>

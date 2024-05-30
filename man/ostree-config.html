@@ -1,0 +1,14 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree config</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-config &#8212; Change configuration settings</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree config get</code>  {GROUPNAME.KEYNAME}</p></div><div class="cmdsynopsis"><p><code class="command">ostree config get</code>  { --group=GROUPNAME} { KEYNAME}</p></div><div class="cmdsynopsis"><p><code class="command">ostree config set</code>  {GROUPNAME.KEYNAME} {VALUE}</p></div><div class="cmdsynopsis"><p><code class="command">ostree config set</code>  { --group=GROUPNAME} { KEYNAME} {VALUE}</p></div><div class="cmdsynopsis"><p><code class="command">ostree config unset</code>  {GROUPNAME.KEYNAME}</p></div><div class="cmdsynopsis"><p><code class="command">ostree config unset</code>  { --group=GROUPNAME} { KEYNAME}</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem"><p>
+                <span class="command"><strong>ostree config get</strong></span> displays the value of
+                  KEYNAME  in the group   GROUPNAME 
+            </p></li><li class="listitem"><p>
+                <span class="command"><strong>ostree config set</strong></span> sets the value of
+                  KEYNAME  in the group   GROUPNAME 
+                to   VALUE .
+            </p></li><li class="listitem"><p>
+                <span class="command"><strong>ostree config unset</strong></span> removes the key
+                  KEYNAME  from the group   GROUPNAME 
+                so that OSTree uses the default value for it. It is not an
+                error for the specified   GROUPNAME  or
+                  KEYNAME  not to exist.
+            </p></li></ul></div></div><div class="refsect1"><a name="id1338"></a><h2>Example</h2><p><span class="command"><strong>$ ostree config get core.mode</strong></span></p><p>bare</p><p><span class="command"><strong>$ ostree config set --group='remote "myremote"' url http://example.com/repo</strong></span></p><p><span class="command"><strong>$ ostree config unset core.lock-timeout-secs</strong></span></p></div></div></body></html>

@@ -1,0 +1,31 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>rofiles-fuse</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>rofiles-fuse &#8212; Use FUSE to create a view where directories are writable, files are immutable</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">rofiles-fuse SRCDIR MNTPOINT</code> </p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+	  Creating a checkout from an OSTree repository by default
+	  uses hard links, which means an in-place mutation to any
+	  file corrupts the repository and all checkouts.  This can be
+	  problematic if one wishes to run arbitrary programs against
+	  such a checkout.  For example, RPM <code class="literal">%post</code>
+	  scripts or equivalent.
+	</p><p>
+	  In the case where one wants to create a tree commit derived
+	  from other content, using <span class="command"><strong>rofiles-fuse</strong></span> in
+	  concert with <span class="command"><strong>ostree commit
+	  --link-checkout-speedup</strong></span> (or the underlying API)
+	  can ensure that only new files are checksummed.
+	</p></div><div class="refsect1"><a name="id1338"></a><h2>Example: Update an OSTree commit</h2><pre class="programlisting">
+# Initialize a checkout and mount
+$ ostree --repo=repo checkout somebranch branch-checkout
+$ mkdir mnt
+$ rofiles-fuse branch-checkout mnt
+
+# Now, arbitrary changes to mnt/ are reflected in branch-checkout
+$ echo somenewcontent &gt; mnt/anewfile
+$ mkdir mnt/anewdir
+$ rm mnt/someoriginalcontent -rf
+
+# Commit and cleanup
+$ fusermount -u mnt
+$ ostree --repo=repo commit --link-checkout-speedup -b somebranch -s 'Commit new content' --tree=dir=branch-checkout
+$ rm mnt branch-checkout -rf
+	</pre></div><div class="refsect1"><a name="id1339"></a><h2>See Also</h2><p>
+            <a href="ostree.html"><span class="citerefentry"><span class="refentrytitle">ostree</span>(1)</span></a>
+        </p></div></div></body></html>

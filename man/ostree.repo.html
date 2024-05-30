@@ -1,0 +1,30 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree.repo</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree.repo"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree.repo &#8212; OSTree repository configuration and layout</p></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+		  An OSTree repository is structurally similar to a
+		  git repository; it is a content-addressed object
+		  store containing filesystem trees.  However, unlike
+		  git, ostree is designed to store operating system
+		  binaries.  It records the Unix uid and gid,
+		  permissions, as well as extended attributes.
+		</p><p>
+		  A repository can be in one of three modes;
+		  <code class="literal">bare</code>, which is designed as a hard
+		  link source for operating system checkouts,
+		  <code class="literal">bare-user</code>, which is like
+		  <code class="literal">bare</code> but works on systems that
+		  run as non-root as well as non-root containers, and
+		  <code class="literal">archive-z2</code>, which is designed for
+		  static HTTP servers.
+		</p><p>
+		  There is a system repository located at
+		  <code class="filename">/ostree/repo</code>.  If no repository
+		  is specified -- either by a command-line option or the
+		  <code class="envar">OSTREE_REPO</code> environment variable --
+		  the <span class="command"><strong>ostree</strong></span> as well as many API
+		  calls will use it by default.
+		</p></div><div class="refsect1"><a name="id1338"></a><h2>Components of a repository</h2><p>
+		  The only user-editable component is the
+		  <code class="filename">config</code> file.  For more
+		  information, see <a href="ostree.repo-config.html"><span class="citerefentry"><span class="refentrytitle">ostree.repo-config</span>(5)</span></a>.
+		</p></div><div class="refsect1"><a name="id1339"></a><h2>See Also</h2><p>
+                        <a href="ostree.html"><span class="citerefentry"><span class="refentrytitle">ostree</span>(1)</span></a>, <a href="ostree.repo-config.html"><span class="citerefentry"><span class="refentrytitle">ostree.repo-config</span>(1)</span></a>
+		</p></div></div></body></html>

@@ -1,0 +1,25 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree admin status</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-admin-status &#8212; List deployments</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree admin status</code> </p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            Lists the deployments available to be booted into.  Includes osname, the checksum followed by the deploy serial, and the refspec.  An asterisk indicates the current booted deployment.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--sysroot</code>="PATH"</span></dt><dd><p>
+                    Create a new OSTree sysroot at PATH
+                </p></dd><dt><span class="term"><code class="option">-V, --verify</code></span></dt><dd><p>
+                    Print the commit verification status
+                </p></dd><dt><span class="term"><code class="option">-S, --skip-signatures</code></span></dt><dd><p>
+                    Skip signatures in output
+                </p></dd><dt><span class="term"><code class="option">-D, --is-default</code></span></dt><dd><p>
+                    Output the string <code class="literal">default</code> if the default deployment
+                    is the booted one, <code class="literal">not-default</code> if we are booted in
+                    a non-default deployment (e.g. the user interactively chose a
+                    different entry in the bootloader menu, or the bootloader rolled back
+                    automatically, etc.). If we are not in a booted OSTree system, an
+                    error is returned.
+                </p></dd><dt><span class="term"><code class="option">-v, --verbose</code></span></dt><dd><p>
+                    Print debug information during command processing
+                </p></dd><dt><span class="term"><code class="option">--version</code></span></dt><dd><p>
+                    Print version information and exit
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1339"></a><h2>Example</h2><p><span class="command"><strong>$ ostree admin status</strong></span></p><pre class="programlisting">
+        * gnome-ostree 67e382b11d213a402a5313e61cbc69dfd5ab93cb07.0
+            origin refspec: gnome-ostree/buildmain/x86_64-runtime
+          gnome-ostree ce19c41036cc45e49b0cecf6b157523c2105c4de1c.0
+            origin refspec: gnome-ostree/buildmain/x86_64-runtime
+</pre></div></div></body></html>

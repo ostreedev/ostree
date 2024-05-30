@@ -1,0 +1,9 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree admin stateroot-init</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-admin-stateroot-init &#8212; Initialize empty state for a given operating system</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree admin stateroot-init</code>  {STATEROOT}</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            Initializes an new stateroot (AKA "osname") for an operating system.
+            Ensures that the core subdirectories of /var (/tmp, /lib, /run, and
+            /lock) exist and initialize the given STATEROOT as OSTree stateroot.
+            Each deployment location is comprised of a single shared
+            <code class="filename">var</code> and a set of deployments (chroots).
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Example</h2><p><span class="command"><strong>$ ostree admin stateroot-init exampleos</strong></span></p><pre class="programlisting">
+        ostree/deploy/exampleos initialized as OSTree stateroot
+    </pre></div></div></body></html>

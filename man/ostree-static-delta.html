@@ -1,0 +1,68 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree static-delta</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-static-delta &#8212; Manage static delta files</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree static-delta list</code> </p></div><div class="cmdsynopsis"><p><code class="command">ostree static-delta show</code> </p></div><div class="cmdsynopsis"><p><code class="command">ostree static-delta delete</code> </p></div><div class="cmdsynopsis"><p><code class="command">ostree static-delta generate</code>  {--to=REV} [OPTIONS...]</p></div><div class="cmdsynopsis"><p><code class="command">ostree static-delta apply-offline</code>  [OPTIONS...] {PATH} [KEY-ID...]</p></div><div class="cmdsynopsis"><p><code class="command">ostree static-delta verify</code>  [OPTIONS...] {STATIC-DELTA} [KEY-ID...]</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+            List and manipulate static delta files.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>'Generate' Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--from</code>="REV"</span></dt><dd><p>
+                    Create delta from revision REV.
+                </p></dd><dt><span class="term"><code class="option">--to</code>="REV"</span></dt><dd><p>
+                    Create delta to revision REV.  (This option is required.)
+                    The delta is from the parent of REV, unless specified otherwise by <code class="option">--from</code>
+                    or <code class="option">--empty</code>.
+                </p></dd><dt><span class="term"><code class="option">--empty</code></span></dt><dd><p>
+                    Create delta from scratch.
+                </p></dd><dt><span class="term"><code class="option">--max-usize</code>=SIZE</span></dt><dd><p>
+                    Maximum uncompressed size in megabytes.
+                </p></dd><dt><span class="term"><code class="option">--sign-type</code>=ENGINE</span></dt><dd><p>
+                    Use particular signature engine. Currently
+                    available  ed25519  and   dummy 
+                    signature types.
+
+                    The default is   ed25519 .
+                </p></dd><dt><span class="term"><code class="option">--sign</code>="KEY-ID"</span></dt><dd><p>
+                        There <code class="literal">KEY-ID</code> is:
+                        </p><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">for ed25519:</code></span></dt><dd><p>
+                                        <code class="literal">base64</code>-encoded secret key for signing.
+                                </p></dd><dt><span class="term"><code class="option">for dummy:</code></span></dt><dd><p>
+                                            ASCII-string used as secret key.
+                                </p></dd></dl></div><p>
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1339"></a><h2>'Apply-offline' Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">KEY-ID</code></span></dt><dd><p>
+                        </p><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">for ed25519:</code></span></dt><dd><p>
+                                        <code class="literal">base64</code>-encoded public key for verifying.
+                                </p></dd><dt><span class="term"><code class="option">for dummy:</code></span></dt><dd><p>
+                                            ASCII-string used as public key.
+                                </p></dd></dl></div><p>
+                    </p></dd><dt><span class="term"><code class="option">--sign-type</code>=ENGINE</span></dt><dd><p>
+                        Use particular signature engine. Currently
+                        available  ed25519  and   dummy 
+                        signature types.
+                    </p></dd><dt><span class="term"><code class="option">--keys-file</code></span></dt><dd><p>
+                         Read key(s) from file <code class="filename">filename</code>.
+                     </p><p>
+                         Valid for <code class="literal">ed25519</code> signature type.
+                         For <code class="literal">ed25519</code> this file must contain <code class="literal">base64</code>-encoded
+                         public key(s) per line for verifying.
+                     </p></dd><dt><span class="term"><code class="option">--keys-dir</code></span></dt><dd><p>
+                         Redefine the system path, where to search files and subdirectories with
+                         well-known and revoked keys.
+                     </p></dd></dl></div></div><div class="refsect1"><a name="id1340"></a><h2>'Verify' Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">KEY-ID</code></span></dt><dd><p>
+                    </p><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">for ed25519:</code></span></dt><dd><p>
+                                    <code class="literal">base64</code>-encoded public key for verifying.
+                            </p></dd><dt><span class="term"><code class="option">for dummy:</code></span></dt><dd><p>
+                                        ASCII-string used as public key.
+                            </p></dd></dl></div><p>
+                </p></dd><dt><span class="term"><code class="option">--sign-type</code>=ENGINE</span></dt><dd><p>
+                    Use particular signature engine. Currently
+                    available  ed25519  and   dummy 
+                    signature types.
+
+                    The default is   ed25519 .
+                </p></dd><dt><span class="term"><code class="option">--keys-file</code></span></dt><dd><p>
+                     Read key(s) from file <code class="filename">filename</code>.
+                 </p><p>
+                     Valid for <code class="literal">ed25519</code> signature type.
+                     For <code class="literal">ed25519</code> this file must contain <code class="literal">base64</code>-encoded
+                     public key(s) per line for verifying.
+                 </p></dd><dt><span class="term"><code class="option">--keys-dir</code></span></dt><dd><p>
+                     Redefine the system path, where to search files and subdirectories with
+                     well-known and revoked keys.
+                 </p></dd></dl></div></div><div class="refsect1"><a name="id1341"></a><h2>Example</h2><p><span class="command"><strong>$ ostree static-delta</strong></span></p><pre class="programlisting">
+        (No static deltas)
+</pre></div></div></body></html>

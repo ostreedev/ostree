@@ -1,0 +1,397 @@
+
+
+<!DOCTYPE html>
+
+<html lang="en-US">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+
+  <link rel="stylesheet" href="/ostree/assets/css/just-the-docs-default.css">
+
+  
+
+  
+    <script src="/ostree/assets/js/vendor/lunr.min.js"></script>
+  
+
+  
+
+  <script src="/ostree/assets/js/just-the-docs.js"></script>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  
+
+  <!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Using Linux IMA with OSTree | ostreedev/ostree</title>
+<meta name="generator" content="Jekyll v3.9.5" />
+<meta property="og:title" content="Using Linux IMA with OSTree" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="ostree documentation" />
+<meta property="og:description" content="ostree documentation" />
+<link rel="canonical" href="https://ostreedev.github.io/ostree/ima/" />
+<meta property="og:url" content="https://ostreedev.github.io/ostree/ima/" />
+<meta property="og:site_name" content="ostreedev/ostree" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Using Linux IMA with OSTree" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebPage","description":"ostree documentation","headline":"Using Linux IMA with OSTree","url":"https://ostreedev.github.io/ostree/ima/"}</script>
+<!-- End Jekyll SEO tag -->
+
+
+  
+
+</head>
+
+<body>
+  <a class="skip-to-main" href="#main-content">Skip to main content</a>
+  <svg xmlns="http://www.w3.org/2000/svg" class="d-none">
+  <symbol id="svg-link" viewBox="0 0 24 24">
+  <title>Link</title>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-link">
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+  </svg>
+</symbol>
+
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+  <title>Menu</title>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-menu">
+    <line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>
+  </svg>
+</symbol>
+
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+  <title>Expand</title>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right">
+    <polyline points="9 18 15 12 9 6"></polyline>
+  </svg>
+</symbol>
+
+  <!-- Feather. MIT License: https://github.com/feathericons/feather/blob/master/LICENSE -->
+<symbol id="svg-external-link" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-external-link">
+  <title id="svg-external-link-title">(external link)</title>
+  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line>
+</symbol>
+
+  
+    <symbol id="svg-doc" viewBox="0 0 24 24">
+  <title>Document</title>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file">
+    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline>
+  </svg>
+</symbol>
+
+    <symbol id="svg-search" viewBox="0 0 24 24">
+  <title>Search</title>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-search">
+    <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+  </svg>
+</symbol>
+
+  
+  
+    <!-- Bootstrap Icons. MIT License: https://github.com/twbs/icons/blob/main/LICENSE.md -->
+<symbol id="svg-copy" viewBox="0 0 16 16">
+  <title>Copy</title>
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clipboard" viewBox="0 0 16 16">
+    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+    <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+  </svg>
+</symbol>
+<symbol id="svg-copied" viewBox="0 0 16 16">
+  <title>Copied</title>
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clipboard-check-fill" viewBox="0 0 16 16">
+    <path d="M6.5 0A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3Zm3 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3Z"/>
+    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1A2.5 2.5 0 0 1 9.5 5h-3A2.5 2.5 0 0 1 4 2.5v-1Zm6.854 7.354-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 0 1 .708-.708L7.5 10.793l2.646-2.647a.5.5 0 0 1 .708.708Z"/>
+  </svg>
+</symbol>
+
+  
+</svg>
+
+  <div class="side-bar">
+  <div class="site-header">
+    <a href="/ostree/" class="site-title lh-tight">
+  ostreedev/ostree
+
+</a>
+    <a href="#" id="menu-button" class="site-button">
+      <svg viewBox="0 0 24 24" class="icon"><use xlink:href="#svg-menu"></use></svg>
+    </a>
+  </div>
+  <nav aria-label="Main" id="site-nav" class="site-nav">
+    
+    
+      <ul class="nav-list"><li class="nav-list-item"><a href="/ostree/" class="nav-list-link">libostree</a></li><li class="nav-list-item"><a href="/ostree/introduction/" class="nav-list-link">OSTree Overview</a></li><li class="nav-list-item"><a href="/ostree/repo/" class="nav-list-link">Anatomy of an OSTree repository</a></li><li class="nav-list-item"><a href="/ostree/deployment/" class="nav-list-link">Deployments</a></li><li class="nav-list-item"><a href="/ostree/atomic-upgrades/" class="nav-list-link">Atomic Upgrades</a></li><li class="nav-list-item"><a href="/ostree/atomic-rollbacks/" class="nav-list-link">Atomic Rollbacks</a></li><li class="nav-list-item"><a href="/ostree/adapting-existing/" class="nav-list-link">Adapting existing mainstream distributions</a></li><li class="nav-list-item"><a href="/ostree/var/" class="nav-list-link">OSTree and /var handling</a></li><li class="nav-list-item"><a href="/ostree/formats/" class="nav-list-link">OSTree data formats</a></li><li class="nav-list-item"><a href="/ostree/buildsystem-and-repos/" class="nav-list-link">Writing a buildsystem and managing repositories</a></li><li class="nav-list-item"><a href="/ostree/authenticated-repos/" class="nav-list-link">Handling access to authenticated remote repositories</a></li><li class="nav-list-item"><a href="/ostree/repository-management/" class="nav-list-link">Managing content in OSTree repositories</a></li><li class="nav-list-item"><a href="/ostree/copying-deltas/" class="nav-list-link">Static deltas for offline updates</a></li><li class="nav-list-item active"><a href="/ostree/ima/" class="nav-list-link active">Using Linux IMA with OSTree</a></li><li class="nav-list-item"><a href="/ostree/related-projects/" class="nav-list-link">Related Projects</a></li><li class="nav-list-item"><a href="/ostree/composefs/" class="nav-list-link">Using composefs with OSTree</a></li><li class="nav-list-item"><a href="/ostree/bootloaders/" class="nav-list-link">Bootloaders</a></li><li class="nav-list-item"><a href="/ostree/CONTRIBUTING/" class="nav-list-link">Contributing</a></li><li class="nav-list-item"><a href="/ostree/contributing-tutorial/" class="nav-list-link">OSTree Contributing Tutorial</a></li><li class="nav-list-item"><a href="/ostree/README-historical/" class="nav-list-link">Historical OSTree README</a></li></ul>
+    
+  </nav>
+
+  
+  
+    <footer class="site-footer">
+      This site uses <a href="https://github.com/just-the-docs/just-the-docs">Just the Docs</a>, a documentation theme for Jekyll.
+    </footer>
+  
+</div>
+
+  <div class="main" id="top">
+    <div id="main-header" class="main-header">
+  
+    
+
+<div class="search">
+  <div class="search-input-wrap">
+    <input type="text" id="search-input" class="search-input" tabindex="0" placeholder="Search ostreedev/ostree" aria-label="Search ostreedev/ostree" autocomplete="off">
+    <label for="search-input" class="search-label"><svg viewBox="0 0 24 24" class="search-icon"><use xlink:href="#svg-search"></use></svg></label>
+  </div>
+  <div id="search-results" class="search-results"></div>
+</div>
+
+  
+  
+  
+    <nav aria-label="Auxiliary" class="aux-nav">
+  <ul class="aux-nav-list">
+    
+      <li class="aux-nav-list-item">
+        <a href="https://github.com/ostreedev/ostree" class="site-button"
+          
+        >
+          OSTree on GitHub
+        </a>
+      </li>
+    
+  </ul>
+</nav>
+
+  
+</div>
+
+    <div id="main-content-wrap" class="main-content-wrap">
+      
+  
+
+
+      <div id="main-content" class="main-content" role="main">
+        
+          <h1 class="no_toc" id="using-linux-ima-with-ostree">
+  
+  
+    <a href="#using-linux-ima-with-ostree" class="anchor-heading" aria-labelledby="using-linux-ima-with-ostree"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Using Linux IMA with OSTree
+  
+  
+</h1>
+    
+
+<ol id="markdown-toc">
+  <li><a href="#linux-ima" id="markdown-toc-linux-ima">Linux IMA</a></li>
+  <li><a href="#ima-signatures-and-ostree-checksum" id="markdown-toc-ima-signatures-and-ostree-checksum">IMA signatures and OSTree checksum</a></li>
+  <li><a href="#signing" id="markdown-toc-signing">Signing</a>    <ol>
+      <li><a href="#generating-a-key" id="markdown-toc-generating-a-key">Generating a key</a></li>
+      <li><a href="#signing-a-commit" id="markdown-toc-signing-a-commit">Signing a commit</a></li>
+      <li><a href="#applying-a-policy" id="markdown-toc-applying-a-policy">Applying a policy</a></li>
+      <li><a href="#linux-evm" id="markdown-toc-linux-evm">Linux EVM</a></li>
+    </ol>
+  </li>
+  <li><a href="#further-references" id="markdown-toc-further-references">Further references</a></li>
+</ol>
+
+<!-- SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later) -->
+<h2 id="linux-ima">
+  
+  
+    <a href="#linux-ima" class="anchor-heading" aria-labelledby="linux-ima"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Linux IMA
+  
+  
+</h2>
+    
+
+<p>The <a href="https://sourceforge.net/p/linux-ima/wiki/Home/">Linux Integrity Measurement Architecture</a>
+provides a mechanism to cryptographically sign the digest of a regular
+file, and policies can be applied to e.g. require that code executed
+by the root user have a valid signed digest.</p>
+
+<p>The alignment between Linux IMA and ostree is quite strong.  OSTree
+provides a content-addressable object store, where files are intended
+to be immutable.  This is implemented with a basic read-only bind mount.</p>
+
+<p>While IMA does not actually prevent mutating files, any changed (or unsigned)
+files would (depending on policy) not be readable or executable.</p>
+<h2 id="ima-signatures-and-ostree-checksum">
+  
+  
+    <a href="#ima-signatures-and-ostree-checksum" class="anchor-heading" aria-labelledby="ima-signatures-and-ostree-checksum"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> IMA signatures and OSTree checksum
+  
+  
+</h2>
+    
+
+<p>Mechanically, IMA signatures appear as a <code class="language-plaintext highlighter-rouge">security.ima</code> extended attribute
+on the file.   This is a signed digest of just the file content (and not
+any metadata)</p>
+
+<p>OSTree’s checksums in contrast include not just the file content, but also 
+metadata such as uid, gid and mode and extended attributes;</p>
+
+<p>Together, this means that adding an IMA signature to a file in the OSTree
+model appears as a new object (with a new digest).  A nice property is that
+this enables the transactional addition (or removal) of IMA signatures.
+However, adding IMA signatures to files that were previously unsigned
+also today duplicates disk space.</p>
+<h2 id="signing">
+  
+  
+    <a href="#signing" class="anchor-heading" aria-labelledby="signing"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Signing
+  
+  
+</h2>
+    
+
+<p>To apply IMA signatures to an OSTree commit, there is an <code class="language-plaintext highlighter-rouge">ima-sign</code>
+command implemented currently in the <a href="https://github.com/ostreedev/ostree-rs-ext/">ostree-rs-ext</a>
+project.</p>
+<h3 id="generating-a-key">
+  
+  
+    <a href="#generating-a-key" class="anchor-heading" aria-labelledby="generating-a-key"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Generating a key
+  
+  
+</h3>
+    
+
+<p>There is documentation for this in <code class="language-plaintext highlighter-rouge">man evmctl</code> and the upstream IMA
+page; we will not replicate it here.</p>
+<h3 id="signing-a-commit">
+  
+  
+    <a href="#signing-a-commit" class="anchor-heading" aria-labelledby="signing-a-commit"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Signing a commit
+  
+  
+</h3>
+    
+
+<p><code class="language-plaintext highlighter-rouge">ima-sign</code> requires 4 things:</p>
+
+<ul>
+  <li>An OSTree repository (could be any mode; <code class="language-plaintext highlighter-rouge">archive</code> or e.g. <code class="language-plaintext highlighter-rouge">bare-user</code>)</li>
+  <li>A ref or commit digest (e.g. <code class="language-plaintext highlighter-rouge">exampleos/x86_64/stable</code>)</li>
+  <li>A digest algorithm (usually <code class="language-plaintext highlighter-rouge">sha256</code>, but you may use e.g. <code class="language-plaintext highlighter-rouge">sha512</code> as well)</li>
+  <li>An RSA private key</li>
+</ul>
+
+<p>You can then add IMA signatures to all regular files in the commit:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ ostree-ext-cli ima-sign --repo=repo exampleos/x86_64/stable sha256 /path/to/key.pem
+</code></pre></div></div>
+
+<p>Many different choices are possible for the signing model.  For example,
+your build system could store individual components/packages in their own
+ostree refs, and sign them at build time.  This would avoid re-signing
+all binaries when creating production builds.  Although note you
+still likely want to sign generated artifacts from unioning individual
+components, such as a dpkg/rpm database or equivalent and cache files
+such as the <code class="language-plaintext highlighter-rouge">ldconfig</code> and GTK+ icon caches, etc.</p>
+<h3 id="applying-a-policy">
+  
+  
+    <a href="#applying-a-policy" class="anchor-heading" aria-labelledby="applying-a-policy"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Applying a policy
+  
+  
+</h3>
+    
+
+<p>Signing a commit by itself will have little to no effect.  You will also
+need to include in your builds an <a href="https://sourceforge.net/p/linux-ima/wiki/Home/#defining-an-lsm-specific-policy">IMA policy</a>.</p>
+<h3 id="linux-evm">
+  
+  
+    <a href="#linux-evm" class="anchor-heading" aria-labelledby="linux-evm"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Linux EVM
+  
+  
+</h3>
+    
+
+<p>The EVM subsystem builds on IMA, and adds another signature which 
+covers most file data, such as the uid, gid and mode and selected
+security-relevant extended attributes.</p>
+
+<p>This is quite close to the ostree native checksum - the ordering
+of the fields is different so the checksums are physically different, but
+logically they are very close.</p>
+
+<p>However, the focus of the EVM design seems to mostly
+be on machine-specific signatures with keys stored in a TPM.
+Note that doing this on a per-machine basis would add a new
+<code class="language-plaintext highlighter-rouge">security.evm</code> extended attribute, and crucially that
+<em>changes the ostree digest</em> - so from ostree’s perspective,
+these objects will appear corrupt.</p>
+
+<p>In the future, ostree may learn to ignore the presence of <code class="language-plaintext highlighter-rouge">security.evm</code>
+extended attributes.</p>
+
+<p>There is also some support for “portable” EVM signatures - by
+default, EVM signatures also include the inode number and generation
+which are inherently machine-specific.</p>
+
+<p>A future ostree enhancement may instead also focus on supporting
+signing commits with these “portable” EVM signatures in addition to IMA.</p>
+<h2 id="further-references">
+  
+  
+    <a href="#further-references" class="anchor-heading" aria-labelledby="further-references"><svg viewBox="0 0 16 16" aria-hidden="true"><use xlink:href="#svg-link"></use></svg></a> Further references
+  
+  
+</h2>
+    
+
+<ul>
+  <li>https://sourceforge.net/p/linux-ima/wiki/Home/</li>
+  <li>https://en.opensuse.org/SDB:Ima_evm</li>
+  <li>https://wiki.gentoo.org/wiki/Integrity_Measurement_Architecture</li>
+  <li>https://fedoraproject.org/wiki/Changes/Signed_RPM_Contents</li>
+  <li>https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/enhancing-security-with-the-kernel-integrity-subsystem_managing-monitoring-and-updating-the-kernel</li>
+</ul>
+
+        
+
+        
+
+        
+
+  <hr>
+  <footer>
+    
+
+    <p class="text-small text-grey-dk-100 mb-0">Copyright &copy; <a href="https://www.redhat.com">Red Hat, Inc.</a> and <a href="https://github.com/ostreedev">others</a>.</p>
+
+    
+      <div class="d-flex mt-2">
+        
+        
+          <p class="text-small text-grey-dk-000 mb-0">
+            <a href="https://github.com/ostreedev/ostree/tree/main/docs/ima.md" id="edit-this-page">Edit this page on GitHub</a>
+          </p>
+        
+      </div>
+    
+  </footer>
+
+
+
+      </div>
+    </div>
+    
+      
+
+<div class="search-overlay"></div>
+
+    
+  </div>
+
+  
+</body>
+</html>
+

@@ -1,0 +1,17 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1"><title>ostree diff</title><meta name="generator" content="DocBook XSL Stylesheets Vsnapshot"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="refentry"><a name="ostree"></a><div class="titlepage"></div><div class="refnamediv"><h2>Name</h2><p>ostree-diff &#8212; Compare a directory against a revision</p></div><div class="refsynopsisdiv"><h2>Synopsis</h2><div class="cmdsynopsis"><p><code class="command">ostree diff</code>  [OPTIONS...] {REV_OR_DIR} {REV_OR_DIR}</p></div></div><div class="refsect1"><a name="id1337"></a><h2>Description</h2><p>
+          Compare a directory or revision against another directory or revision. If REV_OR_DIR starts with `/` or `./`, it is interpreted as a directory, otherwise a revision. Shows files and directories modified, added, and deleted.  If there is a file in the second REV_OR_DIR not in the first, it will show with an "A" for "added".  If a file in the first REV_OR_DIR is not in the second, it shows "D" for "deleted".  "M" for "modified" will also show.
+        </p></div><div class="refsect1"><a name="id1338"></a><h2>Options</h2><div class="variablelist"><dl class="variablelist"><dt><span class="term"><code class="option">--stats</code></span></dt><dd><p>
+                    Print various statistics.
+                </p></dd><dt><span class="term"><code class="option">--fs-diff</code></span></dt><dd><p>
+                    Print filesystem diff.
+                </p></dd><dt><span class="term"><code class="option">--owner-uid</code></span></dt><dd><p>
+                    Use file ownership user id for local files.
+                </p></dd><dt><span class="term"><code class="option">--owner-gid</code></span></dt><dd><p>
+                    Use file ownership group id for local files.
+                </p></dd></dl></div></div><div class="refsect1"><a name="id1339"></a><h2>Example</h2><p><span class="command"><strong>$ ostree diff my-branch^ my-branch</strong></span></p><pre class="programlisting">
+        A   /testdirectory
+        M   /helloworld.txt
+</pre><p><span class="command"><strong>$ ostree diff my-branch my-branch^</strong></span></p><pre class="programlisting">
+        D   /testdirectory
+        M   /helloworld.txt
+</pre></div></div></body></html>
