@@ -1,4 +1,5 @@
 FROM quay.io/centos/centos:stream9 as build
+COPY ci/c9s-buildroot.repo /etc/yum.repos.d
 RUN dnf -y install dnf-utils zstd && dnf config-manager --enable crb && dnf builddep -y ostree
 COPY . /build
 WORKDIR /build

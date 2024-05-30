@@ -1,0 +1,7 @@
+[buildroot]
+name=CentOS Stream $releasever - Koji Local - BUILDROOT ONLY!
+baseurl=https://kojihub.stream.centos.org/kojifiles/repos/c9s-build/latest/$basearch/
+cost=2000
+enabled=1
+skip_if_unavailable=False
+gpgcheck=0
