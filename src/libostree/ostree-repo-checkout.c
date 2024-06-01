@@ -1123,7 +1123,7 @@ checkout_tree_at_recurse (OstreeRepo *self, OstreeRepoCheckoutAtOptions *options
   if (!did_exist && xattrs)
     {
       if (!glnx_fd_set_all_xattrs (destination_dfd, xattrs, cancellable, error))
-        return FALSE;
+        return glnx_prefix_error (error, "Processing dirmeta %s", dirmeta_checksum);
     }
 
   /* Process files in this subdir */
