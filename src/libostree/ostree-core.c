@@ -2277,6 +2277,27 @@ ostree_validate_structureof_file_mode (guint32 mode, GError **error)
   return TRUE;
 }
 
+/* Currently ostree imposes no restrictions on xattrs on its own;
+ * they can e.g. be arbitrariliy sized or in number.
+ * However, we do validate the key is non-empty, as that is known
+ * to always fail.
+ */
+gboolean
+_ostree_validate_structureof_xattrs (GVariant *xattrs, GError **error)
+{
+  const guint n = g_variant_n_children (xattrs);
+  for (guint i = 0; i < n; i++)
+    {
+      const guint8 *name;
+      g_autoptr (GVariant) value = NULL;
+      g_variant_get_child (xattrs, i, "(^&ay@ay)", &name, &value);
+      if (!*name)
+        return glnx_throw (error, "Invalid xattr name (empty or missing NUL) index=%d", i);
+      i++;
+    }
+  return TRUE;
+}
+
 /**
  * ostree_validate_structureof_dirmeta:
  * @dirmeta: A dirmeta object, %OSTREE_OBJECT_TYPE_DIR_META
@@ -2301,6 +2322,10 @@ ostree_validate_structureof_dirmeta (GVariant *dirmeta, GError **error)
     return glnx_throw (error, "Invalid directory metadata mode %u; not a directory", mode);
 
   if (!validate_stat_mode_perms (mode, error))
+    return FALSE;
+
+  g_autoptr (GVariant) xattrs = g_variant_get_child_value (dirmeta, 3);
+  if (!_ostree_validate_structureof_xattrs (xattrs, error))
     return FALSE;
 
   return TRUE;

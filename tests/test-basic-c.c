@@ -513,6 +513,23 @@ test_read_xattrs (void)
   }
 }
 
+static void
+test_dirmeta_xattrs (void)
+{
+  g_autoptr (GError) local_error = NULL;
+  GError **error = &local_error;
+  const guint32 uidgid = GUINT32_TO_BE (42);
+  const guint32 mode = GUINT32_TO_BE (S_IFDIR | S_IRWXU);
+  g_autoptr (GVariantBuilder) xattr_builder = g_variant_builder_new (G_VARIANT_TYPE ("a(ayay)"));
+  const char *data = "data";
+  g_variant_builder_add (xattr_builder, "(@ay@ay)", g_variant_new_bytestring (""),
+                         g_variant_new_bytestring (data));
+  g_autoptr (GVariant) dirmeta = g_variant_new ("(uuu@a(ayay))", uidgid, uidgid, mode,
+                                                g_variant_builder_end (xattr_builder));
+  g_assert (!ostree_validate_structureof_dirmeta (dirmeta, error));
+  g_assert_error (local_error, G_IO_ERROR, G_IO_ERROR_FAILED);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -533,6 +550,7 @@ main (int argc, char **argv)
   g_test_add_func ("/remotename", test_validate_remotename);
   g_test_add_func ("/big-metadata", test_big_metadata);
   g_test_add_func ("/read-xattrs", test_read_xattrs);
+  g_test_add_func ("/dirmeta-xattrs", test_dirmeta_xattrs);
 
   return g_test_run ();
 out:
