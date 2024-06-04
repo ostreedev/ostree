@@ -46,7 +46,7 @@ gir-files:
 	mkdir -p gir-files
 
 %.gir:
-	curl -o $@ -L https://github.com/gtk-rs/gir-files/raw/master/${@F}
+	curl -o $@ -L https://github.com/gtk-rs/gir-files/raw/0.18/${@F}
 
 gir-files/OSTree-1.0.gir:
 	ln -sfr ../OSTree-1.0.gir $@
