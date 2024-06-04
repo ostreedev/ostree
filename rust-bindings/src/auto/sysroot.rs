@@ -60,6 +60,18 @@ impl Sysroot {
         }
     }
 
+    #[cfg(any(feature = "v2023_8", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2023_8")))]
+    #[doc(alias = "ostree_sysroot_change_finalization")]
+    pub fn change_finalization(&self, deployment: &Deployment) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let is_ok = ffi::ostree_sysroot_change_finalization(self.to_glib_none().0, deployment.to_glib_none().0, &mut error);
+            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
     #[doc(alias = "ostree_sysroot_cleanup")]
     pub fn cleanup(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
@@ -497,6 +509,18 @@ impl Sysroot {
     pub fn unlock(&self) {
         unsafe {
             ffi::ostree_sysroot_unlock(self.to_glib_none().0);
+        }
+    }
+
+    #[cfg(any(feature = "v2023_11", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2023_11")))]
+    #[doc(alias = "ostree_sysroot_update_post_copy")]
+    pub fn update_post_copy(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let is_ok = ffi::ostree_sysroot_update_post_copy(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 

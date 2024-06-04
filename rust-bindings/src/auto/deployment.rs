@@ -130,6 +130,15 @@ impl Deployment {
         }
     }
 
+    #[cfg(any(feature = "v2023_8", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2023_8")))]
+    #[doc(alias = "ostree_deployment_is_finalization_locked")]
+    pub fn is_finalization_locked(&self) -> bool {
+        unsafe {
+            from_glib(ffi::ostree_deployment_is_finalization_locked(self.to_glib_none().0))
+        }
+    }
+
     #[cfg(any(feature = "v2018_3", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_3")))]
     #[doc(alias = "ostree_deployment_is_pinned")]

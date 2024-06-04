@@ -190,6 +190,7 @@ pub const OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS: OstreeRepoCom
 pub const OSTREE_REPO_COMMIT_MODIFIER_FLAGS_ERROR_ON_UNLABELED: OstreeRepoCommitModifierFlags = 8;
 pub const OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME: OstreeRepoCommitModifierFlags = 16;
 pub const OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL: OstreeRepoCommitModifierFlags = 32;
+pub const OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SELINUX_LABEL_V1: OstreeRepoCommitModifierFlags = 64;
 
 pub type OstreeRepoCommitState = c_uint;
 pub const OSTREE_REPO_COMMIT_STATE_NORMAL: OstreeRepoCommitState = 0;
@@ -867,7 +868,8 @@ impl ::std::fmt::Debug for OstreeSignInterface {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct OstreeSysrootDeployTreeOpts {
-    pub unused_bools: [gboolean; 8],
+    pub locked: gboolean,
+    pub unused_bools: [gboolean; 7],
     pub unused_ints: [c_int; 8],
     pub override_kernel_argv: *mut *mut c_char,
     pub overlay_initrds: *mut *mut c_char,
@@ -877,6 +879,7 @@ pub struct OstreeSysrootDeployTreeOpts {
 impl ::std::fmt::Debug for OstreeSysrootDeployTreeOpts {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         f.debug_struct(&format!("OstreeSysrootDeployTreeOpts @ {self:p}"))
+            .field("locked", &self.locked)
             .field("unused_bools", &self.unused_bools)
             .field("unused_ints", &self.unused_ints)
             .field("override_kernel_argv", &self.override_kernel_argv)
@@ -1612,6 +1615,9 @@ extern "C" {
         self_: *mut OstreeDeployment,
     ) -> OstreeDeploymentUnlockedState;
     pub fn ostree_deployment_hash(v: gconstpointer) -> c_uint;
+    #[cfg(any(feature = "v2023_8", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2023_8")))]
+    pub fn ostree_deployment_is_finalization_locked(self_: *mut OstreeDeployment) -> gboolean;
     #[cfg(any(feature = "v2018_3", feature = "dox"))]
     #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_3")))]
     pub fn ostree_deployment_is_pinned(self_: *mut OstreeDeployment) -> gboolean;
@@ -1832,6 +1838,15 @@ extern "C" {
         destination_dfd: c_int,
         destination_path: *const c_char,
         commit: *const c_char,
+        cancellable: *mut gio::GCancellable,
+        error: *mut *mut glib::GError,
+    ) -> gboolean;
+    pub fn ostree_repo_checkout_composefs(
+        self_: *mut OstreeRepo,
+        options: *mut glib::GVariant,
+        destination_dfd: c_int,
+        destination_path: *const c_char,
+        checksum: *const c_char,
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
@@ -3007,6 +3022,13 @@ extern "C" {
     pub fn ostree_sysroot_get_deployment_origin_path(
         deployment_path: *mut gio::GFile,
     ) -> *mut gio::GFile;
+    #[cfg(any(feature = "v2023_8", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2023_8")))]
+    pub fn ostree_sysroot_change_finalization(
+        self_: *mut OstreeSysroot,
+        deployment: *mut OstreeDeployment,
+        error: *mut *mut glib::GError,
+    ) -> gboolean;
     pub fn ostree_sysroot_cleanup(
         self_: *mut OstreeSysroot,
         cancellable: *mut gio::GCancellable,
@@ -3253,6 +3275,13 @@ extern "C" {
     ) -> gboolean;
     pub fn ostree_sysroot_unload(self_: *mut OstreeSysroot);
     pub fn ostree_sysroot_unlock(self_: *mut OstreeSysroot);
+    #[cfg(any(feature = "v2023_11", feature = "dox"))]
+    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2023_11")))]
+    pub fn ostree_sysroot_update_post_copy(
+        self_: *mut OstreeSysroot,
+        cancellable: *mut gio::GCancellable,
+        error: *mut *mut glib::GError,
+    ) -> gboolean;
     pub fn ostree_sysroot_write_deployments(
         self_: *mut OstreeSysroot,
         new_deployments: *mut glib::GPtrArray,

@@ -680,6 +680,10 @@ const RUST_CONSTANTS: &[(&str, &str)] = &[
         "2",
     ),
     ("(guint) OSTREE_REPO_COMMIT_MODIFIER_FLAGS_NONE", "0"),
+    (
+        "(guint) OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SELINUX_LABEL_V1",
+        "64",
+    ),
     ("(guint) OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS", "1"),
     ("(guint) OSTREE_REPO_COMMIT_STATE_FSCK_PARTIAL", "2"),
     ("(guint) OSTREE_REPO_COMMIT_STATE_NORMAL", "0"),

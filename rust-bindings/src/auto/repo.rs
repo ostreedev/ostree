@@ -129,6 +129,16 @@ impl Repo {
         }
     }
 
+    #[doc(alias = "ostree_repo_checkout_composefs")]
+    pub fn checkout_composefs(&self, options: Option<&glib::Variant>, destination_dfd: i32, destination_path: &str, checksum: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = ptr::null_mut();
+            let is_ok = ffi::ostree_repo_checkout_composefs(self.to_glib_none().0, options.to_glib_none().0, destination_dfd, destination_path.to_glib_none().0, checksum.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
     #[doc(alias = "ostree_repo_checkout_gc")]
     pub fn checkout_gc(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {

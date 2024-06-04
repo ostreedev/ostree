@@ -75,7 +75,7 @@ impl SePolicy {
 
     #[doc(alias = "ostree_sepolicy_get_name")]
     #[doc(alias = "get_name")]
-    pub fn name(&self) -> glib::GString {
+    pub fn name(&self) -> Option<glib::GString> {
         unsafe {
             from_glib_none(ffi::ostree_sepolicy_get_name(self.to_glib_none().0))
         }
@@ -116,11 +116,10 @@ impl SePolicy {
     }
 }
 
+unsafe impl Send for SePolicy {}
+
 impl fmt::Display for SePolicy {
-    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(&self.name())
+        f.write_str("SePolicy")
     }
 }
-
-unsafe impl Send for SePolicy {}
