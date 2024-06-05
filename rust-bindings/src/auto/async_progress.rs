@@ -2,13 +2,8 @@
 // from gir-files
 // DO NOT EDIT
 
-use glib::object::ObjectType as ObjectType_;
-use glib::signal::connect_raw;
-use glib::signal::SignalHandlerId;
-use glib::translate::*;
-use std::boxed::Box as Box_;
-use std::fmt;
-use std::mem::transmute;
+use glib::{prelude::*,signal::{connect_raw, SignalHandlerId},translate::*};
+use std::{boxed::Box as Box_};
 
 glib::wrapper! {
     #[doc(alias = "OstreeAsyncProgress")]
@@ -32,8 +27,8 @@ impl AsyncProgress {
     //    unsafe { TODO: call ffi:ostree_async_progress_new_and_connect() }
     //}
 
-    #[cfg(any(feature = "v2019_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_6")))]
+    #[cfg(feature = "v2019_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_6")))]
     #[doc(alias = "ostree_async_progress_copy_state")]
     pub fn copy_state(&self, dest: &AsyncProgress) {
         unsafe {
@@ -48,15 +43,15 @@ impl AsyncProgress {
         }
     }
 
-    //#[cfg(any(feature = "v2017_6", feature = "dox"))]
-    //#[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_6")))]
+    //#[cfg(feature = "v2017_6")]
+    //#[cfg_attr(docsrs, doc(cfg(feature = "v2017_6")))]
     //#[doc(alias = "ostree_async_progress_get")]
     //pub fn get(&self, : /*Unknown conversion*//*Unimplemented*/Basic: VarArgs) {
     //    unsafe { TODO: call ffi:ostree_async_progress_get() }
     //}
 
-    #[cfg(any(feature = "v2017_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_6")))]
+    #[cfg(feature = "v2017_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_6")))]
     #[doc(alias = "ostree_async_progress_get_status")]
     #[doc(alias = "get_status")]
     pub fn status(&self) -> Option<glib::GString> {
@@ -81,8 +76,8 @@ impl AsyncProgress {
         }
     }
 
-    #[cfg(any(feature = "v2017_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_6")))]
+    #[cfg(feature = "v2017_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_6")))]
     #[doc(alias = "ostree_async_progress_get_variant")]
     #[doc(alias = "get_variant")]
     pub fn variant(&self, key: &str) -> Option<glib::Variant> {
@@ -91,15 +86,15 @@ impl AsyncProgress {
         }
     }
 
-    //#[cfg(any(feature = "v2017_6", feature = "dox"))]
-    //#[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_6")))]
+    //#[cfg(feature = "v2017_6")]
+    //#[cfg_attr(docsrs, doc(cfg(feature = "v2017_6")))]
     //#[doc(alias = "ostree_async_progress_set")]
     //pub fn set(&self, : /*Unknown conversion*//*Unimplemented*/Basic: VarArgs) {
     //    unsafe { TODO: call ffi:ostree_async_progress_set() }
     //}
 
-    #[cfg(any(feature = "v2017_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_6")))]
+    #[cfg(feature = "v2017_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_6")))]
     #[doc(alias = "ostree_async_progress_set_status")]
     pub fn set_status(&self, status: Option<&str>) {
         unsafe {
@@ -121,8 +116,8 @@ impl AsyncProgress {
         }
     }
 
-    #[cfg(any(feature = "v2017_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_6")))]
+    #[cfg(feature = "v2017_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_6")))]
     #[doc(alias = "ostree_async_progress_set_variant")]
     pub fn set_variant(&self, key: &str, value: &glib::Variant) {
         unsafe {
@@ -139,7 +134,7 @@ impl AsyncProgress {
         unsafe {
             let f: Box_<F> = Box_::new(f);
             connect_raw(self.as_ptr() as *mut _, b"changed\0".as_ptr() as *const _,
-                Some(transmute::<_, unsafe extern "C" fn()>(changed_trampoline::<F> as *const ())), Box_::into_raw(f))
+                Some(std::mem::transmute::<_, unsafe extern "C" fn()>(changed_trampoline::<F> as *const ())), Box_::into_raw(f))
         }
     }
 }
@@ -149,9 +144,3 @@ impl Default for AsyncProgress {
                          Self::new()
                      }
                  }
-
-impl fmt::Display for AsyncProgress {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("AsyncProgress")
-    }
-}

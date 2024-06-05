@@ -2,11 +2,10 @@
 // from gir-files
 // DO NOT EDIT
 
-use crate::RepoFinder;
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
-use glib::translate::*;
-use std::fmt;
+use crate::{RepoFinder};
+#[cfg(feature = "v2018_6")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
+use glib::{translate::*};
 
 glib::wrapper! {
     #[doc(alias = "OstreeRepoFinderOverride")]
@@ -18,8 +17,8 @@ glib::wrapper! {
 }
 
 impl RepoFinderOverride {
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     #[doc(alias = "ostree_repo_finder_override_new")]
     pub fn new() -> RepoFinderOverride {
         unsafe {
@@ -27,8 +26,8 @@ impl RepoFinderOverride {
         }
     }
 
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     #[doc(alias = "ostree_repo_finder_override_add_uri")]
     pub fn add_uri(&self, uri: &str) {
         unsafe {
@@ -37,16 +36,10 @@ impl RepoFinderOverride {
     }
 }
 
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+#[cfg(feature = "v2018_6")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
 impl Default for RepoFinderOverride {
                      fn default() -> Self {
                          Self::new()
                      }
                  }
-
-impl fmt::Display for RepoFinderOverride {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("RepoFinderOverride")
-    }
-}

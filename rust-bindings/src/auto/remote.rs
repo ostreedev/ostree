@@ -2,8 +2,7 @@
 // from gir-files
 // DO NOT EDIT
 
-use glib::translate::*;
-use std::fmt;
+use glib::{translate::*};
 
 glib::wrapper! {
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -34,9 +33,9 @@ impl Remote {
     }
 }
 
-impl fmt::Display for Remote {
+impl std::fmt::Display for Remote {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.write_str(&self.name())
     }
 }
