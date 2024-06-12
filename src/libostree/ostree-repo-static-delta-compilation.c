@@ -608,7 +608,7 @@ try_content_rollsum (OstreeRepo *repo, DeltaOpts opts, const char *from, const c
                   (unsigned long long)matches->match_size);
     }
 
-  ContentRollsum *ret_rollsum = g_new0 (ContentRollsum, 1);
+  g_autofree ContentRollsum *ret_rollsum = g_new0 (ContentRollsum, 1);
   ret_rollsum->from_checksum = g_strdup (from);
   ret_rollsum->matches = g_steal_pointer (&matches);
   ot_transfer_out_value (out_rollsum, &ret_rollsum);
