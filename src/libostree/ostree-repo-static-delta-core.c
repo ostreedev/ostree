@@ -409,7 +409,8 @@ ostree_repo_static_delta_execute_offline_with_signature (OstreeRepo *self, GFile
         return glnx_throw_errno_prefix (error, "openat(O_DIRECTORY)");
       else
         {
-          g_autofree char *dir = dirname (g_strdup (dir_or_file_path));
+          g_autofree char *tmpbuf = g_strdup (dir_or_file_path);
+          const char *dir = dirname (tmpbuf);
           basename = g_path_get_basename (dir_or_file_path);
 
           if (!glnx_opendirat (AT_FDCWD, dir, TRUE, &dfd, error))
