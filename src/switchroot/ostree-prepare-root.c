@@ -570,7 +570,7 @@ main (int argc, char *argv[])
       else
         {
           /* Bind-mount /etc (at deploy path), and remount as writable. */
-          if (mount ("etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+          if (mount ("/etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_SILENT, NULL) < 0)
             err (EXIT_FAILURE, "failed to prepare /etc bind-mount at /sysroot.tmp/etc");
           if (mount (TMP_SYSROOT "/etc", TMP_SYSROOT "/etc", NULL, MS_BIND | MS_REMOUNT | MS_SILENT,
                      NULL)
