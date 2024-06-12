@@ -132,7 +132,11 @@ ostree_checksum_input_stream_read (GInputStream *stream, void *buffer, gsize cou
 
   res = g_input_stream_read (fself->base_stream, buffer, count, cancellable, error);
   if (res > 0)
-    g_checksum_update (self->priv->checksum, buffer, res);
+    {
+      guchar *char_buffer = (guchar *)buffer;
+      char_buffer[res] = '\0';
+      g_checksum_update (self->priv->checksum, (const guchar *)char_buffer, res);
+    }
 
   return res;
 }
