@@ -5952,7 +5952,7 @@ find_remotes_cb (GObject *obj, GAsyncResult *async_result, gpointer user_data)
             {
               g_debug ("%s: Omitting remote ‘%s’ from results as none of its refs are new enough.",
                        G_STRFUNC, result->remote->name);
-              ostree_repo_finder_result_free (g_steal_pointer (&g_ptr_array_index (results, i)));
+              ostree_repo_finder_result_free (g_ptr_array_index (results, i));
               continue;
             }
         }
