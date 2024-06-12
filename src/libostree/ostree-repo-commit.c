@@ -815,6 +815,7 @@ _try_clone_from_payload_link (OstreeRepo *self, OstreeRepo *dest_repo, const cha
       if (size < OSTREE_SHA256_STRING_LEN + _OSTREE_PAYLOAD_LINK_PREFIX_LEN)
         return glnx_throw (error, "invalid data size for %s", loose_path_buf);
 
+      target_buf[size] = '\0';
       sprintf (target_checksum, "%.2s%.62s", target_buf + _OSTREE_PAYLOAD_LINK_PREFIX_LEN,
                target_buf + _OSTREE_PAYLOAD_LINK_PREFIX_LEN + 3);
 
