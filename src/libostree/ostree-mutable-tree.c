@@ -452,7 +452,8 @@ ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree *self, GPtrArray *spli
           invalidate_contents_checksum (subdir);
           next = ostree_mutable_tree_new ();
           ostree_mutable_tree_set_metadata_checksum (next, metadata_checksum);
-          insert_child_mtree (subdir, g_strdup (name), next);
+          g_autofree char *name_copy = g_strdup (name);
+          insert_child_mtree (subdir, name_copy, next);
         }
 
       subdir = next;
