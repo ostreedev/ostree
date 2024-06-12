@@ -244,7 +244,7 @@ aic_get_final_path (OstreeRepoArchiveImportContext *ctx, const char *path, GErro
       char *ret = ctx->opts->translate_pathname (ctx->repo, &stbuf, path,
                                                  ctx->opts->translate_pathname_user_data);
       if (ret)
-        return ret;
+        return g_strdup (ret);
       /* Fall through */
     }
   else if (ctx->opts->use_ostree_convention)
