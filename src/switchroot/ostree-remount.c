@@ -90,8 +90,18 @@ static void
 relabel_dir_for_upper (const char *upper_path, const char *real_path, gboolean is_dir)
 {
 #ifdef HAVE_SELINUX
+  /* Ignore ENOENT, because if there is no file to relabel we can continue,
+   * systemd-sysusers runs in parallel and can create temporary files in /etc
+   * causing failures like:
+   * "Failed to relabel /etc/.#gshadowJzu4Rx: No such file or directory"
+   */
   if (selinux_restorecon (real_path, 0))
-    err (EXIT_FAILURE, "Failed to relabel %s", real_path);
+    {
+      if (errno == ENOENT)
+        return;
+
+      err (EXIT_FAILURE, "Failed to relabel %s", real_path);
+    }
 
   if (!is_dir)
     return;
