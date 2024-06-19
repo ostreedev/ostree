@@ -51,7 +51,7 @@ covering the composefs fsverity digest with a signature.
 ### Signatures
 
 If a commit is signed with an Ed25519 private key (see `ostree
---sign`), and `composefs.keyfile` is specified in `prepare-root.conf`,
+sign`), and `composefs.keyfile` is specified in `prepare-root.conf`,
 then the initrd will find the commit being booted in the system repo
 and validate its signature against the public key. It will then ensure
 that the composefs digest being booted has an fs-verity digest
@@ -63,7 +63,7 @@ to use it with transient keys. This is done like this:
  * Generate a new keypair before each build
  * Embed the public key in the initrd that is part of the commit.
  * Ensure the initrd has a `prepare-root.conf` with `[composefs] enabled=signed`, and either use `keypath` or inject `/etc/ostree/initramfs-root-binding.key`; for more see `man ostree-prepare-root`
- * After committing, run `ostree --sign` with the private key.
+ * After committing, run `ostree sign` with the private key.
  * Throw away the private key.
 
 When a transient key is used this way, that ties the initrd with the
