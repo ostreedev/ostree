@@ -29,19 +29,6 @@
 #include <linux/fsverity.h>
 #endif
 
-#if defined(HAVE_OPENSSL)
-#include <openssl/bio.h>
-#include <openssl/engine.h>
-#include <openssl/err.h>
-#include <openssl/pem.h>
-#include <openssl/pkcs7.h>
-
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (X509, X509_free);
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (EVP_PKEY, EVP_PKEY_free);
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (BIO, BIO_free);
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (PKCS7, PKCS7_free);
-#endif
-
 gboolean
 _ostree_repo_parse_fsverity_config (OstreeRepo *self, GError **error)
 {
