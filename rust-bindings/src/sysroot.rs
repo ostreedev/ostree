@@ -74,6 +74,8 @@ impl Sysroot {
 
 #[cfg(test)]
 mod tests {
+    use gio::prelude::*;
+
     use super::*;
 
     #[test]
@@ -112,6 +114,9 @@ mod tests {
 
             sysroot.path()
         };
-        assert_eq!(path_created.to_string(), path_loaded.to_string());
+        assert_eq!(
+            format!("{:?}", path_created.path()),
+            format!("{:?}", path_loaded.path())
+        );
     }
 }
