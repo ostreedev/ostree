@@ -572,11 +572,10 @@ _ostree_sysroot_cleanup_internal (OstreeSysroot *self, gboolean do_prune_repo,
                                               &freed_space, cancellable, error))
         return FALSE;
 
-      /* TODO remove printf in library */
       if (freed_space > 0)
         {
           g_autofree char *freed_space_str = g_format_size_full (freed_space, 0);
-          g_print ("Freed objects: %s\n", freed_space_str);
+          ot_journal_print (LOG_INFO, "Freed objects: %s", freed_space_str);
         }
     }
 
