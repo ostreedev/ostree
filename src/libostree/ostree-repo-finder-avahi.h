@@ -33,33 +33,9 @@ G_BEGIN_DECLS
 
 #define OSTREE_TYPE_REPO_FINDER_AVAHI (ostree_repo_finder_avahi_get_type ())
 
-/* Manually expanded version of the following, omitting autoptr support (for GLib < 2.44):
 _OSTREE_PUBLIC
 G_DECLARE_FINAL_TYPE (OstreeRepoFinderAvahi, ostree_repo_finder_avahi, OSTREE, REPO_FINDER_AVAHI,
-GObject) */
-
-_OSTREE_PUBLIC
-GType ostree_repo_finder_avahi_get_type (void);
-
-G_GNUC_BEGIN_IGNORE_DEPRECATIONS
-typedef struct _OstreeRepoFinderAvahi OstreeRepoFinderAvahi;
-typedef struct
-{
-  GObjectClass parent_class;
-} OstreeRepoFinderAvahiClass;
-
-static inline OstreeRepoFinderAvahi *
-OSTREE_REPO_FINDER_AVAHI (gpointer ptr)
-{
-  return G_TYPE_CHECK_INSTANCE_CAST (ptr, ostree_repo_finder_avahi_get_type (),
-                                     OstreeRepoFinderAvahi);
-}
-static inline gboolean
-OSTREE_IS_REPO_FINDER_AVAHI (gpointer ptr)
-{
-  return G_TYPE_CHECK_INSTANCE_TYPE (ptr, ostree_repo_finder_avahi_get_type ());
-}
-G_GNUC_END_IGNORE_DEPRECATIONS
+                      GObject)
 
 _OSTREE_PUBLIC
 OstreeRepoFinderAvahi *ostree_repo_finder_avahi_new (GMainContext *context);

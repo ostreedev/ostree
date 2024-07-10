@@ -35,30 +35,6 @@ G_BEGIN_DECLS
 
 #define OSTREE_TYPE_SIGN (ostree_sign_get_type ())
 
-_OSTREE_PUBLIC
-GType ostree_sign_get_type (void);
-
-G_GNUC_BEGIN_IGNORE_DEPRECATIONS
-typedef struct _OstreeSign OstreeSign;
-typedef struct _OstreeSignInterface OstreeSignInterface;
-
-static inline OstreeSign *
-OSTREE_SIGN (gpointer ptr)
-{
-  return G_TYPE_CHECK_INSTANCE_CAST (ptr, ostree_sign_get_type (), OstreeSign);
-}
-static inline gboolean
-OSTREE_IS_SIGN (gpointer ptr)
-{
-  return G_TYPE_CHECK_INSTANCE_TYPE (ptr, ostree_sign_get_type ());
-}
-static inline OstreeSignInterface *
-OSTREE_SIGN_GET_IFACE (gpointer ptr)
-{
-  return G_TYPE_INSTANCE_GET_INTERFACE (ptr, ostree_sign_get_type (), OstreeSignInterface);
-}
-G_GNUC_END_IGNORE_DEPRECATIONS
-
 /**
  * OSTREE_SIGN_NAME_ED25519:
  * The name of the default ed25519 signing type.
@@ -67,10 +43,8 @@ G_GNUC_END_IGNORE_DEPRECATIONS
  */
 #define OSTREE_SIGN_NAME_ED25519 "ed25519"
 
-/* Have to use glib-2.44 for this
 _OSTREE_PUBLIC
 G_DECLARE_INTERFACE (OstreeSign, ostree_sign, OSTREE, SIGN, GObject)
-*/
 
 struct _OstreeSignInterface
 {

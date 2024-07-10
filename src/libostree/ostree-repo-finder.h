@@ -34,33 +34,8 @@ G_BEGIN_DECLS
 
 #define OSTREE_TYPE_REPO_FINDER (ostree_repo_finder_get_type ())
 
-/* Manually expanded version of the following, omitting autoptr support (for GLib < 2.44):
 _OSTREE_PUBLIC
-G_DECLARE_INTERFACE (OstreeRepoFinder, ostree_repo_finder, OSTREE, REPO_FINDER, GObject) */
-
-_OSTREE_PUBLIC
-GType ostree_repo_finder_get_type (void);
-G_GNUC_BEGIN_IGNORE_DEPRECATIONS
-typedef struct _OstreeRepoFinder OstreeRepoFinder;
-typedef struct _OstreeRepoFinderInterface OstreeRepoFinderInterface;
-
-static inline OstreeRepoFinder *
-OSTREE_REPO_FINDER (gpointer ptr)
-{
-  return G_TYPE_CHECK_INSTANCE_CAST (ptr, ostree_repo_finder_get_type (), OstreeRepoFinder);
-}
-static inline gboolean
-OSTREE_IS_REPO_FINDER (gpointer ptr)
-{
-  return G_TYPE_CHECK_INSTANCE_TYPE (ptr, ostree_repo_finder_get_type ());
-}
-static inline OstreeRepoFinderInterface *
-OSTREE_REPO_FINDER_GET_IFACE (gpointer ptr)
-{
-  return G_TYPE_INSTANCE_GET_INTERFACE (ptr, ostree_repo_finder_get_type (),
-                                        OstreeRepoFinderInterface);
-}
-G_GNUC_END_IGNORE_DEPRECATIONS
+G_DECLARE_INTERFACE (OstreeRepoFinder, ostree_repo_finder, OSTREE, REPO_FINDER, GObject)
 
 struct _OstreeRepoFinderInterface
 {

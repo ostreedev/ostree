@@ -30,36 +30,8 @@ G_BEGIN_DECLS
 
 #define OSTREE_TYPE_SIGN_ED25519 (_ostree_sign_ed25519_get_type ())
 
-GType _ostree_sign_ed25519_get_type (void);
-
-G_GNUC_BEGIN_IGNORE_DEPRECATIONS
-typedef struct _OstreeSignEd25519 OstreeSignEd25519;
-typedef struct
-{
-  GObjectClass parent_class;
-} OstreeSignEd25519Class;
-
-static inline OstreeSignEd25519 *
-OSTREE_SIGN_ED25519 (gpointer ptr)
-{
-  return G_TYPE_CHECK_INSTANCE_CAST (ptr, _ostree_sign_ed25519_get_type (), OstreeSignEd25519);
-}
-static inline gboolean
-OSTREE_IS_SIGN_ED25519 (gpointer ptr)
-{
-  return G_TYPE_CHECK_INSTANCE_TYPE (ptr, _ostree_sign_ed25519_get_type ());
-}
-
-G_GNUC_END_IGNORE_DEPRECATIONS
-
-/* Have to use glib-2.44 for this
 _OSTREE_PUBLIC
-G_DECLARE_FINAL_TYPE (OstreeSignEd25519,
-                      ostree_sign_ed25519,
-                      OSTREE,
-                      SIGN_ED25519,
-                      GObject)
-*/
+G_DECLARE_FINAL_TYPE (OstreeSignEd25519, _ostree_sign_ed25519, OSTREE, SIGN_ED25519, GObject)
 
 gboolean ostree_sign_ed25519_data (OstreeSign *self, GBytes *data, GBytes **signature,
                                    GCancellable *cancellable, GError **error);
