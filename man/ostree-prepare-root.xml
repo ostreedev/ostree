@@ -153,6 +153,18 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 commit must match the target composefs image.</para></listitem>
             </varlistentry>
         </variablelist>
+
+        <para>
+            The following kernel commandline parameters are also parsed:
+        </para>
+        <variablelist>
+            <varlistentry>
+                <term><varname>ostree.prepare-root.composefs</varname></term>
+                <listitem><para>This accepts the same values as <literal>composefs.enabled</literal> above, and overrides the config file (if present).
+                    For example, specifying <literal>ostree.prepare-root.composefs=0</literal> will disable composefs, even if it is enabled by default in the initrd config.</para></listitem>
+            </varlistentry>
+        </variablelist>
+
     </refsect1>
 
 
