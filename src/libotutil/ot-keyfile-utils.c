@@ -60,6 +60,51 @@ ot_keyfile_get_boolean_with_default (GKeyFile *keyfile, const char *section, con
   return TRUE;
 }
 
+// Keep this in sync with
+// https://gitlab.gnome.org/GNOME/glib/-/blob/4a73fbda8be6f80f14b05983eb575c1eb1329c2c/glib/gkeyfile.c?page=5#L4585
+// Except for some reason at some point we added "yes" or "no" as possible values too...
+gboolean
+_ostree_parse_boolean (const char *s, gboolean *out_val, GError **error)
+{
+  g_assert (s);
+  g_assert (out_val);
+
+  if (g_str_equal (s, "yes") || g_str_equal (s, "true") || g_str_equal (s, "1"))
+    {
+      *out_val = TRUE;
+      return TRUE;
+    }
+  else if (g_str_equal (s, "no") || g_str_equal (s, "false") || g_str_equal (s, "0"))
+    {
+      *out_val = FALSE;
+      return TRUE;
+    }
+  return glnx_throw (error, "Invalid boolean: %s", s);
+}
+
+gboolean
+_ostree_parse_tristate (const char *s, OtTristate *out_tri, GError **error)
+{
+  if (strcmp (s, "maybe") == 0)
+    {
+      *out_tri = OT_TRISTATE_MAYBE;
+      return TRUE;
+    }
+
+  gboolean bool_value = FALSE;
+  // Discard the error here, just check if it's valid
+  if (_ostree_parse_boolean (s, &bool_value, NULL))
+    {
+      if (bool_value)
+        *out_tri = OT_TRISTATE_YES;
+      else
+        *out_tri = OT_TRISTATE_NO;
+      return TRUE;
+    }
+  // If it's invalid, be clear a tristate was expected.
+  return glnx_throw (error, "Invalid tri-state value: %s", s);
+}
+
 gboolean
 ot_keyfile_get_tristate_with_default (GKeyFile *keyfile, const char *section, const char *value,
                                       OtTristate default_value, OtTristate *out_tri, GError **error)
@@ -85,23 +130,7 @@ ot_keyfile_get_tristate_with_default (GKeyFile *keyfile, const char *section, co
     }
 
   ret_value = g_strstrip (ret_value);
-
-  if (strcmp (ret_value, "yes") == 0 || strcmp (ret_value, "true") == 0
-      || strcmp (ret_value, "1") == 0)
-    *out_tri = OT_TRISTATE_YES;
-  else if (strcmp (ret_value, "no") == 0 || strcmp (ret_value, "false") == 0
-           || strcmp (ret_value, "0") == 0)
-    *out_tri = OT_TRISTATE_NO;
-  else if (strcmp (ret_value, "maybe") == 0)
-    *out_tri = OT_TRISTATE_MAYBE;
-  else
-    {
-      g_set_error (error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_INVALID_VALUE,
-                   "Invalid tri-state value: %s", ret_value);
-      return FALSE;
-    }
-
-  return TRUE;
+  return _ostree_parse_tristate (ret_value, out_tri, error);
 }
 
 gboolean
