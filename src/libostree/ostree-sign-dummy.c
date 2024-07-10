@@ -41,10 +41,6 @@ struct _OstreeSignDummy
   gchar *pk_ascii;
 };
 
-#ifdef G_DEFINE_AUTOPTR_CLEANUP_FUNC
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeSignDummy, g_object_unref)
-#endif
-
 static void ostree_sign_dummy_iface_init (OstreeSignInterface *self);
 
 G_DEFINE_TYPE_WITH_CODE (OstreeSignDummy, _ostree_sign_dummy, G_TYPE_OBJECT,
