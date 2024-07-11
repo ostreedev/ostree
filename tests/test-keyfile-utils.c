@@ -173,6 +173,42 @@ fill_keyfile (GKeyFile *file)
   g_key_file_set_value (file, "section", "value_bar", "bar");
 }
 
+static void
+test_parse_tristate (void)
+{
+  g_autoptr (GError) error = NULL;
+
+  OtTristate t = OT_TRISTATE_NO;
+  // Verify maybe
+  (void)_ostree_parse_tristate ("maybe", &t, &error);
+  g_assert_no_error (error);
+  g_assert_cmpint (t, ==, OT_TRISTATE_MAYBE);
+
+  // Alternate yes and no
+  (void)_ostree_parse_tristate ("yes", &t, &error);
+  g_assert_no_error (error);
+  g_assert_cmpint (t, ==, OT_TRISTATE_YES);
+  (void)_ostree_parse_tristate ("no", &t, &error);
+  g_assert_no_error (error);
+  g_assert_cmpint (t, ==, OT_TRISTATE_NO);
+  (void)_ostree_parse_tristate ("1", &t, &error);
+  g_assert_no_error (error);
+  g_assert_cmpint (t, ==, OT_TRISTATE_YES);
+  (void)_ostree_parse_tristate ("0", &t, &error);
+  g_assert_no_error (error);
+  g_assert_cmpint (t, ==, OT_TRISTATE_NO);
+  (void)_ostree_parse_tristate ("true", &t, &error);
+  g_assert_no_error (error);
+  g_assert_cmpint (t, ==, OT_TRISTATE_YES);
+  (void)_ostree_parse_tristate ("false", &t, &error);
+  g_assert_no_error (error);
+  g_assert_cmpint (t, ==, OT_TRISTATE_NO);
+
+  // And an error case
+  (void)_ostree_parse_tristate ("foobar", &t, &error);
+  g_assert (error != NULL);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -186,6 +222,7 @@ main (int argc, char **argv)
   g_test_add_func ("/keyfile-utils/get-value-with-default-group-optional",
                    test_get_value_with_default_group_optional);
   g_test_add_func ("/keyfile-utils/copy-group", test_copy_group);
+  g_test_add_func ("/keyfile-utils/parse-tristate", test_parse_tristate);
 
   ret = g_test_run ();
 

@@ -32,6 +32,9 @@ typedef enum
 
 G_BEGIN_DECLS
 
+gboolean _ostree_parse_boolean (const char *s, gboolean *out_val, GError **error);
+gboolean _ostree_parse_tristate (const char *s, OtTristate *out_tri, GError **error);
+
 gboolean ot_keyfile_get_boolean_with_default (GKeyFile *keyfile, const char *section,
                                               const char *value, gboolean default_value,
                                               gboolean *out_bool, GError **error);
