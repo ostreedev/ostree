@@ -780,6 +780,30 @@ gen_ed25519_random_public()
   openssl genpkey -algorithm ED25519 | openssl pkey -outform DER | tail -c 32 | base64
 }
 
+# Keys for x509 signing tests
+X509PUBLIC=
+X509SECRET=
+
+gen_x509_keys ()
+{
+  # Generate private key in PEM format
+  local pemfile="$(mktemp -p ${test_tmpdir} ed448_XXXXXX.pem)"
+  openssl genpkey -algorithm ed448 -outform PEM -out "${pemfile}"
+
+  X509PUBLIC="$(openssl pkey -outform DER -pubout -in ${pemfile} | base64 -w 0)"
+  X509SECRET="$(openssl pkey -outform DER -in ${pemfile} | base64 -w 0)"
+
+  echo "Generated ed448 keys:"
+  echo "public: ${X509PUBLIC}"
+  echo "secret: ${X509SECRET}"
+}
+
+gen_x509_random_public()
+{
+  openssl genpkey -algorithm ed448 | openssl pkey -pubout -outform DER | base64 -w 0
+  echo
+}
+
 is_bare_user_only_repo () {
   grep -q 'mode=bare-user-only' $1/config
 }

@@ -21,7 +21,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..11"
+echo "1..7"
 
 # This is explicitly opt in for testing
 export OSTREE_DUMMY_SIGN_ENABLED=1
@@ -29,48 +29,8 @@ export OSTREE_DUMMY_SIGN_ENABLED=1
 mkdir ${test_tmpdir}/repo
 ostree_repo_init repo --mode="archive"
 
-echo "Unsigned commit" > file.txt
-${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo commit -b main -s 'Unsigned commit'
-COMMIT="$(ostree --repo=${test_tmpdir}/repo rev-parse main)"
-
-# Test `ostree sign` with dummy module first
+# For multi-sign test
 DUMMYSIGN="dummysign"
-${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --sign-type=dummy ${COMMIT} ${DUMMYSIGN}
-
-# Ensure that detached metadata really contain expected string
-EXPECTEDSIGN="$(echo $DUMMYSIGN | hexdump -n 9 -e '8/1 "0x%.2x, " 1/1 " 0x%.2x"')"
-${CMD_PREFIX} ostree --repo=repo show ${COMMIT} --print-detached-metadata-key=ostree.sign.dummy | grep -q -e "${EXPECTEDSIGN}"
-echo "ok Detached dummy signature added"
-
-# Verify vith sign mechanism
-${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --sign-type=dummy --verify ${COMMIT} ${DUMMYSIGN}
-echo "ok dummy signature verified"
-
-echo "Signed commit with dummy key: ${DUMMYSIGN}" >> file.txt
-${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo commit -b main -s 'Signed with dummy module' --sign=${DUMMYSIGN} --sign-type=dummy 
-COMMIT="$(ostree --repo=${test_tmpdir}/repo rev-parse main)"
-${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --sign-type=dummy --verify ${COMMIT} ${DUMMYSIGN}
-echo "ok commit with dummy signing"
-
-if ${CMD_PREFIX} env -u OSTREE_DUMMY_SIGN_ENABLED ostree --repo=${test_tmpdir}/repo sign --sign-type=dummy --verify ${COMMIT} ${DUMMYSIGN} 2>err.txt; then
-    fatal "verified dummy signature without env"
-fi
-# FIXME the error message here is broken
-#assert_file_has_content_literal err.txt 'dummy signature type is only for ostree testing'
-assert_file_has_content_literal err.txt ' No valid signatures found'
-echo "ok dummy sig requires env"
-
-# tests below require libsodium support
-if ! has_ostree_feature sign-ed25519; then
-    echo "ok Detached ed25519 signature # SKIP due libsodium unavailability"
-    echo "ok ed25519 signature verified # SKIP due libsodium unavailability"
-    echo "ok multiple signing # SKIP due libsodium unavailability"
-    echo "ok verify ed25519 keys file # SKIP due libsodium unavailability"
-    echo "ok sign with ed25519 keys file # SKIP due libsodium unavailability"
-    echo "ok verify ed25519 system-wide configuration # SKIP due libsodium unavailability"
-    echo "ok verify ed25519 revoking keys mechanism # SKIP due libsodium unavailability"
-    exit 0
-fi
 
 # Test ostree sign with 'ed25519' module
 gen_ed25519_keys

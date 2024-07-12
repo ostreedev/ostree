@@ -452,10 +452,19 @@ if test x$with_openssl != xno; then OSTREE_FEATURES="$OSTREE_FEATURES openssl"; 
 AM_CONDITIONAL(USE_OPENSSL, test $with_openssl != no)
 dnl end openssl
 
-if test x$with_openssl != xno || test x$with_ed25519_libsodium != xno; then
+AM_CONDITIONAL([HAVE_ED25519], [test x$with_openssl != xno || test x$with_ed25519_libsodium != xno])
+
+AM_COND_IF([HAVE_ED25519], [
    AC_DEFINE([HAVE_ED25519], 1, [Define if ed25519 is supported ])
    OSTREE_FEATURES="$OSTREE_FEATURES sign-ed25519"
-fi
+])
+
+AM_CONDITIONAL([HAVE_X509], [test x$with_openssl != xno])
+
+AM_COND_IF([HAVE_X509], [
+   AC_DEFINE([HAVE_X509], 1, [Define if x509 is supported ])
+   OSTREE_FEATURES="$OSTREE_FEATURES sign-x509"
+])
 
 dnl begin gnutls; in contrast to openssl this one only
 dnl supports --with-crypto=gnutls
@@ -697,7 +706,7 @@ echo "
     systemd:                                      $with_libsystemd
     libmount:                                     $with_libmount
     libsodium (ed25519 signatures):               $with_ed25519_libsodium
-    openssl (ed25519 signatures):                 $with_openssl
+    openssl (ed25519 and x509 signatures):        $with_openssl
     libarchive (parse tar files directly):        $with_libarchive
     static deltas:                                yes (always enabled now)
     O_TMPFILE:                                    $enable_otmpfile

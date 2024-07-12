@@ -43,6 +43,14 @@ G_BEGIN_DECLS
  */
 #define OSTREE_SIGN_NAME_ED25519 "ed25519"
 
+/**
+ * OSTREE_SIGN_NAME_X509:
+ * The name of the x509 signing type.
+ *
+ * Since: 2024.7
+ */
+#define OSTREE_SIGN_NAME_X509 "x509"
+
 _OSTREE_PUBLIC
 G_DECLARE_INTERFACE (OstreeSign, ostree_sign, OSTREE, SIGN, GObject)
 
