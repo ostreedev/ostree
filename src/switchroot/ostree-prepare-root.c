@@ -113,14 +113,11 @@ sysroot_is_configured_ro (const char *sysroot)
 }
 
 static char *
-resolve_deploy_path (const char *root_mountpoint)
+resolve_deploy_path (const char *kernel_cmdline, const char *root_mountpoint)
 {
   char destpath[PATH_MAX];
   struct stat stbuf;
   char *deploy_path;
-  g_autofree char *kernel_cmdline = read_proc_cmdline ();
-  if (!kernel_cmdline)
-    errx (EXIT_FAILURE, "Failed to read kernel cmdline");
 
   g_autoptr (GError) error = NULL;
   g_autofree char *ostree_target = NULL;
@@ -268,6 +265,10 @@ main (int argc, char *argv[])
     err (EXIT_FAILURE, "usage: ostree-prepare-root SYSROOT");
   const char *root_arg = argv[1];
 
+  g_autofree char *kernel_cmdline = read_proc_cmdline ();
+  if (!kernel_cmdline)
+    errx (EXIT_FAILURE, "Failed to read kernel cmdline");
+
   // Since several APIs want to operate in terms of file descriptors, let's
   // open the initramfs now.  Currently this is just used for the config parser.
   glnx_autofd int initramfs_rootfs_fd = -1;
@@ -289,7 +290,7 @@ main (int argc, char *argv[])
   // We always parse the composefs config, because we want to detect and error
   // out if it's enabled, but not supported at compile time.
   g_autoptr (ComposefsConfig) composefs_config
-      = otcore_load_composefs_config (config, TRUE, &error);
+      = otcore_load_composefs_config (kernel_cmdline, config, TRUE, &error);
   if (!composefs_config)
     errx (EXIT_FAILURE, "%s", error->message);
 
@@ -308,7 +309,7 @@ main (int argc, char *argv[])
   const char *root_mountpoint = realpath (root_arg, NULL);
   if (root_mountpoint == NULL)
     err (EXIT_FAILURE, "realpath(\"%s\")", root_arg);
-  g_autofree char *deploy_path = resolve_deploy_path (root_mountpoint);
+  g_autofree char *deploy_path = resolve_deploy_path (kernel_cmdline, root_mountpoint);
   const char *deploy_directory_name = glnx_basename (deploy_path);
   // Note that realpath() should have stripped any trailing `/` which shouldn't
   // be in the karg to start with, but we assert here to be sure we have a non-empty

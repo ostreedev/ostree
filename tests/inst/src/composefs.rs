@@ -131,6 +131,19 @@ fn verify_composefs_signed(sh: &xshell::Shell, metadata: &glib::VariantDict) -> 
     Ok(())
 }
 
+fn verify_disable_composefs(sh: &xshell::Shell, metadata: &glib::VariantDict) -> Result<()> {
+    assert_eq!(
+        metadata
+            .lookup::<bool>("composefs")
+            .unwrap()
+            .unwrap_or_default(),
+        false
+    );
+    let fstype = cmd!(sh, "findmnt -n -o FSTYPE /").read()?;
+    assert_ne!(fstype.as_str(), "overlay");
+    Ok(())
+}
+
 pub(crate) fn itest_composefs() -> Result<()> {
     let sh = &xshell::Shell::new()?;
     let mark = match crate::test::get_reboot_mark()? {
@@ -165,7 +178,16 @@ pub(crate) fn itest_composefs() -> Result<()> {
             Err(reboot("2"))?;
             Ok(())
         }
-        "2" => verify_composefs_signed(sh, &metadata),
+        "2" => {
+            verify_composefs_signed(sh, &metadata)?;
+            cmd!(
+                sh,
+                "rpm-ostree kargs --append=ostree.prepare-root.composefs=0"
+            )
+            .run()?;
+            Err(reboot("3"))
+        }
+        "3" => verify_disable_composefs(sh, &metadata),
         o => anyhow::bail!("Unrecognized reboot mark {o}"),
     }
 }

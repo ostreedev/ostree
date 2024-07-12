@@ -24,6 +24,8 @@
 // in use, the ostree commit metadata will contain the composefs image digest,
 // which can be used to fully verify the target filesystem tree.
 #define BINDING_KEYPATH "/etc/ostree/initramfs-root-binding.key"
+// The kernel argument to configure composefs
+#define CMDLINE_KEY_COMPOSEFS "ostree.prepare-root.composefs"
 
 static bool
 proc_cmdline_has_key_starting_with (const char *cmdline, const char *key)
@@ -161,8 +163,12 @@ otcore_free_composefs_config (ComposefsConfig *config)
 
 // Parse the [composefs] section of the prepare-root.conf.
 ComposefsConfig *
-otcore_load_composefs_config (GKeyFile *config, gboolean load_keys, GError **error)
+otcore_load_composefs_config (const char *cmdline, GKeyFile *config, gboolean load_keys,
+                              GError **error)
 {
+  g_assert (cmdline);
+  g_assert (config);
+
   GLNX_AUTO_PREFIX_ERROR ("Loading composefs config", error);
 
   g_autoptr (ComposefsConfig) ret = g_new0 (ComposefsConfig, 1);
@@ -212,6 +218,23 @@ otcore_load_composefs_config (GKeyFile *config, gboolean load_keys, GError **err
 
       if (ret->pubkeys->len == 0)
         return glnx_null_throw (error, "public key file specified, but no public keys found");
+    }
+
+  g_autofree char *ostree_composefs = otcore_find_proc_cmdline_key (cmdline, CMDLINE_KEY_COMPOSEFS);
+  if (ostree_composefs)
+    {
+      if (g_strcmp0 (ostree_composefs, "signed") == 0)
+        {
+          ret->enabled = OT_TRISTATE_YES;
+          ret->is_signed = true;
+        }
+      else
+        {
+          // The other states force off signatures
+          ret->is_signed = false;
+          if (!_ostree_parse_tristate (ostree_composefs, &ret->enabled, error))
+            return glnx_prefix_error (error, "handling karg " CMDLINE_KEY_COMPOSEFS), NULL;
+        }
     }
 
   return g_steal_pointer (&ret);
