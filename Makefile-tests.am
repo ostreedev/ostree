@@ -156,11 +156,23 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-summary-collections.sh \
 	tests/test-pull-collections.sh \
 	tests/test-config.sh \
-	tests/test-signed-commit.sh \
+	tests/test-signed-commit-dummy.sh \
 	tests/test-signed-pull.sh \
 	tests/test-pre-signed-pull.sh \
 	tests/test-signed-pull-summary.sh \
 	$(NULL)
+
+if HAVE_ED25519
+_installed_or_uninstalled_test_scripts += \
+	tests/test-signed-commit-ed25519.sh \
+	$(NULL)
+endif
+
+if HAVE_SPKI
+_installed_or_uninstalled_test_scripts += \
+	tests/test-signed-commit-spki.sh \
+	$(NULL)
+endif
 
 if USE_GPGME
 _installed_or_uninstalled_test_scripts += \

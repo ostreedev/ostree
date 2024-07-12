@@ -39,11 +39,13 @@
 
 #include "ostree-autocleanups.h"
 #include "ostree-blob-reader-base64.h"
+#include "ostree-blob-reader-pem.h"
 #include "ostree-blob-reader-raw.h"
 #include "ostree-core.h"
 #include "ostree-sign-dummy.h"
 #include "ostree-sign-ed25519.h"
 #include "ostree-sign-private.h"
+#include "ostree-sign-spki.h"
 #include "ostree-sign.h"
 
 #include "ostree-autocleanups.h"
@@ -62,6 +64,9 @@ _sign_type sign_types[] = {
 #if defined(HAVE_ED25519)
   { OSTREE_SIGN_NAME_ED25519, 0 },
 #endif
+#if defined(HAVE_SPKI)
+  { OSTREE_SIGN_NAME_SPKI, 0 },
+#endif
   { "dummy", 0 }
 };
 
@@ -69,6 +74,9 @@ enum
 {
 #if defined(HAVE_ED25519)
   SIGN_ED25519,
+#endif
+#if defined(HAVE_SPKI)
+  SIGN_SPKI,
 #endif
   SIGN_DUMMY
 };
@@ -539,6 +547,10 @@ ostree_sign_get_by_name (const gchar *name, GError **error)
   if (sign_types[SIGN_ED25519].type == 0)
     sign_types[SIGN_ED25519].type = OSTREE_TYPE_SIGN_ED25519;
 #endif
+#if defined(HAVE_SPKI)
+  if (sign_types[SIGN_SPKI].type == 0)
+    sign_types[SIGN_SPKI].type = OSTREE_TYPE_SIGN_SPKI;
+#endif
   if (sign_types[SIGN_DUMMY].type == 0)
     sign_types[SIGN_DUMMY].type = OSTREE_TYPE_SIGN_DUMMY;
 
@@ -662,6 +674,10 @@ ostree_sign_read_pk (OstreeSign *self, GInputStream *stream)
   if (OSTREE_IS_SIGN_ED25519 (self))
     return OSTREE_BLOB_READER (_ostree_blob_reader_base64_new (stream));
 #endif
+#if defined(HAVE_SPKI)
+  if (OSTREE_IS_SIGN_SPKI (self))
+    return OSTREE_BLOB_READER (_ostree_blob_reader_pem_new (stream, "PUBLIC KEY"));
+#endif
   if (OSTREE_IS_SIGN_DUMMY (self))
     return OSTREE_BLOB_READER (_ostree_blob_reader_raw_new (stream));
   return NULL;
@@ -684,6 +700,10 @@ ostree_sign_read_sk (OstreeSign *self, GInputStream *stream)
 #if defined(HAVE_ED25519)
   if (OSTREE_IS_SIGN_ED25519 (self))
     return OSTREE_BLOB_READER (_ostree_blob_reader_base64_new (stream));
+#endif
+#if defined(HAVE_SPKI)
+  if (OSTREE_IS_SIGN_SPKI (self))
+    return OSTREE_BLOB_READER (_ostree_blob_reader_pem_new (stream, "PRIVATE KEY"));
 #endif
   if (OSTREE_IS_SIGN_DUMMY (self))
     return OSTREE_BLOB_READER (_ostree_blob_reader_raw_new (stream));
