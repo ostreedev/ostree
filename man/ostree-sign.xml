@@ -81,7 +81,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <listitem><para><filename>/etc/ostree/trusted.ed25519.d</filename></para></listitem>
                 <listitem><para><filename>/etc/ostree/revoked.ed25519.d</filename></para></listitem>
                 <listitem><para><filename>/usr/share/ostree/trusted.ed25519.d</filename></para></listitem>
-                <listitem><para><filename>/usr/share/ostree/rvokeded.ed25519.d</filename></para></listitem>
+                <listitem><para><filename>/usr/share/ostree/revoked.ed25519.d</filename></para></listitem>
             </itemizedlist>
         </para>
     </refsect1>

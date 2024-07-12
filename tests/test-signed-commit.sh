@@ -101,7 +101,7 @@ ${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --verify --sign-type=ed255
 ${CMD_PREFIX} ostree  --repo=${test_tmpdir}/repo sign --verify --sign-type=ed25519 ${COMMIT} $(gen_ed25519_random_public) $(gen_ed25519_random_public) ${PUBLIC} $(gen_ed25519_random_public) $(gen_ed25519_random_public)
 echo "ok ed25519 signature verified"
 
-# Check if we able to use all available modules to sign the same commit
+# Check if we are able to use all available modules to sign the same commit
 echo "Unsigned commit for multi-sign" >> file.txt
 ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo commit -b main -s 'Unsigned commit'
 COMMIT="$(ostree --repo=${test_tmpdir}/repo rev-parse main)"
