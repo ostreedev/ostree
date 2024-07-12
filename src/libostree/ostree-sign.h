@@ -44,6 +44,14 @@ G_BEGIN_DECLS
  */
 #define OSTREE_SIGN_NAME_ED25519 "ed25519"
 
+/**
+ * OSTREE_SIGN_NAME_SPKI:
+ * The name of the spki signing type.
+ *
+ * Since: 2024.7
+ */
+#define OSTREE_SIGN_NAME_SPKI "spki"
+
 _OSTREE_PUBLIC
 G_DECLARE_INTERFACE (OstreeSign, ostree_sign, OSTREE, SIGN, GObject)
 

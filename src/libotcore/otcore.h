@@ -27,6 +27,7 @@
 #define USE_LIBSODIUM
 #elif defined(HAVE_OPENSSL)
 #include <openssl/evp.h>
+#include <openssl/x509.h>
 #define USE_OPENSSL
 #endif
 
@@ -39,9 +40,21 @@
 // The variant type
 #define OSTREE_SIGN_METADATA_ED25519_TYPE "aay"
 
+// This key is stored inside commit metadata.
+#define OSTREE_SIGN_METADATA_SPKI_KEY "ostree.sign.spki"
+// The variant type
+#define OSTREE_SIGN_METADATA_SPKI_TYPE "aay"
+
+// Maximum size of metadata in bytes, in sync with OSTREE_MAX_METADATA_SIZE
+#define OSTREE_SIGN_MAX_METADATA_SIZE (128 * 1024 * 1024)
+
 bool otcore_ed25519_init (void);
 gboolean otcore_validate_ed25519_signature (GBytes *data, GBytes *pubkey, GBytes *signature,
                                             bool *out_valid, GError **error);
+
+bool otcore_spki_init (void);
+gboolean otcore_validate_spki_signature (GBytes *data, GBytes *public_key, GBytes *signature,
+                                         bool *out_valid, GError **error);
 
 char *otcore_find_proc_cmdline_key (const char *cmdline, const char *key);
 gboolean otcore_get_ostree_target (const char *cmdline, gboolean *is_aboot, char **out_target,

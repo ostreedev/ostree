@@ -261,6 +261,8 @@ libostree_1_la_SOURCES += \
 	src/libostree/ostree-sign-dummy.h \
 	src/libostree/ostree-sign-ed25519.c \
 	src/libostree/ostree-sign-ed25519.h \
+	src/libostree/ostree-sign-spki.c \
+	src/libostree/ostree-sign-spki.h \
 	src/libostree/ostree-sign-private.h \
 	src/libostree/ostree-blob-reader.c \
 	src/libostree/ostree-blob-reader.h \
