@@ -27,6 +27,7 @@
 #include "otcore.h"
 #include <libglnx.h>
 #include <ot-checksum-utils.h>
+#include <string.h>
 
 #undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "OSTreeSign"
@@ -320,7 +321,7 @@ ostree_sign_ed25519_clear_keys (OstreeSign *self, GError **error)
   /* Clear secret key */
   if (sign->secret_key != NULL)
     {
-      memset (sign->secret_key, 0, OSTREE_SIGN_ED25519_SECKEY_SIZE);
+      explicit_bzero (sign->secret_key, OSTREE_SIGN_ED25519_SECKEY_SIZE);
       g_free (sign->secret_key);
       sign->secret_key = NULL;
     }
