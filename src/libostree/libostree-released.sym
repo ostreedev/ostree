@@ -713,6 +713,11 @@ global:
   ostree_sysroot_change_finalization;
 } LIBOSTREE_2023.4;
 
+LIBOSTREE_2024.7 {
+global:
+  ostree_repo_checkout_composefs;
+} LIBOSTREE_2023.8;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
