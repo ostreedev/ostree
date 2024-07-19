@@ -9,7 +9,11 @@
     clippy::unreadable_literal,
     clippy::upper_case_acronyms
 )]
-#![cfg_attr(feature = "dox", feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
+use gio_sys as gio;
+use glib_sys as glib;
+use gobject_sys as gobject;
 
 mod manual;
 
@@ -18,8 +22,11 @@ pub use manual::*;
 #[allow(unused_imports)]
 use libc::{
     c_char, c_double, c_float, c_int, c_long, c_short, c_uchar, c_uint, c_ulong, c_ushort, c_void,
-    intptr_t, size_t, ssize_t, uintptr_t, FILE,
+    intptr_t, off_t, size_t, ssize_t, time_t, uintptr_t, FILE,
 };
+#[cfg(unix)]
+#[allow(unused_imports)]
+use libc::{dev_t, gid_t, pid_t, socklen_t, uid_t};
 
 #[allow(unused_imports)]
 use glib::{gboolean, gconstpointer, gpointer, GType};
@@ -122,51 +129,32 @@ pub type OstreeStaticDeltaIndexFlags = c_int;
 pub const OSTREE_STATIC_DELTA_INDEX_FLAGS_NONE: OstreeStaticDeltaIndexFlags = 0;
 
 // Constants
-pub const OSTREE_COMMIT_GVARIANT_STRING: *const c_char =
-    b"(a{sv}aya(say)sstayay)\0" as *const u8 as *const c_char;
-pub const OSTREE_COMMIT_META_KEY_ARCHITECTURE: *const c_char =
-    b"ostree.architecture\0" as *const u8 as *const c_char;
-pub const OSTREE_COMMIT_META_KEY_COLLECTION_BINDING: *const c_char =
-    b"ostree.collection-binding\0" as *const u8 as *const c_char;
-pub const OSTREE_COMMIT_META_KEY_ENDOFLIFE: *const c_char =
-    b"ostree.endoflife\0" as *const u8 as *const c_char;
-pub const OSTREE_COMMIT_META_KEY_ENDOFLIFE_REBASE: *const c_char =
-    b"ostree.endoflife-rebase\0" as *const u8 as *const c_char;
-pub const OSTREE_COMMIT_META_KEY_REF_BINDING: *const c_char =
-    b"ostree.ref-binding\0" as *const u8 as *const c_char;
-pub const OSTREE_COMMIT_META_KEY_SOURCE_TITLE: *const c_char =
-    b"ostree.source-title\0" as *const u8 as *const c_char;
-pub const OSTREE_COMMIT_META_KEY_VERSION: *const c_char =
-    b"version\0" as *const u8 as *const c_char;
-pub const OSTREE_DIRMETA_GVARIANT_STRING: *const c_char =
-    b"(uuua(ayay))\0" as *const u8 as *const c_char;
-pub const OSTREE_FILEMETA_GVARIANT_STRING: *const c_char =
-    b"(uuua(ayay))\0" as *const u8 as *const c_char;
-pub const OSTREE_GPG_KEY_GVARIANT_STRING: *const c_char =
-    b"(aa{sv}aa{sv}a{sv})\0" as *const u8 as *const c_char;
+pub const OSTREE_COMMIT_GVARIANT_STRING: &[u8] = b"(a{sv}aya(say)sstayay)\0";
+pub const OSTREE_COMMIT_META_KEY_ARCHITECTURE: &[u8] = b"ostree.architecture\0";
+pub const OSTREE_COMMIT_META_KEY_COLLECTION_BINDING: &[u8] = b"ostree.collection-binding\0";
+pub const OSTREE_COMMIT_META_KEY_ENDOFLIFE: &[u8] = b"ostree.endoflife\0";
+pub const OSTREE_COMMIT_META_KEY_ENDOFLIFE_REBASE: &[u8] = b"ostree.endoflife-rebase\0";
+pub const OSTREE_COMMIT_META_KEY_REF_BINDING: &[u8] = b"ostree.ref-binding\0";
+pub const OSTREE_COMMIT_META_KEY_SOURCE_TITLE: &[u8] = b"ostree.source-title\0";
+pub const OSTREE_COMMIT_META_KEY_VERSION: &[u8] = b"version\0";
+pub const OSTREE_DIRMETA_GVARIANT_STRING: &[u8] = b"(uuua(ayay))\0";
+pub const OSTREE_FILEMETA_GVARIANT_STRING: &[u8] = b"(uuua(ayay))\0";
+pub const OSTREE_GPG_KEY_GVARIANT_STRING: &[u8] = b"(aa{sv}aa{sv}a{sv})\0";
 pub const OSTREE_MAX_METADATA_SIZE: c_int = 134217728;
 pub const OSTREE_MAX_METADATA_WARN_SIZE: c_int = 7340032;
-pub const OSTREE_METADATA_KEY_BOOTABLE: *const c_char =
-    b"ostree.bootable\0" as *const u8 as *const c_char;
-pub const OSTREE_METADATA_KEY_LINUX: *const c_char =
-    b"ostree.linux\0" as *const u8 as *const c_char;
-pub const OSTREE_META_KEY_DEPLOY_COLLECTION_ID: *const c_char =
-    b"ostree.deploy-collection-id\0" as *const u8 as *const c_char;
-pub const OSTREE_ORIGIN_TRANSIENT_GROUP: *const c_char =
-    b"libostree-transient\0" as *const u8 as *const c_char;
-pub const OSTREE_PATH_BOOTED: *const c_char = b"/run/ostree-booted\0" as *const u8 as *const c_char;
-pub const OSTREE_REPO_METADATA_REF: *const c_char =
-    b"ostree-metadata\0" as *const u8 as *const c_char;
+pub const OSTREE_METADATA_KEY_BOOTABLE: &[u8] = b"ostree.bootable\0";
+pub const OSTREE_METADATA_KEY_LINUX: &[u8] = b"ostree.linux\0";
+pub const OSTREE_META_KEY_DEPLOY_COLLECTION_ID: &[u8] = b"ostree.deploy-collection-id\0";
+pub const OSTREE_ORIGIN_TRANSIENT_GROUP: &[u8] = b"libostree-transient\0";
+pub const OSTREE_PATH_BOOTED: &[u8] = b"/run/ostree-booted\0";
+pub const OSTREE_REPO_METADATA_REF: &[u8] = b"ostree-metadata\0";
 pub const OSTREE_SHA256_DIGEST_LEN: c_int = 32;
 pub const OSTREE_SHA256_STRING_LEN: c_int = 64;
-pub const OSTREE_SIGN_NAME_ED25519: *const c_char = b"ed25519\0" as *const u8 as *const c_char;
-pub const OSTREE_SUMMARY_GVARIANT_STRING: *const c_char =
-    b"(a(s(taya{sv}))a{sv})\0" as *const u8 as *const c_char;
-pub const OSTREE_SUMMARY_SIG_GVARIANT_STRING: *const c_char =
-    b"a{sv}\0" as *const u8 as *const c_char;
+pub const OSTREE_SIGN_NAME_ED25519: &[u8] = b"ed25519\0";
+pub const OSTREE_SUMMARY_GVARIANT_STRING: &[u8] = b"(a(s(taya{sv}))a{sv})\0";
+pub const OSTREE_SUMMARY_SIG_GVARIANT_STRING: &[u8] = b"a{sv}\0";
 pub const OSTREE_TIMESTAMP: c_int = 0;
-pub const OSTREE_TREE_GVARIANT_STRING: *const c_char =
-    b"(a(say)a(sayay))\0" as *const u8 as *const c_char;
+pub const OSTREE_TREE_GVARIANT_STRING: &[u8] = b"(a(say)a(sayay))\0";
 
 // Flags
 pub type OstreeChecksumFlags = c_uint;
@@ -190,6 +178,7 @@ pub const OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS: OstreeRepoCom
 pub const OSTREE_REPO_COMMIT_MODIFIER_FLAGS_ERROR_ON_UNLABELED: OstreeRepoCommitModifierFlags = 8;
 pub const OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME: OstreeRepoCommitModifierFlags = 16;
 pub const OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL: OstreeRepoCommitModifierFlags = 32;
+pub const OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SELINUX_LABEL_V1: OstreeRepoCommitModifierFlags = 64;
 
 pub type OstreeRepoCommitState = c_uint;
 pub const OSTREE_REPO_COMMIT_STATE_NORMAL: OstreeRepoCommitState = 0;
@@ -415,7 +404,7 @@ pub struct _OstreeKernelArgs {
     _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
 }
 
-pub type OstreeKernelArgs = *mut _OstreeKernelArgs;
+pub type OstreeKernelArgs = _OstreeKernelArgs;
 
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -867,7 +856,8 @@ impl ::std::fmt::Debug for OstreeSignInterface {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct OstreeSysrootDeployTreeOpts {
-    pub unused_bools: [gboolean; 8],
+    pub locked: gboolean,
+    pub unused_bools: [gboolean; 7],
     pub unused_ints: [c_int; 8],
     pub override_kernel_argv: *mut *mut c_char,
     pub overlay_initrds: *mut *mut c_char,
@@ -877,6 +867,7 @@ pub struct OstreeSysrootDeployTreeOpts {
 impl ::std::fmt::Debug for OstreeSysrootDeployTreeOpts {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         f.debug_struct(&format!("OstreeSysrootDeployTreeOpts @ {self:p}"))
+            .field("locked", &self.locked)
             .field("unused_bools", &self.unused_bools)
             .field("unused_ints", &self.unused_ints)
             .field("override_kernel_argv", &self.override_kernel_argv)
@@ -1139,57 +1130,57 @@ extern "C" {
     //=========================================================================
     // OstreeCollectionRef
     //=========================================================================
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_collection_ref_get_type() -> GType;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_collection_ref_new(
         collection_id: *const c_char,
         ref_name: *const c_char,
     ) -> *mut OstreeCollectionRef;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_collection_ref_dup(ref_: *const OstreeCollectionRef) -> *mut OstreeCollectionRef;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_collection_ref_equal(ref1: gconstpointer, ref2: gconstpointer) -> gboolean;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_collection_ref_free(ref_: *mut OstreeCollectionRef);
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_collection_ref_hash(ref_: gconstpointer) -> c_uint;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_collection_ref_dupv(
         refs: *const *const OstreeCollectionRef,
     ) -> *mut *mut OstreeCollectionRef;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_collection_ref_freev(refs: *mut *mut OstreeCollectionRef);
 
     //=========================================================================
     // OstreeCommitSizesEntry
     //=========================================================================
-    #[cfg(any(feature = "v2020_1", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_1")))]
+    #[cfg(feature = "v2020_1")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_1")))]
     pub fn ostree_commit_sizes_entry_get_type() -> GType;
-    #[cfg(any(feature = "v2020_1", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_1")))]
+    #[cfg(feature = "v2020_1")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_1")))]
     pub fn ostree_commit_sizes_entry_new(
         checksum: *const c_char,
         objtype: OstreeObjectType,
         unpacked: u64,
         archived: u64,
     ) -> *mut OstreeCommitSizesEntry;
-    #[cfg(any(feature = "v2020_1", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_1")))]
+    #[cfg(feature = "v2020_1")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_1")))]
     pub fn ostree_commit_sizes_entry_copy(
         entry: *const OstreeCommitSizesEntry,
     ) -> *mut OstreeCommitSizesEntry;
-    #[cfg(any(feature = "v2020_1", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_1")))]
+    #[cfg(feature = "v2020_1")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_1")))]
     pub fn ostree_commit_sizes_entry_free(entry: *mut OstreeCommitSizesEntry);
 
     //=========================================================================
@@ -1202,31 +1193,31 @@ extern "C" {
     //=========================================================================
     // OstreeKernelArgs
     //=========================================================================
-    #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_3")))]
+    #[cfg(feature = "v2019_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_3")))]
     pub fn ostree_kernel_args_append(kargs: *mut OstreeKernelArgs, arg: *const c_char);
-    #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_3")))]
+    #[cfg(feature = "v2019_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_3")))]
     pub fn ostree_kernel_args_append_argv(kargs: *mut OstreeKernelArgs, argv: *mut *mut c_char);
-    #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_3")))]
+    #[cfg(feature = "v2019_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_3")))]
     pub fn ostree_kernel_args_append_argv_filtered(
         kargs: *mut OstreeKernelArgs,
         argv: *mut *mut c_char,
         prefixes: *mut *mut c_char,
     );
-    #[cfg(any(feature = "v2022_5", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2022_5")))]
+    #[cfg(feature = "v2022_5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2022_5")))]
     pub fn ostree_kernel_args_append_if_missing(kargs: *mut OstreeKernelArgs, arg: *const c_char);
-    #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_3")))]
+    #[cfg(feature = "v2019_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_3")))]
     pub fn ostree_kernel_args_append_proc_cmdline(
         kargs: *mut OstreeKernelArgs,
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2022_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2022_7")))]
+    #[cfg(feature = "v2022_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2022_7")))]
     pub fn ostree_kernel_args_contains(
         kargs: *mut OstreeKernelArgs,
         arg: *const c_char,
@@ -1236,88 +1227,88 @@ extern "C" {
         arg: *const c_char,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2022_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2022_7")))]
+    #[cfg(feature = "v2022_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2022_7")))]
     pub fn ostree_kernel_args_delete_if_present(
         kargs: *mut OstreeKernelArgs,
         arg: *const c_char,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_3")))]
+    #[cfg(feature = "v2019_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_3")))]
     pub fn ostree_kernel_args_delete_key_entry(
         kargs: *mut OstreeKernelArgs,
         key: *const c_char,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_3")))]
+    #[cfg(feature = "v2019_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_3")))]
     pub fn ostree_kernel_args_free(kargs: *mut OstreeKernelArgs);
-    #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_3")))]
+    #[cfg(feature = "v2019_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_3")))]
     pub fn ostree_kernel_args_get_last_value(
         kargs: *mut OstreeKernelArgs,
         key: *const c_char,
     ) -> *const c_char;
-    #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_3")))]
+    #[cfg(feature = "v2019_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_3")))]
     pub fn ostree_kernel_args_new_replace(
         kargs: *mut OstreeKernelArgs,
         arg: *const c_char,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_3")))]
+    #[cfg(feature = "v2019_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_3")))]
     pub fn ostree_kernel_args_parse_append(kargs: *mut OstreeKernelArgs, options: *const c_char);
-    #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_3")))]
+    #[cfg(feature = "v2019_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_3")))]
     pub fn ostree_kernel_args_replace(kargs: *mut OstreeKernelArgs, arg: *const c_char);
-    #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_3")))]
+    #[cfg(feature = "v2019_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_3")))]
     pub fn ostree_kernel_args_replace_argv(kargs: *mut OstreeKernelArgs, argv: *mut *mut c_char);
-    #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_3")))]
+    #[cfg(feature = "v2019_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_3")))]
     pub fn ostree_kernel_args_replace_take(kargs: *mut OstreeKernelArgs, arg: *mut c_char);
-    #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_3")))]
+    #[cfg(feature = "v2019_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_3")))]
     pub fn ostree_kernel_args_to_string(kargs: *mut OstreeKernelArgs) -> *mut c_char;
-    #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_3")))]
+    #[cfg(feature = "v2019_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_3")))]
     pub fn ostree_kernel_args_to_strv(kargs: *mut OstreeKernelArgs) -> *mut *mut c_char;
-    #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_3")))]
+    #[cfg(feature = "v2019_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_3")))]
     pub fn ostree_kernel_args_cleanup(loc: *mut c_void);
-    #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_3")))]
+    #[cfg(feature = "v2019_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_3")))]
     pub fn ostree_kernel_args_from_string(options: *const c_char) -> *mut OstreeKernelArgs;
-    #[cfg(any(feature = "v2019_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_3")))]
+    #[cfg(feature = "v2019_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_3")))]
     pub fn ostree_kernel_args_new() -> *mut OstreeKernelArgs;
 
     //=========================================================================
     // OstreeRemote
     //=========================================================================
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_remote_get_type() -> GType;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_remote_get_name(remote: *mut OstreeRemote) -> *const c_char;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_remote_get_url(remote: *mut OstreeRemote) -> *mut c_char;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_remote_ref(remote: *mut OstreeRemote) -> *mut OstreeRemote;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_remote_unref(remote: *mut OstreeRemote);
 
     //=========================================================================
     // OstreeRepoCheckoutAtOptions
     //=========================================================================
-    #[cfg(any(feature = "v2017_13", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_13")))]
+    #[cfg(feature = "v2017_13")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_13")))]
     pub fn ostree_repo_checkout_at_options_set_devino(
         opts: *mut OstreeRepoCheckoutAtOptions,
         cache: *mut OstreeRepoDevInoCache,
@@ -1336,8 +1327,8 @@ extern "C" {
     pub fn ostree_repo_commit_modifier_ref(
         modifier: *mut OstreeRepoCommitModifier,
     ) -> *mut OstreeRepoCommitModifier;
-    #[cfg(any(feature = "v2017_13", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_13")))]
+    #[cfg(feature = "v2017_13")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_13")))]
     pub fn ostree_repo_commit_modifier_set_devino_cache(
         modifier: *mut OstreeRepoCommitModifier,
         cache: *mut OstreeRepoDevInoCache,
@@ -1346,8 +1337,8 @@ extern "C" {
         modifier: *mut OstreeRepoCommitModifier,
         sepolicy: *mut OstreeSePolicy,
     );
-    #[cfg(any(feature = "v2020_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_4")))]
+    #[cfg(feature = "v2020_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_4")))]
     pub fn ostree_repo_commit_modifier_set_sepolicy_from_commit(
         modifier: *mut OstreeRepoCommitModifier,
         repo: *mut OstreeRepo,
@@ -1412,11 +1403,11 @@ extern "C" {
     //=========================================================================
     // OstreeRepoFinderResult
     //=========================================================================
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_finder_result_get_type() -> GType;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_finder_result_new(
         remote: *mut OstreeRemote,
         finder: *mut OstreeRepoFinder,
@@ -1425,22 +1416,22 @@ extern "C" {
         ref_to_timestamp: *mut glib::GHashTable,
         summary_last_modified: u64,
     ) -> *mut OstreeRepoFinderResult;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_finder_result_compare(
         a: *const OstreeRepoFinderResult,
         b: *const OstreeRepoFinderResult,
     ) -> c_int;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_finder_result_dup(
         result: *mut OstreeRepoFinderResult,
     ) -> *mut OstreeRepoFinderResult;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_finder_result_free(result: *mut OstreeRepoFinderResult);
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_finder_result_freev(results: *mut *mut OstreeRepoFinderResult);
 
     //=========================================================================
@@ -1457,18 +1448,18 @@ extern "C" {
         changed: *mut gpointer,
         user_data: gpointer,
     ) -> *mut OstreeAsyncProgress;
-    #[cfg(any(feature = "v2019_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_6")))]
+    #[cfg(feature = "v2019_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_6")))]
     pub fn ostree_async_progress_copy_state(
         self_: *mut OstreeAsyncProgress,
         dest: *mut OstreeAsyncProgress,
     );
     pub fn ostree_async_progress_finish(self_: *mut OstreeAsyncProgress);
-    #[cfg(any(feature = "v2017_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_6")))]
+    #[cfg(feature = "v2017_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_6")))]
     pub fn ostree_async_progress_get(self_: *mut OstreeAsyncProgress, ...);
-    #[cfg(any(feature = "v2017_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_6")))]
+    #[cfg(feature = "v2017_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_6")))]
     pub fn ostree_async_progress_get_status(self_: *mut OstreeAsyncProgress) -> *mut c_char;
     pub fn ostree_async_progress_get_uint(
         self_: *mut OstreeAsyncProgress,
@@ -1478,17 +1469,17 @@ extern "C" {
         self_: *mut OstreeAsyncProgress,
         key: *const c_char,
     ) -> u64;
-    #[cfg(any(feature = "v2017_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_6")))]
+    #[cfg(feature = "v2017_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_6")))]
     pub fn ostree_async_progress_get_variant(
         self_: *mut OstreeAsyncProgress,
         key: *const c_char,
     ) -> *mut glib::GVariant;
-    #[cfg(any(feature = "v2017_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_6")))]
+    #[cfg(feature = "v2017_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_6")))]
     pub fn ostree_async_progress_set(self_: *mut OstreeAsyncProgress, ...);
-    #[cfg(any(feature = "v2017_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_6")))]
+    #[cfg(feature = "v2017_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_6")))]
     pub fn ostree_async_progress_set_status(self_: *mut OstreeAsyncProgress, status: *const c_char);
     pub fn ostree_async_progress_set_uint(
         self_: *mut OstreeAsyncProgress,
@@ -1500,8 +1491,8 @@ extern "C" {
         key: *const c_char,
         value: u64,
     );
-    #[cfg(any(feature = "v2017_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_6")))]
+    #[cfg(feature = "v2017_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_6")))]
     pub fn ostree_async_progress_set_variant(
         self_: *mut OstreeAsyncProgress,
         key: *const c_char,
@@ -1520,8 +1511,8 @@ extern "C" {
         self_: *mut OstreeBootconfigParser,
         key: *const c_char,
     ) -> *const c_char;
-    #[cfg(any(feature = "v2020_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_7")))]
+    #[cfg(feature = "v2020_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_7")))]
     pub fn ostree_bootconfig_parser_get_overlay_initrds(
         self_: *mut OstreeBootconfigParser,
     ) -> *mut *mut c_char;
@@ -1543,8 +1534,8 @@ extern "C" {
         key: *const c_char,
         value: *const c_char,
     );
-    #[cfg(any(feature = "v2020_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_7")))]
+    #[cfg(feature = "v2020_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_7")))]
     pub fn ostree_bootconfig_parser_set_overlay_initrds(
         self_: *mut OstreeBootconfigParser,
         initrds: *mut *mut c_char,
@@ -1585,11 +1576,11 @@ extern "C" {
         bootcsum: *const c_char,
         bootserial: c_int,
     ) -> *mut OstreeDeployment;
-    #[cfg(any(feature = "v2018_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_3")))]
+    #[cfg(feature = "v2018_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_3")))]
     pub fn ostree_deployment_origin_remove_transient_state(origin: *mut glib::GKeyFile);
-    #[cfg(any(feature = "v2016_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_4")))]
+    #[cfg(feature = "v2016_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_4")))]
     pub fn ostree_deployment_unlocked_state_to_string(
         state: OstreeDeploymentUnlockedState,
     ) -> *const c_char;
@@ -1606,17 +1597,20 @@ extern "C" {
     pub fn ostree_deployment_get_origin(self_: *mut OstreeDeployment) -> *mut glib::GKeyFile;
     pub fn ostree_deployment_get_origin_relpath(self_: *mut OstreeDeployment) -> *mut c_char;
     pub fn ostree_deployment_get_osname(self_: *mut OstreeDeployment) -> *const c_char;
-    #[cfg(any(feature = "v2016_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_4")))]
+    #[cfg(feature = "v2016_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_4")))]
     pub fn ostree_deployment_get_unlocked(
         self_: *mut OstreeDeployment,
     ) -> OstreeDeploymentUnlockedState;
     pub fn ostree_deployment_hash(v: gconstpointer) -> c_uint;
-    #[cfg(any(feature = "v2018_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_3")))]
+    #[cfg(feature = "v2023_8")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2023_8")))]
+    pub fn ostree_deployment_is_finalization_locked(self_: *mut OstreeDeployment) -> gboolean;
+    #[cfg(feature = "v2018_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_3")))]
     pub fn ostree_deployment_is_pinned(self_: *mut OstreeDeployment) -> gboolean;
-    #[cfg(any(feature = "v2018_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_3")))]
+    #[cfg(feature = "v2018_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_3")))]
     pub fn ostree_deployment_is_staged(self_: *mut OstreeDeployment) -> gboolean;
     pub fn ostree_deployment_set_bootconfig(
         self_: *mut OstreeDeployment,
@@ -1660,8 +1654,8 @@ extern "C" {
         key_id: *const c_char,
         out_signature_index: *mut c_uint,
     ) -> gboolean;
-    #[cfg(any(feature = "v2016_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_6")))]
+    #[cfg(feature = "v2016_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_6")))]
     pub fn ostree_gpg_verify_result_require_valid_signature(
         result: *mut OstreeGpgVerifyResult,
         error: *mut *mut glib::GError,
@@ -1672,22 +1666,22 @@ extern "C" {
     //=========================================================================
     pub fn ostree_mutable_tree_get_type() -> GType;
     pub fn ostree_mutable_tree_new() -> *mut OstreeMutableTree;
-    #[cfg(any(feature = "v2018_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_7")))]
+    #[cfg(feature = "v2018_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_7")))]
     pub fn ostree_mutable_tree_new_from_checksum(
         repo: *mut OstreeRepo,
         contents_checksum: *const c_char,
         metadata_checksum: *const c_char,
     ) -> *mut OstreeMutableTree;
-    #[cfg(any(feature = "v2021_5", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_5")))]
+    #[cfg(feature = "v2021_5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2021_5")))]
     pub fn ostree_mutable_tree_new_from_commit(
         repo: *mut OstreeRepo,
         rev: *const c_char,
         error: *mut *mut glib::GError,
     ) -> *mut OstreeMutableTree;
-    #[cfg(any(feature = "v2018_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_7")))]
+    #[cfg(feature = "v2018_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_7")))]
     pub fn ostree_mutable_tree_check_error(
         self_: *mut OstreeMutableTree,
         error: *mut *mut glib::GError,
@@ -1705,8 +1699,8 @@ extern "C" {
         out_parent: *mut *mut OstreeMutableTree,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2018_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_7")))]
+    #[cfg(feature = "v2018_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_7")))]
     pub fn ostree_mutable_tree_fill_empty_from_dirtree(
         self_: *mut OstreeMutableTree,
         repo: *mut OstreeRepo,
@@ -1728,8 +1722,8 @@ extern "C" {
         out_subdir: *mut *mut OstreeMutableTree,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2018_9", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_9")))]
+    #[cfg(feature = "v2018_9")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_9")))]
     pub fn ostree_mutable_tree_remove(
         self_: *mut OstreeMutableTree,
         name: *const c_char,
@@ -1768,8 +1762,8 @@ extern "C" {
         repo_path: *mut gio::GFile,
         sysroot_path: *mut gio::GFile,
     ) -> *mut OstreeRepo;
-    #[cfg(any(feature = "v2017_10", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_10")))]
+    #[cfg(feature = "v2017_10")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_10")))]
     pub fn ostree_repo_create_at(
         dfd: c_int,
         path: *const c_char,
@@ -1783,8 +1777,8 @@ extern "C" {
         out_mode: *mut OstreeRepoMode,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2017_10", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_10")))]
+    #[cfg(feature = "v2017_10")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_10")))]
     pub fn ostree_repo_open_at(
         dfd: c_int,
         path: *const c_char,
@@ -1795,12 +1789,12 @@ extern "C" {
         progress: *mut OstreeAsyncProgress,
         user_data: gpointer,
     );
-    #[cfg(any(feature = "v2018_5", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_5")))]
+    #[cfg(feature = "v2018_5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_5")))]
     pub fn ostree_repo_traverse_new_parents() -> *mut glib::GHashTable;
     pub fn ostree_repo_traverse_new_reachable() -> *mut glib::GHashTable;
-    #[cfg(any(feature = "v2018_5", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_5")))]
+    #[cfg(feature = "v2018_5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_5")))]
     pub fn ostree_repo_traverse_parents_get_commits(
         parents: *mut glib::GHashTable,
         object: *mut glib::GVariant,
@@ -1824,14 +1818,23 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2016_8", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_8")))]
+    #[cfg(feature = "v2016_8")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_8")))]
     pub fn ostree_repo_checkout_at(
         self_: *mut OstreeRepo,
         options: *mut OstreeRepoCheckoutAtOptions,
         destination_dfd: c_int,
         destination_path: *const c_char,
         commit: *const c_char,
+        cancellable: *mut gio::GCancellable,
+        error: *mut *mut glib::GError,
+    ) -> gboolean;
+    pub fn ostree_repo_checkout_composefs(
+        self_: *mut OstreeRepo,
+        options: *mut glib::GVariant,
+        destination_dfd: c_int,
+        destination_path: *const c_char,
+        checksum: *const c_char,
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
@@ -1887,8 +1890,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2017_12", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_12")))]
+    #[cfg(feature = "v2017_12")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_12")))]
     pub fn ostree_repo_equal(a: *mut OstreeRepo, b: *mut OstreeRepo) -> gboolean;
     pub fn ostree_repo_export_tree_to_archive(
         self_: *mut OstreeRepo,
@@ -1898,8 +1901,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_find_remotes_async(
         self_: *mut OstreeRepo,
         refs: *const *const OstreeCollectionRef,
@@ -1910,15 +1913,15 @@ extern "C" {
         callback: gio::GAsyncReadyCallback,
         user_data: gpointer,
     );
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_find_remotes_finish(
         self_: *mut OstreeRepo,
         result: *mut gio::GAsyncResult,
         error: *mut *mut glib::GError,
     ) -> *mut *mut OstreeRepoFinderResult;
-    #[cfg(any(feature = "v2017_15", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_15")))]
+    #[cfg(feature = "v2017_15")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_15")))]
     pub fn ostree_repo_fsck_object(
         self_: *mut OstreeRepo,
         objtype: OstreeObjectType,
@@ -1926,22 +1929,22 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2019_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_2")))]
+    #[cfg(feature = "v2019_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_2")))]
     pub fn ostree_repo_get_bootloader(self_: *mut OstreeRepo) -> *const c_char;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_get_collection_id(self_: *mut OstreeRepo) -> *const c_char;
     pub fn ostree_repo_get_config(self_: *mut OstreeRepo) -> *mut glib::GKeyFile;
-    #[cfg(any(feature = "v2018_9", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_9")))]
+    #[cfg(feature = "v2018_9")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_9")))]
     pub fn ostree_repo_get_default_repo_finders(self_: *mut OstreeRepo) -> *const *const c_char;
-    #[cfg(any(feature = "v2016_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_4")))]
+    #[cfg(feature = "v2016_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_4")))]
     pub fn ostree_repo_get_dfd(self_: *mut OstreeRepo) -> c_int;
     pub fn ostree_repo_get_disable_fsync(self_: *mut OstreeRepo) -> gboolean;
-    #[cfg(any(feature = "v2018_9", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_9")))]
+    #[cfg(feature = "v2018_9")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_9")))]
     pub fn ostree_repo_get_min_free_space_bytes(
         self_: *mut OstreeRepo,
         out_reserved_bytes: *mut u64,
@@ -1950,8 +1953,8 @@ extern "C" {
     pub fn ostree_repo_get_mode(self_: *mut OstreeRepo) -> OstreeRepoMode;
     pub fn ostree_repo_get_parent(self_: *mut OstreeRepo) -> *mut OstreeRepo;
     pub fn ostree_repo_get_path(self_: *mut OstreeRepo) -> *mut gio::GFile;
-    #[cfg(any(feature = "v2016_5", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_5")))]
+    #[cfg(feature = "v2016_5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_5")))]
     pub fn ostree_repo_get_remote_boolean_option(
         self_: *mut OstreeRepo,
         remote_name: *const c_char,
@@ -1960,8 +1963,8 @@ extern "C" {
         out_value: *mut gboolean,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2016_5", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_5")))]
+    #[cfg(feature = "v2016_5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_5")))]
     pub fn ostree_repo_get_remote_list_option(
         self_: *mut OstreeRepo,
         remote_name: *const c_char,
@@ -1969,8 +1972,8 @@ extern "C" {
         out_value: *mut *mut *mut c_char,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2016_5", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_5")))]
+    #[cfg(feature = "v2016_5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_5")))]
     pub fn ostree_repo_get_remote_option(
         self_: *mut OstreeRepo,
         remote_name: *const c_char,
@@ -1979,8 +1982,8 @@ extern "C" {
         out_value: *mut *mut c_char,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2020_8", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_8")))]
+    #[cfg(feature = "v2020_8")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_8")))]
     pub fn ostree_repo_gpg_sign_data(
         self_: *mut OstreeRepo,
         data: *mut glib::GBytes,
@@ -1991,8 +1994,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2016_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_6")))]
+    #[cfg(feature = "v2016_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_6")))]
     pub fn ostree_repo_gpg_verify_data(
         self_: *mut OstreeRepo,
         remote_name: *const c_char,
@@ -2011,8 +2014,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2017_12", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_12")))]
+    #[cfg(feature = "v2017_12")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_12")))]
     pub fn ostree_repo_hash(self_: *mut OstreeRepo) -> c_uint;
     pub fn ostree_repo_import_archive_to_mtree(
         self_: *mut OstreeRepo,
@@ -2031,8 +2034,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2016_5", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_5")))]
+    #[cfg(feature = "v2016_5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_5")))]
     pub fn ostree_repo_import_object_from_with_trust(
         self_: *mut OstreeRepo,
         source: *mut OstreeRepo,
@@ -2047,8 +2050,8 @@ extern "C" {
         self_: *mut OstreeRepo,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_list_collection_refs(
         self_: *mut OstreeRepo,
         match_collection_id: *const c_char,
@@ -2078,8 +2081,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2016_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_4")))]
+    #[cfg(feature = "v2016_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_4")))]
     pub fn ostree_repo_list_refs_ext(
         self_: *mut OstreeRepo,
         refspec_prefix: *const c_char,
@@ -2088,8 +2091,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2020_8", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_8")))]
+    #[cfg(feature = "v2020_8")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_8")))]
     pub fn ostree_repo_list_static_delta_indexes(
         self_: *mut OstreeRepo,
         out_indexes: *mut *mut glib::GPtrArray,
@@ -2102,8 +2105,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2015_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2015_7")))]
+    #[cfg(feature = "v2015_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2015_7")))]
     pub fn ostree_repo_load_commit(
         self_: *mut OstreeRepo,
         checksum: *const c_char,
@@ -2143,32 +2146,32 @@ extern "C" {
         out_variant: *mut *mut glib::GVariant,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2021_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_3")))]
+    #[cfg(feature = "v2021_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2021_3")))]
     pub fn ostree_repo_lock_pop(
         self_: *mut OstreeRepo,
         lock_type: OstreeRepoLockType,
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2021_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_3")))]
+    #[cfg(feature = "v2021_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2021_3")))]
     pub fn ostree_repo_lock_push(
         self_: *mut OstreeRepo,
         lock_type: OstreeRepoLockType,
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2017_15", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_15")))]
+    #[cfg(feature = "v2017_15")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_15")))]
     pub fn ostree_repo_mark_commit_partial(
         self_: *mut OstreeRepo,
         checksum: *const c_char,
         is_partial: gboolean,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2019_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2019_4")))]
+    #[cfg(feature = "v2019_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2019_4")))]
     pub fn ostree_repo_mark_commit_partial_reason(
         self_: *mut OstreeRepo,
         checksum: *const c_char,
@@ -2197,8 +2200,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2017_1", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_1")))]
+    #[cfg(feature = "v2017_1")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_1")))]
     pub fn ostree_repo_prune_from_reachable(
         self_: *mut OstreeRepo,
         options: *mut OstreeRepoPruneOptions,
@@ -2223,8 +2226,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_pull_from_remotes_async(
         self_: *mut OstreeRepo,
         results: *const *const OstreeRepoFinderResult,
@@ -2234,8 +2237,8 @@ extern "C" {
         callback: gio::GAsyncReadyCallback,
         user_data: gpointer,
     );
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_pull_from_remotes_finish(
         self_: *mut OstreeRepo,
         result: *mut gio::GAsyncResult,
@@ -2282,8 +2285,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2023_1", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2023_1")))]
+    #[cfg(feature = "v2023_1")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2023_1")))]
     pub fn ostree_repo_regenerate_metadata(
         self_: *mut OstreeRepo,
         additional_metadata: *mut glib::GVariant,
@@ -2297,8 +2300,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2017_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_2")))]
+    #[cfg(feature = "v2017_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_2")))]
     pub fn ostree_repo_reload_config(
         self_: *mut OstreeRepo,
         cancellable: *mut gio::GCancellable,
@@ -2336,8 +2339,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2016_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_6")))]
+    #[cfg(feature = "v2016_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_6")))]
     pub fn ostree_repo_remote_fetch_summary_with_options(
         self_: *mut OstreeRepo,
         name: *const c_char,
@@ -2347,8 +2350,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2021_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_4")))]
+    #[cfg(feature = "v2021_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2021_4")))]
     pub fn ostree_repo_remote_get_gpg_keys(
         self_: *mut OstreeRepo,
         name: *const c_char,
@@ -2388,8 +2391,8 @@ extern "C" {
         self_: *mut OstreeRepo,
         out_n_remotes: *mut c_uint,
     ) -> *mut *mut c_char;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_remote_list_collection_refs(
         self_: *mut OstreeRepo,
         remote_name: *const c_char,
@@ -2404,8 +2407,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_resolve_collection_ref(
         self_: *mut OstreeRepo,
         ref_: *const OstreeCollectionRef,
@@ -2415,8 +2418,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_resolve_keyring_for_collection(
         self_: *mut OstreeRepo,
         collection_id: *const c_char,
@@ -2430,8 +2433,8 @@ extern "C" {
         out_rev: *mut *mut c_char,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2016_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_7")))]
+    #[cfg(feature = "v2016_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_7")))]
     pub fn ostree_repo_resolve_rev_ext(
         self_: *mut OstreeRepo,
         refspec: *const c_char,
@@ -2445,8 +2448,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2017_10", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_10")))]
+    #[cfg(feature = "v2017_10")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_10")))]
     pub fn ostree_repo_set_alias_ref_immediate(
         self_: *mut OstreeRepo,
         remote: *const c_char,
@@ -2455,8 +2458,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2016_5", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_5")))]
+    #[cfg(feature = "v2016_5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_5")))]
     pub fn ostree_repo_set_cache_dir(
         self_: *mut OstreeRepo,
         dfd: c_int,
@@ -2464,15 +2467,15 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_set_collection_id(
         self_: *mut OstreeRepo,
         collection_id: *const c_char,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_set_collection_ref_immediate(
         self_: *mut OstreeRepo,
         ref_: *const OstreeCollectionRef,
@@ -2506,8 +2509,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2021_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_4")))]
+    #[cfg(feature = "v2021_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2021_4")))]
     pub fn ostree_repo_signature_verify_commit_data(
         self_: *mut OstreeRepo,
         remote_name: *const c_char,
@@ -2524,8 +2527,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2020_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_7")))]
+    #[cfg(feature = "v2020_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_7")))]
     pub fn ostree_repo_static_delta_execute_offline_with_signature(
         self_: *mut OstreeRepo,
         dir_or_file: *mut gio::GFile,
@@ -2544,8 +2547,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2020_8", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_8")))]
+    #[cfg(feature = "v2020_8")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_8")))]
     pub fn ostree_repo_static_delta_reindex(
         repo: *mut OstreeRepo,
         flags: OstreeStaticDeltaIndexFlags,
@@ -2553,8 +2556,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2020_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_7")))]
+    #[cfg(feature = "v2020_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_7")))]
     pub fn ostree_repo_static_delta_verify_signature(
         self_: *mut OstreeRepo,
         delta_id: *const c_char,
@@ -2562,8 +2565,8 @@ extern "C" {
         out_success_message: *mut *mut c_char,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_transaction_set_collection_ref(
         self_: *mut OstreeRepo,
         ref_: *const OstreeCollectionRef,
@@ -2596,8 +2599,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2018_5", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_5")))]
+    #[cfg(feature = "v2018_5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_5")))]
     pub fn ostree_repo_traverse_commit_union_with_parents(
         repo: *mut OstreeRepo,
         commit_checksum: *const c_char,
@@ -2607,8 +2610,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2018_5", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_5")))]
+    #[cfg(feature = "v2018_5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_5")))]
     pub fn ostree_repo_traverse_commit_with_flags(
         repo: *mut OstreeRepo,
         flags: OstreeRepoCommitTraverseFlags,
@@ -2619,8 +2622,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_traverse_reachable_refs(
         self_: *mut OstreeRepo,
         depth: c_uint,
@@ -2644,8 +2647,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> *mut OstreeGpgVerifyResult;
-    #[cfg(any(feature = "v2016_14", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_14")))]
+    #[cfg(feature = "v2016_14")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_14")))]
     pub fn ostree_repo_verify_commit_for_remote(
         self_: *mut OstreeRepo,
         commit_checksum: *const c_char,
@@ -2811,8 +2814,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2021_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_2")))]
+    #[cfg(feature = "v2021_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2021_2")))]
     pub fn ostree_repo_write_regfile(
         self_: *mut OstreeRepo,
         expected_checksum: *const c_char,
@@ -2823,8 +2826,8 @@ extern "C" {
         xattrs: *mut glib::GVariant,
         error: *mut *mut glib::GError,
     ) -> *mut OstreeContentWriter;
-    #[cfg(any(feature = "v2021_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_2")))]
+    #[cfg(feature = "v2021_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2021_2")))]
     pub fn ostree_repo_write_regfile_inline(
         self_: *mut OstreeRepo,
         expected_checksum: *const c_char,
@@ -2837,8 +2840,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> *mut c_char;
-    #[cfg(any(feature = "v2021_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_2")))]
+    #[cfg(feature = "v2021_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2021_2")))]
     pub fn ostree_repo_write_symlink(
         self_: *mut OstreeRepo,
         expected_checksum: *const c_char,
@@ -2898,35 +2901,35 @@ extern "C" {
     // OstreeRepoFinderAvahi
     //=========================================================================
     pub fn ostree_repo_finder_avahi_get_type() -> GType;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_finder_avahi_new(
         context: *mut glib::GMainContext,
     ) -> *mut OstreeRepoFinderAvahi;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_finder_avahi_start(
         self_: *mut OstreeRepoFinderAvahi,
         error: *mut *mut glib::GError,
     );
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_finder_avahi_stop(self_: *mut OstreeRepoFinderAvahi);
 
     //=========================================================================
     // OstreeRepoFinderConfig
     //=========================================================================
     pub fn ostree_repo_finder_config_get_type() -> GType;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_finder_config_new() -> *mut OstreeRepoFinderConfig;
 
     //=========================================================================
     // OstreeRepoFinderMount
     //=========================================================================
     pub fn ostree_repo_finder_mount_get_type() -> GType;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_finder_mount_new(
         monitor: *mut gio::GVolumeMonitor,
     ) -> *mut OstreeRepoFinderMount;
@@ -2935,11 +2938,11 @@ extern "C" {
     // OstreeRepoFinderOverride
     //=========================================================================
     pub fn ostree_repo_finder_override_get_type() -> GType;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_finder_override_new() -> *mut OstreeRepoFinderOverride;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_finder_override_add_uri(
         self_: *mut OstreeRepoFinderOverride,
         uri: *const c_char,
@@ -2954,8 +2957,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> *mut OstreeSePolicy;
-    #[cfg(any(feature = "v2017_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_4")))]
+    #[cfg(feature = "v2017_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_4")))]
     pub fn ostree_sepolicy_new_at(
         rootfs_dfd: c_int,
         cancellable: *mut gio::GCancellable,
@@ -2968,8 +2971,8 @@ extern "C" {
         error: *mut *mut glib::GError,
     ) -> *mut OstreeSePolicy;
     pub fn ostree_sepolicy_fscreatecon_cleanup(unused: *mut *mut c_void);
-    #[cfg(any(feature = "v2016_5", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_5")))]
+    #[cfg(feature = "v2016_5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_5")))]
     pub fn ostree_sepolicy_get_csum(self_: *mut OstreeSePolicy) -> *const c_char;
     pub fn ostree_sepolicy_get_label(
         self_: *mut OstreeSePolicy,
@@ -3007,13 +3010,20 @@ extern "C" {
     pub fn ostree_sysroot_get_deployment_origin_path(
         deployment_path: *mut gio::GFile,
     ) -> *mut gio::GFile;
+    #[cfg(feature = "v2023_8")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2023_8")))]
+    pub fn ostree_sysroot_change_finalization(
+        self_: *mut OstreeSysroot,
+        deployment: *mut OstreeDeployment,
+        error: *mut *mut glib::GError,
+    ) -> gboolean;
     pub fn ostree_sysroot_cleanup(
         self_: *mut OstreeSysroot,
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_sysroot_cleanup_prune_repo(
         sysroot: *mut OstreeSysroot,
         options: *mut OstreeRepoPruneOptions,
@@ -3023,8 +3033,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2018_5", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_5")))]
+    #[cfg(feature = "v2018_5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_5")))]
     pub fn ostree_sysroot_deploy_tree(
         self_: *mut OstreeSysroot,
         osname: *const c_char,
@@ -3036,8 +3046,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2020_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_7")))]
+    #[cfg(feature = "v2020_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_7")))]
     pub fn ostree_sysroot_deploy_tree_with_options(
         self_: *mut OstreeSysroot,
         osname: *const c_char,
@@ -3070,16 +3080,16 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2018_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_3")))]
+    #[cfg(feature = "v2018_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_3")))]
     pub fn ostree_sysroot_deployment_set_pinned(
         self_: *mut OstreeSysroot,
         deployment: *mut OstreeDeployment,
         is_pinned: gboolean,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2016_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_4")))]
+    #[cfg(feature = "v2016_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_4")))]
     pub fn ostree_sysroot_deployment_unlock(
         self_: *mut OstreeSysroot,
         deployment: *mut OstreeDeployment,
@@ -3116,42 +3126,42 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2018_5", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_5")))]
+    #[cfg(feature = "v2018_5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_5")))]
     pub fn ostree_sysroot_get_staged_deployment(self_: *mut OstreeSysroot)
         -> *mut OstreeDeployment;
     pub fn ostree_sysroot_get_subbootversion(self_: *mut OstreeSysroot) -> c_int;
-    #[cfg(any(feature = "v2016_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_4")))]
+    #[cfg(feature = "v2016_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_4")))]
     pub fn ostree_sysroot_init_osname(
         self_: *mut OstreeSysroot,
         osname: *const c_char,
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2020_1", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_1")))]
+    #[cfg(feature = "v2020_1")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_1")))]
     pub fn ostree_sysroot_initialize(
         self_: *mut OstreeSysroot,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2022_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2022_7")))]
+    #[cfg(feature = "v2022_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2022_7")))]
     pub fn ostree_sysroot_initialize_with_mount_namespace(
         self_: *mut OstreeSysroot,
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2020_1", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_1")))]
+    #[cfg(feature = "v2020_1")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_1")))]
     pub fn ostree_sysroot_is_booted(self_: *mut OstreeSysroot) -> gboolean;
     pub fn ostree_sysroot_load(
         self_: *mut OstreeSysroot,
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2016_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_4")))]
+    #[cfg(feature = "v2016_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_4")))]
     pub fn ostree_sysroot_load_if_changed(
         self_: *mut OstreeSysroot,
         out_changed: *mut gboolean,
@@ -3182,25 +3192,25 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2017_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_7")))]
+    #[cfg(feature = "v2017_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_7")))]
     pub fn ostree_sysroot_query_deployments_for(
         self_: *mut OstreeSysroot,
         osname: *const c_char,
         out_pending: *mut *mut OstreeDeployment,
         out_rollback: *mut *mut OstreeDeployment,
     );
-    #[cfg(any(feature = "v2017_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_7")))]
+    #[cfg(feature = "v2017_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_7")))]
     pub fn ostree_sysroot_repo(self_: *mut OstreeSysroot) -> *mut OstreeRepo;
-    #[cfg(any(feature = "v2021_1", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_1")))]
+    #[cfg(feature = "v2021_1")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2021_1")))]
     pub fn ostree_sysroot_require_booted_deployment(
         self_: *mut OstreeSysroot,
         error: *mut *mut glib::GError,
     ) -> *mut OstreeDeployment;
-    #[cfg(any(feature = "v2020_1", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_1")))]
+    #[cfg(feature = "v2020_1")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_1")))]
     pub fn ostree_sysroot_set_mount_namespace_in_use(self_: *mut OstreeSysroot);
     pub fn ostree_sysroot_simple_write_deployment(
         sysroot: *mut OstreeSysroot,
@@ -3211,8 +3221,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2020_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_7")))]
+    #[cfg(feature = "v2020_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_7")))]
     pub fn ostree_sysroot_stage_overlay_initrd(
         self_: *mut OstreeSysroot,
         fd: c_int,
@@ -3220,8 +3230,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2018_5", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_5")))]
+    #[cfg(feature = "v2018_5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_5")))]
     pub fn ostree_sysroot_stage_tree(
         self_: *mut OstreeSysroot,
         osname: *const c_char,
@@ -3233,8 +3243,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2020_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_7")))]
+    #[cfg(feature = "v2020_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_7")))]
     pub fn ostree_sysroot_stage_tree_with_options(
         self_: *mut OstreeSysroot,
         osname: *const c_char,
@@ -3253,14 +3263,21 @@ extern "C" {
     ) -> gboolean;
     pub fn ostree_sysroot_unload(self_: *mut OstreeSysroot);
     pub fn ostree_sysroot_unlock(self_: *mut OstreeSysroot);
+    #[cfg(feature = "v2023_11")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2023_11")))]
+    pub fn ostree_sysroot_update_post_copy(
+        self_: *mut OstreeSysroot,
+        cancellable: *mut gio::GCancellable,
+        error: *mut *mut glib::GError,
+    ) -> gboolean;
     pub fn ostree_sysroot_write_deployments(
         self_: *mut OstreeSysroot,
         new_deployments: *mut glib::GPtrArray,
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2017_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_4")))]
+    #[cfg(feature = "v2017_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_4")))]
     pub fn ostree_sysroot_write_deployments_with_options(
         self_: *mut OstreeSysroot,
         new_deployments: *mut glib::GPtrArray,
@@ -3348,8 +3365,8 @@ extern "C" {
     // OstreeRepoFinder
     //=========================================================================
     pub fn ostree_repo_finder_get_type() -> GType;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_finder_resolve_all_async(
         finders: *const *mut OstreeRepoFinder,
         refs: *const *const OstreeCollectionRef,
@@ -3358,14 +3375,14 @@ extern "C" {
         callback: gio::GAsyncReadyCallback,
         user_data: gpointer,
     );
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_finder_resolve_all_finish(
         result: *mut gio::GAsyncResult,
         error: *mut *mut glib::GError,
     ) -> *mut glib::GPtrArray;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_finder_resolve_async(
         self_: *mut OstreeRepoFinder,
         refs: *const *const OstreeCollectionRef,
@@ -3374,8 +3391,8 @@ extern "C" {
         callback: gio::GAsyncReadyCallback,
         user_data: gpointer,
     );
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_repo_finder_resolve_finish(
         self_: *mut OstreeRepoFinder,
         result: *mut gio::GAsyncResult,
@@ -3386,30 +3403,30 @@ extern "C" {
     // OstreeSign
     //=========================================================================
     pub fn ostree_sign_get_type() -> GType;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
+    #[cfg(feature = "v2020_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_2")))]
     pub fn ostree_sign_get_all() -> *mut glib::GPtrArray;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
+    #[cfg(feature = "v2020_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_2")))]
     pub fn ostree_sign_get_by_name(
         name: *const c_char,
         error: *mut *mut glib::GError,
     ) -> *mut OstreeSign;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
+    #[cfg(feature = "v2020_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_2")))]
     pub fn ostree_sign_add_pk(
         self_: *mut OstreeSign,
         public_key: *mut glib::GVariant,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
+    #[cfg(feature = "v2020_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_2")))]
     pub fn ostree_sign_clear_keys(
         self_: *mut OstreeSign,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
+    #[cfg(feature = "v2020_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_2")))]
     pub fn ostree_sign_commit(
         self_: *mut OstreeSign,
         repo: *mut OstreeRepo,
@@ -3417,8 +3434,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
+    #[cfg(feature = "v2020_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_2")))]
     pub fn ostree_sign_commit_verify(
         self_: *mut OstreeSign,
         repo: *mut OstreeRepo,
@@ -3427,8 +3444,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
+    #[cfg(feature = "v2020_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_2")))]
     pub fn ostree_sign_data(
         self_: *mut OstreeSign,
         data: *mut glib::GBytes,
@@ -3436,8 +3453,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
+    #[cfg(feature = "v2020_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_2")))]
     pub fn ostree_sign_data_verify(
         self_: *mut OstreeSign,
         data: *mut glib::GBytes,
@@ -3486,38 +3503,38 @@ extern "C" {
         secret_key: *mut glib::GVariant,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
+    #[cfg(feature = "v2020_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_2")))]
     pub fn ostree_sign_get_name(self_: *mut OstreeSign) -> *const c_char;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
+    #[cfg(feature = "v2020_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_2")))]
     pub fn ostree_sign_load_pk(
         self_: *mut OstreeSign,
         options: *mut glib::GVariant,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
+    #[cfg(feature = "v2020_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_2")))]
     pub fn ostree_sign_metadata_format(self_: *mut OstreeSign) -> *const c_char;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
+    #[cfg(feature = "v2020_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_2")))]
     pub fn ostree_sign_metadata_key(self_: *mut OstreeSign) -> *const c_char;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
+    #[cfg(feature = "v2020_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_2")))]
     pub fn ostree_sign_set_pk(
         self_: *mut OstreeSign,
         public_key: *mut glib::GVariant,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
+    #[cfg(feature = "v2020_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_2")))]
     pub fn ostree_sign_set_sk(
         self_: *mut OstreeSign,
         secret_key: *mut glib::GVariant,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2020_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_2")))]
+    #[cfg(feature = "v2020_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_2")))]
     pub fn ostree_sign_summary(
         self_: *mut OstreeSign,
         repo: *mut OstreeRepo,
@@ -3529,8 +3546,8 @@ extern "C" {
     //=========================================================================
     // Other functions
     //=========================================================================
-    #[cfg(any(feature = "v2017_15", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_15")))]
+    #[cfg(feature = "v2017_15")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_15")))]
     pub fn ostree_break_hardlink(
         dfd: c_int,
         path: *const c_char,
@@ -3538,16 +3555,16 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2017_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_4")))]
+    #[cfg(feature = "v2017_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_4")))]
     pub fn ostree_check_version(required_year: c_uint, required_release: c_uint) -> gboolean;
-    #[cfg(any(feature = "v2016_8", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_8")))]
+    #[cfg(feature = "v2016_8")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_8")))]
     pub fn ostree_checksum_b64_from_bytes(csum: *const [c_uchar; 32]) -> *mut c_char;
     pub fn ostree_checksum_b64_inplace_from_bytes(csum: *const [c_uchar; 32], buf: *mut c_char);
     pub fn ostree_checksum_b64_inplace_to_bytes(checksum: *const [c_char; 32], buf: *mut u8);
-    #[cfg(any(feature = "v2016_8", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_8")))]
+    #[cfg(feature = "v2016_8")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_8")))]
     pub fn ostree_checksum_b64_to_bytes(checksum: *const c_char) -> *mut [c_uchar; 32];
     pub fn ostree_checksum_bytes_peek(bytes: *mut glib::GVariant) -> *const [c_uchar; 32];
     pub fn ostree_checksum_bytes_peek_validate(
@@ -3575,8 +3592,8 @@ extern "C" {
         out_csum: *mut *mut [*mut u8; 32],
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2017_13", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_13")))]
+    #[cfg(feature = "v2017_13")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_13")))]
     pub fn ostree_checksum_file_at(
         dfd: c_int,
         path: *const c_char,
@@ -3603,22 +3620,22 @@ extern "C" {
     pub fn ostree_checksum_to_bytes(checksum: *const c_char) -> *mut [c_uchar; 32];
     pub fn ostree_checksum_to_bytes_v(checksum: *const c_char) -> *mut glib::GVariant;
     pub fn ostree_cmp_checksum_bytes(a: *const u8, b: *const u8) -> c_int;
-    #[cfg(any(feature = "v2018_2", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_2")))]
+    #[cfg(feature = "v2018_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_2")))]
     pub fn ostree_commit_get_content_checksum(commit_variant: *mut glib::GVariant) -> *mut c_char;
-    #[cfg(any(feature = "v2020_1", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_1")))]
+    #[cfg(feature = "v2020_1")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_1")))]
     pub fn ostree_commit_get_object_sizes(
         commit_variant: *mut glib::GVariant,
         out_sizes_entries: *mut *mut glib::GPtrArray,
         error: *mut *mut glib::GError,
     ) -> gboolean;
     pub fn ostree_commit_get_parent(commit_variant: *mut glib::GVariant) -> *mut c_char;
-    #[cfg(any(feature = "v2016_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_3")))]
+    #[cfg(feature = "v2016_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_3")))]
     pub fn ostree_commit_get_timestamp(commit_variant: *mut glib::GVariant) -> u64;
-    #[cfg(any(feature = "v2021_1", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_1")))]
+    #[cfg(feature = "v2021_1")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2021_1")))]
     pub fn ostree_commit_metadata_for_bootable(
         root: *mut gio::GFile,
         dict: *mut glib::GVariantDict,
@@ -3671,8 +3688,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2017_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_4")))]
+    #[cfg(feature = "v2017_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_4")))]
     pub fn ostree_diff_dirs_with_options(
         flags: OstreeDiffFlags,
         a: *mut gio::GFile,
@@ -3702,8 +3719,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> *mut glib::GVariant;
-    #[cfg(any(feature = "v2017_10", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_10")))]
+    #[cfg(feature = "v2017_10")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_10")))]
     pub fn ostree_gpg_error_quark() -> glib::GQuark;
     pub fn ostree_hash_object_name(a: gconstpointer) -> c_uint;
     pub fn ostree_metadata_variant_type(objtype: OstreeObjectType) -> *const glib::GVariantType;
@@ -3733,8 +3750,8 @@ extern "C" {
         out_ref: *mut *mut c_char,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2016_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_6")))]
+    #[cfg(feature = "v2016_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_6")))]
     pub fn ostree_raw_file_to_archive_z2_stream(
         input: *mut gio::GInputStream,
         file_info: *mut gio::GFileInfo,
@@ -3743,8 +3760,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2017_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_3")))]
+    #[cfg(feature = "v2017_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_3")))]
     pub fn ostree_raw_file_to_archive_z2_stream_with_options(
         input: *mut gio::GInputStream,
         file_info: *mut gio::GFileInfo,
@@ -3767,14 +3784,14 @@ extern "C" {
         sha256: *const c_char,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn ostree_validate_collection_id(
         collection_id: *const c_char,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    #[cfg(any(feature = "v2017_8", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_8")))]
+    #[cfg(feature = "v2017_8")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_8")))]
     pub fn ostree_validate_remote_name(
         remote_name: *const c_char,
         error: *mut *mut glib::GError,
