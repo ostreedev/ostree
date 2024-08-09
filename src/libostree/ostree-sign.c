@@ -42,6 +42,7 @@
 #include "ostree-sign-dummy.h"
 #include "ostree-sign-ed25519.h"
 #include "ostree-sign-private.h"
+#include "ostree-sign-x509.h"
 #include "ostree-sign.h"
 
 #include "ostree-autocleanups.h"
@@ -60,6 +61,9 @@ _sign_type sign_types[] = {
 #if defined(HAVE_ED25519)
   { OSTREE_SIGN_NAME_ED25519, 0 },
 #endif
+#if defined(HAVE_X509)
+  { OSTREE_SIGN_NAME_X509, 0 },
+#endif
   { "dummy", 0 }
 };
 
@@ -67,6 +71,9 @@ enum
 {
 #if defined(HAVE_ED25519)
   SIGN_ED25519,
+#endif
+#if defined(HAVE_X509)
+  SIGN_X509,
 #endif
   SIGN_DUMMY
 };
@@ -536,6 +543,10 @@ ostree_sign_get_by_name (const gchar *name, GError **error)
 #if defined(HAVE_ED25519)
   if (sign_types[SIGN_ED25519].type == 0)
     sign_types[SIGN_ED25519].type = OSTREE_TYPE_SIGN_ED25519;
+#endif
+#if defined(HAVE_X509)
+  if (sign_types[SIGN_X509].type == 0)
+    sign_types[SIGN_X509].type = OSTREE_TYPE_SIGN_X509;
 #endif
   if (sign_types[SIGN_DUMMY].type == 0)
     sign_types[SIGN_DUMMY].type = OSTREE_TYPE_SIGN_DUMMY;

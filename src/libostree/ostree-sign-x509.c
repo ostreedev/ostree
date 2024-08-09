@@ -23,7 +23,7 @@
 
 #include "config.h"
 
-#include "ostree-sign-ed25519.h"
+#include "ostree-sign-x509.h"
 #include "otcore.h"
 #include <libglnx.h>
 #include <ot-checksum-utils.h>
@@ -32,134 +32,126 @@
 #undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "OSTreeSign"
 
-#define OSTREE_SIGN_ED25519_NAME "ed25519"
-
-#define OSTREE_SIGN_ED25519_SEED_SIZE 32U
-#define OSTREE_SIGN_ED25519_SECKEY_SIZE \
-  (OSTREE_SIGN_ED25519_SEED_SIZE + OSTREE_SIGN_ED25519_PUBKEY_SIZE)
+#define OSTREE_SIGN_X509_NAME "x509"
 
 typedef enum
 {
-  ED25519_OK,
-  ED25519_NOT_SUPPORTED,
-  ED25519_FAILED_INITIALIZATION
-} ed25519_state;
+  X509_OK,
+  X509_NOT_SUPPORTED,
+  X509_FAILED_INITIALIZATION
+} x509_state;
 
-struct _OstreeSignEd25519
+struct _OstreeSignX509
 {
   GObject parent;
-  ed25519_state state;
-  guchar *secret_key;  /* malloc'd buffer of length OSTREE_SIGN_ED25519_SECKEY_SIZE */
-  GList *public_keys;  /* malloc'd buffer of length OSTREE_SIGN_ED25519_PUBKEY_SIZE */
-  GList *revoked_keys; /* malloc'd buffer of length OSTREE_SIGN_ED25519_PUBKEY_SIZE */
+  x509_state state;
+  GBytes *secret_key;
+  GList *public_keys;  /* GBytes */
+  GList *revoked_keys; /* GBytes */
 };
 
-static void ostree_sign_ed25519_iface_init (OstreeSignInterface *self);
+static void ostree_sign_x509_iface_init (OstreeSignInterface *self);
 
-G_DEFINE_TYPE_WITH_CODE (OstreeSignEd25519, _ostree_sign_ed25519, G_TYPE_OBJECT,
-                         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_SIGN, ostree_sign_ed25519_iface_init));
+G_DEFINE_TYPE_WITH_CODE (OstreeSignX509, _ostree_sign_x509, G_TYPE_OBJECT,
+                         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_SIGN, ostree_sign_x509_iface_init));
 
 static void
-ostree_sign_ed25519_iface_init (OstreeSignInterface *self)
+ostree_sign_x509_iface_init (OstreeSignInterface *self)
 {
 
-  self->data = ostree_sign_ed25519_data;
-  self->data_verify = ostree_sign_ed25519_data_verify;
-  self->get_name = ostree_sign_ed25519_get_name;
-  self->metadata_key = ostree_sign_ed25519_metadata_key;
-  self->metadata_format = ostree_sign_ed25519_metadata_format;
-  self->clear_keys = ostree_sign_ed25519_clear_keys;
-  self->set_sk = ostree_sign_ed25519_set_sk;
-  self->set_pk = ostree_sign_ed25519_set_pk;
-  self->add_pk = ostree_sign_ed25519_add_pk;
-  self->load_pk = ostree_sign_ed25519_load_pk;
+  self->data = ostree_sign_x509_data;
+  self->data_verify = ostree_sign_x509_data_verify;
+  self->get_name = ostree_sign_x509_get_name;
+  self->metadata_key = ostree_sign_x509_metadata_key;
+  self->metadata_format = ostree_sign_x509_metadata_format;
+  self->clear_keys = ostree_sign_x509_clear_keys;
+  self->set_sk = ostree_sign_x509_set_sk;
+  self->set_pk = ostree_sign_x509_set_pk;
+  self->add_pk = ostree_sign_x509_add_pk;
+  self->load_pk = ostree_sign_x509_load_pk;
 }
 
 static void
-_ostree_sign_ed25519_class_init (OstreeSignEd25519Class *self)
+_ostree_sign_x509_class_init (OstreeSignX509Class *self)
 {
 }
 
 static void
-_ostree_sign_ed25519_init (OstreeSignEd25519 *self)
+_ostree_sign_x509_init (OstreeSignX509 *self)
 {
 
-  self->state = ED25519_OK;
+  self->state = X509_OK;
   self->secret_key = NULL;
   self->public_keys = NULL;
   self->revoked_keys = NULL;
 
-#if !(defined(USE_OPENSSL) || defined(USE_LIBSODIUM))
-  self->state = ED25519_NOT_SUPPORTED;
+#if !defined(USE_OPENSSL)
+  self->state = X509_NOT_SUPPORTED;
 #else
-  if (!otcore_ed25519_init ())
-    self->state = ED25519_FAILED_INITIALIZATION;
+  if (!otcore_x509_init ())
+    self->state = X509_FAILED_INITIALIZATION;
 #endif
 }
 
 static gboolean
-validate_length (gsize found, gsize expected, GError **error)
-{
-  if (found == expected)
-    return TRUE;
-  return glnx_throw (
-      error, "Ill-formed input: expected %" G_GSIZE_FORMAT " bytes, got %" G_GSIZE_FORMAT " bytes",
-      expected, found);
-}
-
-static gboolean
-_ostree_sign_ed25519_is_initialized (OstreeSignEd25519 *self, GError **error)
+_ostree_sign_x509_is_initialized (OstreeSignX509 *self, GError **error)
 {
   switch (self->state)
     {
-    case ED25519_OK:
+    case X509_OK:
       break;
-    case ED25519_NOT_SUPPORTED:
-      return glnx_throw (error, "ed25519: engine is not supported");
-    case ED25519_FAILED_INITIALIZATION:
-      return glnx_throw (error, "ed25519: crypto library isn't initialized properly");
+    case X509_NOT_SUPPORTED:
+      return glnx_throw (error, "x509: engine is not supported");
+    case X509_FAILED_INITIALIZATION:
+      return glnx_throw (error, "x509: crypto library isn't initialized properly");
     }
 
   return TRUE;
 }
 
 gboolean
-ostree_sign_ed25519_data (OstreeSign *self, GBytes *data, GBytes **signature,
-                          GCancellable *cancellable, GError **error)
+ostree_sign_x509_data (OstreeSign *self, GBytes *data, GBytes **signature,
+                       GCancellable *cancellable, GError **error)
 {
 
   g_assert (OSTREE_IS_SIGN (self));
-  OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private (OSTREE_SIGN_ED25519 (self));
+  OstreeSignX509 *sign = _ostree_sign_x509_get_instance_private (OSTREE_SIGN_X509 (self));
 
-  if (!_ostree_sign_ed25519_is_initialized (sign, error))
+  if (!_ostree_sign_x509_is_initialized (sign, error))
     return FALSE;
 
   if (sign->secret_key == NULL)
     return glnx_throw (error, "Not able to sign: secret key is not set");
 
-  unsigned long long sig_size = 0;
-  g_autofree guchar *sig = g_malloc0 (OSTREE_SIGN_ED25519_SIG_SIZE);
+#if defined(USE_OPENSSL)
+  gsize secret_key_size;
+  const guint8 *secret_key_buf = g_bytes_get_data (sign->secret_key, &secret_key_size);
+#endif
 
-#if defined(USE_LIBSODIUM)
-  if (crypto_sign_detached (sig, &sig_size, g_bytes_get_data (data, NULL), g_bytes_get_size (data),
-                            sign->secret_key))
-    sig_size = 0;
-#elif defined(USE_OPENSSL)
+  unsigned long long sig_size = 0;
+  g_autofree guchar *sig = NULL;
+
+#if defined(USE_OPENSSL)
   EVP_MD_CTX *ctx = EVP_MD_CTX_new ();
   if (!ctx)
     return glnx_throw (error, "openssl: failed to allocate context");
-  EVP_PKEY *pkey = EVP_PKEY_new_raw_private_key (EVP_PKEY_ED25519, NULL, sign->secret_key,
-                                                 OSTREE_SIGN_ED25519_SEED_SIZE);
+
+  const unsigned char *p = secret_key_buf;
+  EVP_PKEY *pkey = d2i_AutoPrivateKey (NULL, &p, secret_key_size);
   if (!pkey)
     {
       EVP_MD_CTX_free (ctx);
-      return glnx_throw (error, "openssl: Failed to initialize ed25519 key");
+      return glnx_throw (error, "openssl: Failed to initialize x509 key");
     }
 
   size_t len;
   if (EVP_DigestSignInit (ctx, NULL, NULL, NULL, pkey)
-      && EVP_DigestSign (ctx, sig, &len, g_bytes_get_data (data, NULL), g_bytes_get_size (data)))
-    sig_size = len;
+      && EVP_DigestSign (ctx, NULL, &len, g_bytes_get_data (data, NULL), g_bytes_get_size (data)))
+    {
+      sig = g_malloc0 (len);
+      if (EVP_DigestSign (ctx, sig, &len, g_bytes_get_data (data, NULL), g_bytes_get_size (data)))
+        sig_size = len;
+    }
 
   EVP_PKEY_free (pkey);
   EVP_MD_CTX_free (ctx);
@@ -173,31 +165,25 @@ ostree_sign_ed25519_data (OstreeSign *self, GBytes *data, GBytes **signature,
   return TRUE;
 }
 
-static gint
-_compare_ed25519_keys (gconstpointer a, gconstpointer b)
-{
-  return memcmp (a, b, OSTREE_SIGN_ED25519_PUBKEY_SIZE);
-}
-
 gboolean
-ostree_sign_ed25519_data_verify (OstreeSign *self, GBytes *data, GVariant *signatures,
-                                 char **out_success_message, GError **error)
+ostree_sign_x509_data_verify (OstreeSign *self, GBytes *data, GVariant *signatures,
+                              char **out_success_message, GError **error)
 {
   g_assert (OSTREE_IS_SIGN (self));
 
   if (data == NULL)
-    return glnx_throw (error, "ed25519: unable to verify NULL data");
+    return glnx_throw (error, "x509: unable to verify NULL data");
 
-  OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private (OSTREE_SIGN_ED25519 (self));
+  OstreeSignX509 *sign = _ostree_sign_x509_get_instance_private (OSTREE_SIGN_X509 (self));
 
-  if (!_ostree_sign_ed25519_is_initialized (sign, error))
+  if (!_ostree_sign_x509_is_initialized (sign, error))
     return FALSE;
 
   if (signatures == NULL)
-    return glnx_throw (error, "ed25519: commit have no signatures of my type");
+    return glnx_throw (error, "x509: commit have no signatures of my type");
 
-  if (!g_variant_is_of_type (signatures, (GVariantType *)OSTREE_SIGN_METADATA_ED25519_TYPE))
-    return glnx_throw (error, "ed25519: wrong type passed for verification");
+  if (!g_variant_is_of_type (signatures, (GVariantType *)OSTREE_SIGN_METADATA_X509_TYPE))
+    return glnx_throw (error, "x509: wrong type passed for verification");
 
   /* If no keys pre-loaded then,
    * try to load public keys from storage(s) */
@@ -209,7 +195,7 @@ ostree_sign_ed25519_data_verify (OstreeSign *self, GBytes *data, GVariant *signa
       builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
       options = g_variant_builder_end (builder);
 
-      if (!ostree_sign_ed25519_load_pk (self, options, error))
+      if (!ostree_sign_x509_load_pk (self, options, error))
         return FALSE;
     }
 
@@ -223,29 +209,22 @@ ostree_sign_ed25519_data_verify (OstreeSign *self, GBytes *data, GVariant *signa
       g_autoptr (GVariant) child = g_variant_get_child_value (signatures, i);
       g_autoptr (GBytes) signature = g_variant_get_data_as_bytes (child);
 
-      if (!validate_length (g_bytes_get_size (signature), OSTREE_SIGN_ED25519_SIG_SIZE, error))
-        return glnx_prefix_error (error, "Invalid signature");
-
-      g_autofree char *hex = g_malloc0 (OSTREE_SIGN_ED25519_PUBKEY_SIZE * 2 + 1);
-
       g_debug ("Read signature %d: %s", (gint)i, g_variant_print (child, TRUE));
 
-      for (GList *public_key = sign->public_keys; public_key != NULL; public_key = public_key->next)
+      for (GList *l = sign->public_keys; l != NULL; l = l->next)
         {
+          GBytes *public_key = l->data;
           /* TODO: use non-list for tons of revoked keys? */
-          if (g_list_find_custom (sign->revoked_keys, public_key->data, _compare_ed25519_keys)
-              != NULL)
+          if (g_list_find_custom (sign->revoked_keys, public_key, g_bytes_compare) != NULL)
             {
-              ot_bin2hex (hex, public_key->data, OSTREE_SIGN_ED25519_PUBKEY_SIZE);
+              g_autofree char *hex = g_malloc0 (g_bytes_get_size (public_key) * 2 + 1);
+              ot_bin2hex (hex, g_bytes_get_data (public_key, NULL), g_bytes_get_size (public_key));
               g_debug ("Skip revoked key '%s'", hex);
               continue;
             }
 
           bool valid = false;
-          // Wrap the pubkey in a GBytes as that's what this API wants
-          g_autoptr (GBytes) public_key_bytes
-              = g_bytes_new_static (public_key->data, OSTREE_SIGN_ED25519_PUBKEY_SIZE);
-          if (!otcore_validate_ed25519_signature (data, public_key_bytes, signature, &valid, error))
+          if (!otcore_validate_x509_signature (data, public_key, signature, &valid, error))
             return FALSE;
           if (!valid)
             {
@@ -255,16 +234,19 @@ ostree_sign_ed25519_data_verify (OstreeSign *self, GBytes *data, GVariant *signa
               else
                 g_string_append (invalid_signatures, "; ");
               n_invalid_signatures++;
-              ot_bin2hex (hex, public_key->data, OSTREE_SIGN_ED25519_PUBKEY_SIZE);
+              g_autofree char *hex = g_malloc0 (g_bytes_get_size (public_key) * 2 + 1);
+              ot_bin2hex (hex, g_bytes_get_data (public_key, NULL), g_bytes_get_size (public_key));
               g_string_append_printf (invalid_signatures, "key '%s'", hex);
             }
           else
             {
               if (out_success_message)
                 {
-                  ot_bin2hex (hex, public_key->data, OSTREE_SIGN_ED25519_PUBKEY_SIZE);
+                  g_autofree char *hex = g_malloc0 (g_bytes_get_size (public_key) * 2 + 1);
+                  ot_bin2hex (hex, g_bytes_get_data (public_key, NULL),
+                              g_bytes_get_size (public_key));
                   *out_success_message = g_strdup_printf (
-                      "ed25519: Signature verified successfully with key '%s'", hex);
+                      "x509: Signature verified successfully with key '%s'", hex);
                 }
               return TRUE;
             }
@@ -278,65 +260,66 @@ ostree_sign_ed25519_data_verify (OstreeSign *self, GBytes *data, GVariant *signa
        * cap a reasonable error message at 3.
        */
       if (n_invalid_signatures > 3)
-        return glnx_throw (error, "ed25519: Signature couldn't be verified; tried %u keys",
+        return glnx_throw (error, "x509: Signature couldn't be verified; tried %u keys",
                            n_invalid_signatures);
-      return glnx_throw (error, "ed25519: Signature couldn't be verified with: %s",
+      return glnx_throw (error, "x509: Signature couldn't be verified with: %s",
                          invalid_signatures->str);
     }
-  return glnx_throw (error, "ed25519: no signatures found");
+  return glnx_throw (error, "x509: no signatures found");
 }
 
 const gchar *
-ostree_sign_ed25519_get_name (OstreeSign *self)
+ostree_sign_x509_get_name (OstreeSign *self)
 {
   g_assert (OSTREE_IS_SIGN (self));
 
-  return OSTREE_SIGN_ED25519_NAME;
+  return OSTREE_SIGN_X509_NAME;
 }
 
 const gchar *
-ostree_sign_ed25519_metadata_key (OstreeSign *self)
+ostree_sign_x509_metadata_key (OstreeSign *self)
 {
 
-  return OSTREE_SIGN_METADATA_ED25519_KEY;
+  return OSTREE_SIGN_METADATA_X509_KEY;
 }
 
 const gchar *
-ostree_sign_ed25519_metadata_format (OstreeSign *self)
+ostree_sign_x509_metadata_format (OstreeSign *self)
 {
 
-  return OSTREE_SIGN_METADATA_ED25519_TYPE;
+  return OSTREE_SIGN_METADATA_X509_TYPE;
 }
 
 gboolean
-ostree_sign_ed25519_clear_keys (OstreeSign *self, GError **error)
+ostree_sign_x509_clear_keys (OstreeSign *self, GError **error)
 {
   g_assert (OSTREE_IS_SIGN (self));
 
-  OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private (OSTREE_SIGN_ED25519 (self));
+  OstreeSignX509 *sign = _ostree_sign_x509_get_instance_private (OSTREE_SIGN_X509 (self));
 
-  if (!_ostree_sign_ed25519_is_initialized (sign, error))
+  if (!_ostree_sign_x509_is_initialized (sign, error))
     return FALSE;
 
   /* Clear secret key */
   if (sign->secret_key != NULL)
     {
-      explicit_bzero (sign->secret_key, OSTREE_SIGN_ED25519_SECKEY_SIZE);
-      g_free (sign->secret_key);
+      gsize size;
+      gpointer data = g_bytes_unref_to_data (sign->secret_key, &size);
+      explicit_bzero (data, size);
       sign->secret_key = NULL;
     }
 
   /* Clear already loaded trusted keys */
   if (sign->public_keys != NULL)
     {
-      g_list_free_full (sign->public_keys, g_free);
+      g_list_free_full (sign->public_keys, (GDestroyNotify)g_bytes_unref);
       sign->public_keys = NULL;
     }
 
   /* Clear already loaded revoked keys */
   if (sign->revoked_keys != NULL)
     {
-      g_list_free_full (sign->revoked_keys, g_free);
+      g_list_free_full (sign->revoked_keys, (GDestroyNotify)g_bytes_unref);
       sign->revoked_keys = NULL;
     }
 
@@ -348,14 +331,14 @@ ostree_sign_ed25519_clear_keys (OstreeSign *self, GError **error)
  * raw key -- key is passed as bytes array
  * */
 gboolean
-ostree_sign_ed25519_set_sk (OstreeSign *self, GVariant *secret_key, GError **error)
+ostree_sign_x509_set_sk (OstreeSign *self, GVariant *secret_key, GError **error)
 {
   g_assert (OSTREE_IS_SIGN (self));
 
-  if (!ostree_sign_ed25519_clear_keys (self, error))
+  if (!ostree_sign_x509_clear_keys (self, error))
     return FALSE;
 
-  OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private (OSTREE_SIGN_ED25519 (self));
+  OstreeSignX509 *sign = _ostree_sign_x509_get_instance_private (OSTREE_SIGN_X509 (self));
 
   gsize n_elements = 0;
 
@@ -372,13 +355,10 @@ ostree_sign_ed25519_set_sk (OstreeSign *self, GVariant *secret_key, GError **err
     }
   else
     {
-      return glnx_throw (error, "Unknown ed25519 secret key type");
+      return glnx_throw (error, "Unknown x509 secret key type");
     }
 
-  if (!validate_length (n_elements, OSTREE_SIGN_ED25519_SECKEY_SIZE, error))
-    return glnx_prefix_error (error, "Invalid ed25519 secret key");
-
-  sign->secret_key = g_steal_pointer (&secret_key_buf);
+  sign->secret_key = g_bytes_new_take (g_steal_pointer (&secret_key_buf), n_elements);
 
   return TRUE;
 }
@@ -388,14 +368,14 @@ ostree_sign_ed25519_set_sk (OstreeSign *self, GVariant *secret_key, GError **err
  * raw key -- key is passed as bytes array
  * */
 gboolean
-ostree_sign_ed25519_set_pk (OstreeSign *self, GVariant *public_key, GError **error)
+ostree_sign_x509_set_pk (OstreeSign *self, GVariant *public_key, GError **error)
 {
   g_assert (OSTREE_IS_SIGN (self));
 
-  if (!ostree_sign_ed25519_clear_keys (self, error))
+  if (!ostree_sign_x509_clear_keys (self, error))
     return FALSE;
 
-  return ostree_sign_ed25519_add_pk (self, public_key, error);
+  return ostree_sign_x509_add_pk (self, public_key, error);
 }
 
 /* Support 2 representations:
@@ -403,13 +383,13 @@ ostree_sign_ed25519_set_pk (OstreeSign *self, GVariant *public_key, GError **err
  * raw key -- key is passed as bytes array
  * */
 gboolean
-ostree_sign_ed25519_add_pk (OstreeSign *self, GVariant *public_key, GError **error)
+ostree_sign_x509_add_pk (OstreeSign *self, GVariant *public_key, GError **error)
 {
   g_assert (OSTREE_IS_SIGN (self));
 
-  OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private (OSTREE_SIGN_ED25519 (self));
+  OstreeSignX509 *sign = _ostree_sign_x509_get_instance_private (OSTREE_SIGN_X509 (self));
 
-  if (!_ostree_sign_ed25519_is_initialized (sign, error))
+  if (!_ostree_sign_x509_is_initialized (sign, error))
     return FALSE;
 
   g_autofree guint8 *key_owned = NULL;
@@ -427,20 +407,18 @@ ostree_sign_ed25519_add_pk (OstreeSign *self, GVariant *public_key, GError **err
     }
   else
     {
-      return glnx_throw (error, "Unknown ed25519 public key type");
+      return glnx_throw (error, "Unknown x509 public key type");
     }
 
-  if (!validate_length (n_elements, OSTREE_SIGN_ED25519_PUBKEY_SIZE, error))
-    return glnx_prefix_error (error, "Invalid ed25519 public key");
-
-  g_autofree char *hex = g_malloc0 (OSTREE_SIGN_ED25519_PUBKEY_SIZE * 2 + 1);
+  g_autofree char *hex = g_malloc0 (n_elements * 2 + 1);
   ot_bin2hex (hex, key, n_elements);
-  g_debug ("Read ed25519 public key = %s", hex);
+  g_debug ("Read x509 public key = %s", hex);
 
-  if (g_list_find_custom (sign->public_keys, key, _compare_ed25519_keys) == NULL)
+  g_autoptr (GBytes) key_bytes = g_bytes_new_static (key, n_elements);
+  if (g_list_find_custom (sign->public_keys, key_bytes, g_bytes_compare) == NULL)
     {
-      gpointer newkey = g_memdup2 (key, n_elements);
-      sign->public_keys = g_list_prepend (sign->public_keys, newkey);
+      GBytes *new_key_bytes = g_bytes_new (key, n_elements);
+      sign->public_keys = g_list_prepend (sign->public_keys, new_key_bytes);
     }
 
   return TRUE;
@@ -448,30 +426,28 @@ ostree_sign_ed25519_add_pk (OstreeSign *self, GVariant *public_key, GError **err
 
 /* Add revoked public key */
 static gboolean
-_ed25519_add_revoked (OstreeSign *self, GVariant *revoked_key, GError **error)
+_x509_add_revoked (OstreeSign *self, GVariant *revoked_key, GError **error)
 {
   g_assert (OSTREE_IS_SIGN (self));
 
   if (!g_variant_is_of_type (revoked_key, G_VARIANT_TYPE_STRING))
-    return glnx_throw (error, "Unknown ed25519 revoked key type");
+    return glnx_throw (error, "Unknown x509 revoked key type");
 
-  OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private (OSTREE_SIGN_ED25519 (self));
+  OstreeSignX509 *sign = _ostree_sign_x509_get_instance_private (OSTREE_SIGN_X509 (self));
 
   const gchar *rk_ascii = g_variant_get_string (revoked_key, NULL);
   gsize n_elements = 0;
   g_autofree guint8 *key = g_base64_decode (rk_ascii, &n_elements);
 
-  if (!validate_length (n_elements, OSTREE_SIGN_ED25519_PUBKEY_SIZE, error))
-    return glnx_prefix_error (error, "Incorrect ed25519 revoked key");
-
-  g_autofree char *hex = g_malloc0 (OSTREE_SIGN_ED25519_PUBKEY_SIZE * 2 + 1);
+  g_autofree char *hex = g_malloc0 (n_elements * 2 + 1);
   ot_bin2hex (hex, key, n_elements);
-  g_debug ("Read ed25519 revoked key = %s", hex);
+  g_debug ("Read x509 revoked key = %s", hex);
 
-  if (g_list_find_custom (sign->revoked_keys, key, _compare_ed25519_keys) == NULL)
+  g_autoptr (GBytes) key_bytes = g_bytes_new_static (key, n_elements);
+  if (g_list_find_custom (sign->revoked_keys, key, g_bytes_compare) == NULL)
     {
-      gpointer newkey = g_memdup2 (key, n_elements);
-      sign->revoked_keys = g_list_prepend (sign->revoked_keys, newkey);
+      GBytes *new_key_bytes = g_bytes_new (key, n_elements);
+      sign->revoked_keys = g_list_prepend (sign->revoked_keys, new_key_bytes);
     }
 
   return TRUE;
@@ -482,7 +458,7 @@ _load_pk_from_stream (OstreeSign *self, GDataInputStream *key_data_in, gboolean 
                       GError **error)
 {
   if (key_data_in == NULL)
-    return glnx_throw (error, "ed25519: unable to read from NULL key-data input stream");
+    return glnx_throw (error, "x509: unable to read from NULL key-data input stream");
 
   gboolean ret = FALSE;
 
@@ -509,9 +485,9 @@ _load_pk_from_stream (OstreeSign *self, GDataInputStream *key_data_in, gboolean 
       pk = g_variant_new_string (line);
 
       if (trusted)
-        added = ostree_sign_ed25519_add_pk (self, pk, error);
+        added = ostree_sign_x509_add_pk (self, pk, error);
       else
-        added = _ed25519_add_revoked (self, pk, error);
+        added = _x509_add_revoked (self, pk, error);
 
       g_debug ("%s %s key: %s", added ? "Added" : "Invalid", trusted ? "public" : "revoked", line);
 
@@ -549,7 +525,7 @@ _load_pk_from_file (OstreeSign *self, const gchar *filename, gboolean trusted, G
   if (!_load_pk_from_stream (self, key_data_in, trusted, error))
     {
       if (error == NULL || *error == NULL)
-        return glnx_throw (error, "signature: ed25519: no valid keys in file '%s'", filename);
+        return glnx_throw (error, "signature: x509: no valid keys in file '%s'", filename);
       else
         return FALSE;
     }
@@ -558,14 +534,14 @@ _load_pk_from_file (OstreeSign *self, const gchar *filename, gboolean trusted, G
 }
 
 static gboolean
-_ed25519_load_pk (OstreeSign *self, GVariant *options, gboolean trusted, GError **error)
+_x509_load_pk (OstreeSign *self, GVariant *options, gboolean trusted, GError **error)
 {
 
   gboolean ret = FALSE;
   const gchar *custom_dir = NULL;
 
   g_autoptr (GPtrArray) base_dirs = g_ptr_array_new_with_free_func (g_free);
-  g_autoptr (GPtrArray) ed25519_files = g_ptr_array_new_with_free_func (g_free);
+  g_autoptr (GPtrArray) x509_files = g_ptr_array_new_with_free_func (g_free);
 
   if (g_variant_lookup (options, "basedir", "&s", &custom_dir))
     {
@@ -587,10 +563,10 @@ _ed25519_load_pk (OstreeSign *self, GVariant *options, gboolean trusted, GError 
       g_autoptr (GDir) dir = NULL;
 
       base_name = g_build_filename ((gchar *)g_ptr_array_index (base_dirs, i),
-                                    trusted ? "trusted.ed25519" : "revoked.ed25519", NULL);
+                                    trusted ? "trusted.x509" : "revoked.x509", NULL);
 
-      g_debug ("Check ed25519 keys from file: %s", base_name);
-      g_ptr_array_add (ed25519_files, base_name);
+      g_debug ("Check x509 keys from file: %s", base_name);
+      g_ptr_array_add (x509_files, base_name);
 
       base_dir = g_strconcat (base_name, ".d", NULL);
       dir = g_dir_open (base_dir, 0, error);
@@ -603,18 +579,18 @@ _ed25519_load_pk (OstreeSign *self, GVariant *options, gboolean trusted, GError 
       while ((entry = g_dir_read_name (dir)) != NULL)
         {
           gchar *filename = g_build_filename (base_dir, entry, NULL);
-          g_debug ("Check ed25519 keys from file: %s", filename);
-          g_ptr_array_add (ed25519_files, filename);
+          g_debug ("Check x509 keys from file: %s", filename);
+          g_ptr_array_add (x509_files, filename);
         }
     }
 
   /* Scan all well-known files */
-  for (gint i = 0; i < ed25519_files->len; i++)
+  for (gint i = 0; i < x509_files->len; i++)
     {
-      if (!_load_pk_from_file (self, (gchar *)g_ptr_array_index (ed25519_files, i), trusted, error))
+      if (!_load_pk_from_file (self, (gchar *)g_ptr_array_index (x509_files, i), trusted, error))
         {
-          g_debug ("Problem with loading ed25519 %s keys from `%s`", trusted ? "public" : "revoked",
-                   (gchar *)g_ptr_array_index (ed25519_files, i));
+          g_debug ("Problem with loading x509 %s keys from `%s`", trusted ? "public" : "revoked",
+                   (gchar *)g_ptr_array_index (x509_files, i));
           g_clear_error (error);
         }
       else
@@ -622,7 +598,7 @@ _ed25519_load_pk (OstreeSign *self, GVariant *options, gboolean trusted, GError 
     }
 
   if (!ret && (error == NULL || *error == NULL))
-    return glnx_throw (error, "signature: ed25519: no keys loaded");
+    return glnx_throw (error, "signature: x509: no keys loaded");
 
   return ret;
 }
@@ -631,18 +607,18 @@ _ed25519_load_pk (OstreeSign *self, GVariant *options, gboolean trusted, GError 
  * options argument should be a{sv}:
  * - filename -- single file to use to load keys from;
  * - basedir -- directory containing subdirectories
- *   'trusted.ed25519.d' and 'revoked.ed25519.d' with appropriate
+ *   'trusted.x509.d' and 'revoked.x509.d' with appropriate
  *   public keys. Used for testing and re-definition of system-wide
  *   directories if defaults are not suitable for any reason.
  */
 gboolean
-ostree_sign_ed25519_load_pk (OstreeSign *self, GVariant *options, GError **error)
+ostree_sign_x509_load_pk (OstreeSign *self, GVariant *options, GError **error)
 {
 
   const gchar *filename = NULL;
 
-  OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private (OSTREE_SIGN_ED25519 (self));
-  if (!_ostree_sign_ed25519_is_initialized (sign, error))
+  OstreeSignX509 *sign = _ostree_sign_x509_get_instance_private (OSTREE_SIGN_X509 (self));
+  if (!_ostree_sign_x509_is_initialized (sign, error))
     return FALSE;
 
   /* Read keys only from single file provided */
@@ -650,14 +626,14 @@ ostree_sign_ed25519_load_pk (OstreeSign *self, GVariant *options, GError **error
     return _load_pk_from_file (self, filename, TRUE, error);
 
   /* Load public keys from well-known directories and files */
-  if (!_ed25519_load_pk (self, options, TRUE, error))
+  if (!_x509_load_pk (self, options, TRUE, error))
     return FALSE;
 
   /* Load untrusted keys from well-known directories and files
    * Ignore the failure from this function -- it is expected to have
    * empty list of revoked keys.
    * */
-  if (!_ed25519_load_pk (self, options, FALSE, error))
+  if (!_x509_load_pk (self, options, FALSE, error))
     g_clear_error (error);
 
   return TRUE;
