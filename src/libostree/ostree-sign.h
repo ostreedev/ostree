@@ -27,6 +27,7 @@
 #include <glib-object.h>
 #include <glib.h>
 
+#include "ostree-blob-reader.h"
 #include "ostree-ref.h"
 #include "ostree-remote.h"
 #include "ostree-types.h"
@@ -113,4 +114,11 @@ OstreeSign *ostree_sign_get_by_name (const gchar *name, GError **error);
 _OSTREE_PUBLIC
 gboolean ostree_sign_summary (OstreeSign *self, OstreeRepo *repo, GVariant *keys,
                               GCancellable *cancellable, GError **error);
+
+_OSTREE_PUBLIC
+OstreeBlobReader *ostree_sign_read_pk (OstreeSign *self, GInputStream *stream);
+
+_OSTREE_PUBLIC
+OstreeBlobReader *ostree_sign_read_sk (OstreeSign *self, GInputStream *stream);
+
 G_END_DECLS

@@ -452,14 +452,25 @@ _ed25519_add_revoked (OstreeSign *self, GVariant *revoked_key, GError **error)
 {
   g_assert (OSTREE_IS_SIGN (self));
 
-  if (!g_variant_is_of_type (revoked_key, G_VARIANT_TYPE_STRING))
-    return glnx_throw (error, "Unknown ed25519 revoked key type");
-
   OstreeSignEd25519 *sign = _ostree_sign_ed25519_get_instance_private (OSTREE_SIGN_ED25519 (self));
 
-  const gchar *rk_ascii = g_variant_get_string (revoked_key, NULL);
+  g_autofree guint8 *key_owned = NULL;
+  const guint8 *key = NULL;
   gsize n_elements = 0;
-  g_autofree guint8 *key = g_base64_decode (rk_ascii, &n_elements);
+
+  if (g_variant_is_of_type (revoked_key, G_VARIANT_TYPE_STRING))
+    {
+      const gchar *rk_ascii = g_variant_get_string (revoked_key, NULL);
+      key = key_owned = g_base64_decode (rk_ascii, &n_elements);
+    }
+  else if (g_variant_is_of_type (revoked_key, G_VARIANT_TYPE_BYTESTRING))
+    {
+      key = g_variant_get_fixed_array (revoked_key, &n_elements, sizeof (guchar));
+    }
+  else
+    {
+      return glnx_throw (error, "Unknown ed25519 revoked key type");
+    }
 
   if (!validate_length (n_elements, OSTREE_SIGN_ED25519_PUBKEY_SIZE, error))
     return glnx_prefix_error (error, "Incorrect ed25519 revoked key");
@@ -478,22 +489,24 @@ _ed25519_add_revoked (OstreeSign *self, GVariant *revoked_key, GError **error)
 }
 
 static gboolean
-_load_pk_from_stream (OstreeSign *self, GDataInputStream *key_data_in, gboolean trusted,
+_load_pk_from_stream (OstreeSign *self, GInputStream *key_stream_in, gboolean trusted,
                       GError **error)
 {
-  if (key_data_in == NULL)
+  if (key_stream_in == NULL)
     return glnx_throw (error, "ed25519: unable to read from NULL key-data input stream");
 
   gboolean ret = FALSE;
 
+  g_autoptr (OstreeBlobReader) blob_reader = ostree_sign_read_pk (self, key_stream_in);
+  g_assert (blob_reader);
+
   /* Use simple file format with just a list of base64 public keys per line */
   while (TRUE)
     {
-      gsize len = 0;
       g_autoptr (GVariant) pk = NULL;
       gboolean added = FALSE;
       g_autoptr (GError) local_error = NULL;
-      g_autofree char *line = g_data_input_stream_read_line (key_data_in, &len, NULL, &local_error);
+      g_autoptr (GBytes) blob = ostree_blob_reader_read_blob (blob_reader, NULL, &local_error);
 
       if (local_error != NULL)
         {
@@ -501,19 +514,20 @@ _load_pk_from_stream (OstreeSign *self, GDataInputStream *key_data_in, gboolean 
           return FALSE;
         }
 
-      if (line == NULL)
+      if (blob == NULL)
         return ret;
 
       /* Read the key itself */
-      /* base64 encoded key */
-      pk = g_variant_new_string (line);
+      pk = g_variant_new_from_bytes (G_VARIANT_TYPE_BYTESTRING, blob, FALSE);
 
       if (trusted)
         added = ostree_sign_ed25519_add_pk (self, pk, error);
       else
         added = _ed25519_add_revoked (self, pk, error);
 
-      g_debug ("%s %s key: %s", added ? "Added" : "Invalid", trusted ? "public" : "revoked", line);
+      g_autofree gchar *pk_printable = g_variant_print (pk, FALSE);
+      g_debug ("%s %s key: %s", added ? "Added" : "Invalid", trusted ? "public" : "revoked",
+               pk_printable);
 
       /* Mark what we load at least one key */
       if (added)
@@ -530,7 +544,6 @@ _load_pk_from_file (OstreeSign *self, const gchar *filename, gboolean trusted, G
 
   g_autoptr (GFile) keyfile = NULL;
   g_autoptr (GFileInputStream) key_stream_in = NULL;
-  g_autoptr (GDataInputStream) key_data_in = NULL;
 
   if (!g_file_test (filename, G_FILE_TEST_IS_REGULAR))
     {
@@ -543,10 +556,7 @@ _load_pk_from_file (OstreeSign *self, const gchar *filename, gboolean trusted, G
   if (key_stream_in == NULL)
     return FALSE;
 
-  key_data_in = g_data_input_stream_new (G_INPUT_STREAM (key_stream_in));
-  g_assert (key_data_in != NULL);
-
-  if (!_load_pk_from_stream (self, key_data_in, trusted, error))
+  if (!_load_pk_from_stream (self, G_INPUT_STREAM (key_stream_in), trusted, error))
     {
       if (error == NULL || *error == NULL)
         return glnx_throw (error, "signature: ed25519: no valid keys in file '%s'", filename);

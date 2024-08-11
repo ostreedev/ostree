@@ -961,19 +961,43 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
             goto out;
         }
 
-      // Load each base64 encoded private key in a file and sign with it.
+      // Load each encoded private key in a file and sign with it.
       for (char **iter = opt_key_files; iter && *iter; iter++)
         {
           const char *path = *iter;
-          g_autofree char *b64key
-              = glnx_file_get_contents_utf8_at (AT_FDCWD, path, NULL, NULL, error);
-          if (!b64key)
+          g_autoptr (GFile) keyfile = NULL;
+          g_autoptr (GFileInputStream) key_stream_in = NULL;
+          g_autoptr (OstreeBlobReader) blob_reader = NULL;
+          g_autoptr (GBytes) blob = NULL;
+          g_autoptr (GError) local_error = NULL;
+          g_autoptr (GVariant) secret_key = NULL;
+
+          keyfile = g_file_new_for_path (path);
+          key_stream_in = g_file_read (keyfile, NULL, error);
+          if (key_stream_in == NULL)
+            goto out;
+
+          g_assert (sign);
+          blob_reader = ostree_sign_read_sk (sign, G_INPUT_STREAM (key_stream_in));
+          if (blob_reader == NULL)
+            goto out;
+
+          blob = ostree_blob_reader_read_blob (blob_reader, cancellable, &local_error);
+          if (local_error != NULL)
+            {
+              g_propagate_prefixed_error (error, g_steal_pointer (&local_error), "Reading %s",
+                                          path);
+              goto out;
+            }
+
+          if (blob == NULL)
             {
               g_prefix_error (error, "Reading %s", path);
               goto out;
             }
-          g_autoptr (GVariant) secret_key = g_variant_new_string (b64key);
-          g_assert (sign);
+
+          // Pass the key as a bytestring
+          secret_key = g_variant_new_from_bytes (G_VARIANT_TYPE_BYTESTRING, blob, FALSE);
           if (!ostree_sign_set_sk (sign, secret_key, error))
             goto out;
 
