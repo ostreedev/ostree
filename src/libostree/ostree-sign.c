@@ -38,6 +38,8 @@
 #include <unistd.h>
 
 #include "ostree-autocleanups.h"
+#include "ostree-blob-reader-base64.h"
+#include "ostree-blob-reader-raw.h"
 #include "ostree-core.h"
 #include "ostree-sign-dummy.h"
 #include "ostree-sign-ed25519.h"
@@ -640,4 +642,50 @@ ostree_sign_summary (OstreeSign *self, OstreeRepo *repo, GVariant *keys, GCancel
                      GError **error)
 {
   return _ostree_sign_summary_at (self, repo, repo->repo_dir_fd, keys, cancellable, error);
+}
+
+/**
+ * ostree_sign_read_pk:
+ * @self: Self
+ * @stream: a #GInputStream
+ *
+ * Start reading public keys from a stream.
+ *
+ * Returns: (transfer full): a #OstreamBlobReader or %NULL on error
+ *
+ * Since: 2025.2
+ */
+OstreeBlobReader *
+ostree_sign_read_pk (OstreeSign *self, GInputStream *stream)
+{
+#if defined(HAVE_ED25519)
+  if (OSTREE_IS_SIGN_ED25519 (self))
+    return OSTREE_BLOB_READER (_ostree_blob_reader_base64_new (stream));
+#endif
+  if (OSTREE_IS_SIGN_DUMMY (self))
+    return OSTREE_BLOB_READER (_ostree_blob_reader_raw_new (stream));
+  return NULL;
+}
+
+/**
+ * ostree_sign_read_sk:
+ * @self: Self
+ * @stream: a #GInputStream
+ *
+ * Start reading secret keys from a stream.
+ *
+ * Returns: (transfer full): a #OstreamBlobReader or %NULL on error
+ *
+ * Since: 2025.2
+ */
+OstreeBlobReader *
+ostree_sign_read_sk (OstreeSign *self, GInputStream *stream)
+{
+#if defined(HAVE_ED25519)
+  if (OSTREE_IS_SIGN_ED25519 (self))
+    return OSTREE_BLOB_READER (_ostree_blob_reader_base64_new (stream));
+#endif
+  if (OSTREE_IS_SIGN_DUMMY (self))
+    return OSTREE_BLOB_READER (_ostree_blob_reader_raw_new (stream));
+  return NULL;
 }
