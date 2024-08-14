@@ -2629,8 +2629,9 @@ auto_early_prune_old_deployments (OstreeSysroot *self, GPtrArray *new_deployment
            *
            * An alternative is working with the block size instead, which would
            * be easier to handle. */
-          g_printerr ("bootcsum %s size exceeds %u; disabling auto-prune optimization\n", bootdir,
-                      G_MAXUINT);
+          ot_journal_print (LOG_WARNING,
+                            "bootcsum %s size exceeds %u; disabling auto-prune optimization",
+                            bootdir, G_MAXUINT);
           return TRUE;
         }
 
@@ -2663,8 +2664,9 @@ auto_early_prune_old_deployments (OstreeSysroot *self, GPtrArray *new_deployment
       /* see similar logic in previous loop */
       if (bootdir_size > G_MAXUINT)
         {
-          g_printerr (
-              "deployment %s kernel layout size exceeds %u; disabling auto-prune optimization\n",
+          ot_journal_print (
+              LOG_WARNING,
+              "deployment %s kernel layout size exceeds %u; disabling auto-prune optimization",
               ostree_deployment_get_csum (deployment), G_MAXUINT);
           return TRUE;
         }
@@ -2686,12 +2688,13 @@ auto_early_prune_old_deployments (OstreeSysroot *self, GPtrArray *new_deployment
      * and old bootdirs? */
     if (bootfs_has_space)
       {
-        g_printerr ("bootfs is sufficient for calculated new size: %s\n", net_new_formatted);
+        ot_journal_print (LOG_INFO, "bootfs is sufficient for calculated new size: %s",
+                          net_new_formatted);
         return TRUE; /* nothing to do! */
       }
   }
 
-  g_printerr ("bootfs requires additional space: %s\n", net_new_formatted);
+  ot_journal_print (LOG_INFO, "bootfs requires additional space: %s", net_new_formatted);
   /* OK, we would fail if we tried to write the new bootdirs. Is it salvageable?
    * First, calculate how much space we could save with the bootcsums scheduled
    * for removal. */
@@ -2704,7 +2707,7 @@ auto_early_prune_old_deployments (OstreeSysroot *self, GPtrArray *new_deployment
 
   {
     g_autofree char *to_remove_formated = g_format_size (bootcsum_dirs_to_remove_total_size);
-    g_printerr ("Size to prune from bootfs: %s\n", to_remove_formated);
+    ot_journal_print (LOG_INFO, "Size to prune from bootfs: %s", to_remove_formated);
   }
 
   if (net_new_bootcsum_dirs_total_size > bootcsum_dirs_to_remove_total_size)
@@ -2721,12 +2724,14 @@ auto_early_prune_old_deployments (OstreeSysroot *self, GPtrArray *new_deployment
         {
           /* Even if we auto-pruned, the new bootdirs wouldn't fit. Just let the
            * code continue and let it hit ENOSPC. */
-          g_printerr ("Disabling auto-prune optimization; insufficient space left in bootfs\n");
+          ot_journal_print (LOG_WARNING,
+                            "Disabling auto-prune optimization; insufficient space left in bootfs");
           return TRUE;
         }
     }
 
-  g_printerr ("Insufficient space left in bootfs; updating bootloader in two steps\n");
+  ot_journal_print (LOG_INFO,
+                    "Insufficient space left in bootfs; updating bootloader in two steps");
 
   /* Auto-pruning can salvage the situation. Calculate the set of deployments in common. */
   g_autoptr (GPtrArray) common_deployments = g_ptr_array_new ();
