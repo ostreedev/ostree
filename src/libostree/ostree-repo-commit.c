@@ -820,7 +820,7 @@ _try_clone_from_payload_link (OstreeRepo *self, OstreeRepo *dest_repo, const cha
                            loose_path_buf, (unsigned long long)expected_len,
                            (unsigned long long)size);
 
-      snprintf (target_checksum, size, "%.2s%.62s", target_buf + _OSTREE_PAYLOAD_LINK_PREFIX_LEN,
+      snprintf (target_checksum, sizeof (target_checksum), "%.2s%.62s", target_buf + _OSTREE_PAYLOAD_LINK_PREFIX_LEN,
                 target_buf + _OSTREE_PAYLOAD_LINK_PREFIX_LEN + 3);
 
       _ostree_loose_path (loose_path_target_buf, target_checksum, OSTREE_OBJECT_TYPE_FILE,
