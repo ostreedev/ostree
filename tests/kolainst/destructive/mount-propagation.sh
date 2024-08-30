@@ -67,10 +67,9 @@ test_mounts() {
   assert_has_mount /sysroot/bar
   assert_not_has_mount "/sysroot/ostree/deploy/${stateroot}/var/foo"
 
-  # Repeat with the sub mount namespace. Since /sysroot is marked private,
-  # /sysroot/bar will not be propagated into it.
+  # Repeat with the sub mount namespace.
   assert_has_mount /var/foo "${ns_pid}"
-  assert_not_has_mount /sysroot/bar "${ns_pid}"
+  assert_has_mount /sysroot/bar "${ns_pid}"
   assert_not_has_mount "/sysroot/ostree/deploy/${stateroot}/var/foo" "${ns_pid}"
 }
 
