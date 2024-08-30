@@ -5,6 +5,34 @@ set -xeuo pipefail
 
 . ${KOLA_EXT_DATA}/libinsttest.sh
 
+journal_cursor() {
+    journalctl -o json -n 1 | jq -r '.["__CURSOR"]'
+}
+
+assert_journal_grep() {
+    local cursor re
+    cursor=$1
+    shift
+    re=$1
+    shift
+
+    if ! journalctl -t ostree --after-cursor "${cursor}" --grep="$re" "$@" >/dev/null; then
+        fatal "failed to find in journal: $re"; exit 1
+    fi
+}
+
+assert_not_journal_grep() {
+    local cursor re
+    cursor=$1
+    shift
+    re=$1
+    shift
+
+    if journalctl -t ostree --after-cursor "${cursor}" --grep="$re" "$@"; then
+        fatal "found in journal: $re"; exit 1
+    fi
+}
+
 # make two fake ostree commits with modified kernels of about the same size
 cd /root
 mkdir -p rootfs/usr/lib/modules/`uname -r`
@@ -44,12 +72,13 @@ assert_bootfs_has_n_bootcsum_dirs 1
 # the booted deployment is never pruned, so this is a hopeless case and auto-pruning can't save us
 consume_bootfs_space
 rpm-ostree rebase :modkernel1
-if ostree admin finalize-staged |& tee out.txt; then
+cursor=$(journal_cursor)
+rm -vf err.txt
+if ostree admin finalize-staged 2>err.txt; then
     assert_not_reached "successfully wrote to filled up bootfs"
 fi
-assert_file_has_content out.txt "Disabling auto-prune optimization; insufficient space left in bootfs"
-assert_file_has_content out.txt "No space left on device"
-rm out.txt
+assert_journal_grep "$cursor" "Disabling auto-prune optimization; insufficient space left in bootfs"
+assert_file_has_content err.txt "No space left on device"
 unconsume_bootfs_space
 rpm-ostree cleanup -bpr
 
@@ -58,9 +87,9 @@ rpm-ostree cleanup -bpr
 assert_bootfs_has_n_bootcsum_dirs 1
 
 rpm-ostree rebase :modkernel1
-ostree admin finalize-staged |& tee out.txt
-assert_not_file_has_content out.txt "updating bootloader in two steps"
-rm out.txt
+cursor=$(journal_cursor)
+ostree admin finalize-staged
+assert_not_journal_grep "$cursor" "updating bootloader in two steps"
 
 # and put it in rollback position; this is the deployment that'll get auto-pruned
 rpm-ostree rollback
@@ -71,11 +100,12 @@ bootloader_orig=$(sha256sum /boot/loader/entries/*)
 # now try to deploy a third deployment without early pruning; we should hit ENOSPC
 consume_bootfs_space
 rpm-ostree rebase :modkernel2
-if OSTREE_SYSROOT_OPTS=no-early-prune ostree admin finalize-staged |& tee out.txt; then
+cursor=$(journal_cursor)
+rm -vf err.txt
+if OSTREE_SYSROOT_OPTS=no-early-prune ostree admin finalize-staged 2>err.txt; then
     assert_not_reached "successfully wrote kernel without auto-pruning"
 fi
-assert_file_has_content out.txt "No space left on device"
-rm out.txt
+assert_file_has_content err.txt "No space left on device"
 
 # there's 3 bootcsums now because it'll also have the partially written
 # bootcsum dir we were creating when we hit ENOSPC; this verifies that all the
@@ -86,9 +116,9 @@ assert_streq "$bootloader_orig" "$(sha256sum /boot/loader/entries/*)"
 
 # now, try again but with auto-pruning enabled
 rpm-ostree rebase :modkernel2
-ostree admin finalize-staged |& tee out.txt
-assert_file_has_content out.txt "updating bootloader in two steps"
-rm out.txt
+cursor=$(journal_cursor)
+ostree admin finalize-staged
+assert_journal_grep "$cursor" "updating bootloader in two steps"
 
 assert_bootfs_has_n_bootcsum_dirs 2
 assert_not_streq "$bootloader_orig" "$(sha256sum /boot/loader/entries/*)"
@@ -121,18 +151,19 @@ unshare -m bash -c \
 consume_bootfs_space "$((free_blocks_kernel_and_initrd))"
 
 rpm-ostree rebase :modkernel1
+cursor=$(journal_cursor)
 # Disable auto-pruning to verify we reproduce the bug
-if OSTREE_SYSROOT_OPTS=no-early-prune ostree admin finalize-staged |& tee out.txt; then
+rm -vf err.txt
+if OSTREE_SYSROOT_OPTS=no-early-prune ostree admin finalize-staged 2>err.txt; then
     assert_not_reached "successfully wrote kernel without auto-pruning"
 fi
-assert_file_has_content out.txt "No space left on device"
-rm out.txt
+assert_file_has_content err.txt "No space left on device" 
 
 # now, try again but with (now default) auto-pruning enabled
 rpm-ostree rebase :modkernel1
-ostree admin finalize-staged |& tee out.txt
-assert_file_has_content out.txt "updating bootloader in two steps"
-rm out.txt
+cursor=$(journal_cursor)
+ostree admin finalize-staged
+assert_journal_grep "$cursor" "updating bootloader in two steps"
 
 # Below, we test that the size estimator is blocksize aware. This catches the
 # case where the dtb contains many small files such that there's a lot of wasted
@@ -149,17 +180,18 @@ ostree commit --base modkernel1 -P --tree=dir=rootfs -b modkernel3
 consume_bootfs_space "$((free_blocks_kernel_and_initrd - 10000))"
 
 rpm-ostree rebase :modkernel3
+cursor=$(journal_cursor)
 # Disable auto-pruning to verify we reproduce the bug
-if OSTREE_SYSROOT_OPTS=no-early-prune ostree admin finalize-staged |& tee out.txt; then
+rm -vf err.txt
+if OSTREE_SYSROOT_OPTS=no-early-prune ostree admin finalize-staged 2>err.txt; then
     assert_not_reached "successfully wrote kernel without auto-pruning"
 fi
-assert_file_has_content out.txt "No space left on device"
-rm out.txt
+assert_file_has_content err.txt "No space left on device" 
 
 # now, try again but with (now default) auto-pruning enabled
 rpm-ostree rebase :modkernel3
-ostree admin finalize-staged |& tee out.txt
-assert_file_has_content out.txt "updating bootloader in two steps"
-rm out.txt
+cursor=$(journal_cursor)
+ostree admin finalize-staged
+assert_journal_grep "$cursor" "updating bootloader in two steps"
 
 echo "ok bootfs auto-prune"
