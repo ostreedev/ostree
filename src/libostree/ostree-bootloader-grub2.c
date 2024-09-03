@@ -22,9 +22,9 @@
 #include "otutil.h"
 #include <gio/gfiledescriptorbased.h>
 #include <gio/gunixoutputstream.h>
-#include <sys/mount.h>
-
+#include <stdbool.h>
 #include <string.h>
+#include <sys/mount.h>
 
 // Written by bootupd
 #define BOOTUPD_CONFIG "boot/bootupd-state.json"
@@ -419,7 +419,15 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader *bootloader, int bootver
   grub_argv[2] = gs_file_get_path_cached (new_config_path);
 
   GSpawnFlags grub_spawnflags = G_SPAWN_SEARCH_PATH;
-  if (!g_getenv ("OSTREE_DEBUG_GRUB2"))
+  const bool running_in_systemd = getenv ("INVOCATION_ID") != NULL;
+  const bool debug_grub2 = g_getenv ("OSTREE_DEBUG_GRUB2");
+  /* If we're running in systemd (as part of `ostree-finalize-staged.service`)
+   * then we do want to gather output from the binary so that if something fails
+   * we can debug it.
+   *
+   * We also have an opt-in variable to display errors.
+   */
+  if (!(running_in_systemd || debug_grub2))
     grub_spawnflags |= G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_STDERR_TO_DEV_NULL;
   cdata.root = grub2_mkconfig_chroot;
   g_autofree char *bootversion_str = g_strdup_printf ("%u", (guint)bootversion);
