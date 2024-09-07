@@ -339,11 +339,13 @@ parents_get_commits (GHashTable *parents_ht, GVariant *object, GHashTable *res)
 char **
 ostree_repo_traverse_parents_get_commits (GHashTable *parents, GVariant *object)
 {
-  g_autoptr (GHashTable) res = g_hash_table_new (g_str_hash, g_str_equal);
+  g_autoptr (GHashTable) res = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
   parents_get_commits (parents, object, res);
 
-  return (char **)g_hash_table_get_keys_as_array (res, NULL);
+  // TODO: Once we can depend on modern glib 2.76, just use g_hash_table_steal_all_keys
+  g_autofree char **tmpbuf = (char **)g_hash_table_get_keys_as_array (res, NULL);
+  return g_strdupv (tmpbuf);
 }
 
 static gboolean traverse_dirtree (OstreeRepo *repo, const char *checksum, GVariant *parent_key,
