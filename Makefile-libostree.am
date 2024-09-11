@@ -110,6 +110,7 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-soft-reboot.c \
 	src/libostree/ostree-impl-system-generator.c \
 	src/libostree/ostree-bootconfig-parser.c \
+	src/libostree/ostree-bootconfig-parser-private.h \
 	src/libostree/ostree-deployment.c \
 	src/libostree/ostree-bootloader.h \
 	src/libostree/ostree-bootloader.c \
