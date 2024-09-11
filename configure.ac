@@ -362,6 +362,14 @@ AS_IF([test "$enable_man_html" = yes && test "$enable_man" = no], [
 ])
 AM_CONDITIONAL(ENABLE_MAN_HTML, test "$enable_man_html" = yes)
 
+AC_ARG_ENABLE(boot-count,
+              AS_HELP_STRING([--enable-boot-count],
+                             [Enable boot counting for boot entries (default: no)]),,
+              enable_boot_count=no)
+AS_IF([ test "$enable_boot_count" != no], [
+  AC_DEFINE([ENABLE_BOOT_COUNT], 1, [Define if boot counting is enabled])
+])
+
 AC_ARG_WITH(libarchive,
 	    AS_HELP_STRING([--without-libarchive], [Do not use libarchive]),
 	    :, with_libarchive=maybe)
@@ -705,6 +713,7 @@ echo "
     man pages (xsltproc):                         $enable_man
     api docs (gtk-doc):                           $enable_gtk_doc
     installed tests:                              $enable_installed_tests
+    boot counting for boot entries:               $enable_boot_count
     gjs-based tests:                              $have_gjs
     dracut:                                       $with_dracut
     mkinitcpio:                                   $with_mkinitcpio

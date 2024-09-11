@@ -93,6 +93,9 @@ OstreeDeployment *ostree_deployment_clone (OstreeDeployment *self);
 _OSTREE_PUBLIC
 char *ostree_deployment_get_origin_relpath (OstreeDeployment *self);
 
+_OSTREE_PUBLIC
+char *ostree_deployment_get_boot_tries_relpath (OstreeDeployment *self);
+
 typedef enum
 {
   OSTREE_DEPLOYMENT_UNLOCKED_NONE,
