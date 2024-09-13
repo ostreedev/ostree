@@ -53,7 +53,7 @@ jobs:
       - name: Build
         run: cd tests/inst && cargo build --verbose --release
       - name: Upload binary
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: ostree-test
           path: tests/inst/target/release/ostree-test
@@ -91,7 +91,7 @@ jobs:
           ./configure --with-curl --with-selinux --with-dracut=yesbutnoconf --with-composefs &&
           make -j 4 && make install DESTDIR=$(pwd)/install && tar -c -C install --zstd -f inst.tar.zst .
       - name: Upload binary
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: inst.tar.zst
           path: inst.tar.zst
@@ -106,13 +106,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
       - name: Download install tree
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: inst.tar.zst
       - name: Install
         run: tar -C / -xvf inst.tar.zst && rm -f inst.tar.zst
       - name: Download test binary
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: ostree-test
       - name: Install
