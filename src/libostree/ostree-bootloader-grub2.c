@@ -30,6 +30,7 @@
 #define BOOTUPD_CONFIG "boot/bootupd-state.json"
 // Horrible hack, to avoid including a JSON parser we just grep for this
 #define BOOTUPD_CONFIG_STATIC_JSON_FRAGMENT "\"static-configs\""
+#define BOOTUPD_CONFIG_STATIC_JSON_FRAGMENT_NULL "\"static-configs\":null"
 
 /* Maintain backwards compatibility with legacy GRUB
  * installations that might rely on the -16 suffix
@@ -90,9 +91,12 @@ _ostree_bootloader_grub2_query (OstreeBootloader *bootloader, gboolean *out_is_a
         return glnx_prefix_error (error, "Failed to read bootupd config");
       if (strstr (bootupd_config_contents, BOOTUPD_CONFIG_STATIC_JSON_FRAGMENT) != NULL)
         {
-          g_debug ("Found static bootupd config");
-          *out_is_active = FALSE;
-          return TRUE;
+          if (strstr (bootupd_config_contents, BOOTUPD_CONFIG_STATIC_JSON_FRAGMENT_NULL) == NULL)
+            {
+              g_debug ("Found static bootupd config");
+              *out_is_active = FALSE;
+              return TRUE;
+            }
         }
     }
 
