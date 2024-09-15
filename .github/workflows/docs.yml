@@ -15,10 +15,11 @@ on:
 # want to allow these production deployments to complete.
 #
 # Since pull requests use a unique artifact name and won't be deployed, they
-# shouldn't be limited. Use a unique group name in that case.
+# shouldn't be limited. Use a unique group name in that case and let in
+# progress runs be cancelled.
 concurrency:
-  group: "pages${{ github.event_name == 'pull_request' && format('-pr{0}', github.event.number) }}"
-  cancel-in-progress: false
+  group: "pages${{ github.event_name == 'pull_request' && format('-pr{0}', github.event.number) || '' }}"
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -57,9 +58,9 @@ jobs:
         with:
           path: docs/_site
           # The default name is github-pages to match actions/deploy-pages. For
-          # PRs use a unique name so results can be inspected without
-          # interfering with real deployments.
-          name: "github-pages${{ github.event_name == 'pull_request' && format('-pr{0}', github.event.number) }}"
+          # PRs use a different name so results can be inspected without real
+          # deployments accidentally getting the wrong artifact.
+          name: "github-pages${{ github.event_name == 'pull_request' && '-pr' || '' }}"
 
   deploy:
     name: Deploy documentation
