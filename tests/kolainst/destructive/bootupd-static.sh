@@ -10,7 +10,7 @@ bootupd_state=/boot/bootupd-state.json
 mount -o remount,rw /boot
 if grep -qFe "\"static-configs\"" "${bootupd_state}"; then
     echo "Host is using static configs already, overriding this"
-    jq 'del(.["static-configs"])' < "${bootupd_state}" > "${bootupd_state}".new
+    jq --compact-output '.["static-configs"] = null' < "${bootupd_state}" > "${bootupd_state}".new
     mv "${bootupd_state}.new" "${bootupd_state}"
 fi
 
