@@ -1,4 +1,6 @@
 ---
+# This is a slightly adjusted version of the Jekyll pages starter workflow.
+# https://github.com/actions/starter-workflows/blob/main/pages/jekyll-gh-pages.yml
 name: Docs
 
 on:
@@ -6,14 +8,20 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
-permissions:
-  # This workflow pushes to the gh-pages branch, so the token needs write
-  # privileges for repo contents.
-  contents: write
+# Allow only one concurrent deployment, skipping runs queued between the run
+# in-progress and latest queued. However, do NOT cancel in-progress runs as we
+# want to allow these production deployments to complete.
+#
+# Since pull requests use a unique artifact name and won't be deployed, they
+# shouldn't be limited. Use a unique group name in that case.
+concurrency:
+  group: "pages${{ github.event_name == 'pull_request' && format('-pr{0}', github.event.number) }}"
+  cancel-in-progress: false
 
 jobs:
-  docs:
+  build:
     name: Build documentation
     runs-on: ubuntu-latest
     container: registry.ci.openshift.org/coreos/fcos-buildroot:testing-devel
@@ -35,14 +43,43 @@ jobs:
           make -C apidoc
           make manhtml
 
-      - name: Build and publish jekyll docs
-        uses: helaili/jekyll-action@v2
+      - name: Copy API docs and manpages
+        run: ./docs/prep-docs.sh
+
+      - name: Build jekyll docs
+        uses: actions/jekyll-build-pages@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          jekyll_src: docs
-          target_branch: gh-pages
-          # Only publish when pushing to main.
-          # XXX: Maybe this should only run on the release event?
-          build_only: ${{ github.ref == 'refs/heads/main' && 'false' || 'true' }}
-          # Run the prep script to put the API docs in place.
-          pre_build_commands: ./docs/prep-docs.sh
+          source: ./docs
+          destination: ./docs/_site
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_site
+          # The default name is github-pages to match actions/deploy-pages. For
+          # PRs use a unique name so results can be inspected without
+          # interfering with real deployments.
+          name: "github-pages${{ github.event_name == 'pull_request' && format('-pr{0}', github.event.number) }}"
+
+  deploy:
+    name: Deploy documentation
+    runs-on: ubuntu-latest
+    needs: build
+    # Skip deployment on pull requests.
+    if: ${{ github.event_name != 'pull_request' }}
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    # Grant permissions to deploy to Pages. The id-token permission is needed
+    # to verify the deployment originates from an appropriate source.
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
