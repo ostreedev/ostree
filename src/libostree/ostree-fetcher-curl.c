@@ -517,7 +517,8 @@ addsock (curl_socket_t s, CURL *easy, int action, OstreeFetcher *fetcher)
   fdp->refcount = 1;
   fdp->fetcher = fetcher;
   setsock (fdp, s, action, fetcher);
-  curl_multi_assign (fetcher->multi, s, fdp);
+  CURLMcode rc = curl_multi_assign (fetcher->multi, s, fdp);
+  g_assert_cmpint (rc, ==, CURLM_OK);
   g_hash_table_add (fetcher->sockets, fdp);
 }
 
