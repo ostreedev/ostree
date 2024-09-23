@@ -3,7 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/ostree.svg)](https://crates.io/crates/ostree)
 [![main-docs](https://img.shields.io/badge/docs-main-brightgreen.svg)](https://fkrull.gitlab.io/ostree-rs/ostree)
 
-**Rust** bindings for [libostree](https://ostree.readthedocs.io).
+**Rust** bindings for [libostree](https://ostreedev.github.io/ostree/introduction/).
 
 libostree is both a shared library and suite of command line tools that combines
 a "git-like" model for committing and downloading bootable filesystem trees,
@@ -121,7 +121,7 @@ The `ostree` crate is licensed under the MIT license. See the LICENSE file for
 details.
 
 libostree itself is licensed under the LGPL2+. See its
-[licensing information](https://ostree.readthedocs.io#licensing) for more
+[docs](https://ostreedev.github.io/ostree/) for more
 information.
 
 The libostree GIR file (`gir-files/OSTree-1.0.gir`) is derived from the
