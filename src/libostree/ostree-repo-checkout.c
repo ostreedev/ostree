@@ -35,7 +35,13 @@
 #define WHITEOUT_PREFIX ".wh."
 #define OPAQUE_WHITEOUT_NAME ".wh..wh..opq"
 
-#define OVERLAYFS_WHITEOUT_PREFIX ".ostree-wh."
+// ostree doesn't have native support for devices. Whiteouts in overlayfs
+// are a 0:0 character device, and in some cases people are copying docker/podman
+// style overlayfs container storage directly into ostree commits. This
+// adds special support for "quoting" the whiteout so it just appears as a regular
+// file in the ostree commit, but can be converted back into a character device
+// on checkout.
+#define OSTREE_QUOTED_OVERLAYFS_WHITEOUT_PREFIX ".ostree-wh."
 
 /* Per-checkout call state/caching */
 typedef struct
@@ -711,7 +717,8 @@ checkout_one_file_at (OstreeRepo *repo, OstreeRepoCheckoutAtOptions *options, Ch
   const gboolean is_whiteout = (!is_symlink && options->process_whiteouts
                                 && g_str_has_prefix (destination_name, WHITEOUT_PREFIX));
   const gboolean is_overlayfs_whiteout
-      = (!is_symlink && g_str_has_prefix (destination_name, OVERLAYFS_WHITEOUT_PREFIX));
+      = (!is_symlink
+         && g_str_has_prefix (destination_name, OSTREE_QUOTED_OVERLAYFS_WHITEOUT_PREFIX));
   const gboolean is_reg_zerosized = (!is_symlink && g_file_info_get_size (source_info) == 0);
   const gboolean override_user_unreadable
       = (options->mode == OSTREE_REPO_CHECKOUT_MODE_USER && is_unreadable);
@@ -735,7 +742,7 @@ checkout_one_file_at (OstreeRepo *repo, OstreeRepoCheckoutAtOptions *options, Ch
     }
   else if (is_overlayfs_whiteout && options->process_passthrough_whiteouts)
     {
-      const char *name = destination_name + (sizeof (OVERLAYFS_WHITEOUT_PREFIX) - 1);
+      const char *name = destination_name + (sizeof (OSTREE_QUOTED_OVERLAYFS_WHITEOUT_PREFIX) - 1);
 
       if (!name[0])
         return glnx_throw (error, "Invalid empty overlayfs whiteout '%s'", name);
