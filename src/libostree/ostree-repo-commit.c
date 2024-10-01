@@ -3450,6 +3450,202 @@ write_dir_entry_to_mtree_internal (OstreeRepo *self, OstreeRepoFile *repo_dir,
   return TRUE;
 }
 
+static gboolean
+write_quoted_device (OstreeRepo *self, OstreeRepoFile *repo_dir,
+                                 GFileEnumerator *dir_enum, GLnxDirFdIterator *dfd_iter,
+                                 WriteDirContentFlags writeflags, GFileInfo *child_info,
+                                 OstreeMutableTree *mtree, OstreeRepoCommitModifier *modifier,
+                                 GPtrArray *path, GCancellable *cancellable, GError **error)
+{
+  g_assert (dir_enum != NULL || dfd_iter != NULL);
+
+  GFileType file_type = g_file_info_get_file_type (child_info);
+  const char *name = g_file_info_get_name (child_info);
+
+  /* Load flags into boolean constants for ease of readability (we also need to
+   * NULL-check modifier)
+   */
+  const gboolean canonical_permissions
+      = self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY
+        || (modifier
+            && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS));
+  const gboolean devino_canonical
+      = modifier && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL);
+  /* We currently only honor the CONSUME flag in the dfd_iter case to avoid even
+   * more complexity in this function, and it'd mostly only be useful when
+   * operating on local filesystems anyways.
+   */
+  const gboolean delete_after_commit
+      = dfd_iter && modifier && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME);
+
+  /* Build the full path which we need for callbacks */
+  g_ptr_array_add (path, (char *)name);
+  g_autofree char *child_relpath = ptrarray_path_join (path);
+
+  /* Call the filter */
+  g_autoptr (GFileInfo) modified_info = NULL;
+  OstreeRepoCommitFilterResult filter_result = _ostree_repo_commit_modifier_apply (
+      self, modifier, child_relpath, child_info, &modified_info);
+  const gboolean child_info_was_modified = !_ostree_gfileinfo_equal (child_info, modified_info);
+
+  if (filter_result != OSTREE_REPO_COMMIT_FILTER_ALLOW)
+    {
+      g_ptr_array_remove_index (path, path->len - 1);
+      if (delete_after_commit)
+        {
+          g_assert (dfd_iter);
+          if (!glnx_shutil_rm_rf_at (dfd_iter->fd, name, cancellable, error))
+            return FALSE;
+        }
+      /* Note: early return */
+      return TRUE;
+    }
+
+  guint32 src_mode = g_file_info_get_attribute_uint32 (src_info, "unix::mode")';'
+  switch (file_type)
+    {
+    case G_FILE_TYPE_SYMBOLIC_LINK:
+    case G_FILE_TYPE_REGULAR:
+      break;
+    default:
+      return glnx_throw (error, "Unsupported file type for file: '%s'", child_relpath);
+    }
+
+  g_autoptr (GFile) child = NULL;
+  if (dir_enum != NULL)
+    child = g_file_enumerator_get_child (dir_enum, child_info);
+
+  /* Our filters have passed, etc.; now we prepare to write the content object */
+  glnx_autofd int file_input_fd = -1;
+
+  /* Open the file now, since it's better for reading xattrs
+   * rather than using the /proc/self/fd links.
+   *
+   * TODO: Do this lazily, since for e.g. bare-user-only repos
+   * we don't have xattrs and don't need to open every file
+   * for things that have devino cache hits.
+   */
+  if (file_type == G_FILE_TYPE_REGULAR && dfd_iter != NULL)
+    {
+      if (!glnx_openat_rdonly (dfd_iter->fd, name, FALSE, &file_input_fd, error))
+        return FALSE;
+    }
+
+  g_autoptr (GVariant) xattrs = NULL;
+  gboolean xattrs_were_modified;
+  if (dir_enum != NULL)
+    {
+      if (!get_final_xattrs (self, modifier, child_relpath, child_info, child, -1, name,
+                             source_xattrs, &xattrs, &xattrs_were_modified, cancellable, error))
+        return FALSE;
+    }
+  else
+    {
+      /* These contortions are basically so we use glnx_fd_get_all_xattrs()
+       * for regfiles, and glnx_dfd_name_get_all_xattrs() for symlinks.
+       */
+      int xattr_fd_arg = (file_input_fd != -1) ? file_input_fd : dfd_iter->fd;
+      const char *xattr_path_arg = (file_input_fd != -1) ? NULL : name;
+      if (!get_final_xattrs (self, modifier, child_relpath, child_info, child, xattr_fd_arg,
+                             xattr_path_arg, source_xattrs, &xattrs, &xattrs_were_modified,
+                             cancellable, error))
+        return FALSE;
+    }
+
+  /* Used below to see whether we can do a fast path commit */
+  const gboolean modified_file_meta = child_info_was_modified || xattrs_were_modified;
+
+  /* A big prerequisite list of conditions for whether or not we can
+   * "adopt", i.e. just checksum and rename() into place
+   */
+  const gboolean can_adopt_basic = file_type == G_FILE_TYPE_REGULAR && dfd_iter != NULL
+                                   && delete_after_commit
+                                   && ((writeflags & WRITE_DIR_CONTENT_FLAGS_CAN_ADOPT) > 0);
+  gboolean can_adopt = can_adopt_basic;
+  /* If basic prerquisites are met, check repo mode specific ones */
+  if (can_adopt)
+    {
+      /* For bare repos, we could actually chown/reset the xattrs, but let's
+       * do the basic optimizations here first.
+       */
+      if (self->mode == OSTREE_REPO_MODE_BARE)
+        can_adopt = !modified_file_meta;
+      else if (self->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
+        can_adopt = canonical_permissions;
+      else
+        /* This covers bare-user and archive.  See comments in adopt_and_commit_regfile()
+         * for notes on adding bare-user later here.
+         */
+        can_adopt = FALSE;
+    }
+  gboolean did_adopt = FALSE;
+
+  /* The very fast path - we have a devino cache hit, nothing to write */
+  if (loose_checksum && !modified_file_meta)
+    {
+      if (!ostree_mutable_tree_replace_file (mtree, name, loose_checksum, error))
+        return FALSE;
+
+      g_mutex_lock (&self->txn_lock);
+      self->txn.stats.devino_cache_hits++;
+      g_mutex_unlock (&self->txn_lock);
+    }
+  /* Next fast path - we can "adopt" the file */
+  else if (can_adopt)
+    {
+      char checksum[OSTREE_SHA256_STRING_LEN + 1];
+      if (!adopt_and_commit_regfile (self, dfd_iter->fd, name, modified_info, xattrs, checksum,
+                                     cancellable, error))
+        return FALSE;
+      if (!ostree_mutable_tree_replace_file (mtree, name, checksum, error))
+        return FALSE;
+      did_adopt = TRUE;
+    }
+  else
+    {
+      g_autoptr (GInputStream) file_input = NULL;
+
+      if (file_type == G_FILE_TYPE_REGULAR)
+        {
+          if (dir_enum != NULL)
+            {
+              g_assert (child != NULL);
+              file_input = (GInputStream *)g_file_read (child, cancellable, error);
+              if (!file_input)
+                return FALSE;
+            }
+          else
+            {
+              /* We already opened the fd above */
+              file_input = g_unix_input_stream_new (file_input_fd, FALSE);
+            }
+        }
+
+      g_autofree guchar *child_file_csum = NULL;
+      if (!write_content_object (self, NULL, file_input, modified_info, xattrs, &child_file_csum,
+                                 cancellable, error))
+        return FALSE;
+
+      char tmp_checksum[OSTREE_SHA256_STRING_LEN + 1];
+      ostree_checksum_inplace_from_bytes (child_file_csum, tmp_checksum);
+      if (!ostree_mutable_tree_replace_file (mtree, name, tmp_checksum, error))
+        return FALSE;
+    }
+
+  /* Process delete_after_commit. In the adoption case though, we already
+   * took ownership of the file above, usually via a renameat().
+   */
+  if (delete_after_commit && !did_adopt)
+    {
+      if (!glnx_unlinkat (dfd_iter->fd, name, 0, error))
+        return FALSE;
+    }
+
+  g_ptr_array_remove_index (path, path->len - 1);
+
+  return TRUE;
+}
+
 /* Given either a dir_enum or a dfd_iter, writes a non-dir (regfile/symlink) to
  * the mtree.
  */
@@ -3888,6 +4084,14 @@ write_dfd_iter_to_mtree_internal (OstreeRepo *self, GLnxDirFdIterator *src_dfd_i
           if (!ot_readlinkat_gfile_info (src_dfd_iter->fd, dent->d_name, child_info, cancellable,
                                          error))
             return FALSE;
+        }
+      else if (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_QUOTE_DEVICES)
+        {
+          if (!write_quoted_device (self, NULL, NULL, src_dfd_iter, flags, child_info, mtree,
+                                    modifier, path, cancellable, error))
+            return FALSE;
+          // Note we skip over the code below
+          continue;
         }
       else
         {

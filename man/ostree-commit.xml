@@ -178,6 +178,15 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
             </varlistentry>
 
             <varlistentry>
+                <term><option>--quote-devices</option></term>
+                <listitem><para>
+                    By default, ostree rejects block and character devices. This option instead "quotes" them
+                    as regular files. In order to be processed back into block and character devices,
+                    the corresponding <literal>--unquote-devices</literal> must be passed to <literal>ostree checkout</literal>.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--no-xattrs</option></term>
                 <listitem><para>
                     Do not import extended attributes.

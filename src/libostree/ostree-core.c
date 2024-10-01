@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <sys/sysmacros.h>
 
 /* Generic ABI checks */
 G_STATIC_ASSERT (OSTREE_REPO_MODE_BARE == 0);
@@ -2328,6 +2329,70 @@ ostree_validate_structureof_dirmeta (GVariant *dirmeta, GError **error)
   if (!_ostree_validate_structureof_xattrs (xattrs, error))
     return FALSE;
 
+  return TRUE;
+}
+
+gboolean
+_ostree_parse_quoted_device (const char *name, guint32 src_mode, const char **out_name, guint32 *out_mode, dev_t *out_dev,
+                             GError **error)
+{
+  // Ensure we start with the quoted device prefix
+  const char *s = name;
+  const char *p = strchr (s, '.');
+  if (!p)
+    return glnx_throw (error, "Invalid quoted device: %s", name);
+  if (strncmp (s, OSTREE_QUOTED_DEVICE_PREFIX, p - name) != 0)
+    return glnx_throw (error, "Invalid quoted device: %s", name);
+  s += strlen (OSTREE_QUOTED_DEVICE_PREFIX);
+  g_assert (out_name);
+  *out_name = s;
+
+  // The input mode is the same as the source, but without the format bits
+  guint32 ret_mode = (src_mode & ~S_IFMT);
+
+  // Parse the mode
+  s++;
+  switch (*s)
+    {
+    case 'b':
+      ret_mode |= S_IFBLK;
+      break;
+    case 'c':
+      ret_mode |= S_IFCHR;
+      break;
+    case 'p':
+      ret_mode |= S_IFIFO;
+      break;
+    default:
+      return glnx_throw (error, "Invalid quoted device: %s", name);
+    }
+  s++;
+  if (*s != '.')
+    return glnx_throw (error, "Invalid quoted device: %s", name);
+  s++;
+  s = strchr (s, '.');
+  if (!s)
+    return glnx_throw (error, "Invalid quoted device: %s", name);
+  s++;
+  char *endptr;
+  unsigned int major, minor;
+  major = (unsigned int)g_ascii_strtoull (s, &endptr, 10);
+  if (errno == ERANGE)
+    return glnx_throw (error, "Invalid quoted device: %s", name);
+  s = endptr;
+  if (*s != '.')
+    return glnx_throw (error, "Invalid quoted device: %s", name);
+  s++;
+  minor = (unsigned int)g_ascii_strtoull (s, &endptr, 10);
+  if (errno == ERANGE)
+    return glnx_throw (error, "Invalid quoted device: %s", name);
+  g_assert (endptr);
+  if (*endptr != '\0')
+    return glnx_throw (error, "Invalid quoted device: %s", name);
+  g_assert (ret_mode);
+  *out_mode = ret_mode;
+  g_assert (out_dev);
+  *out_dev = makedev (major, minor);
   return TRUE;
 }
 
