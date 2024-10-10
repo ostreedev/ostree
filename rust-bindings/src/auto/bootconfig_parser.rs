@@ -2,10 +2,7 @@
 // from gir-files
 // DO NOT EDIT
 
-use glib::object::IsA;
-use glib::translate::*;
-use std::fmt;
-use std::ptr;
+use glib::{prelude::*,translate::*};
 
 glib::wrapper! {
     #[doc(alias = "OstreeBootconfigParser")]
@@ -39,8 +36,8 @@ impl BootconfigParser {
         }
     }
 
-    #[cfg(any(feature = "v2020_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_7")))]
+    #[cfg(feature = "v2020_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_7")))]
     #[doc(alias = "ostree_bootconfig_parser_get_overlay_initrds")]
     #[doc(alias = "get_overlay_initrds")]
     pub fn overlay_initrds(&self) -> Vec<glib::GString> {
@@ -52,9 +49,9 @@ impl BootconfigParser {
     #[doc(alias = "ostree_bootconfig_parser_parse")]
     pub fn parse(&self, path: &impl IsA<gio::File>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_bootconfig_parser_parse(self.to_glib_none().0, path.as_ref().to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
@@ -62,9 +59,9 @@ impl BootconfigParser {
     #[doc(alias = "ostree_bootconfig_parser_parse_at")]
     pub fn parse_at(&self, dfd: i32, path: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_bootconfig_parser_parse_at(self.to_glib_none().0, dfd, path.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
@@ -76,8 +73,8 @@ impl BootconfigParser {
         }
     }
 
-    #[cfg(any(feature = "v2020_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_7")))]
+    #[cfg(feature = "v2020_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_7")))]
     #[doc(alias = "ostree_bootconfig_parser_set_overlay_initrds")]
     pub fn set_overlay_initrds(&self, initrds: &[&str]) {
         unsafe {
@@ -88,9 +85,9 @@ impl BootconfigParser {
     #[doc(alias = "ostree_bootconfig_parser_write")]
     pub fn write(&self, output: &impl IsA<gio::File>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_bootconfig_parser_write(self.to_glib_none().0, output.as_ref().to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
@@ -98,9 +95,9 @@ impl BootconfigParser {
     #[doc(alias = "ostree_bootconfig_parser_write_at")]
     pub fn write_at(&self, dfd: i32, path: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_bootconfig_parser_write_at(self.to_glib_none().0, dfd, path.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
@@ -111,9 +108,3 @@ impl Default for BootconfigParser {
                          Self::new()
                      }
                  }
-
-impl fmt::Display for BootconfigParser {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("BootconfigParser")
-    }
-}
