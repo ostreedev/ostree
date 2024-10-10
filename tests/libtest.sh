@@ -780,6 +780,40 @@ gen_ed25519_random_public()
   openssl genpkey -algorithm ED25519 | openssl pkey -outform DER | tail -c 32 | base64
 }
 
+# Keys for spki signing tests
+SPKIPUBLICPEM=
+SPKISECRETPEM=
+
+SPKIPUBLIC=
+SPKISECRET=
+
+gen_spki_keys ()
+{
+  # Generate private key in PEM format
+  SPKISECRETPEM="$(mktemp -p ${test_tmpdir} ed448_sk_XXXXXX.pem)"
+  openssl genpkey -algorithm ed448 -outform PEM -out "${SPKISECRETPEM}"
+  SPKIPUBLICPEM="$(mktemp -p ${test_tmpdir} ed448_pk_XXXXXX.pem)"
+  openssl pkey -outform PEM -pubout -in "${SPKISECRETPEM}" -out "${SPKIPUBLICPEM}"
+
+  SPKIPUBLIC="$(openssl pkey -inform PEM -outform DER -pubin -pubout -in ${SPKIPUBLICPEM} | base64 -w 0)"
+  SPKISECRET="$(openssl pkey -inform PEM -outform DER -in ${SPKISECRETPEM} | base64 -w 0)"
+
+  echo "Generated ed448 keys:"
+  echo "public: ${SPKIPUBLIC}"
+  echo "secret: ${SPKISECRET}"
+}
+
+gen_spki_random_public()
+{
+    openssl genpkey -algorithm ed448 | openssl pkey -pubout -outform DER | base64 -w 0
+    echo
+}
+
+gen_spki_random_public_pem()
+{
+  openssl genpkey -algorithm ed448 | openssl pkey -pubout -outform PEM
+}
+
 is_bare_user_only_repo () {
   grep -q 'mode=bare-user-only' $1/config
 }

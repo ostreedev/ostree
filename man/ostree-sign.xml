@@ -64,26 +64,28 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
         </para>
 
         <para>
-            There are several "well-known" system places for `ed25519` trusted and revoked public keys -- expected single <literal>base64</literal>-encoded key per line.
+            For `ed25519` and `spki`, there are several "well-known" system places for trusted and revoked public keys as listed below.
         </para>
 
         <para>Files:
             <itemizedlist>
-                <listitem><para><filename>/etc/ostree/trusted.ed25519</filename></para></listitem>
-                <listitem><para><filename>/etc/ostree/revoked.ed25519</filename></para></listitem>
-                <listitem><para><filename>/usr/share/ostree/trusted.ed25519</filename></para></listitem>
-                <listitem><para><filename>/usr/share/ostree/revoked.ed25519</filename></para></listitem>
+                <listitem><para><filename>/etc/ostree/trusted.<replaceable>SIGN-TYPE</replaceable></filename></para></listitem>
+                <listitem><para><filename>/etc/ostree/revoked.<replaceable>SIGN-TYPE</replaceable></filename></para></listitem>
+                <listitem><para><filename>/usr/share/ostree/trusted.<replaceable>SIGN-TYPE</replaceable></filename></para></listitem>
+                <listitem><para><filename>/usr/share/ostree/revoked.<replaceable>SIGN-TYPE</replaceable></filename></para></listitem>
             </itemizedlist>
         </para>
 
         <para>Directories containing files with keys:
             <itemizedlist>
-                <listitem><para><filename>/etc/ostree/trusted.ed25519.d</filename></para></listitem>
-                <listitem><para><filename>/etc/ostree/revoked.ed25519.d</filename></para></listitem>
-                <listitem><para><filename>/usr/share/ostree/trusted.ed25519.d</filename></para></listitem>
-                <listitem><para><filename>/usr/share/ostree/rvokeded.ed25519.d</filename></para></listitem>
+                <listitem><para><filename>/etc/ostree/trusted.<replaceable>SIGN-TYPE</replaceable>.d</filename></para></listitem>
+                <listitem><para><filename>/etc/ostree/revoked.<replaceable>SIGN-TYPE</replaceable>.d</filename></para></listitem>
+                <listitem><para><filename>/usr/share/ostree/trusted.<replaceable>SIGN-TYPE</replaceable>.d</filename></para></listitem>
+                <listitem><para><filename>/usr/share/ostree/revoked.<replaceable>SIGN-TYPE</replaceable>.d</filename></para></listitem>
             </itemizedlist>
         </para>
+
+	<para>The format of those files depends on the signature mechanism; for `ed25519`, keys are stored in the <literal>base64</literal> encoding per line, while for `spki` they are stored in the PEM "PUBLIC KEY" encoding.</para>
     </refsect1>
 
     <refsect1>
@@ -95,7 +97,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <listitem><para>
                         <variablelist>
                             <varlistentry>
-                                <term><option>for ed25519:</option></term>
+                                <term><option>for ed25519 and spki:</option></term>
                                 <listitem><para>
                                         <literal>base64</literal>-encoded secret (for signing) or public key (for verifying).
                                 </para></listitem>
@@ -120,7 +122,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><option>-s, --sign-type</option></term>
                 <listitem><para>
                     Use particular signature mechanism. Currently
-                    available <arg choice="plain">ed25519</arg> and <arg choice="plain">dummy</arg>
+                    available <arg choice="plain">ed25519</arg>, <arg choice="plain">spki</arg>, and <arg choice="plain">dummy</arg>
                     signature types.
 
                     The default is <arg choice="plain">ed25519</arg>.
@@ -133,8 +135,8 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 </para></listitem>
 
                 <listitem><para>
-                    Valid for <literal>ed25519</literal> signature type.
-                    For <literal>ed25519</literal> this file must contain <literal>base64</literal>-encoded
+                    Valid for <literal>ed25519</literal> and <literal>spki</literal> signature types.
+                    This file must contain <literal>base64</literal>-encoded
                     secret key(s) (for signing) or public key(s) (for verifying) per line.
                 </para></listitem>
             </varlistentry>
