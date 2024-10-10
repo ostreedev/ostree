@@ -70,6 +70,8 @@ static OstreeCommand admin_subcommands[] = {
   { "upgrade", OSTREE_BUILTIN_FLAG_NO_REPO, ot_admin_builtin_upgrade,
     "Construct new tree from current origin and deploy it, if it changed" },
   { "kargs", OSTREE_BUILTIN_FLAG_NO_REPO, ot_admin_builtin_kargs, "Change kernel arguments" },
+  { "deployment-metadata", OSTREE_BUILTIN_FLAG_NO_REPO, ot_admin_builtin_metadata,
+    "Set extended metadata for current the deployment" },
   { NULL, 0, NULL, NULL }
 };
 
