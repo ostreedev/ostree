@@ -501,13 +501,6 @@ main (int argc, char *argv[])
   g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT,
                          g_variant_new_boolean (root_transient));
 
-  /* This will result in a system with /sysroot read-only. Thus, two additional
-   * writable bind-mounts (for /etc and /var) are required later on. */
-  if (sysroot_readonly)
-    {
-      if (!sysroot_currently_writable)
-        errx (EXIT_FAILURE, OTCORE_SYSROOT_NOT_WRITEABLE, root_arg);
-    }
   /* Pass on the state for use by ostree-prepare-root */
   g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_SYSROOT_RO,
                          g_variant_new_boolean (sysroot_readonly));
