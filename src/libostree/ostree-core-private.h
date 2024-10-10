@@ -78,6 +78,20 @@ G_BEGIN_DECLS
  */
 #define _OSTREE_ZLIB_FILE_HEADER_GVARIANT_FORMAT G_VARIANT_TYPE ("(tuuuusa(ayay))")
 
+// ostree doesn't have native support for devices. Whiteouts in overlayfs
+// are a 0:0 character device, and in some cases people are copying docker/podman
+// style overlayfs container storage directly into ostree commits. This
+// adds special support for "quoting" the whiteout so it just appears as a regular
+// file in the ostree commit, but can be converted back into a character device
+// on checkout.
+#define OSTREE_QUOTED_OVERLAYFS_WHITEOUT_PREFIX ".ostree-wh."
+// Filename prefix to signify a character or block device. This
+// is not supported natively by ostree (because there is no reason
+// to ship devices in images). But because OCI supports it, and in
+// some cases one wants to map OCI to ostree, we have support for
+// "quoting" them.
+#define OSTREE_QUOTED_DEVICE_PREFIX ".ostree-quoted-device."
+
 GBytes *_ostree_file_header_new (GFileInfo *file_info, GVariant *xattrs);
 
 GBytes *_ostree_zlib_file_header_new (GFileInfo *file_info, GVariant *xattrs);
@@ -91,6 +105,9 @@ gboolean _ostree_gfileinfo_equal (GFileInfo *a, GFileInfo *b);
 gboolean _ostree_stbuf_equal (struct stat *stbuf_a, struct stat *stbuf_b);
 GFileInfo *_ostree_mode_uidgid_to_gfileinfo (mode_t mode, uid_t uid, gid_t gid);
 gboolean _ostree_validate_structureof_xattrs (GVariant *xattrs, GError **error);
+
+gboolean _ostree_parse_quoted_device (const char *name, guint32 src_mode, const char **out_name, guint32 *out_mode,
+                                      dev_t *out_dev, GError **error);
 
 static inline void
 _ostree_checksum_inplace_from_bytes_v (GVariant *csum_v, char *buf)

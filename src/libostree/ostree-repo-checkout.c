@@ -35,14 +35,6 @@
 #define WHITEOUT_PREFIX ".wh."
 #define OPAQUE_WHITEOUT_NAME ".wh..wh..opq"
 
-// ostree doesn't have native support for devices. Whiteouts in overlayfs
-// are a 0:0 character device, and in some cases people are copying docker/podman
-// style overlayfs container storage directly into ostree commits. This
-// adds special support for "quoting" the whiteout so it just appears as a regular
-// file in the ostree commit, but can be converted back into a character device
-// on checkout.
-#define OSTREE_QUOTED_OVERLAYFS_WHITEOUT_PREFIX ".ostree-wh."
-
 /* Per-checkout call state/caching */
 typedef struct
 {
@@ -716,6 +708,9 @@ checkout_one_file_at (OstreeRepo *repo, OstreeRepoCheckoutAtOptions *options, Ch
   const gboolean is_unreadable = (!is_symlink && (source_mode & S_IRUSR) == 0);
   const gboolean is_whiteout = (!is_symlink && options->process_whiteouts
                                 && g_str_has_prefix (destination_name, WHITEOUT_PREFIX));
+  const gboolean is_quoted_device
+      = (!is_symlink && options->unquote_devices
+         && g_str_has_prefix (destination_name, OSTREE_QUOTED_DEVICE_PREFIX));
   const gboolean is_overlayfs_whiteout
       = (!is_symlink
          && g_str_has_prefix (destination_name, OSTREE_QUOTED_OVERLAYFS_WHITEOUT_PREFIX));
@@ -739,6 +734,16 @@ checkout_one_file_at (OstreeRepo *repo, OstreeRepoCheckoutAtOptions *options, Ch
         return FALSE;
 
       need_copy = FALSE;
+    }
+  else if (is_quoted_device)
+    {
+      const char *devname;
+      dev_t dev;
+      guint32 mode;
+      if (!_ostree_parse_quoted_device (destination_name, source_mode, &devname, &mode, &dev, error))
+        return FALSE;
+      if (mknodat (destination_dfd, devname, (mode_t)mode, dev) < 0)
+        return glnx_throw_errno_prefix (error, "mknodat");
     }
   else if (is_overlayfs_whiteout && options->process_passthrough_whiteouts)
     {
@@ -1437,6 +1442,9 @@ canonicalize_options (OstreeRepo *self, OstreeRepoCheckoutAtOptions *options)
   /* Force USER mode for BARE_USER_ONLY always - nothing else makes sense */
   if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_BARE_USER_ONLY)
     options->mode = OSTREE_REPO_CHECKOUT_MODE_USER;
+
+  if (options->unquote_devices)
+    options->process_whiteouts = TRUE;
 }
 
 /**
