@@ -3173,7 +3173,8 @@ _ostree_repo_commit_modifier_apply (OstreeRepo *self, OstreeRepoCommitModifier *
   if (canonicalize_perms)
     {
       guint mode = g_file_info_get_attribute_uint32 (modified_info, "unix::mode");
-      switch (g_file_info_get_file_type (file_info))
+      GFileType ty = g_file_info_get_file_type (file_info);
+      switch (ty)
         {
         case G_FILE_TYPE_REGULAR:
           /* In particular, we want to squash the s{ug}id bits, but this also
@@ -3188,7 +3189,7 @@ _ostree_repo_commit_modifier_apply (OstreeRepo *self, OstreeRepoCommitModifier *
         case G_FILE_TYPE_SYMBOLIC_LINK:
           break;
         default:
-          g_assert_not_reached ();
+          g_error ("unexpected file type %u", (unsigned)ty);
         }
       g_file_info_set_attribute_uint32 (modified_info, "unix::uid", 0);
       g_file_info_set_attribute_uint32 (modified_info, "unix::gid", 0);
