@@ -184,8 +184,8 @@ install_into_boot (OstreeRepo *repo, OstreeSePolicy *sepolicy, int src_dfd, cons
 /* Copy ownership, mode, and xattrs from source directory to destination */
 static gboolean
 dirfd_copy_attributes_and_xattrs (int src_parent_dfd, const char *src_name, int src_dfd,
-                                  int dest_dfd, OstreeSysrootDebugFlags flags,
-                                  GCancellable *cancellable, GError **error)
+                                  int dest_dfd, GLnxFileCopyFlags flags, GCancellable *cancellable,
+                                  GError **error)
 {
   g_autoptr (GVariant) xattrs = NULL;
 
@@ -193,7 +193,7 @@ dirfd_copy_attributes_and_xattrs (int src_parent_dfd, const char *src_name, int 
    * right.  This will allow other users access if they have ACLs, but
    * oh well.
    */
-  if (!(flags & OSTREE_SYSROOT_DEBUG_NO_XATTRS))
+  if (!(flags & GLNX_FILE_COPY_NOXATTRS))
     {
       if (!glnx_dfd_name_get_all_xattrs (src_parent_dfd, src_name, &xattrs, cancellable, error))
         return FALSE;
@@ -284,7 +284,7 @@ checksum_dir_recurse (int dfd, const char *path, OtChecksum *checksum, GCancella
 
 static gboolean
 copy_dir_recurse (int src_parent_dfd, int dest_parent_dfd, const char *name,
-                  OstreeSysrootDebugFlags flags, GCancellable *cancellable, GError **error)
+                  GLnxFileCopyFlags copy_flags, GCancellable *cancellable, GError **error)
 {
   g_auto (GLnxDirFdIterator) src_dfd_iter = {
     0,
@@ -302,8 +302,8 @@ copy_dir_recurse (int src_parent_dfd, int dest_parent_dfd, const char *name,
   if (!glnx_opendirat (dest_parent_dfd, name, TRUE, &dest_dfd, error))
     return FALSE;
 
-  if (!dirfd_copy_attributes_and_xattrs (src_parent_dfd, name, src_dfd_iter.fd, dest_dfd, flags,
-                                         cancellable, error))
+  if (!dirfd_copy_attributes_and_xattrs (src_parent_dfd, name, src_dfd_iter.fd, dest_dfd,
+                                         copy_flags, cancellable, error))
     return glnx_prefix_error (error, "Copying attributes of %s", name);
 
   while (TRUE)
@@ -320,7 +320,7 @@ copy_dir_recurse (int src_parent_dfd, int dest_parent_dfd, const char *name,
 
       if (S_ISDIR (child_stbuf.st_mode))
         {
-          if (!copy_dir_recurse (src_dfd_iter.fd, dest_dfd, dent->d_name, flags, cancellable,
+          if (!copy_dir_recurse (src_dfd_iter.fd, dest_dfd, dent->d_name, copy_flags, cancellable,
                                  error))
             return FALSE;
         }
@@ -329,8 +329,7 @@ copy_dir_recurse (int src_parent_dfd, int dest_parent_dfd, const char *name,
           if (S_ISLNK (child_stbuf.st_mode) || S_ISREG (child_stbuf.st_mode))
             {
               if (!glnx_file_copy_at (src_dfd_iter.fd, dent->d_name, &child_stbuf, dest_dfd,
-                                      dent->d_name,
-                                      sysroot_flags_to_copy_flags (GLNX_FILE_COPY_OVERWRITE, flags),
+                                      dent->d_name, GLNX_FILE_COPY_OVERWRITE | copy_flags,
                                       cancellable, error))
                 return glnx_prefix_error (error, "Copying %s", dent->d_name);
             }
@@ -468,7 +467,8 @@ copy_modified_config_file (int orig_etc_fd, int modified_etc_fd, int new_etc_fd,
 
   if (S_ISDIR (modified_stbuf.st_mode))
     {
-      if (!copy_dir_recurse (modified_etc_fd, new_etc_fd, path, flags, cancellable, error))
+      GLnxFileCopyFlags copy_flags = sysroot_flags_to_copy_flags (0, flags);
+      if (!copy_dir_recurse (modified_etc_fd, new_etc_fd, path, copy_flags, cancellable, error))
         return FALSE;
     }
   else if (S_ISLNK (modified_stbuf.st_mode) || S_ISREG (modified_stbuf.st_mode))
@@ -1900,8 +1900,10 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
         }
       else
         {
+          // Don't copy xattrs for devicetree; Fedora derives label them modules_t which is
+          // wrong for when they're installed, we want the default boot_t.
           if (!copy_dir_recurse (kernel_layout->boot_dfd, bootcsum_dfd,
-                                 kernel_layout->devicetree_srcpath, sysroot->debug_flags,
+                                 kernel_layout->devicetree_srcpath, GLNX_FILE_COPY_NOXATTRS,
                                  cancellable, error))
             return FALSE;
         }
