@@ -1776,13 +1776,13 @@ parse_os_release (const char *contents, const char *split)
   return ret;
 }
 
-/* Generate the filename we will use in /boot/loader/entries for this deployment.
+/* Generate the entry name we will use in /boot/loader/entries for this deployment.
  * The provided n_deployments should be the total number of target deployments (which
  * might be different from the cached value in the sysroot).
  */
 static char *
-bootloader_entry_filename (OstreeSysroot *sysroot, guint n_deployments,
-                           OstreeDeployment *deployment)
+bootloader_entry_name (OstreeSysroot *sysroot, guint n_deployments,
+                       OstreeDeployment *deployment)
 {
   guint index = n_deployments - ostree_deployment_get_index (deployment);
   // Allow opt-out to dropping the stateroot in case of compatibility issues.
@@ -1792,13 +1792,77 @@ bootloader_entry_filename (OstreeSysroot *sysroot, guint n_deployments,
   if (use_old_naming)
     {
       const char *stateroot = ostree_deployment_get_osname (deployment);
-      return g_strdup_printf ("ostree-%d-%s.conf", index, stateroot);
+      return g_strdup_printf ("ostree-%d-%s", index, stateroot);
     }
   else
     {
-      return g_strdup_printf ("ostree-%d.conf", index);
+      return g_strdup_printf ("ostree-%d", index);
     }
 }
+
+#ifdef ENABLE_BOOT_COUNT
+
+#define BOOT_COUNT_MAX_RETRIES 3
+
+static gint
+bootloader_get_max_boot_tries (OstreeSysroot *self, OstreeDeployment *deployment,
+                               GCancellable *cancellable, GError **error)
+{
+  g_autofree char *tries_file_path = ostree_deployment_get_boot_tries_relpath (deployment);
+
+  glnx_autofd int fd = -1;
+  if (!ot_openat_ignore_enoent (self->sysroot_fd, tries_file_path, &fd, error))
+    return BOOT_COUNT_MAX_RETRIES;
+  if (fd >= 0)
+    {
+      g_autofree char *origin_contents = glnx_fd_readall_utf8 (fd, NULL, cancellable, error);
+      if (!origin_contents)
+        return BOOT_COUNT_MAX_RETRIES;
+
+      return atoi(origin_contents);
+    }
+
+    return BOOT_COUNT_MAX_RETRIES;
+}
+
+/* Drop all temporary entries in /boot/loader/entries for this deployment,
+ * which were created during automatic boot assesment
+ * https://uapi-group.org/specifications/specs/boot_loader_specification/#boot-counting
+ */
+static gboolean
+bootloader_remove_tmp_entries (int dfd, const char *entry_name, gint max_tries, GCancellable *cancellable,
+                               GError **error)
+{
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  g_autofree char *entry_name_init = g_strdup_printf ("%s+%d", entry_name, max_tries);
+
+  if (!glnx_dirfd_iterator_init_at (dfd, ".", FALSE, &dfd_iter, error))
+    return FALSE;
+
+  while (TRUE)
+    {
+      struct dirent *dent = NULL;
+
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
+        return FALSE;
+      if (dent == NULL)
+        break;
+
+      /* Don't remove default boot entry (with +3 suffix) */
+      if (g_str_has_prefix (dent->d_name, entry_name_init))
+        continue;
+
+      if (g_str_has_prefix (dent->d_name, entry_name))
+        {
+          if (!glnx_shutil_rm_rf_at (dfd_iter.fd, dent->d_name, cancellable, error))
+            return FALSE;
+        }
+
+    }
+
+    return TRUE;
+}
+#endif
 
 /* Given @deployment, prepare it to be booted; basically copying its
  * kernel/initramfs into /boot/ostree (if needed) and writing out an entry in
@@ -1834,7 +1898,7 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
   const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
   g_autofree char *bootcsumdir = g_strdup_printf ("ostree/%s-%s", osname, bootcsum);
   g_autofree char *bootconfdir = g_strdup_printf ("loader.%d/entries", new_bootversion);
-  g_autofree char *bootconf_name = bootloader_entry_filename (sysroot, n_deployments, deployment);
+  g_autofree char *bootconf_name = bootloader_entry_name (sysroot, n_deployments, deployment);
 
   if (!glnx_shutil_mkdir_p_at (sysroot->boot_fd, bootcsumdir, 0775, cancellable, error))
     return FALSE;
@@ -2147,9 +2211,18 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
   glnx_autofd int bootconf_dfd = -1;
   if (!glnx_opendirat (sysroot->boot_fd, bootconfdir, TRUE, &bootconf_dfd, error))
     return FALSE;
+#ifdef ENABLE_BOOT_COUNT
+  gint max_tries = bootloader_get_max_boot_tries (sysroot, deployment, cancellable, error);
+  g_autofree char *bootconf_filename = g_strdup_printf ("%s+%d.conf", bootconf_name, max_tries);
+
+  if (!bootloader_remove_tmp_entries(bootconf_dfd, bootconf_name, max_tries, cancellable, error))
+    return FALSE;
+#else
+  g_autofree char *bootconf_filename = g_strdup_printf ("%s.conf", bootconf_name);
+#endif
 
   if (!ostree_bootconfig_parser_write_at (ostree_deployment_get_bootconfig (deployment),
-                                          bootconf_dfd, bootconf_name, cancellable, error))
+                                          bootconf_dfd, bootconf_filename, cancellable, error))
     return FALSE;
 
   return TRUE;
@@ -4178,14 +4251,22 @@ ostree_sysroot_deployment_set_kargs_in_place (OstreeSysroot *self, OstreeDeploym
       ostree_bootconfig_parser_set (new_bootconfig, "options", kargs_str);
 
       g_autofree char *bootconf_name
-          = bootloader_entry_filename (self, self->deployments->len, deployment);
+          = bootloader_entry_name (self, self->deployments->len, deployment);
 
       g_autofree char *bootconfdir = g_strdup_printf ("loader.%d/entries", self->bootversion);
       glnx_autofd int bootconf_dfd = -1;
       if (!glnx_opendirat (self->boot_fd, bootconfdir, TRUE, &bootconf_dfd, error))
         return FALSE;
+#ifdef ENABLE_BOOT_COUNT
+      gint max_tries = bootloader_get_max_boot_tries (self, deployment, cancellable, error);
+      g_autofree char *bootconf_filename = g_strdup_printf ("%s+%d.conf", bootconf_name, max_tries);
 
-      if (!ostree_bootconfig_parser_write_at (new_bootconfig, bootconf_dfd, bootconf_name,
+      if (!bootloader_remove_tmp_entries(bootconf_dfd, bootconf_name, max_tries, cancellable, error))
+        return FALSE;
+#else
+      g_autofree char *bootconf_filename = g_strdup_printf ("%s.conf", bootconf_name);
+#endif
+      if (!ostree_bootconfig_parser_write_at (new_bootconfig, bootconf_dfd, bootconf_filename,
                                               cancellable, error))
         return FALSE;
     }

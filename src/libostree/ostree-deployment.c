@@ -398,6 +398,25 @@ ostree_deployment_get_origin_relpath (OstreeDeployment *self)
                           ostree_deployment_get_deployserial (self));
 }
 
+
+/**
+ * ostree_deployment_get_boot_tries_relpath:
+ * @self: A deployment
+ *
+ * Note this function only returns a *relative* path - if you want to
+ * access, it, you must either use fd-relative api such as openat(),
+ * or concatenate it with the full ostree_sysroot_get_path().
+ *
+ * Returns: (not nullable) (transfer full): Path to deployment root directory, relative to sysroot
+ */
+char *
+ostree_deployment_get_boot_tries_relpath (OstreeDeployment *self)
+{
+  return g_strdup_printf ("ostree/deploy/%s/deploy/%s.%d/etc/kernel/tries",
+                          ostree_deployment_get_osname (self), ostree_deployment_get_csum (self),
+                          ostree_deployment_get_deployserial (self));
+}
+
 /**
  * ostree_deployment_unlocked_state_to_string:
  *
