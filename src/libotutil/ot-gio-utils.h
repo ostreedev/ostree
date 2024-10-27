@@ -63,4 +63,6 @@ gs_file_get_path_cached (GFile *file)
   return ot_file_get_path_cached (file);
 }
 
+char *ot_format_human_duration (guint64 nanos);
+
 G_END_DECLS

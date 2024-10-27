@@ -211,6 +211,24 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                     (may be /). This implies <literal>--force-copy</literal>.
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--composefs</option></term>
+
+                <listitem><para>
+                    Only generate a composefs, not a directory.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--composefs-noverity</option></term>
+
+                <listitem><para>
+                    Only generate a composefs, not a directory; fsverity digests
+                    will not be included. This is best used for "opportunistic"
+                    use of composefs.
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 

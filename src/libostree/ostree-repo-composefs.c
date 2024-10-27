@@ -265,9 +265,9 @@ _ostree_composefs_set_xattrs (struct lcfs_node_s *node, GVariant *xattrs, GCance
 }
 
 static gboolean
-checkout_one_composefs_file_at (OstreeRepo *repo, const char *checksum, struct lcfs_node_s *parent,
-                                const char *destination_name, GCancellable *cancellable,
-                                GError **error)
+checkout_one_composefs_file_at (OstreeRepo *repo, OtTristate verity, const char *checksum,
+                                struct lcfs_node_s *parent, const char *destination_name,
+                                GCancellable *cancellable, GError **error)
 {
   g_autoptr (GInputStream) input = NULL;
   g_autoptr (GVariant) xattrs = NULL;
@@ -320,32 +320,38 @@ checkout_one_composefs_file_at (OstreeRepo *repo, const char *checksum, struct l
       if (lcfs_node_set_payload (node, loose_path_buf) != 0)
         return glnx_throw_errno (error);
 
-      guchar *known_digest = NULL;
-
-#ifdef HAVE_LINUX_FSVERITY_H
-      /* First try to get the digest directly from the bare repo file.
-       * This is the typical case when we're pulled into the target
-       * system repo with verity on and are recreating the composefs
-       * image during deploy. */
-      char buf[sizeof (struct fsverity_digest) + OSTREE_SHA256_DIGEST_LEN];
-
-      if (G_IS_UNIX_INPUT_STREAM (input))
+      if (verity != OT_TRISTATE_NO)
         {
-          int content_fd = g_unix_input_stream_get_fd (G_UNIX_INPUT_STREAM (input));
-          struct fsverity_digest *d = (struct fsverity_digest *)&buf;
-          d->digest_size = OSTREE_SHA256_DIGEST_LEN;
+#ifdef HAVE_LINUX_FSVERITY_H
+          /* First try to get the digest directly from the bare repo file.
+           * This is the typical case when we're pulled into the target
+           * system repo with verity on and are recreating the composefs
+           * image during deploy. */
+          char buf[sizeof (struct fsverity_digest) + OSTREE_SHA256_DIGEST_LEN];
+          guchar *known_digest = NULL;
 
-          if (ioctl (content_fd, FS_IOC_MEASURE_VERITY, d) == 0
-              && d->digest_size == OSTREE_SHA256_DIGEST_LEN
-              && d->digest_algorithm == FS_VERITY_HASH_ALG_SHA256)
-            known_digest = d->digest;
-        }
+          if (G_IS_UNIX_INPUT_STREAM (input))
+            {
+              int content_fd = g_unix_input_stream_get_fd (G_UNIX_INPUT_STREAM (input));
+              struct fsverity_digest *d = (struct fsverity_digest *)&buf;
+              d->digest_size = OSTREE_SHA256_DIGEST_LEN;
+
+              if (ioctl (content_fd, FS_IOC_MEASURE_VERITY, d) == 0
+                  && d->digest_size == OSTREE_SHA256_DIGEST_LEN
+                  && d->digest_algorithm == FS_VERITY_HASH_ALG_SHA256)
+                known_digest = d->digest;
+            }
 #endif
 
-      if (known_digest)
-        lcfs_node_set_fsverity_digest (node, known_digest);
-      else if (lcfs_node_set_fsverity_from_content (node, input, _composefs_read_cb) != 0)
-        return glnx_throw_errno (error);
+          if (known_digest)
+            lcfs_node_set_fsverity_digest (node, known_digest);
+          else if (verity == OT_TRISTATE_YES)
+            {
+              // Only fall back to userspace computation if explicitly requested
+              if (lcfs_node_set_fsverity_from_content (node, input, _composefs_read_cb) != 0)
+                return glnx_throw_errno (error);
+            }
+        }
     }
 
   if (xattrs)
@@ -360,7 +366,7 @@ checkout_one_composefs_file_at (OstreeRepo *repo, const char *checksum, struct l
 }
 
 static gboolean
-checkout_composefs_recurse (OstreeRepo *self, const char *dirtree_checksum,
+checkout_composefs_recurse (OstreeRepo *self, OtTristate verity, const char *dirtree_checksum,
                             const char *dirmeta_checksum, struct lcfs_node_s *parent,
                             const char *name, GCancellable *cancellable, GError **error)
 {
@@ -422,8 +428,8 @@ checkout_composefs_recurse (OstreeRepo *self, const char *dirtree_checksum,
         char tmp_checksum[OSTREE_SHA256_STRING_LEN + 1];
         _ostree_checksum_inplace_from_bytes_v (contents_csum_v, tmp_checksum);
 
-        if (!checkout_one_composefs_file_at (self, tmp_checksum, directory, fname, cancellable,
-                                             error))
+        if (!checkout_one_composefs_file_at (self, verity, tmp_checksum, directory, fname,
+                                             cancellable, error))
           return glnx_prefix_error (error, "Processing %s", tmp_checksum);
       }
     contents_csum_v = NULL; /* iter_loop freed it */
@@ -453,8 +459,8 @@ checkout_composefs_recurse (OstreeRepo *self, const char *dirtree_checksum,
         _ostree_checksum_inplace_from_bytes_v (subdirtree_csum_v, subdirtree_checksum);
         char subdirmeta_checksum[OSTREE_SHA256_STRING_LEN + 1];
         _ostree_checksum_inplace_from_bytes_v (subdirmeta_csum_v, subdirmeta_checksum);
-        if (!checkout_composefs_recurse (self, subdirtree_checksum, subdirmeta_checksum, directory,
-                                         dname, cancellable, error))
+        if (!checkout_composefs_recurse (self, verity, subdirtree_checksum, subdirmeta_checksum,
+                                         directory, dname, cancellable, error))
           return FALSE;
       }
     /* Freed by iter-loop */
@@ -467,8 +473,9 @@ checkout_composefs_recurse (OstreeRepo *self, const char *dirtree_checksum,
 
 /* Begin a checkout process */
 static gboolean
-checkout_composefs_tree (OstreeRepo *self, OstreeComposefsTarget *target, OstreeRepoFile *source,
-                         GFileInfo *source_info, GCancellable *cancellable, GError **error)
+checkout_composefs_tree (OstreeRepo *self, OtTristate verity, OstreeComposefsTarget *target,
+                         OstreeRepoFile *source, GFileInfo *source_info, GCancellable *cancellable,
+                         GError **error)
 {
   if (g_file_info_get_file_type (source_info) != G_FILE_TYPE_DIRECTORY)
     return glnx_throw (error, "Root checkout of composefs must be directory");
@@ -483,8 +490,8 @@ checkout_composefs_tree (OstreeRepo *self, OstreeComposefsTarget *target, Ostree
 
   const char *dirtree_checksum = ostree_repo_file_tree_get_contents_checksum (source);
   const char *dirmeta_checksum = ostree_repo_file_tree_get_metadata_checksum (source);
-  return checkout_composefs_recurse (self, dirtree_checksum, dirmeta_checksum, target->dest, "root",
-                                     cancellable, error);
+  return checkout_composefs_recurse (self, verity, dirtree_checksum, dirmeta_checksum, target->dest,
+                                     "root", cancellable, error);
 }
 
 static struct lcfs_node_s *
@@ -515,6 +522,7 @@ ensure_lcfs_dir (struct lcfs_node_s *parent, const char *name, GError **error)
  * _ostree_repo_checkout_composefs:
  * @self: Repo
  * @target: A target for the checkout
+ * @verity: Use fsverity
  * @source: Source tree
  * @cancellable: Cancellable
  * @error: Error
@@ -530,7 +538,7 @@ ensure_lcfs_dir (struct lcfs_node_s *parent, const char *name, GError **error)
  * Returns: %TRUE on success, %FALSE on failure
  */
 gboolean
-_ostree_repo_checkout_composefs (OstreeRepo *self, OstreeComposefsTarget *target,
+_ostree_repo_checkout_composefs (OstreeRepo *self, OtTristate verity, OstreeComposefsTarget *target,
                                  OstreeRepoFile *source, GCancellable *cancellable, GError **error)
 {
 #ifdef HAVE_COMPOSEFS
@@ -545,7 +553,7 @@ _ostree_repo_checkout_composefs (OstreeRepo *self, OstreeComposefsTarget *target
   if (!target_info)
     return glnx_prefix_error (error, "Failed to query");
 
-  if (!checkout_composefs_tree (self, target, source, target_info, cancellable, error))
+  if (!checkout_composefs_tree (self, verity, target, source, target_info, cancellable, error))
     return FALSE;
 
   /* We need a root dir */
@@ -593,7 +601,11 @@ ostree_repo_commit_add_composefs_metadata (OstreeRepo *self, guint format_versio
 
   g_autoptr (OstreeComposefsTarget) target = ostree_composefs_target_new ();
 
-  if (!_ostree_repo_checkout_composefs (self, target, repo_root, cancellable, error))
+  // We unconditionally add the expected verity digest. Note that for repositories
+  // on filesystems without fsverity, this operation currently requires re-checksumming
+  // all objects.
+  if (!_ostree_repo_checkout_composefs (self, OT_TRISTATE_YES, target, repo_root, cancellable,
+                                        error))
     return FALSE;
 
   g_autofree guchar *fsverity_digest = NULL;

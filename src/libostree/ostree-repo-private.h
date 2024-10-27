@@ -473,9 +473,9 @@ gboolean ostree_composefs_target_write (OstreeComposefsTarget *target, int fd,
                                         guchar **out_fsverity_digest, GCancellable *cancellable,
                                         GError **error);
 
-gboolean _ostree_repo_checkout_composefs (OstreeRepo *self, OstreeComposefsTarget *target,
-                                          OstreeRepoFile *source, GCancellable *cancellable,
-                                          GError **error);
+gboolean _ostree_repo_checkout_composefs (OstreeRepo *self, OtTristate verity,
+                                          OstreeComposefsTarget *target, OstreeRepoFile *source,
+                                          GCancellable *cancellable, GError **error);
 static inline gboolean
 composefs_not_supported (GError **error)
 {
