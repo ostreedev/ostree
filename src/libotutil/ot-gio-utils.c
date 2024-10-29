@@ -170,3 +170,21 @@ ot_file_get_path_cached (GFile *file)
 
   return path;
 }
+
+/* Format the provided nanoseconds for human consumption;
+ * currently only suitable for tasks on the order of seconds.
+ */
+char *
+ot_format_human_duration (guint64 nanos)
+{
+  guint64 ms = nanos / 1000;
+  if (ms == 0)
+    return g_strdup_printf ("%" G_GUINT64_FORMAT "ns", nanos);
+  else if (ms < 1000)
+    return g_strdup_printf ("%" G_GUINT64_FORMAT "ms", ms);
+  else
+    {
+      double secs = ((double)ms) / 1000;
+      return g_strdup_printf ("%0.1fs", secs);
+    }
+}

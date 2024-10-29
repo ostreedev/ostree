@@ -606,8 +606,8 @@ merge_configuration_from (OstreeSysroot *sysroot, OstreeDeployment *merge_deploy
  */
 static gboolean
 checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeployment *deployment,
-                          const char *revision, int *out_deployment_dfd, GCancellable *cancellable,
-                          GError **error)
+                          const char *revision, int *out_deployment_dfd, guint64 *checkout_elapsed,
+                          guint64 *composefs_elapsed, GCancellable *cancellable, GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("Checking out deployment tree", error);
   /* Find the directory with deployments for this stateroot */
@@ -630,14 +630,18 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
   /* Generate hardlink farm, then opendir it */
   OstreeRepoCheckoutAtOptions checkout_opts = { .process_passthrough_whiteouts = TRUE };
 
+  guint64 checkout_start_time = g_get_monotonic_time ();
   if (!ostree_repo_checkout_at (repo, &checkout_opts, osdeploy_dfd, checkout_target_name, csum,
                                 cancellable, error))
     return FALSE;
+  guint64 checkout_end_time = g_get_monotonic_time ();
 
   glnx_autofd int ret_deployment_dfd = -1;
   if (!glnx_opendirat (osdeploy_dfd, checkout_target_name, TRUE, &ret_deployment_dfd, error))
     return FALSE;
 
+  guint64 composefs_start_time = 0;
+  guint64 composefs_end_time = 0;
 #ifdef HAVE_COMPOSEFS
   /* TODO: Consider changing things in the future to parse the deployment config from memory, and
    * if composefs is enabled, then we can check out in "user mode" (i.e. only have suid binaries
@@ -665,14 +669,35 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
     composefs_enabled = repo->composefs_wanted;
   if (composefs_enabled == OT_TRISTATE_YES)
     {
-      if (!ostree_repo_checkout_composefs (repo, NULL, ret_deployment_dfd, OSTREE_COMPOSEFS_NAME,
-                                           csum, cancellable, error))
+      composefs_start_time = g_get_monotonic_time ();
+      // TODO: Clean up our mess around composefs/fsverity...we have duplication
+      // between the repo config and the sysroot config, *and* we need to better
+      // handle skew between repo config and repo state (e.g. "post-copy" should
+      // support transitioning verity on and off in general).
+      // For now we configure things such that the fsverity digest is only added
+      // if present on disk in the unsigned case, and in the signed case unconditionally
+      // require it.
+      g_auto (GVariantBuilder) cfs_checkout_opts_builder
+          = G_VARIANT_BUILDER_INIT (G_VARIANT_TYPE_VARDICT);
+      guint32 composefs_requested = 1;
+      if (composefs_config->is_signed)
+        composefs_requested = 2;
+      g_variant_builder_add (&cfs_checkout_opts_builder, "{sv}", "verity",
+                             g_variant_new_uint32 (composefs_requested));
+      g_debug ("composefs requested: %u", composefs_requested);
+      g_autoptr (GVariant) cfs_checkout_opts
+          = g_variant_ref_sink (g_variant_builder_end (&cfs_checkout_opts_builder));
+      if (!ostree_repo_checkout_composefs (repo, cfs_checkout_opts, ret_deployment_dfd,
+                                           OSTREE_COMPOSEFS_NAME, csum, cancellable, error))
         return FALSE;
+      composefs_end_time = g_get_monotonic_time ();
     }
   else
     g_debug ("not using composefs");
 #endif
 
+  *checkout_elapsed = (checkout_end_time - checkout_start_time);
+  *composefs_elapsed = (composefs_end_time - composefs_start_time);
   if (out_deployment_dfd)
     *out_deployment_dfd = glnx_steal_fd (&ret_deployment_dfd);
   return TRUE;
@@ -3176,8 +3201,10 @@ sysroot_initialize_deployment (OstreeSysroot *self, const char *osname, const ch
 
   /* Check out the userspace tree onto the filesystem */
   glnx_autofd int deployment_dfd = -1;
-  if (!checkout_deployment_tree (self, repo, new_deployment, revision, &deployment_dfd, cancellable,
-                                 error))
+  guint64 checkout_elapsed = 0;
+  guint64 composefs_elapsed = 0;
+  if (!checkout_deployment_tree (self, repo, new_deployment, revision, &deployment_dfd,
+                                 &checkout_elapsed, &composefs_elapsed, cancellable, error))
     return FALSE;
 
   g_autoptr (OstreeKernelLayout) kernel_layout = NULL;
@@ -3189,11 +3216,19 @@ sysroot_initialize_deployment (OstreeSysroot *self, const char *osname, const ch
                                                 opts ? opts->override_kernel_argv : NULL);
   _ostree_deployment_set_overlay_initrds (new_deployment, opts ? opts->overlay_initrds : NULL);
 
+  guint64 etc_start_time = g_get_monotonic_time ();
   if (!prepare_deployment_etc (self, repo, new_deployment, deployment_dfd, cancellable, error))
     return FALSE;
+  guint64 etc_elapsed = g_get_monotonic_time () - etc_start_time;
 
   if (!prepare_deployment_var (self, new_deployment, deployment_dfd, cancellable, error))
     return FALSE;
+
+  g_autofree char *checkout_elapsed_str = ot_format_human_duration (checkout_elapsed);
+  g_autofree char *composefs_elapsed_str = ot_format_human_duration (composefs_elapsed);
+  g_autofree char *etc_elapsed_str = ot_format_human_duration (etc_elapsed);
+  ot_journal_print (LOG_INFO, "Created deployment; subtasks: checkout=%s composefs=%s etc=%s",
+                    checkout_elapsed_str, composefs_elapsed_str, etc_elapsed_str);
 
   ot_transfer_out_value (out_new_deployment, &new_deployment);
   return TRUE;

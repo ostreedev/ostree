@@ -29,6 +29,7 @@
 #include "otutil.h"
 
 static gboolean opt_composefs;
+static gboolean opt_composefs_noverity;
 static gboolean opt_user_mode;
 static gboolean opt_allow_noent;
 static gboolean opt_disable_cache;
@@ -109,6 +110,8 @@ static GOptionEntry options[] = {
   { "selinux-prefix", 0, 0, G_OPTION_ARG_STRING, &opt_selinux_prefix,
     "When setting SELinux labels, prefix all paths by PREFIX", "PREFIX" },
   { "composefs", 0, 0, G_OPTION_ARG_NONE, &opt_composefs, "Only create a composefs blob", NULL },
+  { "composefs-noverity", 0, 0, G_OPTION_ARG_NONE, &opt_composefs_noverity,
+    "Only create a composefs blob, and disable fsverity", NULL },
   { NULL }
 };
 
@@ -145,12 +148,19 @@ process_one_checkout (OstreeRepo *repo, const char *resolved_commit, const char 
                              || opt_process_passthrough_whiteouts;
 
   /* If we're doing composefs, then this is it */
-  if (opt_composefs)
+  if (opt_composefs || opt_composefs_noverity)
     {
       if (new_options_set)
         return glnx_throw (error, "Specified options are incompatible with --composefs");
-      return ostree_repo_checkout_composefs (repo, NULL, AT_FDCWD, destination, resolved_commit,
-                                             cancellable, error);
+      g_auto (GVariantBuilder) cfs_checkout_opts_builder
+          = G_VARIANT_BUILDER_INIT (G_VARIANT_TYPE_VARDICT);
+      if (opt_composefs_noverity)
+        g_variant_builder_add (&cfs_checkout_opts_builder, "{sv}", "verity",
+                               g_variant_new_uint32 (0));
+      g_autoptr (GVariant) checkout_opts
+          = g_variant_ref_sink (g_variant_builder_end (&cfs_checkout_opts_builder));
+      return ostree_repo_checkout_composefs (repo, checkout_opts, AT_FDCWD, destination,
+                                             resolved_commit, cancellable, error);
     }
 
   if (new_options_set)

@@ -20,6 +20,7 @@
 #include "config.h"
 
 #include "libglnx.h"
+#include "ot-gio-utils.h"
 #include "ot-unix-utils.h"
 #include <glib.h>
 
@@ -74,11 +75,35 @@ test_ot_util_filename_validate (void)
   g_clear_error (&error);
 }
 
+static void
+test_ot_human_duration (void)
+{
+  struct tcase
+  {
+    guint64 v;
+    const char *expected;
+  };
+  const struct tcase test_cases[] = {
+    { 0, "0ns" },    { 590, "590ns" },    { 1590, "1ms" },
+    { 9001, "9ms" }, { 1597249, "1.6s" }, { 10597249, "10.6s" },
+  };
+
+  for (guint i = 0; i < G_N_ELEMENTS (test_cases); i++)
+    {
+      const struct tcase *tcase = &test_cases[i];
+      g_autofree char *buf = ot_format_human_duration (tcase->v);
+      g_assert_cmpstr (buf, ==, tcase->expected);
+    }
+
+  return;
+}
+
 int
 main (int argc, char **argv)
 {
   g_test_init (&argc, &argv, NULL);
   g_test_add_func ("/ot_util_path_split_validate", test_ot_util_path_split_validate);
   g_test_add_func ("/ot_util_filename_validate", test_ot_util_filename_validate);
+  g_test_add_func ("/ot_human_duration", test_ot_human_duration);
   return g_test_run ();
 }

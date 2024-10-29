@@ -1273,14 +1273,18 @@ compare_verity_digests (GVariant *metadata_composefs, const guchar *fsverity_dig
 /**
  * ostree_repo_checkout_composefs:
  * @self: A repo
- * @options: (nullable): Future expansion space; must currently be %NULL
+ * @options: (nullable): If non-NULL, must be a GVariant of type a{sv}. See below.
  * @destination_dfd: Parent directory fd
  * @destination_path: Filename
  * @checksum: OStree commit digest
  * @cancellable: Cancellable
  * @error: Error
  *
- * Create a composefs filesystem metadata blob from an OSTree commit.
+ * Create a composefs filesystem metadata blob from an OSTree commit. Supported
+ * options:
+ *
+ *  - verity: `u`: 0 = disabled, 1 = set if present on file, 2 = enabled; any other value is a fatal
+ * error
  */
 gboolean
 ostree_repo_checkout_composefs (OstreeRepo *self, GVariant *options, int destination_dfd,
@@ -1288,8 +1292,31 @@ ostree_repo_checkout_composefs (OstreeRepo *self, GVariant *options, int destina
                                 GCancellable *cancellable, GError **error)
 {
 #ifdef HAVE_COMPOSEFS
-  /* Force this for now */
-  g_assert (options == NULL);
+  OtTristate verity = OT_TRISTATE_YES;
+
+  if (options != NULL)
+    {
+      g_auto (GVariantDict) options_dict;
+      g_variant_dict_init (&options_dict, options);
+      guint32 verity_v = 0;
+      if (g_variant_dict_lookup (&options_dict, "verity", "u", &verity_v))
+        {
+          switch (verity_v)
+            {
+            case 0:
+              verity = OT_TRISTATE_NO;
+              break;
+            case 1:
+              verity = OT_TRISTATE_MAYBE;
+              break;
+            case 2:
+              verity = OT_TRISTATE_YES;
+              break;
+            default:
+              g_assert_not_reached ();
+            }
+        }
+    }
 
   g_auto (GLnxTmpfile) tmpf = {
     0,
@@ -1311,8 +1338,8 @@ ostree_repo_checkout_composefs (OstreeRepo *self, GVariant *options, int destina
 
   g_autoptr (OstreeComposefsTarget) target = ostree_composefs_target_new ();
 
-  if (!_ostree_repo_checkout_composefs (self, target, (OstreeRepoFile *)commit_root, cancellable,
-                                        error))
+  if (!_ostree_repo_checkout_composefs (self, verity, target, (OstreeRepoFile *)commit_root,
+                                        cancellable, error))
     return FALSE;
 
   g_autofree guchar *fsverity_digest = NULL;
