@@ -62,4 +62,14 @@ composefs-info dump test2-co-noverity.cfs > dump.txt
 assert_file_has_content_literal dump.txt '/baz/cow 4 100644 1 0 0 0 0.0 f6/a517d53831a40cff3886a965c70d57aa50797a8e5ea965b2c49cc575a6ff51.file - -'
 tap_ok "checkout composefs noverity"
 
+# Test with a corrupted composefs digest
+$OSTREE commit ${COMMIT_ARGS} -b test-composefs-bad-digest --tree=ref=test-composefs \
+    '--add-metadata=ostree.composefs.digest.v0=[byte 0x13, 0xae, 0xae, 0xed, 0xc0, 0x34, 0xd1, 0x39, 0xef, 0xfc, 0xd6, 0x6f, 0xe3, 0xdb, 0x08, 0xd3, 0x32, 0x8a, 0xec, 0x2f, 0x02, 0xc5
+, 0xa7, 0x8a, 0xee, 0xa6, 0x0f, 0x34, 0x6d, 0x7a, 0x22, 0x6d]'
+if $OSTREE checkout --composefs test-composefs-bad-digest test2-co.cfs 2>err.txt; then
+    fatal "checked out composefs with mismatched digest"
+fi
+assert_file_has_content_literal err.txt "doesn't match expected digest"
+tap_ok "checkout composefs bad digest"
+
 tap_end
