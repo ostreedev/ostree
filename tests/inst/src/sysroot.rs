@@ -43,6 +43,12 @@ pub(crate) fn itest_immutable_bit() -> Result<()> {
     if skip_non_ostree_host() {
         return Ok(());
     }
+    let sh = &xshell::Shell::new()?;
+    let fstype = cmd!(sh, "findmnt -n -o FSTYPE /").read()?;
+    // If we're on composefs then we're done
+    if fstype.as_str() == "overlay" {
+        return Ok(());
+    }
     // https://bugzilla.redhat.com/show_bug.cgi?id=1867601
     cmd_has_output(sh_inline::bash_command!("lsattr -d /").unwrap(), "-i-")?;
     Ok(())
