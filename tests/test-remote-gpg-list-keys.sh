@@ -137,8 +137,23 @@ else
 
     echo "ok remote expired key"
 
+    # GPG 2.2.45 fails with exit status 2 when importing a revocation cert
+    # for a key that already expired. https://dev.gnupg.org/T7351
+    may_exit_2 () {
+        local e=0
+        "$@" || e="$?"
+        case "$e" in
+            (0|2)
+                return 0
+                ;;
+            (*)
+                fatal "should have exited with status 0 or 2, not $e: $*"
+                ;;
+        esac
+    }
+
     # Revoke key1 and re-import it.
-    ${GPG} --homedir=${TEST_GPG_KEYHOME} --import ${TEST_GPG_KEYHOME}/revocations/key1.rev
+    may_exit_2 ${GPG} --homedir=${TEST_GPG_KEYHOME} --import ${TEST_GPG_KEYHOME}/revocations/key1.rev
     ${GPG} --homedir=${test_tmpdir}/gpghome --armor --export ${TEST_GPG_KEYID_1} > ${test_tmpdir}/key1revoked.asc
     ${OSTREE} remote gpg-import --keyring ${test_tmpdir}/key1revoked.asc R1
     ${OSTREE} remote gpg-list-keys R1 > result
