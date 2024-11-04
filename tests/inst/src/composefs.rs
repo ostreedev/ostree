@@ -153,7 +153,7 @@ pub(crate) fn itest_composefs() -> Result<()> {
                 return Ok(());
             }
             {
-                let fstype = cmd!(sh, "stat -f / -c %T").read()?;
+                let fstype = cmd!(sh, "stat -f /sysroot -c %T").read()?;
                 if fstype.trim() == "xfs" {
                     println!("SKIP no xfs fsverity yet");
                     return Ok(());

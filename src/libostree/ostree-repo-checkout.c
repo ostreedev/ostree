@@ -1346,9 +1346,14 @@ ostree_repo_checkout_composefs (OstreeRepo *self, GVariant *options, int destina
   if (!ostree_composefs_target_write (target, tmpf.fd, &fsverity_digest, cancellable, error))
     return FALSE;
 
-  /* If the commit specified a composefs digest, verify it */
-  if (!compare_verity_digests (metadata_composefs, fsverity_digest, error))
-    return FALSE;
+  /* If the commit specified a composefs digest and the target is known to have fsverity,
+   * then double check our ouptut.
+   */
+  if (verity == OT_TRISTATE_YES)
+    {
+      if (!compare_verity_digests (metadata_composefs, fsverity_digest, error))
+        return FALSE;
+    }
 
   if (!glnx_fchmod (tmpf.fd, 0644, error))
     return FALSE;
