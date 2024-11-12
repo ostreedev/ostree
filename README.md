@@ -94,7 +94,7 @@ systems.
 [QtOTA](http://doc.qt.io/QtOTA/) is Qt's over-the-air update framework
 which uses libostree.
 
-The [BuildStream](https://gitlab.com/BuildStream/buildstream) build and
+The [BuildStream](https://github.com/apache/buildstream/) build and
 integration tool supports importing and exporting from libostree repos.
 
 [fedora-iot/otto](https://github.com/fedora-iot/otto) is a tool that helps
