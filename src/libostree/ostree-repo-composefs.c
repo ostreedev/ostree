@@ -327,19 +327,22 @@ checkout_one_composefs_file_at (OstreeRepo *repo, OtTristate verity, const char 
            * This is the typical case when we're pulled into the target
            * system repo with verity on and are recreating the composefs
            * image during deploy. */
-          char buf[sizeof (struct fsverity_digest) + OSTREE_SHA256_DIGEST_LEN];
+          union
+            {
+              struct fsverity_digest d;
+              char buf[sizeof (struct fsverity_digest) + OSTREE_SHA256_DIGEST_LEN];
+            } result;
           guchar *known_digest = NULL;
 
           if (G_IS_UNIX_INPUT_STREAM (input))
             {
               int content_fd = g_unix_input_stream_get_fd (G_UNIX_INPUT_STREAM (input));
-              struct fsverity_digest *d = (struct fsverity_digest *)&buf;
-              d->digest_size = OSTREE_SHA256_DIGEST_LEN;
+              result.d.digest_size = OSTREE_SHA256_DIGEST_LEN;
 
-              if (ioctl (content_fd, FS_IOC_MEASURE_VERITY, d) == 0
-                  && d->digest_size == OSTREE_SHA256_DIGEST_LEN
-                  && d->digest_algorithm == FS_VERITY_HASH_ALG_SHA256)
-                known_digest = d->digest;
+              if (ioctl (content_fd, FS_IOC_MEASURE_VERITY, &result) == 0
+                  && result.d.digest_size == OSTREE_SHA256_DIGEST_LEN
+                  && result.d.digest_algorithm == FS_VERITY_HASH_ALG_SHA256)
+                known_digest = result.d.digest;
             }
 #endif
 
