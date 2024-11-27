@@ -130,12 +130,12 @@ test_raw_file_to_archive_stream (gconstpointer data)
 }
 
 static gboolean
-hi_content_stream_new (GInputStream **out_stream, guint64 *out_length, GError **error)
+basic_regfile_content_stream_new (const char *contents, GVariant *xattr, GInputStream **out_stream,
+                                  guint64 *out_length, GError **error)
 {
-  static const char hi[] = "hi";
-  const size_t len = sizeof (hi) - 1;
+  const size_t len = strlen (contents);
   g_autoptr (GMemoryInputStream) hi_memstream
-      = (GMemoryInputStream *)g_memory_input_stream_new_from_data (hi, len, NULL);
+      = (GMemoryInputStream *)g_memory_input_stream_new_from_data (contents, len, NULL);
   g_autoptr (GFileInfo) finfo = g_file_info_new ();
   g_file_info_set_attribute_uint32 (finfo, "standard::type", G_FILE_TYPE_REGULAR);
   g_file_info_set_attribute_boolean (finfo, "standard::is-symlink", FALSE);
@@ -145,6 +145,12 @@ hi_content_stream_new (GInputStream **out_stream, guint64 *out_length, GError **
   g_file_info_set_attribute_uint32 (finfo, "unix::mode", S_IFREG | 0644);
   return ostree_raw_file_to_content_stream ((GInputStream *)hi_memstream, finfo, NULL, out_stream,
                                             out_length, NULL, error);
+}
+
+static gboolean
+hi_content_stream_new (GInputStream **out_stream, guint64 *out_length, GError **error)
+{
+  return basic_regfile_content_stream_new ("hi", NULL, out_stream, out_length, error);
 }
 
 static void
@@ -174,6 +180,8 @@ test_object_writes (gconstpointer data)
 
   static const char hi_sha256[]
       = "2301b5923720c3edc1f0467addb5c287fd5559e3e0cd1396e7f1edb6b01be9f0";
+  static const char invalid_hi_sha256[]
+      = "cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe";
 
   /* Successful content write */
   {
@@ -193,12 +201,68 @@ test_object_writes (gconstpointer data)
     hi_content_stream_new (&hi_memstream, &len, &error);
     g_assert_no_error (error);
     g_autofree guchar *csum = NULL;
-    static const char invalid_hi_sha256[]
-        = "cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe";
     g_assert (!ostree_repo_write_content (repo, invalid_hi_sha256, hi_memstream, len, &csum, NULL,
                                           &error));
     g_assert (error);
     g_assert (strstr (error->message, "Corrupted file object"));
+    g_clear_error (&error);
+  }
+
+  /* Test a basic regfile inline write, no xattrs */
+  g_assert (ostree_repo_write_regfile_inline (repo, hi_sha256, 0, 0, S_IFREG | 0644, NULL,
+                                              (guint8 *)"hi", 2, NULL, &error));
+  g_assert_no_error (error);
+
+  /* Test a basic regfile inline write, erroring on checksum */
+  g_assert (!ostree_repo_write_regfile_inline (repo, invalid_hi_sha256, 0, 0, S_IFREG | 0644, NULL,
+                                               (guint8 *)"hi", 2, NULL, &error));
+  g_assert (error != NULL);
+  g_clear_error (&error);
+
+  static const char expected_sha256_with_xattrs[]
+      = "72473a9e8ace75f89f1504137cfb134feb5372bc1d97e04eb5300e24ad836153";
+
+  GVariantBuilder builder;
+  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(ayay)"));
+  g_variant_builder_add (&builder, "(^ay^ay)", "security.selinux", "foo_t");
+  g_variant_builder_add (&builder, "(^ay^ay)", "user.blah", "somedata");
+  g_autoptr (GVariant) inorder_xattrs = g_variant_ref_sink (g_variant_builder_end (&builder));
+  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(ayay)"));
+  g_variant_builder_add (&builder, "(^ay^ay)", "user.blah", "somedata");
+  g_variant_builder_add (&builder, "(^ay^ay)", "security.selinux", "foo_t");
+  g_autoptr (GVariant) unsorted_xattrs = g_variant_ref_sink (g_variant_builder_end (&builder));
+
+  /* Now test with xattrs */
+  g_assert (ostree_repo_write_regfile_inline (repo, expected_sha256_with_xattrs, 0, 0,
+                                              S_IFREG | 0644, inorder_xattrs, (guint8 *)"hi", 2,
+                                              NULL, &error));
+  g_assert_no_error (error);
+
+  /* And now with a swapped order */
+  g_assert (ostree_repo_write_regfile_inline (repo, expected_sha256_with_xattrs, 0, 0,
+                                              S_IFREG | 0644, unsorted_xattrs, (guint8 *)"hi", 2,
+                                              NULL, &error));
+  g_assert_no_error (error);
+
+  /* Tests of directory metadata */
+  static const char expected_dirmeta_sha256[]
+      = "f773ab98198d8e46f77be6ffff5fc1920888c0af5794426c3b1461131d509f34";
+  g_autoptr (GFileInfo) fi = g_file_info_new ();
+  g_file_info_set_attribute_uint32 (fi, "unix::uid", 0);
+  g_file_info_set_attribute_uint32 (fi, "unix::gid", 0);
+  g_file_info_set_attribute_uint32 (fi, "unix::mode", (0755 | S_IFDIR));
+  {
+    g_autoptr (GVariant) dirmeta = ostree_create_directory_metadata (fi, inorder_xattrs);
+    ostree_repo_write_metadata (repo, OSTREE_OBJECT_TYPE_DIR_META, expected_dirmeta_sha256, dirmeta,
+                                NULL, NULL, &error);
+    g_assert_no_error (error);
+  }
+  /* And now with unsorted xattrs */
+  {
+    g_autoptr (GVariant) dirmeta = ostree_create_directory_metadata (fi, unsorted_xattrs);
+    ostree_repo_write_metadata (repo, OSTREE_OBJECT_TYPE_DIR_META, expected_dirmeta_sha256, dirmeta,
+                                NULL, NULL, &error);
+    g_assert_no_error (error);
   }
 }
 

@@ -43,6 +43,7 @@ G_STATIC_ASSERT (OSTREE_REPO_MODE_BARE_USER_ONLY == 3);
 G_STATIC_ASSERT (OSTREE_REPO_MODE_BARE_SPLIT_XATTRS == 4);
 
 static GBytes *variant_to_lenprefixed_buffer (GVariant *variant);
+static GVariant *canonicalize_xattrs (GVariant *xattrs);
 
 #define ALIGN_VALUE(this, boundary) \
   ((((unsigned long)(this)) + (((unsigned long)(boundary)) - 1)) \
@@ -302,6 +303,47 @@ ostree_validate_collection_id (const char *collection_id, GError **error)
   return TRUE;
 }
 
+static int
+compare_xattrs (const void *a_pp, const void *b_pp)
+{
+  GVariant *a = *(GVariant **)a_pp;
+  GVariant *b = *(GVariant **)b_pp;
+  const char *name_a;
+  const char *name_b;
+  g_variant_get (a, "(^&ay@ay)", &name_a, NULL);
+  g_variant_get (b, "(^&ay@ay)", &name_b, NULL);
+
+  return strcmp (name_a, name_b);
+}
+
+// Sort xattrs by name
+static GVariant *
+canonicalize_xattrs (GVariant *xattrs)
+{
+  // We always need to provide data, so NULL is canonicalized to the empty array
+  if (xattrs == NULL)
+    return g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
+
+  g_autoptr (GPtrArray) xattr_array
+      = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
+
+  const guint n = g_variant_n_children (xattrs);
+  for (guint i = 0; i < n; i++)
+    {
+      GVariant *child = g_variant_get_child_value (xattrs, i);
+      g_ptr_array_add (xattr_array, child);
+    }
+
+  g_ptr_array_sort (xattr_array, compare_xattrs);
+
+  GVariantBuilder builder;
+  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(ayay)"));
+  for (guint i = 0; i < xattr_array->len; i++)
+    g_variant_builder_add_value (&builder, xattr_array->pdata[i]);
+
+  return g_variant_ref_sink (g_variant_builder_end (&builder));
+}
+
 /* The file header is part of the "object stream" format
  * that's not compressed.  It's comprised of uid,gid,mode,
  * and possibly symlink targets from @file_info, as well
@@ -321,13 +363,12 @@ _ostree_file_header_new (GFileInfo *file_info, GVariant *xattrs)
   else
     symlink_target = "";
 
-  g_autoptr (GVariant) tmp_xattrs = NULL;
-  if (xattrs == NULL)
-    tmp_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
+  // We always sort the xattrs now to ensure everything is in normal/canonical form.
+  g_autoptr (GVariant) tmp_xattrs = canonicalize_xattrs (xattrs);
 
   g_autoptr (GVariant) ret
       = g_variant_new ("(uuuus@a(ayay))", GUINT32_TO_BE (uid), GUINT32_TO_BE (gid),
-                       GUINT32_TO_BE (mode), 0, symlink_target, xattrs ?: tmp_xattrs);
+                       GUINT32_TO_BE (mode), 0, symlink_target, tmp_xattrs);
   return variant_to_lenprefixed_buffer (g_variant_ref_sink (ret));
 }
 
@@ -1111,11 +1152,13 @@ ostree_create_directory_metadata (GFileInfo *dir_info, GVariant *xattrs)
 {
   GVariant *ret_metadata = NULL;
 
+  // We always sort the xattrs now to ensure everything is in normal/canonical form.
+  g_autoptr (GVariant) tmp_xattrs = canonicalize_xattrs (xattrs);
+
   ret_metadata = g_variant_new (
       "(uuu@a(ayay))", GUINT32_TO_BE (g_file_info_get_attribute_uint32 (dir_info, "unix::uid")),
       GUINT32_TO_BE (g_file_info_get_attribute_uint32 (dir_info, "unix::gid")),
-      GUINT32_TO_BE (g_file_info_get_attribute_uint32 (dir_info, "unix::mode")),
-      xattrs ? xattrs : g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
+      GUINT32_TO_BE (g_file_info_get_attribute_uint32 (dir_info, "unix::mode")), tmp_xattrs);
   g_variant_ref_sink (ret_metadata);
 
   return ret_metadata;
@@ -2278,21 +2321,30 @@ ostree_validate_structureof_file_mode (guint32 mode, GError **error)
 }
 
 /* Currently ostree imposes no restrictions on xattrs on its own;
- * they can e.g. be arbitrariliy sized or in number.
- * However, we do validate the key is non-empty, as that is known
- * to always fail.
+ * they can e.g. be arbitrariliy sized or in number. The xattrs
+ * must be sorted by name (without duplicates), and keys cannot be empty.
  */
 gboolean
 _ostree_validate_structureof_xattrs (GVariant *xattrs, GError **error)
 {
   const guint n = g_variant_n_children (xattrs);
+  const char *previous = NULL;
   for (guint i = 0; i < n; i++)
     {
-      const guint8 *name;
+      const char *name;
       g_autoptr (GVariant) value = NULL;
       g_variant_get_child (xattrs, i, "(^&ay@ay)", &name, &value);
       if (!*name)
         return glnx_throw (error, "Invalid xattr name (empty or missing NUL) index=%d", i);
+      if (previous)
+        {
+          int cmp = strcmp (previous, name);
+          if (cmp == 0)
+            return glnx_throw (error, "Duplicate xattr name, index=%d", i);
+          else if (cmp > 0)
+            return glnx_throw (error, "Incorrectly sorted xattr name, index=%d", i);
+        }
+      previous = name;
       i++;
     }
   return TRUE;
