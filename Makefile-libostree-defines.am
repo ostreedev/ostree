@@ -48,6 +48,7 @@ libostree_public_headers = \
 	src/libostree/ostree-kernel-args.h \
 	src/libostree/ostree-sign.h \
 	src/libostree/ostree-sign-ed25519.h \
+	src/libostree/ostree-blob-reader.h \
 	$(NULL)
 
 # This one is generated via configure.ac, and the gtk-doc
