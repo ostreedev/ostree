@@ -30,7 +30,7 @@ fn list_repo_objects() {
                 commit_cnt += 1;
             }
             x => {
-                panic!("unexpected object type {}", x);
+                panic!("unexpected object type {:?}", x);
             }
         }
     }
