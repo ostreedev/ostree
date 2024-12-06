@@ -120,20 +120,25 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
             <varlistentry>
                 <term><varname>root.transient</varname></term>
                 <listitem><para>A boolean value; the default is <literal>false</literal>.
-                   If this is set to <literal>true</literal>, then the <literal>/</literal> filesystem will be a writable <literal>overlayfs</literal>,
-                   with the upper directory being a hidden directory (in the underlying system root filesystem) that will persist across reboots by default.
-                   However, changes will <emphasis>be discarded</emphasis> on OS updates!
+                   Setting this flag to <literal>true</literal> requires composefs (See <literal>composefs.enabled</literal>).
+                   When enabled, the root mount point <literal>/</literal> will be an overlayfs whose contents will be stored
+                   in a tmpfs, and hence discarded on OS upgrade or reboot.
                 </para>
                 <para>
-                   Enabling this option can be very useful for cases such as packages (dpkg/rpm/etc) that write content into <literal>/opt</literal>,
-                   particularly where they expect the target to be writable at runtime.  To make that work, ensure that your <literal>/opt</literal>
-                   directory is *not* a symlink to <literal>/var/opt</literal>, but is just an empty directory.
-                </para>
-                <para>
-                   Note the <literal>/usr</literal> mount point remains read-only by default.  This option is independent of <literal>etc.transient</literal> and <literal>sysroot.readonly</literal>;
+                   This option is independent of <literal>etc.transient</literal> and <literal>sysroot.readonly</literal>;
                    it is supported for example to have <literal>root.transient=true</literal> but <literal>etc.transient=false</literal> in which case changes to <literal>/etc</literal> continue
                    to persist across updates, with the default OSTree 3-way merge applied.
-                </para></listitem>
+                   Also related to persistence it is important to emphasize that <literal>/sysroot</literal> (the physical root filesystem) is still persistent
+                   by default; in-place OS upgrades can be applied.
+                </para>
+                <para>
+                  Enabling this option can make it significantly easier to adopt an image-based model in some circumstances.
+                  For example, if you have a configuration management system that is inspecting machine-specific state and
+                  e.g. dynamically installing packages or applying configuration, it can more easily be adapted to
+                  run on each boot, while still shifting a portion (or ideally most) image configuration to build time
+                  as part of the base image/commit.
+                </para>
+                </listitem>
             </varlistentry>
             <varlistentry>
                 <term><varname>composefs.enabled</varname></term>
