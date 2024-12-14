@@ -667,7 +667,7 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
   g_debug ("composefs enabled by config: %d repo: %d", composefs_enabled, repo->composefs_wanted);
   if (repo->composefs_wanted == OT_TRISTATE_YES)
     composefs_enabled = repo->composefs_wanted;
-  if (composefs_enabled == OT_TRISTATE_YES)
+  if (composefs_enabled != OT_TRISTATE_NO)
     {
       composefs_start_time = g_get_monotonic_time ();
       // TODO: Clean up our mess around composefs/fsverity...we have duplication

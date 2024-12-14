@@ -26,14 +26,32 @@ skip_without_ostree_feature composefs
 # Exports OSTREE_SYSROOT so --sysroot not needed.
 setup_os_repository "archive" "syslinux"
 
+# check disablement
 cd osdata
 mkdir -p usr/lib/ostree
 cat > usr/lib/ostree/prepare-root.conf << 'EOF'
 [composefs]
+enabled=false
+EOF
+cd -
+
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.composefs -b testos/buildmain/x86_64-runtime osdata
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmain/x86_64-runtime
+
+${CMD_PREFIX} ostree admin deploy --os=testos --karg=root=LABEL=foo --karg=testkarg=1 testos:testos/buildmain/x86_64-runtime
+if test -f sysroot/ostree/deploy/testos/deploy/*.0/.ostree.cfs; then
+    fatal "found composefs unexpectedly"
+fi
+
+# check explicit enablement
+cd osdata
+cat > usr/lib/ostree/prepare-root.conf << 'EOF'
+[composefs]
 enabled=true
 EOF
-${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.composefs -b testos/buildmain/x86_64-runtime
 cd -
+
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.composefs -b testos/buildmain/x86_64-runtime osdata
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmain/x86_64-runtime
 
 ${CMD_PREFIX} ostree admin deploy --os=testos --karg=root=LABEL=foo --karg=testkarg=1 testos:testos/buildmain/x86_64-runtime
