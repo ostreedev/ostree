@@ -680,7 +680,7 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
       g_auto (GVariantBuilder) cfs_checkout_opts_builder
           = G_VARIANT_BUILDER_INIT (G_VARIANT_TYPE_VARDICT);
       guint32 composefs_requested = 1;
-      if (composefs_config->is_signed)
+      if (composefs_config->require_verity)
         composefs_requested = 2;
       g_variant_builder_add (&cfs_checkout_opts_builder, "{sv}", "verity",
                              g_variant_new_uint32 (composefs_requested));

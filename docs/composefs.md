@@ -47,11 +47,6 @@ before the content of a file in the mounted composefs is read,
 the integrity of its backing OSTree object in `/ostree/repo/objects` is validated by the digest stored in `.ostree.cfs`.
 This can ensure the integrity of the "backing store".
 
-The digests in `.ostree.cfs` are read from fsverity digests of OSTree objects when deploying.
-It is necessary to ensure all OSTree objects referenced have digests stored in `.ostree.cfs`.
-This can be achieved when [committing](#injecting-composefs-digests),
-or you have to set `ex-integrity.fsverity` to `true` for the OSTree repo.
-
 ### Injecting composefs digests
 
 When generating an OSTree commit, there is a CLI switch `--generate-composefs-metadata`
