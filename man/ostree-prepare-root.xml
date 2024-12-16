@@ -138,10 +138,15 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
             <varlistentry>
                 <term><varname>composefs.enabled</varname></term>
                 <listitem><para>This can be <literal>yes</literal>, <literal>no</literal>, <literal>maybe</literal>,
-                or <literal>signed</literal>. The default is <literal>no</literal>. If set to <literal>yes</literal> or
-                <literal>signed</literal>, then composefs is always used, and the boot fails if it is not
-                available. Additionally if set to <literal>signed</literal>, boot will fail if the image cannot be
-                validated by a public key. Setting this to <literal>maybe</literal> is currently equivalent to <literal>no</literal>.
+                <literal>signed</literal>, or <literal>verity</literal>. The default is <literal>no</literal>.
+                If set to <literal>yes</literal>, <literal>signed</literal>, or <literal>verity</literal>,
+                then composefs is always used, and the boot fails if it is not available.
+                If set to <literal>signed</literal> or <literal>verity</literal>,
+                before the content of a file is read,
+                the integrity of its backing OSTree object is validated by the digest stored in the image.
+                Additionally, if set to <literal>signed</literal>, boot will fail if the image cannot be
+                validated by a public key.
+                Setting this to <literal>maybe</literal> is currently equivalent to <literal>no</literal>.
                 </para></listitem>
             </varlistentry>
             <varlistentry>
