@@ -25,7 +25,7 @@ jobs:
   build:
     name: Build documentation
     runs-on: ubuntu-latest
-    container: registry.ci.openshift.org/coreos/fcos-buildroot:testing-devel
+    container: quay.io/coreos-assembler/fcos-buildroot:testing-devel
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
