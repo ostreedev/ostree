@@ -756,7 +756,6 @@ main (int argc, char *argv[])
       exit (EXIT_FAILURE);
     }
 
-  fuse_main (args.argc, args.argv, &callback_oper, NULL);
-
-  return 0;
+  // Refer to https://man.openbsd.org/fuse_main.3
+  return (fuse_main (args.argc, args.argv, &callback_oper, NULL));
 }
