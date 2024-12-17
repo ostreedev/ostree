@@ -178,7 +178,14 @@ otcore_load_composefs_config (const char *cmdline, GKeyFile *config, gboolean lo
   if (g_strcmp0 (enabled, "signed") == 0)
     {
       ret->enabled = OT_TRISTATE_YES;
+      ret->require_verity = true;
       ret->is_signed = true;
+    }
+  else if (g_strcmp0 (enabled, "verity") == 0)
+    {
+      ret->enabled = OT_TRISTATE_YES;
+      ret->require_verity = true;
+      ret->is_signed = false;
     }
   else if (!ot_keyfile_get_tristate_with_default (config, OTCORE_PREPARE_ROOT_COMPOSEFS_KEY,
                                                   OTCORE_PREPARE_ROOT_ENABLED_KEY,
@@ -227,6 +234,7 @@ otcore_load_composefs_config (const char *cmdline, GKeyFile *config, gboolean lo
         {
           ret->enabled = OT_TRISTATE_YES;
           ret->is_signed = true;
+          ret->require_verity = true;
         }
       else
         {

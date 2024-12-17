@@ -40,6 +40,13 @@ and specify an Ed25519 public key to validate the booted commit.
 
 See the manpage for `ostree-prepare-root` for details of how to configure it.
 
+### Integrity of backing OSTree objects
+
+In `ostree/prepare-root.conf`, if `composefs.enabled` is set to `signed` or `verity`,
+before the content of a file in the mounted composefs is read,
+the integrity of its backing OSTree object in `/ostree/repo/objects` is validated by the digest stored in `.ostree.cfs`.
+This can ensure the integrity of the "backing store".
+
 ### Injecting composefs digests
 
 When generating an OSTree commit, there is a CLI switch `--generate-composefs-metadata`

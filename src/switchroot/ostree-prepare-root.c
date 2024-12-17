@@ -452,9 +452,14 @@ main (int argc, char *argv[])
           expected_digest = g_malloc (OSTREE_SHA256_STRING_LEN + 1);
           ot_bin2hex (expected_digest, cfs_digest_buf, g_variant_get_size (cfs_digest_v));
 
+          g_assert (composefs_config->require_verity);
           cfs_options.flags |= LCFS_MOUNT_FLAGS_REQUIRE_VERITY;
           g_print ("composefs: Verifying digest: %s\n", expected_digest);
           cfs_options.expected_fsverity_digest = expected_digest;
+        }
+      else if (composefs_config->require_verity)
+        {
+          cfs_options.flags |= LCFS_MOUNT_FLAGS_REQUIRE_VERITY;
         }
 
       if (lcfs_mount_image (OSTREE_COMPOSEFS_NAME, TMP_SYSROOT, &cfs_options) == 0)
