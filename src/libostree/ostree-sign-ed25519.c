@@ -103,7 +103,7 @@ validate_length (gsize found, gsize expected, GError **error)
     return TRUE;
   return glnx_throw (
       error, "Ill-formed input: expected %" G_GSIZE_FORMAT " bytes, got %" G_GSIZE_FORMAT " bytes",
-      found, expected);
+      expected, found);
 }
 
 static gboolean
