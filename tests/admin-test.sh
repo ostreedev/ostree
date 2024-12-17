@@ -71,9 +71,10 @@ assert_not_file_has_content status.txt "pending"
 assert_not_file_has_content status.txt "rollback"
 validate_bootloader
 
-# Someday probably soon we'll turn this on by default, but for now
-if test -f sysroot/ostree/deploy/testos/deploy/*.0/.ostree.cfs; then
-    fatal "found composefs unexpectedly"
+if has_ostree_feature composefs; then
+    if ! test -f sysroot/ostree/deploy/testos/deploy/*.0/.ostree.cfs; then
+        fatal "missing composefs"
+    fi
 fi
 
 # Test the bootable and linux keys
