@@ -14,7 +14,7 @@ jobs:
   codestyle:
     name: "Code style"
     runs-on: ubuntu-latest
-    container: registry.ci.openshift.org/coreos/fcos-buildroot:testing-devel
+    container: quay.io/coreos-assembler/fcos-buildroot:testing-devel
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -60,7 +60,7 @@ jobs:
   minimal:
     name: "Build - FCOS minimal"
     runs-on: ubuntu-latest
-    container: registry.ci.openshift.org/coreos/fcos-buildroot:testing-devel
+    container: quay.io/coreos-assembler/fcos-buildroot:testing-devel
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -78,7 +78,7 @@ jobs:
   build-c:
     name: "Build (Fedora)"
     runs-on: ubuntu-latest
-    container: registry.ci.openshift.org/coreos/fcos-buildroot:testing-devel
+    container: quay.io/coreos-assembler/fcos-buildroot:testing-devel
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
