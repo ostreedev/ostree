@@ -2,12 +2,7 @@
 // from gir-files
 // DO NOT EDIT
 
-use glib::translate::*;
-use std::fmt;
-use std::mem;
-#[cfg(any(feature = "v2016_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_6")))]
-use std::ptr;
+use glib::{translate::*};
 
 glib::wrapper! {
     #[doc(alias = "OstreeGpgVerifyResult")]
@@ -49,27 +44,21 @@ impl GpgVerifyResult {
     #[doc(alias = "ostree_gpg_verify_result_lookup")]
     pub fn lookup(&self, key_id: &str) -> Option<u32> {
         unsafe {
-            let mut out_signature_index = mem::MaybeUninit::uninit();
+            let mut out_signature_index = std::mem::MaybeUninit::uninit();
             let ret = from_glib(ffi::ostree_gpg_verify_result_lookup(self.to_glib_none().0, key_id.to_glib_none().0, out_signature_index.as_mut_ptr()));
             if ret { Some(out_signature_index.assume_init()) } else { None }
         }
     }
 
-    #[cfg(any(feature = "v2016_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_6")))]
+    #[cfg(feature = "v2016_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_6")))]
     #[doc(alias = "ostree_gpg_verify_result_require_valid_signature")]
     pub fn require_valid_signature(&self) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_gpg_verify_result_require_valid_signature(self.to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
-    }
-}
-
-impl fmt::Display for GpgVerifyResult {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("GpgVerifyResult")
     }
 }

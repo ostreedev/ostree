@@ -2,21 +2,15 @@
 // from gir-files
 // DO NOT EDIT
 
-use crate::Repo;
-use crate::RepoCommitFilterResult;
-use crate::RepoCommitModifierFlags;
-#[cfg(any(feature = "v2017_13", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_13")))]
-use crate::RepoDevInoCache;
-use crate::SePolicy;
-#[cfg(any(feature = "v2020_4", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_4")))]
-use glib::object::IsA;
-use glib::translate::*;
-use std::boxed::Box as Box_;
-#[cfg(any(feature = "v2020_4", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_4")))]
-use std::ptr;
+use crate::{Repo,RepoCommitFilterResult,RepoCommitModifierFlags,SePolicy};
+#[cfg(feature = "v2017_13")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2017_13")))]
+use crate::{RepoDevInoCache};
+use glib::{translate::*};
+#[cfg(feature = "v2020_4")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2020_4")))]
+use glib::{prelude::*};
+use std::{boxed::Box as Box_};
 
 glib::wrapper! {
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -37,17 +31,17 @@ impl RepoCommitModifier {
             let repo = from_glib_borrow(repo);
             let path: Borrowed<glib::GString> = from_glib_borrow(path);
             let file_info = from_glib_borrow(file_info);
-            let callback: &Option<Box_<dyn Fn(&Repo, &str, &gio::FileInfo) -> RepoCommitFilterResult + 'static>> = &*(user_data as *mut _);
-            let res = if let Some(ref callback) = *callback {
+            let callback = &*(user_data as *mut Option<Box_<dyn Fn(&Repo, &str, &gio::FileInfo) -> RepoCommitFilterResult + 'static>>);
+            if let Some(ref callback) = *callback {
                 callback(&repo, path.as_str(), &file_info)
             } else {
                 panic!("cannot get closure...")
-            };
-            res.into_glib()
+            }
+            .into_glib()
         }
         let commit_filter = if commit_filter_data.is_some() { Some(commit_filter_func as _) } else { None };
         unsafe extern "C" fn destroy_notify_func(data: glib::ffi::gpointer) {
-            let _callback: Box_<Option<Box_<dyn Fn(&Repo, &str, &gio::FileInfo) -> RepoCommitFilterResult + 'static>>> = Box_::from_raw(data as *mut _);
+            let _callback = Box_::from_raw(data as *mut Option<Box_<dyn Fn(&Repo, &str, &gio::FileInfo) -> RepoCommitFilterResult + 'static>>);
         }
         let destroy_call3 = Some(destroy_notify_func as _);
         let super_callback0: Box_<Option<Box_<dyn Fn(&Repo, &str, &gio::FileInfo) -> RepoCommitFilterResult + 'static>>> = commit_filter_data;
@@ -56,8 +50,8 @@ impl RepoCommitModifier {
         }
     }
 
-    #[cfg(any(feature = "v2017_13", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_13")))]
+    #[cfg(feature = "v2017_13")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_13")))]
     #[doc(alias = "ostree_repo_commit_modifier_set_devino_cache")]
     pub fn set_devino_cache(&self, cache: &RepoDevInoCache) {
         unsafe {
@@ -72,14 +66,14 @@ impl RepoCommitModifier {
         }
     }
 
-    #[cfg(any(feature = "v2020_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_4")))]
+    #[cfg(feature = "v2020_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_4")))]
     #[doc(alias = "ostree_repo_commit_modifier_set_sepolicy_from_commit")]
     pub fn set_sepolicy_from_commit(&self, repo: &Repo, rev: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_repo_commit_modifier_set_sepolicy_from_commit(self.to_glib_none().0, repo.to_glib_none().0, rev.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
@@ -91,13 +85,13 @@ impl RepoCommitModifier {
             let repo = from_glib_borrow(repo);
             let path: Borrowed<glib::GString> = from_glib_borrow(path);
             let file_info = from_glib_borrow(file_info);
-            let callback: &P = &*(user_data as *mut _);
-            let res = (*callback)(&repo, path.as_str(), &file_info);
-            res.to_glib_full()
+            let callback = &*(user_data as *mut P);
+            (*callback)(&repo, path.as_str(), &file_info)
+            .to_glib_full()
         }
         let callback = Some(callback_func::<P> as _);
         unsafe extern "C" fn destroy_func<P: Fn(&Repo, &str, &gio::FileInfo) -> glib::Variant + 'static>(data: glib::ffi::gpointer) {
-            let _callback: Box_<P> = Box_::from_raw(data as *mut _);
+            let _callback = Box_::from_raw(data as *mut P);
         }
         let destroy_call2 = Some(destroy_func::<P> as _);
         let super_callback0: Box_<P> = callback_data;
