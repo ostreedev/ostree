@@ -437,7 +437,8 @@ _ostree_sysroot_ensure_visible (OstreeSysroot *self, GError **error)
       if (sysroot_ns_fd < 0)
         return FALSE;
 
-      glnx_autofd int cur_ns_fd = open("/proc/self/ns/mnt", O_RDONLY);
+      g_autofree char *cur_ns = g_strdup_printf ("/proc/%d/ns/mnt", gettid ());
+      glnx_autofd int cur_ns_fd = open(cur_ns, O_RDONLY);
       if (cur_ns_fd < 0)
         return FALSE;
 
