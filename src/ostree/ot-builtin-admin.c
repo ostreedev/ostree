@@ -70,6 +70,8 @@ static OstreeCommand admin_subcommands[] = {
   { "upgrade", OSTREE_BUILTIN_FLAG_NO_REPO, ot_admin_builtin_upgrade,
     "Construct new tree from current origin and deploy it, if it changed" },
   { "kargs", OSTREE_BUILTIN_FLAG_NO_REPO, ot_admin_builtin_kargs, "Change kernel arguments" },
+  {"nsenter", OSTREE_BUILTIN_FLAG_NO_REPO | OSTREE_BUILTIN_FLAG_HIDDEN, ot_admin_builtin_nsenter,
+    "Run program in the mount namespace where /sysroot is present"},
   { NULL, 0, NULL, NULL }
 };
 
@@ -119,11 +121,6 @@ ostree_builtin_admin (int argc, char **argv, OstreeCommandInvocation *invocation
               out--;
               continue;
             }
-        }
-
-      else if (g_str_equal (argv[in], "--"))
-        {
-          break;
         }
 
       argv[out] = argv[in];
