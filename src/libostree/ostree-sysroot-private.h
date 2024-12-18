@@ -114,7 +114,13 @@ struct OstreeSysroot
 // Relative to /boot, consumed by ostree-boot-complete.service
 #define _OSTREE_FINALIZE_STAGED_FAILURE_PATH "ostree/finalize-failure.stamp"
 
+gboolean _ostree_sysroot_ensure_visible (OstreeSysroot *self, GError **error);
+
 gboolean _ostree_sysroot_ensure_writable (OstreeSysroot *self, GError **error);
+
+gboolean
+_ostree_sysroot_enter_mount_namespace (OstreeSysroot *self, GCancellable *cancellable,
+                                       GError **error);
 
 void _ostree_sysroot_emit_journal_msg (OstreeSysroot *self, const char *msg);
 
