@@ -225,13 +225,19 @@ main (int argc, char *argv[])
       exit (EXIT_SUCCESS);
     }
 
-  /* Handle remounting /sysroot; if it's explicitly marked as read-only (opt in)
+  /* Handle remounting /sysroot;
+   * If it's made invisible, do nothing.
+   * if it's explicitly marked as read-only (opt in)
    * then ensure it's readonly, otherwise mount writable, the same as /
    */
+  gboolean sysroot_configured_invisible = FALSE;
+  g_variant_dict_lookup (ostree_run_metadata, OTCORE_RUN_BOOTED_KEY_SYSROOT_INVISIBLE, "b",
+                         &sysroot_configured_invisible);
   gboolean sysroot_configured_readonly = FALSE;
   g_variant_dict_lookup (ostree_run_metadata, OTCORE_RUN_BOOTED_KEY_SYSROOT_RO, "b",
                          &sysroot_configured_readonly);
-  do_remount ("/sysroot", !sysroot_configured_readonly);
+  if (!sysroot_configured_invisible)
+    do_remount ("/sysroot", !sysroot_configured_readonly);
 
   /* And also make sure to make /etc rw again. We make this conditional on
    * sysroot_configured_readonly && !transient_etc because only in that case is it a
