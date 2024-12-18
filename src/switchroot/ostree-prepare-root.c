@@ -389,19 +389,16 @@ main (int argc, char *argv[])
 
       g_autofree char *expected_digest = NULL;
 
-      // For now we just stick the transient root on the default /run tmpfs;
-      // however, see
-      // https://github.com/systemd/systemd/blob/604b2001081adcbd64ee1fbe7de7a6d77c5209fe/src/basic/mountpoint-util.h#L36
-      // which bumps up these defaults for the rootfs a bit.
-      g_autofree char *root_upperdir
-          = root_transient ? g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "root/upper", NULL)
-                           : NULL;
-      g_autofree char *root_workdir
-          = root_transient ? g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "root/work", NULL) : NULL;
-
       // Propagate these options for transient root, if provided
       if (root_transient)
         {
+          // For now we just stick the transient root on the default /run tmpfs;
+          // however, see
+          // https://github.com/systemd/systemd/blob/604b2001081adcbd64ee1fbe7de7a6d77c5209fe/src/basic/mountpoint-util.h#L36
+          // which bumps up these defaults for the rootfs a bit.
+          const char *root_upperdir = OTCORE_RUN_OSTREE_PRIVATE "/root/upper";
+          const char *root_workdir = OTCORE_RUN_OSTREE_PRIVATE "/root/work";
+
           if (!glnx_shutil_mkdir_p_at (AT_FDCWD, root_upperdir, 0755, NULL, &error))
             errx (EXIT_FAILURE, "Failed to create %s: %s", root_upperdir, error->message);
           if (!glnx_shutil_mkdir_p_at (AT_FDCWD, root_workdir, 0700, NULL, &error))
@@ -611,17 +608,15 @@ main (int argc, char *argv[])
         err (EXIT_FAILURE, "failed to bind mount (class:readonly) /usr");
     }
 
-  /* Prepare /var.
-   * When a read-only sysroot is configured, this adds a dedicated bind-mount (to itself)
-   * so that the stateroot location stays writable. */
-  if (sysroot_readonly)
-    {
-      /* Bind-mount /var (at stateroot path), and remount as writable. */
-      if (mount ("../../var", "../../var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to prepare /var bind-mount at %s", srcpath);
-      if (mount ("../../var", "../../var", NULL, MS_BIND | MS_REMOUNT | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to make writable /var bind-mount at %s", srcpath);
-    }
+  const char *var_dir = OTCORE_RUN_OSTREE_PRIVATE "/var";
+
+  /* Bind-mount /var, and remount as writable. */
+  if (mkdirat (AT_FDCWD, var_dir, 0) < 0)
+    err (EXIT_FAILURE, "failed to mkdir %s", var_dir);
+  if (mount ("../../var", var_dir, NULL, MS_BIND | MS_SILENT, NULL) < 0)
+    err (EXIT_FAILURE, "failed to prepare /var bind-mount at %s", var_dir);
+  if (mount (var_dir, var_dir, NULL, MS_BIND | MS_REMOUNT | MS_SILENT, NULL) < 0)
+    err (EXIT_FAILURE, "failed to make writable /var bind-mount at %s", var_dir);
 
     /* When running under systemd, /var will be handled by a 'var.mount' unit outside
      * of initramfs.
@@ -640,8 +635,8 @@ main (int argc, char *argv[])
    */
   if (mount_var)
     {
-      if (mount ("../../var", TMP_SYSROOT "/var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to bind mount ../../var to var");
+      if (mount (var_dir, TMP_SYSROOT "/var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to bind mount /var");
 
       /* To avoid having submounts of /var propagate into $stateroot/var, the
        * mount is made with slave+shared propagation. See the comment in
