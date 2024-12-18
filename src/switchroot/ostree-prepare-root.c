@@ -68,6 +68,7 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include <ostree-core.h>
@@ -77,6 +78,7 @@
 #include "otcore.h"
 
 #define SYSROOT_KEY "sysroot"
+#define INVISIBLE_KEY "invisible"
 #define READONLY_KEY "readonly"
 
 /* This key configures the / mount in the deployment root */
@@ -254,6 +256,33 @@ composefs_error_message (int errsv)
 
 #endif
 
+static int
+invisible_helper (void*)
+{
+  if (mount (NULL, "/", NULL, MS_PRIVATE | MS_REC | MS_SILENT, NULL) < 0)
+    return EXIT_FAILURE;
+
+  if (chdir ("sysroot") < 0)
+    return EXIT_FAILURE;
+
+  if (mount (".", "/", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+    return EXIT_FAILURE;
+
+  if (chroot (".") < 0)
+    return EXIT_FAILURE;
+
+  sigset_t sigset;
+  sigemptyset (&sigset);
+  sigaddset (&sigset, SIGUSR1);
+  while (sigwaitinfo (&sigset, NULL) < 0)
+    {
+      if (errno != EINTR)
+        return EXIT_FAILURE;
+    }
+
+  return EXIT_SUCCESS;
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -280,10 +309,15 @@ main (int argc, char *argv[])
   if (!config)
     errx (EXIT_FAILURE, "Failed to parse config: %s", error->message);
 
-  gboolean sysroot_readonly = FALSE;
   gboolean root_transient = FALSE;
+  gboolean sysroot_invisible = FALSE;
+  gboolean sysroot_readonly = FALSE;
 
   if (!ot_keyfile_get_boolean_with_default (config, ROOT_KEY, TRANSIENT_KEY, FALSE, &root_transient,
+                                            &error))
+    return FALSE;
+
+  if (!ot_keyfile_get_boolean_with_default (config, SYSROOT_KEY, INVISIBLE_KEY, FALSE, &sysroot_invisible,
                                             &error))
     return FALSE;
 
@@ -503,7 +537,9 @@ main (int argc, char *argv[])
   g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT,
                          g_variant_new_boolean (root_transient));
 
-  /* Pass on the state for use by ostree-prepare-root */
+  g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_SYSROOT_INVISIBLE,
+                         g_variant_new_boolean (sysroot_invisible));
+
   g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_SYSROOT_RO,
                          g_variant_new_boolean (sysroot_readonly));
 
@@ -679,12 +715,60 @@ main (int argc, char *argv[])
   if (rmdir (TMP_SYSROOT) < 0)
     err (EXIT_FAILURE, "couldn't remove temporary sysroot %s", TMP_SYSROOT);
 
-  /* Now that we've set up all the mount points, if configured we remount the physical
-   * rootfs as read-only; what is visibly mutable to the OS by default is just /etc and /var.
-   * But ostree knows how to mount /boot and /sysroot read-write to perform operations.
-   */
-  if (sysroot_readonly)
+  if (sysroot_invisible)
     {
+      /* Keep a living sysroot in a private mount namespace,
+       * and unmount sysroot in the root mount namespace to make it invisible.
+       */
+      const char *sysroot_ns = OTCORE_RUN_OSTREE_PRIVATE "/sysroot-ns";
+      glnx_autofd int ns_fd = open (sysroot_ns, O_WRONLY | O_CREAT, 0);
+      if (ns_fd < 0)
+        err (EXIT_FAILURE, "failed to create %s", sysroot_ns);
+
+      const gsize stack_size = 0x8000;
+      g_autofree void *stack = g_malloc (stack_size);
+
+      /* Block signals */
+      sigset_t oldset, newset;
+      sigfillset (&newset);
+      sigprocmask (SIG_SETMASK, &newset, &oldset);
+
+      int pid = clone (invisible_helper, (char*)stack + stack_size, CLONE_VM | CLONE_NEWNS | SIGCHLD, NULL);
+
+      sigprocmask (SIG_SETMASK, &oldset, NULL);
+
+      if (pid < 0)
+          err (EXIT_FAILURE, "failed to create child process");
+
+      /* Bind mount the private mount namespace */
+      g_autofree char *ns = g_strdup_printf ("/proc/%d/ns/mnt", pid);
+      if (mount (ns, sysroot_ns, NULL, MS_BIND | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to bind-mount sysroot-ns");
+
+      /* Finish child process */
+      kill (pid, SIGUSR1);
+
+      /* Wait child process to exit. */
+      int status;
+      while (waitpid (pid, &status, 0) < 0)
+        {
+          if (errno != EINTR)
+            err (EXIT_FAILURE, "waitpid failed");
+        }
+
+      if (!WIFEXITED (status) || WEXITSTATUS (status) != EXIT_SUCCESS)
+        err (EXIT_FAILURE, "child exited abnormally");
+
+      /* Unmount /sysroot */
+      if (umount2 ("sysroot", MNT_DETACH) < 0)
+        err (EXIT_FAILURE, "failed to unmount /sysroot");
+    }
+  else if (sysroot_readonly)
+    {
+      /* Now that we've set up all the mount points, if configured we remount the physical
+       * rootfs as read-only; what is visibly mutable to the OS by default is just /etc and /var.
+       * But ostree knows how to mount /boot and /sysroot read-write to perform operations.
+       */
       if (mount ("sysroot", "sysroot", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_SILENT, NULL)
           < 0)
         err (EXIT_FAILURE, "failed to make /sysroot read-only");
