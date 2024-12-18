@@ -102,3 +102,10 @@ ot_util_path_split_validate (const char *path, GPtrArray **out_components, GErro
   ot_transfer_out_value (out_components, &ret_components);
   return TRUE;
 }
+
+/* Check if current process is privileged */
+gboolean
+ot_util_process_privileged (void)
+{
+  return geteuid() == 0;
+}
