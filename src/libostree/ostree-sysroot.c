@@ -227,6 +227,23 @@ ostree_sysroot_new_default (void)
   return ostree_sysroot_new (NULL);
 }
 
+static gboolean
+is_in_root_mount_namespace (GCancellable *cancellable, GError **error)
+{
+  g_autofree char *mntns_pid1
+      = glnx_readlinkat_malloc (AT_FDCWD, "/proc/1/ns/mnt", cancellable, error);
+  if (!mntns_pid1)
+    return glnx_prefix_error (error, "Reading /proc/1/ns/mnt");
+  /* mount namespace is per-thread, not per-process */
+  g_autofree char *cur_thread = g_strdup_printf ("/proc/%d/ns/mnt", gettid ());
+  g_autofree char *mntns_cur
+      = glnx_readlinkat_malloc (AT_FDCWD, cur_thread, cancellable, error);
+  if (!mntns_cur)
+    return glnx_prefix_error (error, "Reading %s", cur_thread);
+
+  return g_str_equal (mntns_pid1, mntns_cur);
+}
+
 /**
  * ostree_sysroot_set_mount_namespace_in_use:
  *
@@ -251,6 +268,9 @@ ostree_sysroot_set_mount_namespace_in_use (OstreeSysroot *self)
   /* Must be before we're loaded, as otherwise we'd have to close/reopen all our
      fds, e.g. the repo */
   g_return_if_fail (self->loadstate < OSTREE_SYSROOT_LOAD_STATE_LOADED);
+  g_autoptr (GError) local_error = NULL;
+  g_assert (!is_in_root_mount_namespace (NULL, &local_error));
+  g_assert (local_error == NULL);
   self->mount_namespace_in_use = TRUE;
 }
 
@@ -270,17 +290,8 @@ _ostree_sysroot_enter_mount_namespace (OstreeSysroot *self, GCancellable *cancel
   if (!self->root_is_ostree_booted)
     return TRUE;
 
-  g_autofree char *mntns_pid1
-      = glnx_readlinkat_malloc (AT_FDCWD, "/proc/1/ns/mnt", cancellable, error);
-  if (!mntns_pid1)
-    return glnx_prefix_error (error, "Reading /proc/1/ns/mnt");
-  g_autofree char *mntns_self
-      = glnx_readlinkat_malloc (AT_FDCWD, "/proc/self/ns/mnt", cancellable, error);
-  if (!mntns_self)
-    return glnx_prefix_error (error, "Reading /proc/self/ns/mnt");
-
   // If the mount namespaces are the same, we need to unshare().
-  if (strcmp (mntns_pid1, mntns_self) == 0)
+  if (is_in_root_mount_namespace (cancellable, error))
     {
       if (unshare (CLONE_NEWNS) < 0)
         return glnx_throw_errno_prefix (error, "Failed to invoke unshare(CLONE_NEWNS)");
@@ -289,6 +300,8 @@ _ostree_sysroot_enter_mount_namespace (OstreeSysroot *self, GCancellable *cancel
       if (mount (NULL, "/", NULL, MS_PRIVATE | MS_REC | MS_SILENT, NULL) < 0)
         return glnx_throw_errno_prefix (error, "Failed to set the mount propagation to private");
     }
+  else
+    g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   ostree_sysroot_set_mount_namespace_in_use (self);
 
