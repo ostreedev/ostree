@@ -97,7 +97,7 @@ otcore_validate_ed25519_signature (GBytes *data, GBytes *public_key, GBytes *sig
   if (!pkey)
     {
       EVP_MD_CTX_free (ctx);
-      return glnx_throw (error, "openssl: Failed to initialize ed5519 key");
+      return glnx_throw (error, "openssl: Failed to initialize ed25519 key");
     }
   if (EVP_DigestVerifyInit (ctx, NULL, NULL, NULL, pkey) != 0
       && EVP_DigestVerify (ctx, signature_buf, OSTREE_SIGN_ED25519_SIG_SIZE,
