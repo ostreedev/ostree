@@ -278,10 +278,6 @@ gboolean
 _ostree_sysroot_enter_mount_namespace (OstreeSysroot *self, GCancellable *cancellable,
                                        GError **error)
 {
-  /* Do nothing if we're already in mount namespace */
-  if (self->mount_namespace_in_use)
-    return TRUE;
-
   /* Do nothing if we're not privileged */
   if (!ot_util_process_privileged ())
     return TRUE;
