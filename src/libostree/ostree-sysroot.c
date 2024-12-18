@@ -263,7 +263,7 @@ _ostree_sysroot_enter_mount_namespace (OstreeSysroot *self, GCancellable *cancel
     return TRUE;
 
   /* Do nothing if we're not privileged */
-  if (getuid () != 0)
+  if (!ot_util_process_privileged ())
     return TRUE;
 
   /* We also assume operating on non-booted roots won't have a readonly sysroot */
