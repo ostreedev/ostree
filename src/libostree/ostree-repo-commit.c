@@ -1658,7 +1658,7 @@ ostree_repo_prepare_transaction (OstreeRepo *self, gboolean *out_transaction_res
   self->reserved_blocks = reserved_bytes / self->txn.blocksize;
 
   /* Use the appropriate free block count if we're unprivileged */
-  guint64 bfree = (getuid () != 0 ? stvfsbuf.f_bavail : stvfsbuf.f_bfree);
+  guint64 bfree = (ot_util_process_privileged () ? stvfsbuf.f_bfree : stvfsbuf.f_bavail);
   if (bfree > self->reserved_blocks)
     self->txn.max_blocks = bfree - self->reserved_blocks;
   else

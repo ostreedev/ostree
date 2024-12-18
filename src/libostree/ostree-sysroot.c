@@ -285,7 +285,7 @@ ostree_sysroot_initialize_with_mount_namespace (OstreeSysroot *self, GCancellabl
     return FALSE;
 
   /* Do nothing if we're not privileged */
-  if (getuid () != 0)
+  if (!ot_util_process_privileged ())
     return TRUE;
 
   /* We also assume operating on non-booted roots won't have a readonly sysroot */
