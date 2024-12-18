@@ -254,6 +254,47 @@ ostree_sysroot_set_mount_namespace_in_use (OstreeSysroot *self)
   self->mount_namespace_in_use = TRUE;
 }
 
+gboolean
+_ostree_sysroot_enter_mount_namespace (OstreeSysroot *self, GCancellable *cancellable,
+                                       GError **error)
+{
+  /* Do nothing if we're already in mount namespace */
+  if (self->mount_namespace_in_use)
+    return TRUE;
+
+  /* Do nothing if we're not privileged */
+  if (getuid () != 0)
+    return TRUE;
+
+  /* We also assume operating on non-booted roots won't have a readonly sysroot */
+  if (!self->root_is_ostree_booted)
+    return TRUE;
+
+  g_autofree char *mntns_pid1
+      = glnx_readlinkat_malloc (AT_FDCWD, "/proc/1/ns/mnt", cancellable, error);
+  if (!mntns_pid1)
+    return glnx_prefix_error (error, "Reading /proc/1/ns/mnt");
+  g_autofree char *mntns_self
+      = glnx_readlinkat_malloc (AT_FDCWD, "/proc/self/ns/mnt", cancellable, error);
+  if (!mntns_self)
+    return glnx_prefix_error (error, "Reading /proc/self/ns/mnt");
+
+  // If the mount namespaces are the same, we need to unshare().
+  if (strcmp (mntns_pid1, mntns_self) == 0)
+    {
+      if (unshare (CLONE_NEWNS) < 0)
+        return glnx_throw_errno_prefix (error, "Failed to invoke unshare(CLONE_NEWNS)");
+
+      /* Ensure what we do in our mount namespace do not leak to outside */
+      if (mount (NULL, "/", NULL, MS_PRIVATE | MS_REC | MS_SILENT, NULL) < 0)
+        return glnx_throw_errno_prefix (error, "Failed to set the mount propagation to private");
+    }
+
+  ostree_sysroot_set_mount_namespace_in_use (self);
+
+  return TRUE;
+}
+
 /**
  * ostree_sysroot_initialize_with_mount_namespace:
  *
@@ -284,32 +325,7 @@ ostree_sysroot_initialize_with_mount_namespace (OstreeSysroot *self, GCancellabl
   if (!ostree_sysroot_initialize (self, error))
     return FALSE;
 
-  /* Do nothing if we're not privileged */
-  if (getuid () != 0)
-    return TRUE;
-
-  /* We also assume operating on non-booted roots won't have a readonly sysroot */
-  if (!self->root_is_ostree_booted)
-    return TRUE;
-
-  g_autofree char *mntns_pid1
-      = glnx_readlinkat_malloc (AT_FDCWD, "/proc/1/ns/mnt", cancellable, error);
-  if (!mntns_pid1)
-    return glnx_prefix_error (error, "Reading /proc/1/ns/mnt");
-  g_autofree char *mntns_self
-      = glnx_readlinkat_malloc (AT_FDCWD, "/proc/self/ns/mnt", cancellable, error);
-  if (!mntns_self)
-    return glnx_prefix_error (error, "Reading /proc/self/ns/mnt");
-
-  // If the mount namespaces are the same, we need to unshare().
-  if (strcmp (mntns_pid1, mntns_self) == 0)
-    {
-      if (unshare (CLONE_NEWNS) < 0)
-        return glnx_throw_errno_prefix (error, "Failed to invoke unshare(CLONE_NEWNS)");
-    }
-
-  ostree_sysroot_set_mount_namespace_in_use (self);
-  return TRUE;
+  return _ostree_sysroot_enter_mount_namespace (self, cancellable, error);
 }
 
 /**
@@ -374,11 +390,75 @@ remount_writable (const char *path, gboolean *did_remount, GError **error)
   return TRUE;
 }
 
+static gboolean
+is_sysroot_invisible (void)
+{
+  struct stat stbuf;
+
+  if (lstat (OTCORE_RUN_OSTREE_PRIVATE "/sysroot-ns", &stbuf) < 0)
+    return FALSE;
+
+  if (lstat ("/sysroot/ostree", &stbuf) == 0)
+    return FALSE;
+
+  return TRUE;
+}
+
+/* Unmount covering tmpfs to make /sysroot visible */
+gboolean
+_ostree_sysroot_ensure_visible (OstreeSysroot *self, GError **error)
+{
+  if (!ostree_sysroot_initialize (self, error))
+    return FALSE;
+
+  /* Do nothing if no mount namespace is in use */
+  if (!self->mount_namespace_in_use)
+    return TRUE;
+
+  /* If we aren't operating on a booted system, then we don't
+   * do anything with mounts.
+   */
+  if (!self->root_is_ostree_booted)
+    return TRUE;
+
+  /* Handle invisible sysroot */
+  if (is_sysroot_invisible ())
+    {
+      glnx_autofd int sysroot_ns_fd = open (OTCORE_RUN_OSTREE_PRIVATE "/sysroot-ns", O_RDONLY);
+      if (sysroot_ns_fd < 0)
+        return FALSE;
+
+      glnx_autofd int cur_ns_fd = open("/proc/self/ns/mnt", O_RDONLY);
+      if (cur_ns_fd < 0)
+        return FALSE;
+
+      if (setns (sysroot_ns_fd, CLONE_NEWNS) < 0)
+        return FALSE;
+
+      glnx_autofd int tree_fd = open_tree (AT_FDCWD, "/", OPEN_TREE_CLONE);
+      if (tree_fd < 0)
+        return FALSE;
+
+      if (setns (cur_ns_fd, CLONE_NEWNS) < 0)
+        abort (); // it's unsafe to continue if we cannot switch back
+
+      if (move_mount (tree_fd, "", AT_FDCWD, "/sysroot", MOVE_MOUNT_F_EMPTY_PATH) < 0)
+        return FALSE;
+    }
+
+  /* Now close and reopen our file descriptors */
+  ostree_sysroot_unload (self);
+  if (!ensure_sysroot_fd (self, error))
+    return FALSE;
+
+  return TRUE;
+}
+
 /* Remount /sysroot read-write if necessary */
 gboolean
 _ostree_sysroot_ensure_writable (OstreeSysroot *self, GError **error)
 {
-  if (!ostree_sysroot_initialize (self, error))
+  if (!_ostree_sysroot_ensure_visible (self, error))
     return FALSE;
 
   /* Do nothing if no mount namespace is in use */
@@ -1062,6 +1142,18 @@ ostree_sysroot_initialize (OstreeSysroot *self, GError **error)
       self->root_is_ostree_booted = (ostree_booted && root_is_sysroot);
       g_debug ("root_is_ostree_booted: %d", self->root_is_ostree_booted);
       self->loadstate = OSTREE_SYSROOT_LOAD_STATE_INIT;
+    }
+  else
+    {
+      return TRUE;
+    }
+
+  if (is_sysroot_invisible ())
+    {
+      if (!_ostree_sysroot_enter_mount_namespace (self, NULL, error))
+        return FALSE;
+      if (!_ostree_sysroot_ensure_visible (self, error))
+        return FALSE;
     }
 
   return TRUE;
