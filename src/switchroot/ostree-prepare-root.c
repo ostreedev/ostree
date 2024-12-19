@@ -742,11 +742,20 @@ main (int argc, char *argv[])
       const gsize stack_size = 0x8000;
       g_autofree void *stack = g_malloc (stack_size);
 
-      /* Block signals */
+      /* Block signals.
+       * This is necessary to deliver SIGUSR1 to finish the child process in a deterministic way.
+       * If we do not block signals here, kill(SIGUSR1) may accidentally kill the child
+       * before it has set up a signal mask.
+       */
       sigset_t oldset, newset;
       sigfillset (&newset);
       sigprocmask (SIG_SETMASK, &newset, &oldset);
 
+      /* We use clone() instead of fork() + setns() here,
+       * so that the child process is created with a new mount namespace,
+       * and in parent we can bind mount the new mount namespace immediately
+       * without race condition.
+       */
       int pid = clone (invisible_helper, (char*)stack + stack_size, CLONE_VM | CLONE_NEWNS | SIGCHLD, NULL);
 
       sigprocmask (SIG_SETMASK, &oldset, NULL);
