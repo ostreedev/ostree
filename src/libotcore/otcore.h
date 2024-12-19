@@ -101,6 +101,8 @@ ComposefsConfig *otcore_load_composefs_config (const char *cmdline, GKeyFile *co
 #define OTCORE_RUN_BOOTED_KEY_COMPOSEFS_SIGNATURE "composefs.signed"
 // This key will be present if the root is transient
 #define OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT "root.transient"
+// This key will be present if the sysroot is made invisible
+#define OTCORE_RUN_BOOTED_KEY_SYSROOT_INVISIBLE "sysroot-invisible"
 // This key will be present if the sysroot-ro flag was found
 #define OTCORE_RUN_BOOTED_KEY_SYSROOT_RO "sysroot-ro"
 // Always holds the (device, inode) pair of the booted deployment

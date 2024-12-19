@@ -78,4 +78,6 @@ gboolean ot_parse_file_by_line (const char *path, gboolean (*cb) (const char *, 
 gboolean ot_get_dir_size (int dfd, const char *path, guint64 blocksize, guint64 *out_size,
                           GCancellable *cancellable, GError **error);
 
+gboolean ot_path_exists (const char *path, gboolean *out_val, GError **error);
+
 G_END_DECLS

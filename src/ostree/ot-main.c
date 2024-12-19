@@ -116,7 +116,7 @@ maybe_setup_mount_namespace (gboolean *out_ns, GError **error)
   *out_ns = FALSE;
 
   /* If we're not root, then we almost certainly can't be remounting anything */
-  if (getuid () != 0)
+  if (!ot_util_process_privileged ())
     return TRUE;
 
   /* If the system isn't booted via libostree, also nothing to do */
@@ -580,7 +580,7 @@ ostree_admin_sysroot_load (OstreeSysroot *sysroot, OstreeAdminBuiltinFlags flags
       /* Only require root if we're manipulating a booted sysroot. (Mostly
        * useful for the test suite)
        */
-      if (booted && getuid () != 0)
+      if (booted && !ot_util_process_privileged ())
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED,
                        "You must be root to perform this command");

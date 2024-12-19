@@ -432,7 +432,7 @@ _ostree_bootloader_zipl_post_bls_sync (OstreeBootloader *bootloader, int bootver
   // This can happen in a unit testing environment; at some point what we want to do here
   // is move all of the zipl logic to a systemd unit instead that's keyed of
   // ostree-finalize-staged.service.
-  if (getuid () != 0)
+  if (!ot_util_process_privileged ())
     return TRUE;
 
   // If we're in a booted deployment, we don't need to spawn a container.
