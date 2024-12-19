@@ -735,7 +735,7 @@ main (int argc, char *argv[])
        * and unmount sysroot in the root mount namespace to make it invisible.
        */
       const char *sysroot_ns = OTCORE_RUN_OSTREE_PRIVATE "/sysroot-ns";
-      glnx_autofd int ns_fd = open (sysroot_ns, O_WRONLY | O_CREAT, 0);
+      glnx_autofd int ns_fd = open (sysroot_ns, O_RDONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0);
       if (ns_fd < 0)
         err (EXIT_FAILURE, "failed to create %s", sysroot_ns);
 
