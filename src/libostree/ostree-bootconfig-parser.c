@@ -27,6 +27,9 @@ struct _OstreeBootconfigParser
   gboolean parsed;
   const char *separators;
 
+  guint64 tries_left;
+  guint64 tries_done;
+
   GHashTable *options;
 
   /* Additional initrds; the primary initrd is in options. */
@@ -54,6 +57,94 @@ ostree_bootconfig_parser_clone (OstreeBootconfigParser *self)
   parser->overlay_initrds = g_strdupv (self->overlay_initrds);
 
   return parser;
+}
+
+/**
+ * ostree_bootconfig_parser_parse_tries:
+ * @self: Parser
+ * @path: File path
+ *
+ * Parses a suffix of two counters in the form "+LEFT-DONE" from the end of the
+ * filename (excluding file extension).
+ */
+static void
+ostree_bootconfig_parser_parse_tries (OstreeBootconfigParser *self,  const char *filename)
+{
+  gchar *counter = NULL;
+  gchar *old_counter = NULL;
+  self->tries_left = 0;
+  self->tries_done = 0;
+
+  for (;;)
+    {
+      char *plus = strchr (counter ?: filename, '+');
+      if (plus)
+        {
+          /* Look for the last "+" symbol in the filename */
+          counter = plus + 1;
+          continue;
+        }
+      if (counter)
+        break;
+
+      /* No boot counter found */
+      return;
+    }
+
+  guint64 tries_left, tries_done = 0;
+
+  old_counter = counter;
+  tries_left = g_ascii_strtoull (old_counter, &counter, 10);
+  if ((old_counter == counter) || (tries_left > INT_MAX))
+    return;
+
+  /* Parse done counter only if present */
+  if (*counter == '-')
+    {
+      old_counter = counter;
+      tries_done = g_ascii_strtoull (counter + 1, &counter, 10);
+      if ((old_counter == counter) || (tries_left > INT_MAX))
+        return;
+    }
+
+  self->tries_left = tries_left;
+  self->tries_done = tries_done;
+}
+
+/**
+ * ostree_bootconfig_parser_get_tries_left:
+ * @self: Parser
+ *
+ * Returns: Amount of boot tries left
+ */
+guint64
+ostree_bootconfig_parser_get_tries_left (OstreeBootconfigParser *self)
+{
+  return self->tries_left;
+}
+
+/**
+ * ostree_bootconfig_parser_get_tries_done:
+ * @self: Parser
+ *
+ * Returns: Amount of boot tries
+ */
+guint64
+ostree_bootconfig_parser_get_tries_done (OstreeBootconfigParser *self)
+{
+  return self->tries_done;
+}
+
+/**
+ * ostree_bootconfig_parser_get_tries_done:
+ * @self: Parser
+ *
+ * Returns: TRUE if the boot config was parsed from existing boot config file
+ */
+gboolean
+ostree_bootconfig_parser_is_parsed (OstreeBootconfigParser *self)
+{
+  return self->parsed;
 }
 
 /**
@@ -115,6 +206,8 @@ ostree_bootconfig_parser_parse_at (OstreeBootconfigParser *self, int dfd, const 
       g_ptr_array_add (overlay_initrds, NULL);
       self->overlay_initrds = (char **)g_ptr_array_free (g_steal_pointer (&overlay_initrds), FALSE);
     }
+
+  ostree_bootconfig_parser_parse_tries(self, glnx_basename(path));
 
   self->parsed = TRUE;
 
