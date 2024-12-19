@@ -111,6 +111,14 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                     Reboot after a successful upgrade.
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--kexec</option>,<option>-k</option></term>
+
+                <listitem><para>
+                    Load new deployment into kexec after a successful upgrade.
+                </para></listitem>
+            </varlistentry>
             
             <varlistentry>
                 <term><option>--allow-downgrade</option></term>
