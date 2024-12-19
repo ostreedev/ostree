@@ -98,6 +98,7 @@
 #include <libcomposefs/lcfs-writer.h>
 #endif
 
+#include "ostree-linuxfsutil.h"
 #include "ostree-mount-util.h"
 
 static bool
@@ -775,6 +776,22 @@ main (int argc, char *argv[])
       /* Unmount /sysroot */
       if (umount2 ("sysroot", MNT_DETACH) < 0)
         err (EXIT_FAILURE, "failed to unmount /sysroot");
+
+      /* Attempt to make the leftover empty /sysroot immutable.
+       * This is to prevent accidental modification when root.transient is enabled.
+       */
+      do
+        {
+          g_autoptr (GError) local_error = NULL;
+          glnx_autofd int fd = -1;
+          if (!glnx_opendirat (AT_FDCWD, "sysroot", TRUE, &fd, &local_error))
+            err (EXIT_FAILURE, "failed to open /sysroot");
+          /* It's funny that we need to first touch it to move it to upper layer */
+          if (futimens (fd, NULL) < 0)
+            break;
+          if (!_ostree_linuxfs_fd_alter_immutable_flag (fd, TRUE, NULL, &local_error))
+            break;
+        } while (FALSE);
     }
   else if (sysroot_readonly)
     {
