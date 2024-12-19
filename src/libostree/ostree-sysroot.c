@@ -449,27 +449,27 @@ _ostree_sysroot_ensure_visible (OstreeSysroot *self, GError **error)
   /* Handle invisible sysroot */
   if (invisible)
     {
-      glnx_autofd int sysroot_ns_fd = open (OTCORE_RUN_OSTREE_PRIVATE "/sysroot-ns", O_RDONLY);
-      if (sysroot_ns_fd < 0)
+      glnx_autofd int sysroot_ns_fd = -1;
+      if (!glnx_openat_rdonly (AT_FDCWD, OTCORE_RUN_OSTREE_PRIVATE "/sysroot-ns", TRUE, &sysroot_ns_fd, error))
         return FALSE;
 
       g_autofree char *cur_ns = g_strdup_printf ("/proc/%d/ns/mnt", gettid ());
-      glnx_autofd int cur_ns_fd = open(cur_ns, O_RDONLY);
-      if (cur_ns_fd < 0)
+      glnx_autofd int cur_ns_fd = -1;
+      if (!glnx_openat_rdonly (AT_FDCWD, cur_ns, TRUE, &cur_ns_fd, error))
         return FALSE;
 
       if (setns (sysroot_ns_fd, CLONE_NEWNS) < 0)
-        return FALSE;
+        return glnx_throw_errno_prefix (error, "setns");
 
-      glnx_autofd int tree_fd = open_tree (AT_FDCWD, "/", OPEN_TREE_CLONE);
+      glnx_autofd int tree_fd = (int)syscall (SYS_open_tree, AT_FDCWD, "/", 1 /* OPEN_TREE_CLONE */ | O_CLOEXEC);
       if (tree_fd < 0)
-        return FALSE;
+        return glnx_throw_errno_prefix (error, "open_tree");
 
       if (setns (cur_ns_fd, CLONE_NEWNS) < 0)
         abort (); // it's unsafe to continue if we cannot switch back
 
-      if (move_mount (tree_fd, "", AT_FDCWD, "/sysroot", MOVE_MOUNT_F_EMPTY_PATH) < 0)
-        return FALSE;
+      if (syscall (SYS_move_mount, tree_fd, "", AT_FDCWD, "/sysroot", 4 /* MOVE_MOUNT_F_EMPTY_PATH */) < 0)
+        return glnx_throw_errno_prefix (error, "move_mount");
     }
 
   /* Now close and reopen our file descriptors */
