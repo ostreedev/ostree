@@ -636,7 +636,10 @@ main (int argc, char *argv[])
   if (mount_var)
     {
       if (mount (var_dir, TMP_SYSROOT "/var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to bind mount /var");
+        err (EXIT_FAILURE, "failed to bind mount %s to /var", var_dir);
+
+      if (umount2 (var_dir, MNT_DETACH) < 0)
+        err (EXIT_FAILURE, "failed to umount %s", var_dir);
 
       /* To avoid having submounts of /var propagate into $stateroot/var, the
        * mount is made with slave+shared propagation. See the comment in
