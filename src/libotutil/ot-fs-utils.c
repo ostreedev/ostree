@@ -277,3 +277,26 @@ ot_get_dir_size (int dfd, const char *path, guint64 blocksize, guint64 *out_size
 
   return TRUE;
 }
+
+/* Check whether a path exists */
+gboolean
+ot_path_exists (const char *path, gboolean *out_val, GError **error)
+{
+  g_autoptr (GError) local_error = NULL;
+
+  struct stat stbuf;
+  if (glnx_fstatat (AT_FDCWD, path, &stbuf, 0, &local_error))
+    {
+      *out_val = TRUE;
+      return TRUE;
+    }
+
+  if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+    {
+      *out_val = FALSE;
+      return TRUE;
+    }
+
+  g_propagate_error (error, local_error);
+  return FALSE;
+}

@@ -69,6 +69,11 @@ struct OstreeSysroot
   GLnxLockFile lock;
 
   OstreeSysrootLoadState loadstate;
+  /*
+   * XXX: It's very bad that mount namespaces are per thread, not per process.
+   * In a multi-threading environment, it's troublesome to ensure current thread is always in the ns.
+   * So, do not use OstreeSysroot from another thread if you want mount namespace.
+   */
   gboolean mount_namespace_in_use; /* TRUE if caller has told us they used CLONE_NEWNS */
   gboolean root_is_ostree_booted;  /* TRUE if sysroot is / and we are booted via ostree */
   /* The device/inode for / and /etc, used to detect booted deployment */
@@ -114,7 +119,12 @@ struct OstreeSysroot
 // Relative to /boot, consumed by ostree-boot-complete.service
 #define _OSTREE_FINALIZE_STAGED_FAILURE_PATH "ostree/finalize-failure.stamp"
 
+gboolean _ostree_sysroot_ensure_visible (OstreeSysroot *self, GError **error);
+
 gboolean _ostree_sysroot_ensure_writable (OstreeSysroot *self, GError **error);
+
+gboolean
+_ostree_sysroot_enter_mount_namespace (OstreeSysroot *self, GError **error);
 
 void _ostree_sysroot_emit_journal_msg (OstreeSysroot *self, const char *msg);
 
