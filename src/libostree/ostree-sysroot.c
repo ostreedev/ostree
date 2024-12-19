@@ -228,20 +228,22 @@ ostree_sysroot_new_default (void)
 }
 
 static gboolean
-is_in_root_mount_namespace (GCancellable *cancellable, GError **error)
+_ostree_in_root_mount_namespace (gboolean *out_val, GError **error)
 {
+  /* glnx_readlinkat_malloc does not use cancellable acually. */
   g_autofree char *mntns_pid1
-      = glnx_readlinkat_malloc (AT_FDCWD, "/proc/1/ns/mnt", cancellable, error);
+      = glnx_readlinkat_malloc (AT_FDCWD, "/proc/1/ns/mnt", NULL, error);
   if (!mntns_pid1)
     return glnx_prefix_error (error, "Reading /proc/1/ns/mnt");
   /* mount namespace is per-thread, not per-process */
   g_autofree char *cur_thread = g_strdup_printf ("/proc/%d/ns/mnt", gettid ());
   g_autofree char *mntns_cur
-      = glnx_readlinkat_malloc (AT_FDCWD, cur_thread, cancellable, error);
+      = glnx_readlinkat_malloc (AT_FDCWD, cur_thread, NULL, error);
   if (!mntns_cur)
     return glnx_prefix_error (error, "Reading %s", cur_thread);
 
-  return g_str_equal (mntns_pid1, mntns_cur);
+  *out_val = g_str_equal (mntns_pid1, mntns_cur);
+  return TRUE;
 }
 
 /**
@@ -268,15 +270,14 @@ ostree_sysroot_set_mount_namespace_in_use (OstreeSysroot *self)
   /* Must be before we're loaded, as otherwise we'd have to close/reopen all our
      fds, e.g. the repo */
   g_return_if_fail (self->loadstate < OSTREE_SYSROOT_LOAD_STATE_LOADED);
+  gboolean in_root;
   g_autoptr (GError) local_error = NULL;
-  g_assert (!is_in_root_mount_namespace (NULL, &local_error));
-  g_assert (local_error == NULL);
+  g_assert (_ostree_in_root_mount_namespace (&in_root, &local_error) && !in_root);
   self->mount_namespace_in_use = TRUE;
 }
 
 gboolean
-_ostree_sysroot_enter_mount_namespace (OstreeSysroot *self, GCancellable *cancellable,
-                                       GError **error)
+_ostree_sysroot_enter_mount_namespace (OstreeSysroot *self, GError **error)
 {
   /* Do nothing if we're not privileged */
   if (!ot_util_process_privileged ())
@@ -287,7 +288,9 @@ _ostree_sysroot_enter_mount_namespace (OstreeSysroot *self, GCancellable *cancel
     return TRUE;
 
   // If the mount namespaces are the same, we need to unshare().
-  if (is_in_root_mount_namespace (cancellable, error))
+  gboolean in_root;
+  g_return_val_if_fail (_ostree_in_root_mount_namespace (&in_root, error), FALSE);
+  if (in_root)
     {
       if (unshare (CLONE_NEWNS) < 0)
         return glnx_throw_errno_prefix (error, "Failed to invoke unshare(CLONE_NEWNS)");
@@ -296,8 +299,6 @@ _ostree_sysroot_enter_mount_namespace (OstreeSysroot *self, GCancellable *cancel
       if (mount (NULL, "/", NULL, MS_PRIVATE | MS_REC | MS_SILENT, NULL) < 0)
         return glnx_throw_errno_prefix (error, "Failed to set the mount propagation to private");
     }
-  else
-    g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   ostree_sysroot_set_mount_namespace_in_use (self);
 
@@ -334,7 +335,7 @@ ostree_sysroot_initialize_with_mount_namespace (OstreeSysroot *self, GCancellabl
   if (!ostree_sysroot_initialize (self, error))
     return FALSE;
 
-  return _ostree_sysroot_enter_mount_namespace (self, cancellable, error);
+  return _ostree_sysroot_enter_mount_namespace (self, error);
 }
 
 /**
@@ -400,20 +401,33 @@ remount_writable (const char *path, gboolean *did_remount, GError **error)
 }
 
 static gboolean
-is_sysroot_invisible (void)
+_ostree_sysroot_invisible (gboolean *out_val, GError **error)
 {
-  struct stat stbuf;
+  gboolean exists;
 
-  if (lstat (OTCORE_RUN_OSTREE_PRIVATE "/sysroot-ns", &stbuf) < 0)
+  if (!ot_path_exists (OTCORE_RUN_OSTREE_PRIVATE "/sysroot-ns", &exists, error))
     return FALSE;
 
-  if (lstat ("/sysroot/ostree", &stbuf) == 0)
+  if (!exists)
+    {
+      *out_val = FALSE;
+      return TRUE;
+    }
+
+  if (!ot_path_exists ("/sysroot/ostree", &exists, error))
     return FALSE;
 
+  if (exists)
+    {
+      *out_val = FALSE;
+      return TRUE;
+    }
+
+  *out_val = TRUE;
   return TRUE;
 }
 
-/* Unmount covering tmpfs to make /sysroot visible */
+/* Make /sysroot visible */
 gboolean
 _ostree_sysroot_ensure_visible (OstreeSysroot *self, GError **error)
 {
@@ -430,8 +444,10 @@ _ostree_sysroot_ensure_visible (OstreeSysroot *self, GError **error)
   if (!self->root_is_ostree_booted)
     return TRUE;
 
+  gboolean invisible;
+  g_return_val_if_fail (_ostree_sysroot_invisible (&invisible, error), FALSE);
   /* Handle invisible sysroot */
-  if (is_sysroot_invisible ())
+  if (invisible)
     {
       glnx_autofd int sysroot_ns_fd = open (OTCORE_RUN_OSTREE_PRIVATE "/sysroot-ns", O_RDONLY);
       if (sysroot_ns_fd < 0)
@@ -1158,9 +1174,11 @@ ostree_sysroot_initialize (OstreeSysroot *self, GError **error)
       return TRUE;
     }
 
-  if (is_sysroot_invisible ())
+  gboolean invisible;
+  g_return_val_if_fail (_ostree_sysroot_invisible (&invisible, error), FALSE);
+  if (invisible)
     {
-      if (!_ostree_sysroot_enter_mount_namespace (self, NULL, error))
+      if (!_ostree_sysroot_enter_mount_namespace (self, error))
         return FALSE;
       if (!_ostree_sysroot_ensure_visible (self, error))
         return FALSE;
