@@ -79,6 +79,7 @@
 
 #define SYSROOT_KEY "sysroot"
 #define READONLY_KEY "readonly"
+#define PROTECT_KEY "protect"
 #define INVISIBLE_VALUE "invisible"
 
 /* This key configures the / mount in the deployment root */
@@ -317,16 +318,6 @@ main (int argc, char *argv[])
                                             &error))
     return FALSE;
 
-  {
-    g_autofree char *value = NULL;
-    if (!ot_keyfile_get_value_with_default (config, SYSROOT_KEY, READONLY_KEY, NULL, &value,
-                                            &error))
-      return FALSE;
-
-    if (value && g_str_equal (value, INVISIBLE_VALUE))
-      sysroot_invisible = TRUE;
-  }
-
   // We always parse the composefs config, because we want to detect and error
   // out if it's enabled, but not supported at compile time.
   g_autoptr (ComposefsConfig) composefs_config
@@ -334,20 +325,35 @@ main (int argc, char *argv[])
   if (!composefs_config)
     errx (EXIT_FAILURE, "%s", error->message);
 
-  if (sysroot_invisible)
-    {
-      // sysroot_invisible implies sysroot_readonly
-      sysroot_readonly = TRUE;
-    }
-  else
-    {
-      // If composefs is enabled, that also implies sysroot.readonly=true because it's
-      // the new default we want to use (not because it's actually required)
-      const bool sysroot_readonly_default = composefs_config->enabled == OT_TRISTATE_YES;
-      if (!ot_keyfile_get_boolean_with_default (config, SYSROOT_KEY, READONLY_KEY,
-                                                sysroot_readonly_default, &sysroot_readonly, &error))
-        errx (EXIT_FAILURE, "Failed to parse sysroot.readonly value: %s", error->message);
-    }
+  // If composefs is enabled, that also implies sysroot.readonly=true because it's
+  // the new default we want to use (not because it's actually required)
+  sysroot_readonly = composefs_config->enabled == OT_TRISTATE_YES;
+  {
+    const char *keys[] = {PROTECT_KEY, READONLY_KEY};
+    g_autofree char *value = NULL;
+    for (int i = 0; i < 2; i++)
+      {
+        if (!ot_keyfile_get_value_with_default (config, SYSROOT_KEY, keys[i], NULL, &value,
+                                                &error))
+          errx (EXIT_FAILURE, "%s", error->message);
+
+        if (value)
+          {
+            if (g_str_equal (value, INVISIBLE_VALUE))
+              {
+                sysroot_invisible = TRUE;
+                // sysroot_invisible implies sysroot_readonly
+                sysroot_readonly = TRUE;
+              }
+            else
+              {
+                if (!_ostree_parse_boolean (value, &sysroot_readonly, &error))
+                  errx (EXIT_FAILURE, "%s", error->message);
+              }
+            break;
+          }
+      }
+  }
 
   /* This is the final target where we should prepare the rootfs.  The usual
    * case with systemd in the initramfs is that root_mountpoint = "/sysroot".
