@@ -444,16 +444,16 @@ main (int argc, char *argv[])
 
       g_autofree char *expected_digest = NULL;
 
-      // For now we just stick the transient root on the default /run tmpfs;
-      // however, see
-      // https://github.com/systemd/systemd/blob/604b2001081adcbd64ee1fbe7de7a6d77c5209fe/src/basic/mountpoint-util.h#L36
-      // which bumps up these defaults for the rootfs a bit.
-      const char *root_upperdir = OTCORE_RUN_OSTREE_PRIVATE "/root/upper";
-      const char *root_workdir = OTCORE_RUN_OSTREE_PRIVATE "/root/work";
-
       // Propagate these options for transient root, if provided
       if (root_transient)
         {
+          // For now we just stick the transient root on the default /run tmpfs;
+          // however, see
+          // https://github.com/systemd/systemd/blob/604b2001081adcbd64ee1fbe7de7a6d77c5209fe/src/basic/mountpoint-util.h#L36
+          // which bumps up these defaults for the rootfs a bit.
+          const char *root_upperdir = OTCORE_RUN_OSTREE_PRIVATE "/root/upper";
+          const char *root_workdir = OTCORE_RUN_OSTREE_PRIVATE "/root/work";
+
           if (!glnx_shutil_mkdir_p_at (AT_FDCWD, root_upperdir, 0755, NULL, &error))
             errx (EXIT_FAILURE, "Failed to create %s: %s", root_upperdir, error->message);
           if (!glnx_shutil_mkdir_p_at (AT_FDCWD, root_workdir, 0700, NULL, &error))
