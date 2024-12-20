@@ -46,7 +46,7 @@ EOF
     # xref https://github.com/coreos/coreos-assembler/pull/2814
     systemctl mask --now zincati
     # Create a synthetic commit for upgrade
-    ostree commit --no-bindings --parent="${commit}" -b staged-deploy -I --consume t
+    ostree commit --no-bindings --parent="${commit}" -b staged-deploy -I --consume t --add-metadata-string=version=foobar
     newcommit=$(ostree rev-parse staged-deploy)
     orig_mtime=$(stat -c '%.Y' /sysroot/ostree/deploy)
     systemctl show -p SubState ostree-finalize-staged.path | grep -q waiting
@@ -169,8 +169,46 @@ EOF
     ostree admin undeploy 1
     echo "ok staged retained"
 
+    # Deploy a new version
+    commit=${host_commit}
+    ostree checkout -H ${commit} t
+    ostree commit --no-bindings --parent="${commit}" -b same-version -I --consume t --add-metadata-string=version=foobaz
+    ostree admin deploy same-version --retain-previous-version
+
     # Cleanup refs
-    ostree refs --delete staged-deploy nonstaged-deploy
+    ostree refs --delete staged-deploy nonstaged-deploy same-version
+    echo "ok cleanup refs"
+
+    /tmp/autopkgtest-reboot "3"
+    ;;
+  "3")
+    # Check currently deployed versions
+    rpm-ostree status
+
+    # Make a new commit with the same version as the previous reboot
+    commit=$(rpmostree_query_json '.deployments[0].checksum')
+    cd /ostree/repo/tmp
+    ostree checkout -H ${commit} t
+    ostree commit --no-bindings --parent="${commit}" -b same-version-again -I --consume t --add-metadata-string=version=foobaz
+    ostree admin deploy same-version-again --retain-previous-version
+
+    # Check that previous version was kept
+    ostree admin status > status.txt
+    test $(grep -Fce 'Version: ' status.txt) = 3
+    echo "ok previous version retained"
+
+    # Check also for the staging path
+    rpm-ostree cleanup -p
+    ostree admin deploy --stage same-version-again --retain-previous-version
+    ostree admin finalize-staged
+
+    # Check that previous version was kept
+    ostree admin status > status.txt
+    test $(grep -Fce 'Version: ' status.txt) = 3
+    echo "ok previous version retained during stage"
+
+    # Cleanup refs
+    ostree refs --delete same-version-again
     echo "ok cleanup refs"
 
     # Now finally, try breaking staged updates and verify that ostree-boot-complete fails on the next boot
@@ -193,9 +231,9 @@ WantedBy=multi-user.target
 EOF
     systemctl enable hackaround-cosa-systemd-unit-checks.service
 
-    /tmp/autopkgtest-reboot "3"
+    /tmp/autopkgtest-reboot "4"
     ;;
-  "3") 
+  "4")
     assert_file_has_content /run/ostree-boot-complete-status.txt 'error: ostree-finalize-staged.service failed on previous boot.*Operation not permitted'
     echo "ok boot-complete.service"
     ;;
