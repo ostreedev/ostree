@@ -65,8 +65,8 @@ ot_admin_builtin_nsenter (int argc, char **argv, OstreeCommandInvocation *invoca
     }
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED, invocation, &sysroot,
-                                          cancellable, error))
+                                          OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED | OSTREE_ADMIN_BUILTIN_FLAG_ENTER_NS,
+                                          invocation, &sysroot, cancellable, error))
     return FALSE;
 
   argc = new_argc;

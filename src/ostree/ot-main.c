@@ -559,12 +559,19 @@ gboolean
 ostree_admin_sysroot_load (OstreeSysroot *sysroot, OstreeAdminBuiltinFlags flags,
                            GCancellable *cancellable, GError **error)
 {
-  if ((flags & OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED) == 0)
+  if (flags & OSTREE_ADMIN_BUILTIN_FLAG_ENTER_NS)
     {
-      /* Set up the mount namespace, if applicable */
       if (!ostree_sysroot_initialize_with_mount_namespace (sysroot, cancellable, error))
         return FALSE;
+    }
+  else
+    {
+      if (!ostree_sysroot_initialize (sysroot, error))
+        return FALSE;
+    }
 
+  if ((flags & OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED) == 0)
+    {
       /* Released when sysroot is finalized, or on process exit */
       if (!ot_admin_sysroot_lock (sysroot, error))
         return FALSE;

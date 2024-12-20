@@ -280,12 +280,12 @@ ot_get_dir_size (int dfd, const char *path, guint64 blocksize, guint64 *out_size
 
 /* Check whether a path exists */
 gboolean
-ot_path_exists (const char *path, gboolean *out_val, GError **error)
+ot_path_exists (int dfd, const char *path, gboolean *out_val, GError **error)
 {
   g_autoptr (GError) local_error = NULL;
 
   struct stat stbuf;
-  if (glnx_fstatat (AT_FDCWD, path, &stbuf, 0, &local_error))
+  if (glnx_fstatat (dfd, path, &stbuf, 0, &local_error))
     {
       *out_val = TRUE;
       return TRUE;
