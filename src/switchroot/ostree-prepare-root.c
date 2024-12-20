@@ -640,16 +640,6 @@ main (int argc, char *argv[])
 
       if (umount2 (var_dir, MNT_DETACH) < 0)
         err (EXIT_FAILURE, "failed to umount %s", var_dir);
-
-      /* To avoid having submounts of /var propagate into $stateroot/var, the
-       * mount is made with slave+shared propagation. See the comment in
-       * ostree-impl-system-generator.c when /var isn't mounted in the
-       * initramfs for further explanation.
-       */
-      if (mount (NULL, TMP_SYSROOT "/var", NULL, MS_SLAVE | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to change /var to slave mount");
-      if (mount (NULL, TMP_SYSROOT "/var", NULL, MS_SHARED | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to change /var to slave+shared mount");
     }
 
   /* This can be used by other things to signal ostree is in use */

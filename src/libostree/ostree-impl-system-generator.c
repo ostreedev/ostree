@@ -238,7 +238,7 @@ fstab_generator (const char *ostree_target, const bool is_aboot, const char *nor
                         "[Mount]\n"
                         "Where=%s\n"
                         "What=%s\n"
-                        "Options=bind,slave,shared\n",
+                        "Options=bind\n",
                         var_dst, var_src))
     return FALSE;
 
