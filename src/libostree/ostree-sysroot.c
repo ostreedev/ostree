@@ -474,25 +474,23 @@ remount_writable (const char *path, gboolean *did_remount, GError **error)
 static gboolean
 _ostree_sysroot_invisible (const OstreeSysroot *self, gboolean *out_val, GError **error)
 {
-  gboolean exists;
-
   g_assert (self->sysroot_fd >= 0);
   g_assert (self->root_is_ostree_booted);
 
-  if (!ot_path_exists (self->sysroot_fd, "sysroot/ostree", &exists, error))
+  if (!glnx_fstatat_allow_noent (self->sysroot_fd, "sysroot/ostree", NULL, 0, error))
     return FALSE;
 
-  if (exists)
+  if (errno == 0)
     {
       *out_val = FALSE;
       return TRUE;
     }
 
   // root_is_ostree_booted is true so we can use AT_FDCWD here
-  if (!ot_path_exists (AT_FDCWD, OTCORE_RUN_OSTREE_PRIVATE "/sysroot-ns", &exists, error))
+  if (!glnx_fstatat_allow_noent (AT_FDCWD, OTCORE_RUN_OSTREE_PRIVATE "/sysroot-ns", NULL, 0, error))
     return FALSE;
 
-  if (!exists)
+  if (errno != 0)
     {
       *out_val = FALSE;
       return TRUE;
