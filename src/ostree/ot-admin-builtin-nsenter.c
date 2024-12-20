@@ -49,14 +49,14 @@ ot_admin_builtin_nsenter (int argc, char **argv, OstreeCommandInvocation *invoca
 
   context = g_option_context_new ("[PROGRAM [ARGUMENTS...]]");
 
-  int new_argc = argc;
-  char **new_argv = argv;
+  int new_argc = 0;
+  char **new_argv = NULL;
 
   for (int i = 1; i < argc; i++)
     {
       if (g_str_equal (argv[i], "--"))
         {
-          new_argc -= i;
+          new_argc = argc - i;
           argc = i;
           new_argv = argv + i;
           argv[i] = NULL;
@@ -69,8 +69,11 @@ ot_admin_builtin_nsenter (int argc, char **argv, OstreeCommandInvocation *invoca
                                           invocation, &sysroot, cancellable, error))
     return FALSE;
 
-  argc = new_argc;
-  argv = new_argv;
+  if (new_argv)
+    {
+      argc = new_argc;
+      argv = new_argv;
+    }
   if (argc <= 1)
     {
       arguments = g_malloc_n (2, sizeof (char *));
