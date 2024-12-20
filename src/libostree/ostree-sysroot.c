@@ -529,6 +529,9 @@ _ostree_sysroot_ensure_visible (OstreeSysroot *self, GError **error)
     return FALSE;
 
   /* Because namespace is per-thread, there is no race here */
+  if (unshare (CLONE_NEWNS) < 0)
+    return glnx_throw_errno_prefix (error, "unshare");
+
   if (setns (sysroot_ns_fd, CLONE_NEWNS) < 0)
     return glnx_throw_errno_prefix (error, "setns");
 
@@ -562,10 +565,17 @@ _ostree_sysroot_ensure_writable (OstreeSysroot *self, GError **error)
   if (!_ostree_sysroot_ensure_boot_fd (self, error))
     return FALSE;
 
-  glnx_autofd int cur_ns_fd = -1;
-  g_autofree char *cur_ns = g_strdup_printf ("/proc/%d/ns/mnt", gettid ());
-  if (!glnx_openat_rdonly (AT_FDCWD, cur_ns, TRUE, &cur_ns_fd, error))
+  gboolean in_root;
+  if (!_ostree_in_root_mount_namespace (&in_root, error))
     return FALSE;
+
+  glnx_autofd int cur_ns_fd = -1;
+  if (in_root)
+    {
+      g_autofree char *cur_ns = g_strdup_printf ("/proc/%d/ns/mnt", gettid ());
+      if (!glnx_openat_rdonly (AT_FDCWD, cur_ns, TRUE, &cur_ns_fd, error))
+        return FALSE;
+    }
 
   if (!_ostree_sysroot_enter_mount_namespace (self, error))
     return FALSE;
@@ -587,8 +597,11 @@ _ostree_sysroot_ensure_writable (OstreeSysroot *self, GError **error)
   if (!_ostree_sysroot_ensure_boot_fd (self, error))
     return FALSE;
 
-  if (setns (cur_ns_fd, CLONE_NEWNS) < 0)
-    return glnx_throw_errno_prefix (error, "setns");
+  if (in_root)
+    {
+      if (setns (cur_ns_fd, CLONE_NEWNS) < 0)
+        return glnx_throw_errno_prefix (error, "setns");
+    }
 
   return TRUE;
 }
