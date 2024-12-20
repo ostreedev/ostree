@@ -2,7 +2,7 @@
 // from gir-files
 // DO NOT EDIT
 
-use glib::translate::*;
+use glib::{translate::*};
 
 glib::wrapper! {
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

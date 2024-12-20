@@ -2,39 +2,24 @@
 // from gir-files
 // DO NOT EDIT
 
-use crate::Deployment;
-#[cfg(any(feature = "v2016_4", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_4")))]
-use crate::DeploymentUnlockedState;
-#[cfg(any(feature = "v2017_7", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_7")))]
-use crate::Repo;
-#[cfg(any(feature = "v2020_7", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_7")))]
-use crate::SysrootDeployTreeOpts;
-use crate::SysrootSimpleWriteDeploymentFlags;
-#[cfg(any(feature = "v2017_4", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_4")))]
-use crate::SysrootWriteDeploymentsOpts;
-use glib::object::IsA;
-#[cfg(any(feature = "v2017_10", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_10")))]
-use glib::object::ObjectType as ObjectType_;
-#[cfg(any(feature = "v2017_10", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_10")))]
-use glib::signal::connect_raw;
-#[cfg(any(feature = "v2017_10", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_10")))]
-use glib::signal::SignalHandlerId;
-use glib::translate::*;
-use std::boxed::Box as Box_;
-use std::fmt;
-use std::mem;
-#[cfg(any(feature = "v2017_10", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_10")))]
-use std::mem::transmute;
-use std::pin::Pin;
-use std::ptr;
+use crate::{Deployment,SysrootSimpleWriteDeploymentFlags};
+#[cfg(feature = "v2016_4")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2016_4")))]
+use crate::{DeploymentUnlockedState};
+#[cfg(feature = "v2017_4")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2017_4")))]
+use crate::{SysrootWriteDeploymentsOpts};
+#[cfg(feature = "v2017_7")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2017_7")))]
+use crate::{Repo};
+#[cfg(feature = "v2020_7")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2020_7")))]
+use crate::{SysrootDeployTreeOpts};
+use glib::{prelude::*,translate::*};
+#[cfg(feature = "v2017_10")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2017_10")))]
+use glib::{signal::{connect_raw, SignalHandlerId}};
+use std::{boxed::Box as Box_,pin::Pin};
 
 glib::wrapper! {
     #[doc(alias = "OstreeSysroot")]
@@ -60,45 +45,57 @@ impl Sysroot {
         }
     }
 
-    #[doc(alias = "ostree_sysroot_cleanup")]
-    pub fn cleanup(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
+    #[cfg(feature = "v2023_8")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2023_8")))]
+    #[doc(alias = "ostree_sysroot_change_finalization")]
+    pub fn change_finalization(&self, deployment: &Deployment) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_sysroot_cleanup(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            let mut error = std::ptr::null_mut();
+            let is_ok = ffi::ostree_sysroot_change_finalization(self.to_glib_none().0, deployment.to_glib_none().0, &mut error);
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
-    //#[cfg(any(feature = "v2018_6", feature = "dox"))]
-    //#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[doc(alias = "ostree_sysroot_cleanup")]
+    pub fn cleanup(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = std::ptr::null_mut();
+            let is_ok = ffi::ostree_sysroot_cleanup(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
+    //#[cfg(feature = "v2018_6")]
+    //#[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     //#[doc(alias = "ostree_sysroot_cleanup_prune_repo")]
     //pub fn cleanup_prune_repo(&self, options: /*Ignored*/&mut RepoPruneOptions, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(i32, i32, u64), glib::Error> {
     //    unsafe { TODO: call ffi:ostree_sysroot_cleanup_prune_repo() }
     //}
 
-    #[cfg(any(feature = "v2018_5", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_5")))]
+    #[cfg(feature = "v2018_5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_5")))]
     #[doc(alias = "ostree_sysroot_deploy_tree")]
     pub fn deploy_tree(&self, osname: Option<&str>, revision: &str, origin: Option<&glib::KeyFile>, provided_merge_deployment: Option<&Deployment>, override_kernel_argv: &[&str], cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<Deployment, glib::Error> {
         unsafe {
-            let mut out_new_deployment = ptr::null_mut();
-            let mut error = ptr::null_mut();
+            let mut out_new_deployment = std::ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_deploy_tree(self.to_glib_none().0, osname.to_glib_none().0, revision.to_glib_none().0, origin.to_glib_none().0, provided_merge_deployment.to_glib_none().0, override_kernel_argv.to_glib_none().0, &mut out_new_deployment, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(from_glib_full(out_new_deployment)) } else { Err(from_glib_full(error)) }
         }
     }
 
-    #[cfg(any(feature = "v2020_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_7")))]
+    #[cfg(feature = "v2020_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_7")))]
     #[doc(alias = "ostree_sysroot_deploy_tree_with_options")]
     pub fn deploy_tree_with_options(&self, osname: Option<&str>, revision: &str, origin: Option<&glib::KeyFile>, provided_merge_deployment: Option<&Deployment>, opts: Option<&SysrootDeployTreeOpts>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<Deployment, glib::Error> {
         unsafe {
-            let mut out_new_deployment = ptr::null_mut();
-            let mut error = ptr::null_mut();
+            let mut out_new_deployment = std::ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_deploy_tree_with_options(self.to_glib_none().0, osname.to_glib_none().0, revision.to_glib_none().0, origin.to_glib_none().0, provided_merge_deployment.to_glib_none().0, mut_override(opts.to_glib_none().0), &mut out_new_deployment, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(from_glib_full(out_new_deployment)) } else { Err(from_glib_full(error)) }
         }
     }
@@ -106,9 +103,9 @@ impl Sysroot {
     #[doc(alias = "ostree_sysroot_deployment_set_kargs")]
     pub fn deployment_set_kargs(&self, deployment: &Deployment, new_kargs: &[&str], cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_deployment_set_kargs(self.to_glib_none().0, deployment.to_glib_none().0, new_kargs.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
@@ -116,9 +113,9 @@ impl Sysroot {
     #[doc(alias = "ostree_sysroot_deployment_set_kargs_in_place")]
     pub fn deployment_set_kargs_in_place(&self, deployment: &Deployment, kargs_str: Option<&str>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_deployment_set_kargs_in_place(self.to_glib_none().0, deployment.to_glib_none().0, kargs_str.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
@@ -126,33 +123,33 @@ impl Sysroot {
     #[doc(alias = "ostree_sysroot_deployment_set_mutable")]
     pub fn deployment_set_mutable(&self, deployment: &Deployment, is_mutable: bool, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_deployment_set_mutable(self.to_glib_none().0, deployment.to_glib_none().0, is_mutable.into_glib(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
-    #[cfg(any(feature = "v2018_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_3")))]
+    #[cfg(feature = "v2018_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_3")))]
     #[doc(alias = "ostree_sysroot_deployment_set_pinned")]
     pub fn deployment_set_pinned(&self, deployment: &Deployment, is_pinned: bool) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_deployment_set_pinned(self.to_glib_none().0, deployment.to_glib_none().0, is_pinned.into_glib(), &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
-    #[cfg(any(feature = "v2016_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_4")))]
+    #[cfg(feature = "v2016_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_4")))]
     #[doc(alias = "ostree_sysroot_deployment_unlock")]
     pub fn deployment_unlock(&self, deployment: &Deployment, unlocked_state: DeploymentUnlockedState, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_deployment_unlock(self.to_glib_none().0, deployment.to_glib_none().0, unlocked_state.into_glib(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
@@ -160,9 +157,9 @@ impl Sysroot {
     #[doc(alias = "ostree_sysroot_ensure_initialized")]
     pub fn ensure_initialized(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_ensure_initialized(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
@@ -231,8 +228,8 @@ impl Sysroot {
         }
     }
 
-    #[cfg(any(feature = "v2018_5", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_5")))]
+    #[cfg(feature = "v2018_5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_5")))]
     #[doc(alias = "ostree_sysroot_get_staged_deployment")]
     #[doc(alias = "get_staged_deployment")]
     pub fn staged_deployment(&self) -> Option<Deployment> {
@@ -249,44 +246,44 @@ impl Sysroot {
         }
     }
 
-    #[cfg(any(feature = "v2016_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_4")))]
+    #[cfg(feature = "v2016_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_4")))]
     #[doc(alias = "ostree_sysroot_init_osname")]
     pub fn init_osname(&self, osname: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_init_osname(self.to_glib_none().0, osname.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
-    #[cfg(any(feature = "v2020_1", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_1")))]
+    #[cfg(feature = "v2020_1")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_1")))]
     #[doc(alias = "ostree_sysroot_initialize")]
     pub fn initialize(&self) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_initialize(self.to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
-    #[cfg(any(feature = "v2022_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2022_7")))]
+    #[cfg(feature = "v2022_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2022_7")))]
     #[doc(alias = "ostree_sysroot_initialize_with_mount_namespace")]
     pub fn initialize_with_mount_namespace(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_initialize_with_mount_namespace(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
-    #[cfg(any(feature = "v2020_1", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_1")))]
+    #[cfg(feature = "v2020_1")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_1")))]
     #[doc(alias = "ostree_sysroot_is_booted")]
     pub fn is_booted(&self) -> bool {
         unsafe {
@@ -297,22 +294,22 @@ impl Sysroot {
     #[doc(alias = "ostree_sysroot_load")]
     pub fn load(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_load(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
-    #[cfg(any(feature = "v2016_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_4")))]
+    #[cfg(feature = "v2016_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_4")))]
     #[doc(alias = "ostree_sysroot_load_if_changed")]
     pub fn load_if_changed(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<bool, glib::Error> {
         unsafe {
-            let mut out_changed = mem::MaybeUninit::uninit();
-            let mut error = ptr::null_mut();
+            let mut out_changed = std::mem::MaybeUninit::uninit();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_load_if_changed(self.to_glib_none().0, out_changed.as_mut_ptr(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(from_glib(out_changed.assume_init())) } else { Err(from_glib_full(error)) }
         }
     }
@@ -320,9 +317,9 @@ impl Sysroot {
     #[doc(alias = "ostree_sysroot_lock")]
     pub fn lock(&self) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_lock(self.to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
@@ -342,7 +339,7 @@ impl Sysroot {
         
         let user_data: Box_<glib::thread_guard::ThreadGuard<P>> = Box_::new(glib::thread_guard::ThreadGuard::new(callback));
         unsafe extern "C" fn lock_async_trampoline<P: FnOnce(Result<(), glib::Error>) + 'static>(_source_object: *mut glib::gobject_ffi::GObject, res: *mut gio::ffi::GAsyncResult, user_data: glib::ffi::gpointer) {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let _ = ffi::ostree_sysroot_lock_finish(_source_object as *mut _, res, &mut error);
             let result = if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) };
             let callback: Box_<glib::thread_guard::ThreadGuard<P>> = Box_::from_raw(user_data as *mut _);
@@ -378,27 +375,27 @@ impl Sysroot {
     #[doc(alias = "ostree_sysroot_prepare_cleanup")]
     pub fn prepare_cleanup(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_prepare_cleanup(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
-    #[cfg(any(feature = "v2017_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_7")))]
+    #[cfg(feature = "v2017_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_7")))]
     #[doc(alias = "ostree_sysroot_query_deployments_for")]
     pub fn query_deployments_for(&self, osname: Option<&str>) -> (Option<Deployment>, Option<Deployment>) {
         unsafe {
-            let mut out_pending = ptr::null_mut();
-            let mut out_rollback = ptr::null_mut();
+            let mut out_pending = std::ptr::null_mut();
+            let mut out_rollback = std::ptr::null_mut();
             ffi::ostree_sysroot_query_deployments_for(self.to_glib_none().0, osname.to_glib_none().0, &mut out_pending, &mut out_rollback);
             (from_glib_full(out_pending), from_glib_full(out_rollback))
         }
     }
 
-    #[cfg(any(feature = "v2017_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_7")))]
+    #[cfg(feature = "v2017_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_7")))]
     #[doc(alias = "ostree_sysroot_repo")]
     pub fn repo(&self) -> Repo {
         unsafe {
@@ -406,19 +403,19 @@ impl Sysroot {
         }
     }
 
-    #[cfg(any(feature = "v2021_1", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_1")))]
+    #[cfg(feature = "v2021_1")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2021_1")))]
     #[doc(alias = "ostree_sysroot_require_booted_deployment")]
     pub fn require_booted_deployment(&self) -> Result<Deployment, glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let ret = ffi::ostree_sysroot_require_booted_deployment(self.to_glib_none().0, &mut error);
             if error.is_null() { Ok(from_glib_none(ret)) } else { Err(from_glib_full(error)) }
         }
     }
 
-    #[cfg(any(feature = "v2020_1", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_1")))]
+    #[cfg(feature = "v2020_1")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_1")))]
     #[doc(alias = "ostree_sysroot_set_mount_namespace_in_use")]
     pub fn set_mount_namespace_in_use(&self) {
         unsafe {
@@ -429,48 +426,48 @@ impl Sysroot {
     #[doc(alias = "ostree_sysroot_simple_write_deployment")]
     pub fn simple_write_deployment(&self, osname: Option<&str>, new_deployment: &Deployment, merge_deployment: Option<&Deployment>, flags: SysrootSimpleWriteDeploymentFlags, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_simple_write_deployment(self.to_glib_none().0, osname.to_glib_none().0, new_deployment.to_glib_none().0, merge_deployment.to_glib_none().0, flags.into_glib(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
-    #[cfg(any(feature = "v2020_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_7")))]
+    #[cfg(feature = "v2020_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_7")))]
     #[doc(alias = "ostree_sysroot_stage_overlay_initrd")]
     pub fn stage_overlay_initrd(&self, fd: i32, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<glib::GString, glib::Error> {
         unsafe {
-            let mut out_checksum = ptr::null_mut();
-            let mut error = ptr::null_mut();
+            let mut out_checksum = std::ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_stage_overlay_initrd(self.to_glib_none().0, fd, &mut out_checksum, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(from_glib_full(out_checksum)) } else { Err(from_glib_full(error)) }
         }
     }
 
-    #[cfg(any(feature = "v2018_5", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_5")))]
+    #[cfg(feature = "v2018_5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_5")))]
     #[doc(alias = "ostree_sysroot_stage_tree")]
     pub fn stage_tree(&self, osname: Option<&str>, revision: &str, origin: Option<&glib::KeyFile>, merge_deployment: Option<&Deployment>, override_kernel_argv: &[&str], cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<Deployment, glib::Error> {
         unsafe {
-            let mut out_new_deployment = ptr::null_mut();
-            let mut error = ptr::null_mut();
+            let mut out_new_deployment = std::ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_stage_tree(self.to_glib_none().0, osname.to_glib_none().0, revision.to_glib_none().0, origin.to_glib_none().0, merge_deployment.to_glib_none().0, override_kernel_argv.to_glib_none().0, &mut out_new_deployment, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(from_glib_full(out_new_deployment)) } else { Err(from_glib_full(error)) }
         }
     }
 
-    #[cfg(any(feature = "v2020_7", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2020_7")))]
+    #[cfg(feature = "v2020_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2020_7")))]
     #[doc(alias = "ostree_sysroot_stage_tree_with_options")]
     pub fn stage_tree_with_options(&self, osname: Option<&str>, revision: &str, origin: Option<&glib::KeyFile>, merge_deployment: Option<&Deployment>, opts: &SysrootDeployTreeOpts, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<Deployment, glib::Error> {
         unsafe {
-            let mut out_new_deployment = ptr::null_mut();
-            let mut error = ptr::null_mut();
+            let mut out_new_deployment = std::ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_stage_tree_with_options(self.to_glib_none().0, osname.to_glib_none().0, revision.to_glib_none().0, origin.to_glib_none().0, merge_deployment.to_glib_none().0, mut_override(opts.to_glib_none().0), &mut out_new_deployment, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(from_glib_full(out_new_deployment)) } else { Err(from_glib_full(error)) }
         }
     }
@@ -478,10 +475,10 @@ impl Sysroot {
     #[doc(alias = "ostree_sysroot_try_lock")]
     pub fn try_lock(&self) -> Result<bool, glib::Error> {
         unsafe {
-            let mut out_acquired = mem::MaybeUninit::uninit();
-            let mut error = ptr::null_mut();
+            let mut out_acquired = std::mem::MaybeUninit::uninit();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_try_lock(self.to_glib_none().0, out_acquired.as_mut_ptr(), &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(from_glib(out_acquired.assume_init())) } else { Err(from_glib_full(error)) }
         }
     }
@@ -500,24 +497,36 @@ impl Sysroot {
         }
     }
 
-    #[doc(alias = "ostree_sysroot_write_deployments")]
-    pub fn write_deployments(&self, new_deployments: &[Deployment], cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
+    #[cfg(feature = "v2023_11")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2023_11")))]
+    #[doc(alias = "ostree_sysroot_update_post_copy")]
+    pub fn update_post_copy(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
-            let is_ok = ffi::ostree_sysroot_write_deployments(self.to_glib_none().0, new_deployments.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            let mut error = std::ptr::null_mut();
+            let is_ok = ffi::ostree_sysroot_update_post_copy(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
 
-    #[cfg(any(feature = "v2017_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_4")))]
+    #[doc(alias = "ostree_sysroot_write_deployments")]
+    pub fn write_deployments(&self, new_deployments: &[Deployment], cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = std::ptr::null_mut();
+            let is_ok = ffi::ostree_sysroot_write_deployments(self.to_glib_none().0, new_deployments.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
+    #[cfg(feature = "v2017_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_4")))]
     #[doc(alias = "ostree_sysroot_write_deployments_with_options")]
     pub fn write_deployments_with_options(&self, new_deployments: &[Deployment], opts: &SysrootWriteDeploymentsOpts, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_write_deployments_with_options(self.to_glib_none().0, new_deployments.to_glib_none().0, mut_override(opts.to_glib_none().0), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
@@ -525,9 +534,9 @@ impl Sysroot {
     #[doc(alias = "ostree_sysroot_write_origin_file")]
     pub fn write_origin_file(&self, deployment: &Deployment, new_origin: Option<&glib::KeyFile>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_write_origin_file(self.to_glib_none().0, deployment.to_glib_none().0, new_origin.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
@@ -540,8 +549,8 @@ impl Sysroot {
         }
     }
 
-    #[cfg(any(feature = "v2017_10", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_10")))]
+    #[cfg(feature = "v2017_10")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_10")))]
     #[doc(alias = "journal-msg")]
     pub fn connect_journal_msg<F: Fn(&Self, &str) + Send + 'static>(&self, f: F) -> SignalHandlerId {
         unsafe extern "C" fn journal_msg_trampoline<F: Fn(&Sysroot, &str) + Send + 'static>(this: *mut ffi::OstreeSysroot, msg: *mut libc::c_char, f: glib::ffi::gpointer) {
@@ -551,15 +560,9 @@ impl Sysroot {
         unsafe {
             let f: Box_<F> = Box_::new(f);
             connect_raw(self.as_ptr() as *mut _, b"journal-msg\0".as_ptr() as *const _,
-                Some(transmute::<_, unsafe extern "C" fn()>(journal_msg_trampoline::<F> as *const ())), Box_::into_raw(f))
+                Some(std::mem::transmute::<_, unsafe extern "C" fn()>(journal_msg_trampoline::<F> as *const ())), Box_::into_raw(f))
         }
     }
 }
 
 unsafe impl Send for Sysroot {}
-
-impl fmt::Display for Sysroot {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Sysroot")
-    }
-}
