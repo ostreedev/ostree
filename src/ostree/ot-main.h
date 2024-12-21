@@ -39,6 +39,7 @@ typedef enum
   OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED = (1 << 1),
   OSTREE_ADMIN_BUILTIN_FLAG_NO_SYSROOT = (1 << 2),
   OSTREE_ADMIN_BUILTIN_FLAG_NO_LOAD = (1 << 3),
+  OSTREE_ADMIN_BUILTIN_FLAG_ENTER_NS = (1 << 4),
 } OstreeAdminBuiltinFlags;
 
 typedef struct OstreeCommandInvocation OstreeCommandInvocation;

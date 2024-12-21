@@ -64,6 +64,8 @@ ot_admin_builtin_finalize_staged (int argc, char **argv, OstreeCommandInvocation
 
   if (opt_hold)
     {
+      /* XXX: does this work with invisible sysroot? */
+
       /* Load the sysroot unlocked so that a separate namespace isn't
        * created. */
       if (!ostree_admin_sysroot_load (
