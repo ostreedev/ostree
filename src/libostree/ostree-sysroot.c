@@ -477,7 +477,7 @@ _ostree_sysroot_invisible (const OstreeSysroot *self, gboolean *out_val, GError 
   g_assert (self->sysroot_fd >= 0);
   g_assert (self->root_is_ostree_booted);
 
-  if (!glnx_fstatat_allow_noent (self->sysroot_fd, "sysroot/ostree", NULL, 0, error))
+  if (!glnx_fstatat_allow_noent (self->sysroot_fd, "ostree/repo", NULL, 0, error))
     return FALSE;
 
   if (errno == 0)
