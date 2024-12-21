@@ -569,14 +569,6 @@ _ostree_sysroot_ensure_writable (OstreeSysroot *self, GError **error)
   if (!_ostree_in_root_mount_namespace (&in_root, error))
     return FALSE;
 
-  glnx_autofd int cur_ns_fd = -1;
-  if (in_root)
-    {
-      g_autofree char *cur_ns = g_strdup_printf ("/proc/%d/ns/mnt", gettid ());
-      if (!glnx_openat_rdonly (AT_FDCWD, cur_ns, TRUE, &cur_ns_fd, error))
-        return FALSE;
-    }
-
   if (!_ostree_sysroot_enter_mount_namespace (self, error))
     return FALSE;
 
@@ -597,9 +589,15 @@ _ostree_sysroot_ensure_writable (OstreeSysroot *self, GError **error)
   if (!_ostree_sysroot_ensure_boot_fd (self, error))
     return FALSE;
 
+  /* Switch back */
   if (in_root)
     {
-      if (setns (cur_ns_fd, CLONE_NEWNS) < 0)
+      glnx_autofd int root_ns_fd = -1;
+
+      if (!glnx_openat_rdonly (AT_FDCWD, "/proc/1/ns/mnt", TRUE, &root_ns_fd, error))
+        return FALSE;
+
+      if (setns (root_ns_fd, CLONE_NEWNS) < 0)
         return glnx_throw_errno_prefix (error, "setns");
     }
 
