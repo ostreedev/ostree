@@ -2,11 +2,10 @@
 // from gir-files
 // DO NOT EDIT
 
-use crate::RepoFinder;
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
-use glib::translate::*;
-use std::fmt;
+use crate::{RepoFinder};
+#[cfg(feature = "v2018_6")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
+use glib::{translate::*};
 
 glib::wrapper! {
     #[doc(alias = "OstreeRepoFinderConfig")]
@@ -18,8 +17,8 @@ glib::wrapper! {
 }
 
 impl RepoFinderConfig {
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     #[doc(alias = "ostree_repo_finder_config_new")]
     pub fn new() -> RepoFinderConfig {
         unsafe {
@@ -28,16 +27,10 @@ impl RepoFinderConfig {
     }
 }
 
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+#[cfg(feature = "v2018_6")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
 impl Default for RepoFinderConfig {
                      fn default() -> Self {
                          Self::new()
                      }
                  }
-
-impl fmt::Display for RepoFinderConfig {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("RepoFinderConfig")
-    }
-}

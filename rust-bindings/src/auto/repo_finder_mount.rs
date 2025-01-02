@@ -2,20 +2,10 @@
 // from gir-files
 // DO NOT EDIT
 
-use crate::RepoFinder;
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
-use glib::object::IsA;
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
-use glib::object::ObjectType as ObjectType_;
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
-use glib::translate::*;
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
-use glib::StaticType;
-use std::fmt;
+use crate::{RepoFinder};
+#[cfg(feature = "v2018_6")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
+use glib::{prelude::*,translate::*};
 
 glib::wrapper! {
     #[doc(alias = "OstreeRepoFinderMount")]
@@ -27,8 +17,8 @@ glib::wrapper! {
 }
 
 impl RepoFinderMount {
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     #[doc(alias = "ostree_repo_finder_mount_new")]
     pub fn new(monitor: Option<&impl IsA<gio::VolumeMonitor>>) -> RepoFinderMount {
         unsafe {
@@ -36,15 +26,9 @@ impl RepoFinderMount {
         }
     }
 
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     pub fn monitor(&self) -> Option<gio::VolumeMonitor> {
-        glib::ObjectExt::property(self, "monitor")
-    }
-}
-
-impl fmt::Display for RepoFinderMount {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("RepoFinderMount")
+        ObjectExt::property(self, "monitor")
     }
 }
