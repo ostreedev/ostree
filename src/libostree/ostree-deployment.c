@@ -85,6 +85,31 @@ ostree_deployment_get_bootserial (OstreeDeployment *self)
   return self->bootserial;
 }
 
+const char *
+_ostree_deployment_get_version (OstreeDeployment  *self,
+                                OstreeRepo        *repo)
+{
+  g_return_val_if_fail (repo != NULL, NULL);
+
+  if (!self->version_is_cached)
+    {
+      /* Try extracting a version for this deployment. */
+      const gchar *csum = ostree_deployment_get_csum (self);
+
+      g_autoptr(GVariant) variant = NULL;
+      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, csum,
+            &variant, NULL))
+        return NULL;
+
+      g_autoptr(GVariant) metadata = g_variant_get_child_value (variant, 0);
+      g_variant_lookup (metadata, OSTREE_COMMIT_META_KEY_VERSION, "s", &self->version);
+
+      self->version_is_cached = TRUE;
+    }
+
+  return self->version;
+}
+
 /**
  * ostree_deployment_get_bootconfig:
  * @self: Deployment
@@ -255,6 +280,8 @@ ostree_deployment_clone (OstreeDeployment *self)
   OstreeDeployment *ret = ostree_deployment_new (
       self->index, self->osname, self->csum, self->deployserial, self->bootcsum, self->bootserial);
 
+  ret->version = g_strdup (self->version);
+
   new_bootconfig = ostree_bootconfig_parser_clone (self->bootconfig);
   ostree_deployment_set_bootconfig (ret, new_bootconfig);
 
@@ -324,6 +351,7 @@ ostree_deployment_finalize (GObject *object)
   g_free (self->osname);
   g_free (self->csum);
   g_free (self->bootcsum);
+  g_free (self->version);
   g_clear_object (&self->bootconfig);
   g_clear_pointer (&self->origin, g_key_file_unref);
   g_strfreev (self->overlay_initrds);
