@@ -29,10 +29,12 @@
 #include <unistd.h>
 
 static gboolean opt_reboot;
+static gboolean opt_kexec;
 static char *opt_osname;
 
 static GOptionEntry options[]
     = { { "reboot", 'r', 0, G_OPTION_ARG_NONE, &opt_reboot, "Reboot after switching trees", NULL },
+        { "kexec", 'k', 0, G_OPTION_ARG_NONE, &opt_kexec, "Stage new kernel in kexec", NULL },
         { "os", 0, 0, G_OPTION_ARG_STRING, &opt_osname,
           "Use a different operating system root than the current one", "OSNAME" },
         { NULL } };
@@ -56,8 +58,12 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeCommandInvocation *invocat
 
   const char *new_provided_refspec = argv[1];
 
+  OstreeSysrootUpgraderFlags flags = OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED;
+  if (opt_kexec)
+    flags |= OSTREE_SYSROOT_UPGRADER_FLAGS_KEXEC;
+
   g_autoptr (OstreeSysrootUpgrader) upgrader = ostree_sysroot_upgrader_new_for_os_with_flags (
-      sysroot, opt_osname, OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED, cancellable, error);
+      sysroot, opt_osname, flags, cancellable, error);
   if (!upgrader)
     return FALSE;
 

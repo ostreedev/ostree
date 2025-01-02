@@ -66,6 +66,22 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
 
         <variablelist>
             <varlistentry>
+                <term><option>--reboot</option>,<option>-r</option></term>
+
+                <listitem><para>
+                    Reboot after a successful switch.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--kexec</option>,<option>-k</option></term>
+
+                <listitem><para>
+                    Load new deployment into kexec after a successful switch.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--os</option>="STATEROOT"</term>
 
                 <listitem><para>

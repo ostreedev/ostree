@@ -31,6 +31,7 @@
 #include <unistd.h>
 
 static gboolean opt_reboot;
+static gboolean opt_kexec;
 static gboolean opt_allow_downgrade;
 static gboolean opt_pull_only;
 static gboolean opt_deploy_only;
@@ -42,6 +43,7 @@ static GOptionEntry options[] = {
   { "os", 0, 0, G_OPTION_ARG_STRING, &opt_osname,
     "Use a different operating system root than the current one", "OSNAME" },
   { "reboot", 'r', 0, G_OPTION_ARG_NONE, &opt_reboot, "Reboot after a successful upgrade", NULL },
+  { "kexec", 'k', 0, G_OPTION_ARG_NONE, &opt_kexec, "Stage new kernel in kexec", NULL },
   { "allow-downgrade", 0, 0, G_OPTION_ARG_NONE, &opt_allow_downgrade,
     "Permit deployment of chronologically older trees", NULL },
   { "override-commit", 0, 0, G_OPTION_ARG_STRING, &opt_override_commit,
@@ -72,16 +74,18 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeCommandInvocation *invoca
                    "Cannot simultaneously specify --pull-only and --deploy-only");
       return FALSE;
     }
-  else if (opt_pull_only && opt_reboot)
+  else if (opt_pull_only && (opt_reboot || opt_kexec))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Cannot simultaneously specify --pull-only and --reboot");
+                   "Cannot simultaneously specify --pull-only and --reboot or --kexec");
       return FALSE;
     }
 
   OstreeSysrootUpgraderFlags flags = 0;
   if (opt_stage)
     flags |= OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE;
+  if (opt_kexec)
+    flags |= OSTREE_SYSROOT_UPGRADER_FLAGS_KEXEC;
 
   g_autoptr (OstreeSysrootUpgrader) upgrader = ostree_sysroot_upgrader_new_for_os_with_flags (
       sysroot, opt_osname, flags, cancellable, error);

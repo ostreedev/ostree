@@ -30,6 +30,7 @@
 #include <sys/poll.h>
 #include <sys/socket.h>
 #include <sys/statvfs.h>
+#include <linux/kexec.h>
 
 #ifdef HAVE_LIBMOUNT
 #include <libmount.h>
@@ -4264,4 +4265,64 @@ ostree_sysroot_deployment_set_mutable (OstreeSysroot *self, OstreeDeployment *de
     return FALSE;
 
   return TRUE;
+}
+
+/**
+ * ostree_sysroot_deployment_kexec_load
+ * @self: Sysroot
+ * @deployment: Deployment to prepare a kexec for
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Prepare the specified deployment for a kexec.
+ */
+gboolean
+ostree_sysroot_deployment_kexec_load (OstreeSysroot *self, OstreeDeployment *deployment,
+                                      GCancellable *cancellable, GError **error)
+{
+#ifdef SYS_kexec_file_load
+  GLNX_AUTO_PREFIX_ERROR ("Loading kernel into kexec", error);
+  OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
+  const char *kargs = ostree_bootconfig_parser_get(bootconfig, "options");
+  g_autofree char *deployment_dirpath = ostree_sysroot_get_deployment_dirpath (self, deployment);
+  glnx_autofd int deployment_dfd = -1;
+  if (!glnx_opendirat (self->sysroot_fd, deployment_dirpath, FALSE, &deployment_dfd, error))
+    return FALSE;
+
+  /* Find the kernel/initramfs in the tree */
+  g_autoptr (OstreeKernelLayout) kernel_layout = NULL;
+  if (!get_kernel_from_tree (self, deployment_dfd, &kernel_layout, cancellable, error))
+    return FALSE;
+
+  unsigned long flags = 0;
+  glnx_autofd int kernel_fd = -1;
+  glnx_autofd int initrd_fd = -1;
+
+  if (!glnx_openat_rdonly (kernel_layout->boot_dfd, kernel_layout->kernel_srcpath,
+                           TRUE, &kernel_fd, error))
+    return FALSE;
+
+  /* initramfs is optional */
+  if (kernel_layout->initramfs_srcpath)
+    {
+      if (!glnx_openat_rdonly (kernel_layout->boot_dfd, kernel_layout->initramfs_srcpath,
+                               TRUE, &initrd_fd, error))
+        {
+          return FALSE;
+        }
+    }
+  else
+    {
+      flags |= KEXEC_FILE_NO_INITRAMFS;
+    }
+
+  if (syscall (SYS_kexec_file_load, kernel_fd, initrd_fd, strlen (kargs) + 1, kargs, flags))
+    return glnx_throw_errno_prefix(error, "kexec_file_load");
+
+  return TRUE;
+#else
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+               "This version of ostree is not compiled with kexec support");
+  return FALSE;
+#endif // SYS_kexec_file_load
 }
