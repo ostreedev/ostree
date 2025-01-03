@@ -1,19 +1,16 @@
 [build-dependencies]
-system-deps = "6"
+system-deps = "7"
 
 [dependencies]
 libc = "0.2"
 
-[dependencies.gio]
-package = "gio-sys"
+[dependencies.gio-sys]
 version = "0.18"
 
-[dependencies.glib]
-package = "glib-sys"
+[dependencies.glib-sys]
 version = "0.18"
 
-[dependencies.gobject]
-package = "gobject-sys"
+[dependencies.gobject-sys]
 version = "0.18"
 
 [dev-dependencies]
@@ -69,6 +66,8 @@ v2022_5 = ["v2022_2"]
 v2022_6 = ["v2022_5"]
 v2022_7 = ["v2022_5"]
 v2023_1 = ["v2022_7"]
+v2023_8 = ["v2023_1"]
+v2023_11 = ["v2023_8"]
 
 [lib]
 name = "ostree_sys"
@@ -84,10 +83,12 @@ license = "MIT"
 links = "ostree-1"
 name = "ostree-sys"
 repository = "https://github.com/ostreedev/ostree-rs"
-version = "0.14.0"
+version = "0.15.0"
 edition = "2021"
+
 [package.metadata.docs.rs]
 features = ["dox"]
+
 [package.metadata.system-deps.ostree_1]
 name = "ostree-1"
 version = "0.0"
@@ -232,3 +233,9 @@ version = "2022.7"
 
 [package.metadata.system-deps.ostree_1.v2023_1]
 version = "2023.1"
+
+[package.metadata.system-deps.ostree_1.v2023_8]
+version = "2023.8"
+
+[package.metadata.system-deps.ostree_1.v2023_11]
+version = "2023.11"

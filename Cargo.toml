@@ -9,7 +9,7 @@ name = "ostree"
 readme = "rust-bindings/README.md"
 repository = "https://github.com/ostreedev/ostree"
 rust-version = "1.70.0"
-version = "0.19.1"
+version = "0.20.0"
 
 include = [
     "/COPYING",
@@ -36,7 +36,7 @@ members = [".", "rust-bindings/sys"]
 [dependencies]
 base64 = "0.20.0"
 bitflags = "1.2.1"
-ffi = { package = "ostree-sys", path = "rust-bindings/sys", version = "0.14.0" }
+ffi = { package = "ostree-sys", path = "rust-bindings/sys", version = "0.15.0" }
 gio = "0.18"
 glib = "0.18"
 hex = "0.4.2"
@@ -99,3 +99,5 @@ v2022_5 = ["v2022_2", "ffi/v2022_5"]
 v2022_6 = ["v2022_5", "ffi/v2022_6"]
 v2022_7 = ["v2022_6", "ffi/v2022_7"]
 v2023_1 = ["v2022_7", "ffi/v2023_1"]
+v2023_8 = ["v2023_1", "ffi/v2023_8"]
+v2023_11 = ["v2023_8", "ffi/v2023_11"]

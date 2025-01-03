@@ -1,5 +1,6 @@
 GIR_REPO := https://github.com/gtk-rs/gir.git
-GIR_VERSION := 0eeebbdf9d4d5a0b0148c7fa055bf961e16e54a0
+GIR_VERSION := 5433e2582f831d551789ee95fa04188d2a5fd3e5 # 0.20.4
+GIR_FILES_VERSION := 0.19.0
 OSTREE_REPO := ../ostree
 OSTREE_VERSION := patch-v2022.2
 RUSTDOC_STRIPPER_VERSION := 0.1.17
@@ -35,6 +36,7 @@ update-gir-files: \
 	remove-gir-files \
 	gir-files \
 	gir-files/GLib-2.0.gir \
+	gir-files/GModule-2.0.gir \
 	gir-files/Gio-2.0.gir \
 	gir-files/GObject-2.0.gir \
 	gir-files/OSTree-1.0.gir
@@ -46,7 +48,7 @@ gir-files:
 	mkdir -p gir-files
 
 %.gir:
-	curl -o $@ -L https://github.com/gtk-rs/gir-files/raw/master/${@F}
+	curl -o $@ -L https://github.com/gtk-rs/gir-files/raw/$(GIR_FILES_VERSION)/${@F}
 
 gir-files/OSTree-1.0.gir:
 	ln -sfr ../OSTree-1.0.gir $@
