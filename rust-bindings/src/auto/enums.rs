@@ -2,8 +2,8 @@
 // from gir-files
 // DO NOT EDIT
 
-use glib::translate::*;
-use std::fmt;
+use crate::{ffi};
+use glib::{translate::*};
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
@@ -22,44 +22,35 @@ pub enum DeploymentUnlockedState {
     __Unknown(i32),
 }
 
-impl fmt::Display for DeploymentUnlockedState {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "DeploymentUnlockedState::{}", match *self {
-            Self::None => "None",
-            Self::Development => "Development",
-            Self::Hotfix => "Hotfix",
-            Self::Transient => "Transient",
-            _ => "Unknown",
-        })
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for DeploymentUnlockedState {
     type GlibType = ffi::OstreeDeploymentUnlockedState;
 
-    fn into_glib(self) -> ffi::OstreeDeploymentUnlockedState {
-        match self {
+    #[inline]
+fn into_glib(self) -> ffi::OstreeDeploymentUnlockedState {
+match self {
             Self::None => ffi::OSTREE_DEPLOYMENT_UNLOCKED_NONE,
             Self::Development => ffi::OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT,
             Self::Hotfix => ffi::OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX,
             Self::Transient => ffi::OSTREE_DEPLOYMENT_UNLOCKED_TRANSIENT,
             Self::__Unknown(value) => value,
 }
-    }
+}
 }
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeDeploymentUnlockedState> for DeploymentUnlockedState {
-    unsafe fn from_glib(value: ffi::OstreeDeploymentUnlockedState) -> Self {
-        match value {
+    #[inline]
+unsafe fn from_glib(value: ffi::OstreeDeploymentUnlockedState) -> Self {
+        
+match value {
             ffi::OSTREE_DEPLOYMENT_UNLOCKED_NONE => Self::None,
             ffi::OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT => Self::Development,
             ffi::OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX => Self::Hotfix,
             ffi::OSTREE_DEPLOYMENT_UNLOCKED_TRANSIENT => Self::Transient,
             value => Self::__Unknown(value),
 }
-    }
+}
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -101,35 +92,12 @@ pub enum GpgSignatureAttr {
     __Unknown(i32),
 }
 
-impl fmt::Display for GpgSignatureAttr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "GpgSignatureAttr::{}", match *self {
-            Self::Valid => "Valid",
-            Self::SigExpired => "SigExpired",
-            Self::KeyExpired => "KeyExpired",
-            Self::KeyRevoked => "KeyRevoked",
-            Self::KeyMissing => "KeyMissing",
-            Self::Fingerprint => "Fingerprint",
-            Self::Timestamp => "Timestamp",
-            Self::ExpTimestamp => "ExpTimestamp",
-            Self::PubkeyAlgoName => "PubkeyAlgoName",
-            Self::HashAlgoName => "HashAlgoName",
-            Self::UserName => "UserName",
-            Self::UserEmail => "UserEmail",
-            Self::FingerprintPrimary => "FingerprintPrimary",
-            Self::KeyExpTimestamp => "KeyExpTimestamp",
-            Self::KeyExpTimestampPrimary => "KeyExpTimestampPrimary",
-            _ => "Unknown",
-        })
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for GpgSignatureAttr {
     type GlibType = ffi::OstreeGpgSignatureAttr;
 
     fn into_glib(self) -> ffi::OstreeGpgSignatureAttr {
-        match self {
+match self {
             Self::Valid => ffi::OSTREE_GPG_SIGNATURE_ATTR_VALID,
             Self::SigExpired => ffi::OSTREE_GPG_SIGNATURE_ATTR_SIG_EXPIRED,
             Self::KeyExpired => ffi::OSTREE_GPG_SIGNATURE_ATTR_KEY_EXPIRED,
@@ -147,13 +115,14 @@ impl IntoGlib for GpgSignatureAttr {
             Self::KeyExpTimestampPrimary => ffi::OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP_PRIMARY,
             Self::__Unknown(value) => value,
 }
-    }
+}
 }
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeGpgSignatureAttr> for GpgSignatureAttr {
     unsafe fn from_glib(value: ffi::OstreeGpgSignatureAttr) -> Self {
-        match value {
+        
+match value {
             ffi::OSTREE_GPG_SIGNATURE_ATTR_VALID => Self::Valid,
             ffi::OSTREE_GPG_SIGNATURE_ATTR_SIG_EXPIRED => Self::SigExpired,
             ffi::OSTREE_GPG_SIGNATURE_ATTR_KEY_EXPIRED => Self::KeyExpired,
@@ -171,7 +140,7 @@ impl FromGlib<ffi::OstreeGpgSignatureAttr> for GpgSignatureAttr {
             ffi::OSTREE_GPG_SIGNATURE_ATTR_KEY_EXP_TIMESTAMP_PRIMARY => Self::KeyExpTimestampPrimary,
             value => Self::__Unknown(value),
 }
-    }
+}
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -201,29 +170,13 @@ pub enum ObjectType {
     __Unknown(i32),
 }
 
-impl fmt::Display for ObjectType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ObjectType::{}", match *self {
-            Self::File => "File",
-            Self::DirTree => "DirTree",
-            Self::DirMeta => "DirMeta",
-            Self::Commit => "Commit",
-            Self::TombstoneCommit => "TombstoneCommit",
-            Self::CommitMeta => "CommitMeta",
-            Self::PayloadLink => "PayloadLink",
-            Self::FileXattrs => "FileXattrs",
-            Self::FileXattrsLink => "FileXattrsLink",
-            _ => "Unknown",
-        })
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for ObjectType {
     type GlibType = ffi::OstreeObjectType;
 
-    fn into_glib(self) -> ffi::OstreeObjectType {
-        match self {
+    #[inline]
+fn into_glib(self) -> ffi::OstreeObjectType {
+match self {
             Self::File => ffi::OSTREE_OBJECT_TYPE_FILE,
             Self::DirTree => ffi::OSTREE_OBJECT_TYPE_DIR_TREE,
             Self::DirMeta => ffi::OSTREE_OBJECT_TYPE_DIR_META,
@@ -235,13 +188,15 @@ impl IntoGlib for ObjectType {
             Self::FileXattrsLink => ffi::OSTREE_OBJECT_TYPE_FILE_XATTRS_LINK,
             Self::__Unknown(value) => value,
 }
-    }
+}
 }
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeObjectType> for ObjectType {
-    unsafe fn from_glib(value: ffi::OstreeObjectType) -> Self {
-        match value {
+    #[inline]
+unsafe fn from_glib(value: ffi::OstreeObjectType) -> Self {
+        
+match value {
             ffi::OSTREE_OBJECT_TYPE_FILE => Self::File,
             ffi::OSTREE_OBJECT_TYPE_DIR_TREE => Self::DirTree,
             ffi::OSTREE_OBJECT_TYPE_DIR_META => Self::DirMeta,
@@ -253,11 +208,11 @@ impl FromGlib<ffi::OstreeObjectType> for ObjectType {
             ffi::OSTREE_OBJECT_TYPE_FILE_XATTRS_LINK => Self::FileXattrsLink,
             value => Self::__Unknown(value),
 }
-    }
+}
 }
 
-#[cfg(any(feature = "v2018_2", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_2")))]
+#[cfg(feature = "v2018_2")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2018_2")))]
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[derive(Clone, Copy)]
 #[non_exhaustive]
@@ -271,44 +226,35 @@ pub enum RepoCheckoutFilterResult {
     __Unknown(i32),
 }
 
-#[cfg(any(feature = "v2018_2", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_2")))]
-impl fmt::Display for RepoCheckoutFilterResult {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RepoCheckoutFilterResult::{}", match *self {
-            Self::Allow => "Allow",
-            Self::Skip => "Skip",
-            _ => "Unknown",
-        })
-    }
-}
-
-#[cfg(any(feature = "v2018_2", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_2")))]
+#[cfg(feature = "v2018_2")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2018_2")))]
 #[doc(hidden)]
 impl IntoGlib for RepoCheckoutFilterResult {
     type GlibType = ffi::OstreeRepoCheckoutFilterResult;
 
-    fn into_glib(self) -> ffi::OstreeRepoCheckoutFilterResult {
-        match self {
+    #[inline]
+fn into_glib(self) -> ffi::OstreeRepoCheckoutFilterResult {
+match self {
             Self::Allow => ffi::OSTREE_REPO_CHECKOUT_FILTER_ALLOW,
             Self::Skip => ffi::OSTREE_REPO_CHECKOUT_FILTER_SKIP,
             Self::__Unknown(value) => value,
 }
-    }
+}
 }
 
-#[cfg(any(feature = "v2018_2", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_2")))]
+#[cfg(feature = "v2018_2")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2018_2")))]
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeRepoCheckoutFilterResult> for RepoCheckoutFilterResult {
-    unsafe fn from_glib(value: ffi::OstreeRepoCheckoutFilterResult) -> Self {
-        match value {
+    #[inline]
+unsafe fn from_glib(value: ffi::OstreeRepoCheckoutFilterResult) -> Self {
+        
+match value {
             ffi::OSTREE_REPO_CHECKOUT_FILTER_ALLOW => Self::Allow,
             ffi::OSTREE_REPO_CHECKOUT_FILTER_SKIP => Self::Skip,
             value => Self::__Unknown(value),
 }
-    }
+}
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -324,38 +270,31 @@ pub enum RepoCheckoutMode {
     __Unknown(i32),
 }
 
-impl fmt::Display for RepoCheckoutMode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RepoCheckoutMode::{}", match *self {
-            Self::None => "None",
-            Self::User => "User",
-            _ => "Unknown",
-        })
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for RepoCheckoutMode {
     type GlibType = ffi::OstreeRepoCheckoutMode;
 
-    fn into_glib(self) -> ffi::OstreeRepoCheckoutMode {
-        match self {
+    #[inline]
+fn into_glib(self) -> ffi::OstreeRepoCheckoutMode {
+match self {
             Self::None => ffi::OSTREE_REPO_CHECKOUT_MODE_NONE,
             Self::User => ffi::OSTREE_REPO_CHECKOUT_MODE_USER,
             Self::__Unknown(value) => value,
 }
-    }
+}
 }
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeRepoCheckoutMode> for RepoCheckoutMode {
-    unsafe fn from_glib(value: ffi::OstreeRepoCheckoutMode) -> Self {
-        match value {
+    #[inline]
+unsafe fn from_glib(value: ffi::OstreeRepoCheckoutMode) -> Self {
+        
+match value {
             ffi::OSTREE_REPO_CHECKOUT_MODE_NONE => Self::None,
             ffi::OSTREE_REPO_CHECKOUT_MODE_USER => Self::User,
             value => Self::__Unknown(value),
 }
-    }
+}
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -375,44 +314,35 @@ pub enum RepoCheckoutOverwriteMode {
     __Unknown(i32),
 }
 
-impl fmt::Display for RepoCheckoutOverwriteMode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RepoCheckoutOverwriteMode::{}", match *self {
-            Self::None => "None",
-            Self::UnionFiles => "UnionFiles",
-            Self::AddFiles => "AddFiles",
-            Self::UnionIdentical => "UnionIdentical",
-            _ => "Unknown",
-        })
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for RepoCheckoutOverwriteMode {
     type GlibType = ffi::OstreeRepoCheckoutOverwriteMode;
 
-    fn into_glib(self) -> ffi::OstreeRepoCheckoutOverwriteMode {
-        match self {
+    #[inline]
+fn into_glib(self) -> ffi::OstreeRepoCheckoutOverwriteMode {
+match self {
             Self::None => ffi::OSTREE_REPO_CHECKOUT_OVERWRITE_NONE,
             Self::UnionFiles => ffi::OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES,
             Self::AddFiles => ffi::OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES,
             Self::UnionIdentical => ffi::OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL,
             Self::__Unknown(value) => value,
 }
-    }
+}
 }
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeRepoCheckoutOverwriteMode> for RepoCheckoutOverwriteMode {
-    unsafe fn from_glib(value: ffi::OstreeRepoCheckoutOverwriteMode) -> Self {
-        match value {
+    #[inline]
+unsafe fn from_glib(value: ffi::OstreeRepoCheckoutOverwriteMode) -> Self {
+        
+match value {
             ffi::OSTREE_REPO_CHECKOUT_OVERWRITE_NONE => Self::None,
             ffi::OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES => Self::UnionFiles,
             ffi::OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES => Self::AddFiles,
             ffi::OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL => Self::UnionIdentical,
             value => Self::__Unknown(value),
 }
-    }
+}
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -428,38 +358,31 @@ pub enum RepoCommitFilterResult {
     __Unknown(i32),
 }
 
-impl fmt::Display for RepoCommitFilterResult {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RepoCommitFilterResult::{}", match *self {
-            Self::Allow => "Allow",
-            Self::Skip => "Skip",
-            _ => "Unknown",
-        })
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for RepoCommitFilterResult {
     type GlibType = ffi::OstreeRepoCommitFilterResult;
 
-    fn into_glib(self) -> ffi::OstreeRepoCommitFilterResult {
-        match self {
+    #[inline]
+fn into_glib(self) -> ffi::OstreeRepoCommitFilterResult {
+match self {
             Self::Allow => ffi::OSTREE_REPO_COMMIT_FILTER_ALLOW,
             Self::Skip => ffi::OSTREE_REPO_COMMIT_FILTER_SKIP,
             Self::__Unknown(value) => value,
 }
-    }
+}
 }
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeRepoCommitFilterResult> for RepoCommitFilterResult {
-    unsafe fn from_glib(value: ffi::OstreeRepoCommitFilterResult) -> Self {
-        match value {
+    #[inline]
+unsafe fn from_glib(value: ffi::OstreeRepoCommitFilterResult) -> Self {
+        
+match value {
             ffi::OSTREE_REPO_COMMIT_FILTER_ALLOW => Self::Allow,
             ffi::OSTREE_REPO_COMMIT_FILTER_SKIP => Self::Skip,
             value => Self::__Unknown(value),
 }
-    }
+}
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -479,44 +402,35 @@ pub enum RepoCommitIterResult {
     __Unknown(i32),
 }
 
-impl fmt::Display for RepoCommitIterResult {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RepoCommitIterResult::{}", match *self {
-            Self::Error => "Error",
-            Self::End => "End",
-            Self::File => "File",
-            Self::Dir => "Dir",
-            _ => "Unknown",
-        })
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for RepoCommitIterResult {
     type GlibType = ffi::OstreeRepoCommitIterResult;
 
-    fn into_glib(self) -> ffi::OstreeRepoCommitIterResult {
-        match self {
+    #[inline]
+fn into_glib(self) -> ffi::OstreeRepoCommitIterResult {
+match self {
             Self::Error => ffi::OSTREE_REPO_COMMIT_ITER_RESULT_ERROR,
             Self::End => ffi::OSTREE_REPO_COMMIT_ITER_RESULT_END,
             Self::File => ffi::OSTREE_REPO_COMMIT_ITER_RESULT_FILE,
             Self::Dir => ffi::OSTREE_REPO_COMMIT_ITER_RESULT_DIR,
             Self::__Unknown(value) => value,
 }
-    }
+}
 }
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeRepoCommitIterResult> for RepoCommitIterResult {
-    unsafe fn from_glib(value: ffi::OstreeRepoCommitIterResult) -> Self {
-        match value {
+    #[inline]
+unsafe fn from_glib(value: ffi::OstreeRepoCommitIterResult) -> Self {
+        
+match value {
             ffi::OSTREE_REPO_COMMIT_ITER_RESULT_ERROR => Self::Error,
             ffi::OSTREE_REPO_COMMIT_ITER_RESULT_END => Self::End,
             ffi::OSTREE_REPO_COMMIT_ITER_RESULT_FILE => Self::File,
             ffi::OSTREE_REPO_COMMIT_ITER_RESULT_DIR => Self::Dir,
             value => Self::__Unknown(value),
 }
-    }
+}
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -538,25 +452,13 @@ pub enum RepoMode {
     __Unknown(i32),
 }
 
-impl fmt::Display for RepoMode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RepoMode::{}", match *self {
-            Self::Bare => "Bare",
-            Self::Archive => "Archive",
-            Self::BareUser => "BareUser",
-            Self::BareUserOnly => "BareUserOnly",
-            Self::BareSplitXattrs => "BareSplitXattrs",
-            _ => "Unknown",
-        })
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for RepoMode {
     type GlibType = ffi::OstreeRepoMode;
 
-    fn into_glib(self) -> ffi::OstreeRepoMode {
-        match self {
+    #[inline]
+fn into_glib(self) -> ffi::OstreeRepoMode {
+match self {
             Self::Bare => ffi::OSTREE_REPO_MODE_BARE,
             Self::Archive => ffi::OSTREE_REPO_MODE_ARCHIVE,
             Self::BareUser => ffi::OSTREE_REPO_MODE_BARE_USER,
@@ -564,13 +466,15 @@ impl IntoGlib for RepoMode {
             Self::BareSplitXattrs => ffi::OSTREE_REPO_MODE_BARE_SPLIT_XATTRS,
             Self::__Unknown(value) => value,
 }
-    }
+}
 }
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeRepoMode> for RepoMode {
-    unsafe fn from_glib(value: ffi::OstreeRepoMode) -> Self {
-        match value {
+    #[inline]
+unsafe fn from_glib(value: ffi::OstreeRepoMode) -> Self {
+        
+match value {
             ffi::OSTREE_REPO_MODE_BARE => Self::Bare,
             ffi::OSTREE_REPO_MODE_ARCHIVE => Self::Archive,
             ffi::OSTREE_REPO_MODE_BARE_USER => Self::BareUser,
@@ -578,7 +482,7 @@ impl FromGlib<ffi::OstreeRepoMode> for RepoMode {
             ffi::OSTREE_REPO_MODE_BARE_SPLIT_XATTRS => Self::BareSplitXattrs,
             value => Self::__Unknown(value),
 }
-    }
+}
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -600,25 +504,13 @@ pub enum RepoRemoteChange {
     __Unknown(i32),
 }
 
-impl fmt::Display for RepoRemoteChange {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RepoRemoteChange::{}", match *self {
-            Self::Add => "Add",
-            Self::AddIfNotExists => "AddIfNotExists",
-            Self::Delete => "Delete",
-            Self::DeleteIfExists => "DeleteIfExists",
-            Self::Replace => "Replace",
-            _ => "Unknown",
-        })
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for RepoRemoteChange {
     type GlibType = ffi::OstreeRepoRemoteChange;
 
-    fn into_glib(self) -> ffi::OstreeRepoRemoteChange {
-        match self {
+    #[inline]
+fn into_glib(self) -> ffi::OstreeRepoRemoteChange {
+match self {
             Self::Add => ffi::OSTREE_REPO_REMOTE_CHANGE_ADD,
             Self::AddIfNotExists => ffi::OSTREE_REPO_REMOTE_CHANGE_ADD_IF_NOT_EXISTS,
             Self::Delete => ffi::OSTREE_REPO_REMOTE_CHANGE_DELETE,
@@ -626,13 +518,15 @@ impl IntoGlib for RepoRemoteChange {
             Self::Replace => ffi::OSTREE_REPO_REMOTE_CHANGE_REPLACE,
             Self::__Unknown(value) => value,
 }
-    }
+}
 }
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeRepoRemoteChange> for RepoRemoteChange {
-    unsafe fn from_glib(value: ffi::OstreeRepoRemoteChange) -> Self {
-        match value {
+    #[inline]
+unsafe fn from_glib(value: ffi::OstreeRepoRemoteChange) -> Self {
+        
+match value {
             ffi::OSTREE_REPO_REMOTE_CHANGE_ADD => Self::Add,
             ffi::OSTREE_REPO_REMOTE_CHANGE_ADD_IF_NOT_EXISTS => Self::AddIfNotExists,
             ffi::OSTREE_REPO_REMOTE_CHANGE_DELETE => Self::Delete,
@@ -640,7 +534,7 @@ impl FromGlib<ffi::OstreeRepoRemoteChange> for RepoRemoteChange {
             ffi::OSTREE_REPO_REMOTE_CHANGE_REPLACE => Self::Replace,
             value => Self::__Unknown(value),
 }
-    }
+}
 }
 
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -656,37 +550,30 @@ pub enum StaticDeltaGenerateOpt {
     __Unknown(i32),
 }
 
-impl fmt::Display for StaticDeltaGenerateOpt {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "StaticDeltaGenerateOpt::{}", match *self {
-            Self::Lowlatency => "Lowlatency",
-            Self::Major => "Major",
-            _ => "Unknown",
-        })
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for StaticDeltaGenerateOpt {
     type GlibType = ffi::OstreeStaticDeltaGenerateOpt;
 
-    fn into_glib(self) -> ffi::OstreeStaticDeltaGenerateOpt {
-        match self {
+    #[inline]
+fn into_glib(self) -> ffi::OstreeStaticDeltaGenerateOpt {
+match self {
             Self::Lowlatency => ffi::OSTREE_STATIC_DELTA_GENERATE_OPT_LOWLATENCY,
             Self::Major => ffi::OSTREE_STATIC_DELTA_GENERATE_OPT_MAJOR,
             Self::__Unknown(value) => value,
 }
-    }
+}
 }
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeStaticDeltaGenerateOpt> for StaticDeltaGenerateOpt {
-    unsafe fn from_glib(value: ffi::OstreeStaticDeltaGenerateOpt) -> Self {
-        match value {
+    #[inline]
+unsafe fn from_glib(value: ffi::OstreeStaticDeltaGenerateOpt) -> Self {
+        
+match value {
             ffi::OSTREE_STATIC_DELTA_GENERATE_OPT_LOWLATENCY => Self::Lowlatency,
             ffi::OSTREE_STATIC_DELTA_GENERATE_OPT_MAJOR => Self::Major,
             value => Self::__Unknown(value),
 }
-    }
+}
 }
 

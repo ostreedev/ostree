@@ -88,6 +88,8 @@ edition = "2021"
 
 [package.metadata.docs.rs]
 features = ["dox"]
+rustc-args = ["--cfg", "docsrs"]
+rustdoc-args = ["--cfg", "docsrs", "--generate-link-to-definition"]
 
 [package.metadata.system-deps.ostree_1]
 name = "ostree-1"

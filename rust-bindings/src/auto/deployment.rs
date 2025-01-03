@@ -2,12 +2,11 @@
 // from gir-files
 // DO NOT EDIT
 
-use crate::BootconfigParser;
-#[cfg(any(feature = "v2016_4", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_4")))]
-use crate::DeploymentUnlockedState;
-use glib::translate::*;
-use std::fmt;
+use crate::{ffi,BootconfigParser};
+#[cfg(feature = "v2016_4")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2016_4")))]
+use crate::{DeploymentUnlockedState};
+use glib::{translate::*};
 
 glib::wrapper! {
     #[doc(alias = "OstreeDeployment")]
@@ -113,8 +112,8 @@ impl Deployment {
         }
     }
 
-    #[cfg(any(feature = "v2016_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_4")))]
+    #[cfg(feature = "v2016_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_4")))]
     #[doc(alias = "ostree_deployment_get_unlocked")]
     #[doc(alias = "get_unlocked")]
     pub fn unlocked(&self) -> DeploymentUnlockedState {
@@ -130,8 +129,17 @@ impl Deployment {
         }
     }
 
-    #[cfg(any(feature = "v2018_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_3")))]
+    #[cfg(feature = "v2023_8")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2023_8")))]
+    #[doc(alias = "ostree_deployment_is_finalization_locked")]
+    pub fn is_finalization_locked(&self) -> bool {
+        unsafe {
+            from_glib(ffi::ostree_deployment_is_finalization_locked(self.to_glib_none().0))
+        }
+    }
+
+    #[cfg(feature = "v2018_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_3")))]
     #[doc(alias = "ostree_deployment_is_pinned")]
     pub fn is_pinned(&self) -> bool {
         unsafe {
@@ -139,8 +147,8 @@ impl Deployment {
         }
     }
 
-    #[cfg(any(feature = "v2018_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_3")))]
+    #[cfg(feature = "v2018_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_3")))]
     #[doc(alias = "ostree_deployment_is_staged")]
     pub fn is_staged(&self) -> bool {
         unsafe {
@@ -176,8 +184,8 @@ impl Deployment {
         }
     }
 
-    #[cfg(any(feature = "v2018_3", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_3")))]
+    #[cfg(feature = "v2018_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_3")))]
     #[doc(alias = "ostree_deployment_origin_remove_transient_state")]
     pub fn origin_remove_transient_state(origin: &glib::KeyFile) {
         unsafe {
@@ -185,18 +193,12 @@ impl Deployment {
         }
     }
 
-    #[cfg(any(feature = "v2016_4", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2016_4")))]
+    #[cfg(feature = "v2016_4")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_4")))]
     #[doc(alias = "ostree_deployment_unlocked_state_to_string")]
     pub fn unlocked_state_to_string(state: DeploymentUnlockedState) -> glib::GString {
         unsafe {
             from_glib_none(ffi::ostree_deployment_unlocked_state_to_string(state.into_glib()))
         }
-    }
-}
-
-impl fmt::Display for Deployment {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Deployment")
     }
 }

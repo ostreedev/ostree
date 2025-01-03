@@ -2,8 +2,8 @@
 // from gir-files
 // DO NOT EDIT
 
-use glib::translate::*;
-use std::hash;
+use crate::{ffi};
+use glib::{translate::*};
 
 glib::wrapper! {
     #[derive(Debug, PartialOrd, Ord)]
@@ -48,9 +48,9 @@ impl PartialEq for CollectionRef {
 
 impl Eq for CollectionRef {}
 
-impl hash::Hash for CollectionRef {
+impl std::hash::Hash for CollectionRef {
     #[inline]
-    fn hash<H>(&self, state: &mut H) where H: hash::Hasher {
-        hash::Hash::hash(&self.hash(), state)
+    fn hash<H>(&self, state: &mut H) where H: std::hash::Hasher {
+        std::hash::Hash::hash(&self.hash(), state)
     }
 }

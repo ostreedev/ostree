@@ -2,17 +2,14 @@
 // from gir-files
 // DO NOT EDIT
 
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
-use crate::RepoFinderResult;
-use glib::object::IsA;
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
-use glib::translate::*;
-use std::fmt;
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
-use std::ptr;
+use crate::{ffi};
+#[cfg(feature = "v2018_6")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
+use crate::{RepoFinderResult};
+use glib::{prelude::*};
+#[cfg(feature = "v2018_6")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
+use glib::{translate::*};
 
 glib::wrapper! {
     #[doc(alias = "OstreeRepoFinder")]
@@ -28,12 +25,6 @@ impl RepoFinder {
     
 }
 
-pub trait RepoFinderExt: 'static {}
+pub trait RepoFinderExt: IsA<RepoFinder> + 'static {}
 
 impl<O: IsA<RepoFinder>> RepoFinderExt for O {}
-
-impl fmt::Display for RepoFinder {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("RepoFinder")
-    }
-}

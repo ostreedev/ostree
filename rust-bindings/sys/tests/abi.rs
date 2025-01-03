@@ -2,13 +2,15 @@
 // from gir-files
 // DO NOT EDIT
 
+#![cfg(unix)]
+
 use ostree_sys::*;
 use std::env;
 use std::error::Error;
 use std::ffi::OsString;
 use std::mem::{align_of, size_of};
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::str;
 use tempfile::Builder;
 
@@ -68,9 +70,11 @@ fn pkg_config_cflags(packages: &[&str]) -> Result<Vec<String>, Box<dyn Error>> {
     let mut cmd = Command::new(pkg_config);
     cmd.arg("--cflags");
     cmd.args(packages);
+    cmd.stderr(Stdio::inherit());
     let out = cmd.output()?;
     if !out.status.success() {
-        return Err(format!("command {cmd:?} returned {}", out.status).into());
+        let (status, stdout) = (out.status, String::from_utf8_lossy(&out.stdout));
+        return Err(format!("command {cmd:?} failed, {status:?}\nstdout: {stdout}").into());
     }
     let stdout = str::from_utf8(&out.stdout)?;
     Ok(shell_words::split(stdout.trim())?)
@@ -110,7 +114,6 @@ impl Results {
 }
 
 #[test]
-#[cfg(target_os = "linux")]
 fn cross_validate_constants_with_c() {
     let mut c_constants: Vec<(String, String)> = Vec::new();
 
@@ -145,7 +148,6 @@ fn cross_validate_constants_with_c() {
 }
 
 #[test]
-#[cfg(target_os = "linux")]
 fn cross_validate_layout_with_c() {
     let mut c_layouts = Vec::new();
 
@@ -187,13 +189,15 @@ fn get_c_output(name: &str) -> Result<String, Box<dyn Error>> {
     let cc = Compiler::new().expect("configured compiler");
     cc.compile(&c_file, &exe)?;
 
-    let mut abi_cmd = Command::new(exe);
-    let output = abi_cmd.output()?;
-    if !output.status.success() {
-        return Err(format!("command {abi_cmd:?} failed, {output:?}").into());
+    let mut cmd = Command::new(exe);
+    cmd.stderr(Stdio::inherit());
+    let out = cmd.output()?;
+    if !out.status.success() {
+        let (status, stdout) = (out.status, String::from_utf8_lossy(&out.stdout));
+        return Err(format!("command {cmd:?} failed, {status:?}\nstdout: {stdout}").into());
     }
 
-    Ok(String::from_utf8(output.stdout)?)
+    Ok(String::from_utf8(out.stdout)?)
 }
 
 const RUST_LAYOUTS: &[(&str, Layout)] = &[
@@ -680,6 +684,10 @@ const RUST_CONSTANTS: &[(&str, &str)] = &[
         "2",
     ),
     ("(guint) OSTREE_REPO_COMMIT_MODIFIER_FLAGS_NONE", "0"),
+    (
+        "(guint) OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SELINUX_LABEL_V1",
+        "64",
+    ),
     ("(guint) OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS", "1"),
     ("(guint) OSTREE_REPO_COMMIT_STATE_FSCK_PARTIAL", "2"),
     ("(guint) OSTREE_REPO_COMMIT_STATE_NORMAL", "0"),
@@ -768,6 +776,7 @@ const RUST_CONSTANTS: &[(&str, &str)] = &[
         "(guint) OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED",
         "2",
     ),
+    ("(guint) OSTREE_SYSROOT_UPGRADER_FLAGS_KEXEC", "8"),
     ("(guint) OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE", "4"),
     (
         "(guint) OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER",
