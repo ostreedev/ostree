@@ -2191,6 +2191,39 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion, const ch
   return TRUE;
 }
 
+/* Read the semantics declared by boot/loader/entries.srel, as described in
+ * https://uapi-group.org/specifications/specs/boot_loader_specification/#standard-conformance-marker-file
+ * If the file does not exist, no assumptions are made and *out_semantics is NULL.
+ */
+static gboolean
+read_entries_srel (OstreeSysroot *sysroot, char **out_semantics, GCancellable *cancellable,
+                   GError **error)
+{
+  *out_semantics = NULL;
+
+  const char *live_loader_dir;
+  if (!_ostree_sysroot_get_live_loader_dir (sysroot, &live_loader_dir, error))
+    return FALSE;
+  g_autofree char *path = g_strdup_printf ("%s/entries.srel", live_loader_dir);
+  glnx_autofd int fd = -1;
+  if (!ot_openat_ignore_enoent (sysroot->boot_fd, path, &fd, error))
+    return FALSE;
+  if (fd == -1)
+    {
+      g_debug ("Didn't find loader/entries.srel");
+      return TRUE;
+    }
+
+  g_autofree char *semantics = glnx_fd_readall_utf8 (fd, NULL, cancellable, error);
+  if (semantics == NULL)
+    return glnx_prefix_error (error, "Reading loader/entries.srel");
+
+  g_strchomp (semantics);
+  g_debug ("loader/entries.srel declares %s semantics", semantics);
+  *out_semantics = g_steal_pointer (&semantics);
+  return TRUE;
+}
+
 /* We generate the symlink on disk, then potentially do a syncfs() to ensure
  * that it (and everything else we wrote) has hit disk. Only after that do we
  * rename it into place.
@@ -2696,6 +2729,20 @@ write_deployments_bootswap (OstreeSysroot *self, GPtrArray *new_deployments,
   gboolean loader_is_dir;
   if (!_ostree_sysroot_query_loader_is_dir (self, &loader_is_dir, error))
     return FALSE;
+
+  g_autofree char *entries_semantics = NULL;
+  if (!read_entries_srel (self, &entries_semantics, cancellable, error))
+    return FALSE;
+  if (entries_semantics != NULL)
+    {
+      /* Other semantics are not ours to write entries for */
+      if (!g_str_equal (entries_semantics, "type1"))
+        return glnx_throw (error, "boot/loader/entries.srel declares unsupported semantics: %s",
+                           entries_semantics);
+      if (!loader_is_dir)
+        return glnx_throw (error, "boot/loader/entries.srel declares type1 semantics, but "
+                                  "boot/loader is a symbolic link");
+    }
 
   g_autofree char *new_loader_entries_dir = NULL;
   if (loader_is_dir)
