@@ -23,6 +23,7 @@
 #include <gio/gunixinputstream.h>
 #include <gio/gunixoutputstream.h>
 #include <glib-unix.h>
+#include <linux/kexec.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/ioctl.h>
@@ -30,7 +31,6 @@
 #include <sys/poll.h>
 #include <sys/socket.h>
 #include <sys/statvfs.h>
-#include <linux/kexec.h>
 
 #ifdef HAVE_LIBMOUNT
 #include <libmount.h>
@@ -4283,7 +4283,7 @@ ostree_sysroot_deployment_kexec_load (OstreeSysroot *self, OstreeDeployment *dep
 #ifdef SYS_kexec_file_load
   GLNX_AUTO_PREFIX_ERROR ("Loading kernel into kexec", error);
   OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
-  const char *kargs = ostree_bootconfig_parser_get(bootconfig, "options");
+  const char *kargs = ostree_bootconfig_parser_get (bootconfig, "options");
   g_autofree char *deployment_dirpath = ostree_sysroot_get_deployment_dirpath (self, deployment);
   glnx_autofd int deployment_dfd = -1;
   if (!glnx_opendirat (self->sysroot_fd, deployment_dirpath, FALSE, &deployment_dfd, error))
@@ -4298,15 +4298,15 @@ ostree_sysroot_deployment_kexec_load (OstreeSysroot *self, OstreeDeployment *dep
   glnx_autofd int kernel_fd = -1;
   glnx_autofd int initrd_fd = -1;
 
-  if (!glnx_openat_rdonly (kernel_layout->boot_dfd, kernel_layout->kernel_srcpath,
-                           TRUE, &kernel_fd, error))
+  if (!glnx_openat_rdonly (kernel_layout->boot_dfd, kernel_layout->kernel_srcpath, TRUE, &kernel_fd,
+                           error))
     return FALSE;
 
   /* initramfs is optional */
   if (kernel_layout->initramfs_srcpath)
     {
-      if (!glnx_openat_rdonly (kernel_layout->boot_dfd, kernel_layout->initramfs_srcpath,
-                               TRUE, &initrd_fd, error))
+      if (!glnx_openat_rdonly (kernel_layout->boot_dfd, kernel_layout->initramfs_srcpath, TRUE,
+                               &initrd_fd, error))
         {
           return FALSE;
         }
@@ -4317,7 +4317,7 @@ ostree_sysroot_deployment_kexec_load (OstreeSysroot *self, OstreeDeployment *dep
     }
 
   if (syscall (SYS_kexec_file_load, kernel_fd, initrd_fd, strlen (kargs) + 1, kargs, flags))
-    return glnx_throw_errno_prefix(error, "kexec_file_load");
+    return glnx_throw_errno_prefix (error, "kexec_file_load");
 
   return TRUE;
 #else

@@ -45,12 +45,14 @@ BUILTINPROTO (unlock);
 BUILTINPROTO (status);
 BUILTINPROTO (set_origin);
 BUILTINPROTO (diff);
-BUILTINPROTO (switch);
 BUILTINPROTO (upgrade);
 BUILTINPROTO (kargs);
 BUILTINPROTO (post_copy);
 BUILTINPROTO (lock_finalization);
 BUILTINPROTO (state_overlay);
+// Defined manually since "switch" is a keyword and that totally confuses clang-format
+gboolean ot_admin_builtin_switch (int argc, char **argv, OstreeCommandInvocation *invocation,
+                                  GCancellable *cancellable, GError **error);
 
 #undef BUILTINPROTO
 

@@ -411,7 +411,11 @@ ostree_bloom_get_hash_func (OstreeBloom *bloom)
 #define cROUNDS 2
 #define dROUNDS 4
 
-#define ROTL(x, b) (uint64_t) (((x) << (b)) | ((x) >> (64 - (b))))
+// Different versions of clang-format fight over this, I don't know
+// what flag would make them agree
+// clang-format off
+#define ROTL(x, b) (uint64_t)(((x) << (b)) | ((x) >> (64 - (b))))
+// clang-format on
 
 #define U32TO8_LE(p, v) \
   (p)[0] = (uint8_t)((v)); \

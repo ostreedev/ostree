@@ -132,7 +132,8 @@ resolve_deploy_path (const char *root_mountpoint)
     err (EXIT_FAILURE, "realpath(%s) failed", destpath);
   if (stat (deploy_path, &stbuf) < 0)
     err (EXIT_FAILURE, "stat(%s) failed", deploy_path);
-    /* Quiet logs if there's no journal */
+
+/* Quiet logs if there's no journal */
 #ifdef USE_LIBSYSTEMD
   const char *resolved_path = deploy_path + strlen (root_mountpoint);
   sd_journal_send ("MESSAGE=Resolved OSTree target to: %s", deploy_path,

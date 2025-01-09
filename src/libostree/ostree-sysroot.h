@@ -269,8 +269,7 @@ gboolean ostree_sysroot_simple_write_deployment (OstreeSysroot *sysroot, const c
                                                  GCancellable *cancellable, GError **error);
 
 _OSTREE_PUBLIC
-gboolean
-ostree_sysroot_deployment_kexec_load (OstreeSysroot *self, OstreeDeployment *deployment,
-                                      GCancellable *cancellable, GError **error);
+gboolean ostree_sysroot_deployment_kexec_load (OstreeSysroot *self, OstreeDeployment *deployment,
+                                               GCancellable *cancellable, GError **error);
 
 G_END_DECLS
