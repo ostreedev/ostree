@@ -328,10 +328,10 @@ checkout_one_composefs_file_at (OstreeRepo *repo, OtTristate verity, const char 
            * system repo with verity on and are recreating the composefs
            * image during deploy. */
           union
-            {
-              struct fsverity_digest d;
-              char buf[sizeof (struct fsverity_digest) + OSTREE_SHA256_DIGEST_LEN];
-            } result;
+          {
+            struct fsverity_digest d;
+            char buf[sizeof (struct fsverity_digest) + OSTREE_SHA256_DIGEST_LEN];
+          } result;
           guchar *known_digest = NULL;
 
           if (G_IS_UNIX_INPUT_STREAM (input))

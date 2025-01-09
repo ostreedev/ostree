@@ -2,4 +2,5 @@ Language: Cpp
 BasedOnStyle: GNU
 ColumnLimit: 100
 ForEachMacros: ['GLNX_HASH_TABLE_FOREACH', 'GLNX_HASH_TABLE_FOREACH_V', 'GLNX_HASH_TABLE_FOREACH_KV', 'GLNX_HASH_TABLE_FOREACH_IT']
+SpaceAfterCStyleCast: false
 AlignEscapedNewlines: DontAlign

@@ -91,10 +91,11 @@ typedef struct
  *
  * Use this to initialize an `OstreeDiffDirsOptions` structure.
  */
-#define OSTREE_DIFF_DIRS_OPTIONS_INIT \
-  { \
-    .owner_uid = -1, .owner_gid = -1, \
-  }
+// Different versions of clang-format fight over this, I don't know
+// what flag would make them agree
+// clang-format off
+#define OSTREE_DIFF_DIRS_OPTIONS_INIT { .owner_uid = -1, .owner_gid = -1 }
+// clang-format on
 
 _OSTREE_PUBLIC
 gboolean ostree_diff_dirs_with_options (OstreeDiffFlags flags, GFile *a, GFile *b,

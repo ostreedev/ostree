@@ -29,12 +29,12 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <linux/capability.h>
+#include <linux/prctl.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/prctl.h>
-#include <linux/prctl.h>
-#include <linux/capability.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 /* Ensure that a pathname component @name does not contain the special Unix
@@ -110,7 +110,7 @@ ot_util_path_split_validate (const char *path, GPtrArray **out_components, GErro
 gboolean
 ot_util_process_privileged (void)
 {
-  if (geteuid() != 0)
+  if (geteuid () != 0)
     return FALSE;
 
   // https://github.com/containers/bootc/blob/c88fcfd6e145863408bde7d4706937dd323f64e2/lib/src/cli.rs#L621

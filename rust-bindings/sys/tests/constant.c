@@ -8,22 +8,22 @@
 #define PRINT_CONSTANT(CONSTANT_NAME) \
   printf ("%s;", #CONSTANT_NAME); \
   printf (_Generic ((CONSTANT_NAME), \
-          char *: "%s", \
-          const char *: "%s", \
-          char: "%c", \
-          signed char: "%hhd", \
-          unsigned char: "%hhu", \
-          short int: "%hd", \
-          unsigned short int: "%hu", \
-          int: "%d", \
-          unsigned int: "%u", \
-          long: "%ld", \
-          unsigned long: "%lu", \
-          long long: "%lld", \
-          unsigned long long: "%llu", \
-          float: "%f", \
-          double: "%f", \
-          long double: "%ld"), \
+              char *: "%s", \
+              const char *: "%s", \
+              char: "%c", \
+              signed char: "%hhd", \
+              unsigned char: "%hhu", \
+              short int: "%hd", \
+              unsigned short int: "%hu", \
+              int: "%d", \
+              unsigned int: "%u", \
+              long: "%ld", \
+              unsigned long: "%lu", \
+              long long: "%lld", \
+              unsigned long long: "%llu", \
+              float: "%f", \
+              double: "%f", \
+              long double: "%ld"), \
           CONSTANT_NAME); \
   printf ("\n");
 
