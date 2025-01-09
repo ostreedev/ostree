@@ -151,7 +151,12 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 the integrity of its backing OSTree object is validated by the digest stored in the image.
                 Additionally, if set to <literal>signed</literal>, boot will fail if the image cannot be
                 validated by a public key.
-                Setting this to <literal>maybe</literal> is currently equivalent to <literal>no</literal>.
+                Setting this to <literal>maybe</literal> will cause composefs to be used at runtime only
+                if the deployment has a composefs generated, which causes unpredicable and confusing semantics
+                and is not recommended. In practice with the <emphasis>current</emphasis> version of ostree,
+                in the case where composefs is enabled at build time for both the version that made the
+                deployment (often an older OS version), this will be equivalent to <literal>yes</literal>.
+                But in general one either wants composefs or not, so choose an explicit value for that.
                 </para></listitem>
             </varlistentry>
             <varlistentry>
