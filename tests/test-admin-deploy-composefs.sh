@@ -38,10 +38,10 @@ cd -
 ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.composefs -b testos/buildmain/x86_64-runtime osdata
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmain/x86_64-runtime
 
+# We generate the blob now, even if it's explicitly runtime disabled
 ${CMD_PREFIX} ostree admin deploy --os=testos --karg=root=LABEL=foo --karg=testkarg=1 testos:testos/buildmain/x86_64-runtime
-if test -f sysroot/ostree/deploy/testos/deploy/*.0/.ostree.cfs; then
-    fatal "found composefs unexpectedly"
-fi
+cfs_count=$(ls sysroot/ostree/deploy/testos/deploy/*.0/.ostree.cfs | wc -l)
+assert_streq "${cfs_count}" "1"
 
 # check explicit enablement
 cd osdata
@@ -55,7 +55,8 @@ ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-str
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmain/x86_64-runtime
 
 ${CMD_PREFIX} ostree admin deploy --os=testos --karg=root=LABEL=foo --karg=testkarg=1 testos:testos/buildmain/x86_64-runtime
-ls sysroot/ostree/deploy/testos/deploy/*.0/.ostree.cfs
+cfs_count=$(ls sysroot/ostree/deploy/testos/deploy/*.0/.ostree.cfs | wc -l)
+assert_streq "${cfs_count}" "2"
 
 tap_ok composefs
 

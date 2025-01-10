@@ -188,8 +188,8 @@ otcore_load_composefs_config (const char *cmdline, GKeyFile *config, gboolean lo
       ret->is_signed = false;
     }
   else if (!ot_keyfile_get_tristate_with_default (config, OTCORE_PREPARE_ROOT_COMPOSEFS_KEY,
-                                                  OTCORE_PREPARE_ROOT_ENABLED_KEY,
-                                                  OT_TRISTATE_MAYBE, &ret->enabled, error))
+                                                  OTCORE_PREPARE_ROOT_ENABLED_KEY, OT_TRISTATE_NO,
+                                                  &ret->enabled, error))
     return NULL;
 
   // Look for a key - we default to the initramfs binding path.

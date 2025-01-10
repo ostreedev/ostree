@@ -669,33 +669,28 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
   guint64 composefs_start_time = 0;
   guint64 composefs_end_time = 0;
 #ifdef HAVE_COMPOSEFS
-  if (composefs_enabled != OT_TRISTATE_NO)
-    {
-      composefs_start_time = g_get_monotonic_time ();
-      // TODO: Clean up our mess around composefs/fsverity...we have duplication
-      // between the repo config and the sysroot config, *and* we need to better
-      // handle skew between repo config and repo state (e.g. "post-copy" should
-      // support transitioning verity on and off in general).
-      // For now we configure things such that the fsverity digest is only added
-      // if present on disk in the unsigned case, and in the signed case unconditionally
-      // require it.
-      g_auto (GVariantBuilder) cfs_checkout_opts_builder
-          = G_VARIANT_BUILDER_INIT (G_VARIANT_TYPE_VARDICT);
-      guint32 composefs_requested = 1;
-      if (composefs_config->require_verity)
-        composefs_requested = 2;
-      g_variant_builder_add (&cfs_checkout_opts_builder, "{sv}", "verity",
-                             g_variant_new_uint32 (composefs_requested));
-      g_debug ("composefs requested: %u", composefs_requested);
-      g_autoptr (GVariant) cfs_checkout_opts
-          = g_variant_ref_sink (g_variant_builder_end (&cfs_checkout_opts_builder));
-      if (!ostree_repo_checkout_composefs (repo, cfs_checkout_opts, ret_deployment_dfd,
-                                           OSTREE_COMPOSEFS_NAME, csum, cancellable, error))
-        return FALSE;
-      composefs_end_time = g_get_monotonic_time ();
-    }
-  else
-    g_debug ("not using composefs");
+  composefs_start_time = g_get_monotonic_time ();
+  // TODO: Clean up our mess around composefs/fsverity...we have duplication
+  // between the repo config and the sysroot config, *and* we need to better
+  // handle skew between repo config and repo state (e.g. "post-copy" should
+  // support transitioning verity on and off in general).
+  // For now we configure things such that the fsverity digest is only added
+  // if present on disk in the unsigned case, and in the signed case unconditionally
+  // require it.
+  g_auto (GVariantBuilder) cfs_checkout_opts_builder
+      = G_VARIANT_BUILDER_INIT (G_VARIANT_TYPE_VARDICT);
+  guint32 composefs_requested = 1;
+  if (composefs_config->require_verity)
+    composefs_requested = 2;
+  g_variant_builder_add (&cfs_checkout_opts_builder, "{sv}", "verity",
+                         g_variant_new_uint32 (composefs_requested));
+  g_debug ("composefs requested: %u", composefs_requested);
+  g_autoptr (GVariant) cfs_checkout_opts
+      = g_variant_ref_sink (g_variant_builder_end (&cfs_checkout_opts_builder));
+  if (!ostree_repo_checkout_composefs (repo, cfs_checkout_opts, ret_deployment_dfd,
+                                       OSTREE_COMPOSEFS_NAME, csum, cancellable, error))
+    return FALSE;
+  composefs_end_time = g_get_monotonic_time ();
 #else
   if (composefs_enabled == OT_TRISTATE_YES)
     return glnx_throw (error, "composefs: enabled at runtime, but support is not compiled in");
