@@ -718,6 +718,11 @@ global:
   ostree_repo_checkout_composefs;
 } LIBOSTREE_2023.8;
 
+LIBOSTREE_2025.1 {
+global:
+  ostree_sysroot_deployment_kexec_load;
+} LIBOSTREE_2024.7;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
