@@ -42,6 +42,7 @@ systemdsystemunit_DATA = src/boot/ostree-prepare-root.service \
 	src/boot/ostree-finalize-staged.service \
 	src/boot/ostree-finalize-staged.path \
 	src/boot/ostree-finalize-staged-hold.service \
+	src/boot/ostree-edit-fstab.service \
 	src/boot/ostree-state-overlay@.service \
 	$(NULL)
 systemdtmpfilesdir = $(prefix)/lib/tmpfiles.d

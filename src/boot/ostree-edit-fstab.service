@@ -1,0 +1,31 @@
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library. If not, see <https://www.gnu.org/licenses/>.
+
+[Unit]
+Description=OSTree comment / in fstab
+DefaultDependencies=no
+ConditionKernelCommandLine=ostree
+Conflicts=shutdown.target
+After=systemd-fsck-root.service
+Before=bootc-fstab-edit.service systemd-remount-fs.service local-fs-pre.target local-fs.target shutdown.target
+Wants=local-fs-pre.target
+ConditionPathIsReadWrite=/etc
+ConditionPathExists=/etc/fstab
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/sed -i 's/^\\([^#\\t ]\\+[\\t ]\\+\\/[\\t ]\\+[^\\t ]\\+[\\t ]\\+defaults[\\t ]\\+\\)/# commented by ostree-edit-fstab.service\\n#\\1/' /etc/fstab
+
+[Install]
+WantedBy=local-fs.target
