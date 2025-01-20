@@ -114,11 +114,11 @@ The example below uses Docker to manage containers. Save the contents of this **
 
 ```bash
 # this pulls the fedora 28 image
-FROM registry.fedoraproject.org/fedora:28
+FROM registry.fedoraproject.org/fedora:41
 
 # install ostree dependencies
 RUN dnf update -y && \
-    dnf -y install @buildsys-build dnf-plugins-core  && \
+    dnf -y install @buildsys-build dnf-plugins-core python3-yaml && \
     dnf -y builddep ostree  && \
     dnf clean all
 
