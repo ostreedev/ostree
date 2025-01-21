@@ -104,6 +104,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-admin-upgrade-endoflife.sh \
 	tests/test-admin-upgrade-systemd-update.sh \
 	tests/test-admin-deploy-syslinux.sh \
+	tests/test-admin-dir-deploy-syslinux.sh \
 	tests/test-admin-deploy-bootprefix.sh \
 	tests/test-admin-deploy-composefs.sh \
 	tests/test-admin-deploy-var.sh \
@@ -112,9 +113,12 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-admin-deploy-switch.sh \
 	tests/test-admin-deploy-etcmerge-cornercases.sh \
 	tests/test-admin-deploy-uboot.sh \
+	tests/test-admin-dir-deploy-uboot.sh \
 	tests/test-admin-deploy-grub2.sh \
+	tests/test-admin-dir-deploy-grub2.sh \
 	tests/test-admin-deploy-nomerge.sh \
 	tests/test-admin-deploy-none.sh \
+	tests/test-admin-dir-deploy-none.sh \
 	tests/test-admin-deploy-bootid-gc.sh \
 	tests/test-admin-deploy-whiteouts.sh \
 	tests/test-admin-deploy-emptyetc.sh \
