@@ -35,6 +35,10 @@ test_boot_on_physical_root (void)
   g_assert_false (otcore_boot_is_on_physical_root (tmpdir.path));
   g_assert_cmpint (symlinkat ("loader.0", tmpdir.fd, "boot/loader"), ==, 0);
   g_assert_true (otcore_boot_is_on_physical_root (tmpdir.path));
+  /* boot/loader can also be a directory, e.g. for systemd-boot */
+  g_assert_cmpint (unlinkat (tmpdir.fd, "boot/loader", 0), ==, 0);
+  g_assert_cmpint (mkdirat (tmpdir.fd, "boot/loader", 0755), ==, 0);
+  g_assert_true (otcore_boot_is_on_physical_root (tmpdir.path));
 }
 
 static void
@@ -67,6 +71,9 @@ test_boot_on_separate_fs (void)
 #endif
   g_assert_cmpint (mount ("tmpfs", boot, "tmpfs", 0, NULL), ==, 0);
   g_assert_cmpint (symlinkat ("loader.0", tmpdir.fd, "boot/loader"), ==, 0);
+  g_assert_false (otcore_boot_is_on_physical_root (tmpdir.path));
+  g_assert_cmpint (unlinkat (tmpdir.fd, "boot/loader", 0), ==, 0);
+  g_assert_cmpint (mkdirat (tmpdir.fd, "boot/loader", 0755), ==, 0);
   g_assert_false (otcore_boot_is_on_physical_root (tmpdir.path));
   g_assert_cmpint (umount (boot), ==, 0);
 }
