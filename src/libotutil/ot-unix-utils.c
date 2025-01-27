@@ -30,7 +30,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/capability.h>
-#include <linux/prctl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/prctl.h>
