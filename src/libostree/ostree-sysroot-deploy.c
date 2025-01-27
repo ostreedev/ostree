@@ -2180,6 +2180,56 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
   return TRUE;
 }
 
+/* Determine whether an existing directory implements the semantics described in
+ * https://uapi-group.org/specifications/specs/boot_loader_specification/#type-1-boot-loader-entry-keys
+ */
+static gboolean
+is_bootconfig_type1_semantics (OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
+{
+  struct stat stbuf;
+
+  if (!_ostree_sysroot_ensure_boot_fd (sysroot, error))
+    return FALSE;
+
+  if (!glnx_fstatat_allow_noent (sysroot->boot_fd, "loader/entries.srel", &stbuf,
+                                 AT_SYMLINK_NOFOLLOW, error))
+    return FALSE;
+
+  if (errno == ENOENT)
+    {
+      g_debug ("Didn't find loader/entries.srel file");
+      return FALSE;
+    }
+  else
+    {
+      /* Get semantics type by reading loader/entries.srel */
+      gsize len;
+      g_autofree char *type = glnx_file_get_contents_utf8_at (
+          sysroot->boot_fd, "loader/entries.srel", &len, cancellable, error);
+      if (type == NULL)
+        {
+          g_debug ("Invalid loader/entries.srel file");
+          return FALSE;
+        }
+
+      /* Remove trailing newline symbol if there is any */
+      type[strcspn (type, "\n")] = 0;
+
+      if (g_strcmp0 (type, "type1") == 0)
+        {
+          g_debug ("type1 semantics is found in loader/entries.srel file");
+          return TRUE;
+        }
+      else
+        {
+          g_debug ("Unsupported semantics type ('%s') in loader/entries.srel file", type);
+          return FALSE;
+        }
+    }
+
+  return FALSE;
+}
+
 /* We generate the symlink on disk, then potentially do a syncfs() to ensure
  * that it (and everything else we wrote) has hit disk. Only after that do we
  * rename it into place.
@@ -2208,10 +2258,57 @@ prepare_new_bootloader_link (OstreeSysroot *sysroot, int current_bootversion, in
   return TRUE;
 }
 
+/* We generate the directory on disk, then potentially do a syncfs() to ensure
+ * that it (and everything else we wrote) has hit disk. Only after that do we
+ * rename it into place (via renameat2 RENAME_EXCHANGE).
+ */
+static gboolean
+prepare_new_bootloader_dir (OstreeSysroot *sysroot, int current_bootversion, int new_bootversion,
+                            GCancellable *cancellable, GError **error)
+{
+  GLNX_AUTO_PREFIX_ERROR ("Preparing bootloader directory", error);
+  g_assert ((current_bootversion == 0 && new_bootversion == 1)
+            || (current_bootversion == 1 && new_bootversion == 0));
+
+  if (!_ostree_sysroot_ensure_boot_fd (sysroot, error))
+    return FALSE;
+
+  /* This allows us to support both /boot on a seperate filesystem to / as well
+   * as on the same filesystem. Allowed to fail with EPERM on ESP/vfat.
+   */
+  if (TEMP_FAILURE_RETRY (symlinkat (".", sysroot->sysroot_fd, "boot/boot")) < 0)
+    if (errno != EPERM && errno != EEXIST)
+      return glnx_throw_errno_prefix (error, "symlinkat");
+
+  /* As the directory gets swapped with glnx_renameat2_exchange, the new bootloader
+   * deployment needs to first be moved to the 'old' path, as the 'current' one will
+   * become the older deployment after the exchange.
+   */
+  g_autofree char *loader_new = g_strdup_printf ("loader.%d", new_bootversion);
+  g_autofree char *loader_old = g_strdup_printf ("loader.%d", current_bootversion);
+
+  /* Tag boot version under an ostree specific file */
+  g_autofree char *version_name = g_strdup_printf ("%s/ostree_bootversion", loader_new);
+  if (!glnx_file_replace_contents_at (sysroot->boot_fd, version_name, (guint8 *)loader_new,
+                                      strlen (loader_new), 0, cancellable, error))
+    return FALSE;
+
+  /* It is safe to remove older loader version as it wasn't really deployed */
+  if (!glnx_shutil_rm_rf_at (sysroot->boot_fd, loader_old, cancellable, error))
+    return FALSE;
+
+  /* Rename new deployment to the older path before the exchange */
+  if (!glnx_renameat2_noreplace (sysroot->boot_fd, loader_new, sysroot->boot_fd, loader_old))
+    return FALSE;
+
+  return TRUE;
+}
+
 /* Update the /boot/loader symlink to point to /boot/loader.$new_bootversion */
 static gboolean
-swap_bootloader (OstreeSysroot *sysroot, OstreeBootloader *bootloader, int current_bootversion,
-                 int new_bootversion, GCancellable *cancellable, GError **error)
+swap_bootloader (OstreeSysroot *sysroot, OstreeBootloader *bootloader, gboolean loader_link,
+                 int current_bootversion, int new_bootversion, GCancellable *cancellable,
+                 GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("Final bootloader swap", error);
 
@@ -2221,12 +2318,22 @@ swap_bootloader (OstreeSysroot *sysroot, OstreeBootloader *bootloader, int curre
   if (!_ostree_sysroot_ensure_boot_fd (sysroot, error))
     return FALSE;
 
-  /* The symlink was already written, and we used syncfs() to ensure
-   * its data is in place.  Renaming now should give us atomic semantics;
-   * see https://bugzilla.gnome.org/show_bug.cgi?id=755595
-   */
-  if (!glnx_renameat (sysroot->boot_fd, "loader.tmp", sysroot->boot_fd, "loader", error))
-    return FALSE;
+  if (loader_link)
+    {
+      /* The symlink was already written, and we used syncfs() to ensure
+       * its data is in place.  Renaming now should give us atomic semantics;
+       * see https://bugzilla.gnome.org/show_bug.cgi?id=755595
+       */
+      if (!glnx_renameat (sysroot->boot_fd, "loader.tmp", sysroot->boot_fd, "loader", error))
+        return FALSE;
+    }
+  else
+    {
+      /* New target is currently under the old/current version */
+      g_autofree char *new_target = g_strdup_printf ("loader.%d", current_bootversion);
+      if (glnx_renameat2_exchange (sysroot->boot_fd, new_target, sysroot->boot_fd, "loader") != 0)
+        return FALSE;
+    }
 
   /* Now we explicitly fsync this directory, even though it
    * isn't required for atomicity, for two reasons:
@@ -2444,13 +2551,57 @@ write_deployments_bootswap (OstreeSysroot *self, GPtrArray *new_deployments,
         return glnx_prefix_error (error, "Bootloader write config");
     }
 
-  if (!prepare_new_bootloader_link (self, self->bootversion, new_bootversion, cancellable, error))
+  /* Handle when boot/loader is a link (normal deployment) and as a normal directory (e.g. EFI/vfat)
+   */
+  struct stat stbuf;
+  gboolean loader_link = FALSE;
+  gboolean force_type1_semantics = is_bootconfig_type1_semantics (self, cancellable, error);
+  if (!glnx_fstatat_allow_noent (self->sysroot_fd, "boot/loader", &stbuf, AT_SYMLINK_NOFOLLOW,
+                                 error))
     return FALSE;
+  if (errno == ENOENT)
+    {
+      /* When there is no loader, check if the fs supports symlink or not */
+      if (TEMP_FAILURE_RETRY (symlinkat (".", self->sysroot_fd, "boot/boot")) < 0)
+        {
+          if (errno == EPERM)
+            loader_link = FALSE;
+          else if (errno != EEXIST)
+            return glnx_throw_errno_prefix (error, "symlinkat");
+        }
+      else
+        loader_link = TRUE;
+    }
+  else if (S_ISLNK (stbuf.st_mode))
+    loader_link = TRUE;
+  else if (S_ISDIR (stbuf.st_mode))
+    loader_link = FALSE;
+  else
+    return FALSE;
+
+  if (force_type1_semantics && loader_link)
+    return glnx_throw_errno_prefix (error, "type1 semantics, but boot/loader is symlink");
+
+  if (loader_link)
+    {
+      /* Default and when loader is a link is to swap links */
+      if (!prepare_new_bootloader_link (self, self->bootversion, new_bootversion, cancellable,
+                                        error))
+        return FALSE;
+    }
+  else
+    {
+      /* Handle boot/loader as a directory, and swap with renameat2 RENAME_EXCHANGE */
+      if (!prepare_new_bootloader_dir (self, self->bootversion, new_bootversion, cancellable,
+                                       error))
+        return FALSE;
+    }
 
   if (!full_system_sync (self, out_syncstats, cancellable, error))
     return FALSE;
 
-  if (!swap_bootloader (self, bootloader, self->bootversion, new_bootversion, cancellable, error))
+  if (!swap_bootloader (self, bootloader, loader_link, self->bootversion, new_bootversion,
+                        cancellable, error))
     return FALSE;
 
   if (out_subbootdir)
