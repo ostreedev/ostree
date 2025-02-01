@@ -465,9 +465,13 @@ main (int argc, char *argv[])
       if (lcfs_mount_image (OSTREE_COMPOSEFS_NAME, TMP_SYSROOT, &cfs_options) == 0)
         {
           using_composefs = true;
+          bool using_verity = (cfs_options.flags & LCFS_MOUNT_FLAGS_REQUIRE_VERITY) > 0;
           g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_COMPOSEFS,
                                  g_variant_new_boolean (true));
-          g_print ("composefs: mounted successfully\n");
+          g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_COMPOSEFS_VERITY,
+                                 g_variant_new_boolean (using_verity));
+          g_print ("composefs: mounted successfully (verity=%s)\n",
+                   using_verity ? "true" : "false");
         }
       else
         {
