@@ -5,13 +5,13 @@ system-deps = "7"
 libc = "0.2"
 
 [dependencies.gio-sys]
-version = "0.18"
+version = "0.20"
 
 [dependencies.glib-sys]
-version = "0.18"
+version = "0.20"
 
 [dependencies.gobject-sys]
-version = "0.18"
+version = "0.20"
 
 [dev-dependencies]
 shell-words = "1.0.0"
@@ -68,7 +68,8 @@ v2022_7 = ["v2022_5"]
 v2023_1 = ["v2022_7"]
 v2023_8 = ["v2023_1"]
 v2023_11 = ["v2023_8"]
-v2025_1 = ["v2023_11"]
+v2025_1 = ["v2024_7"]
+v2024_7 = ["v2023_11"]
 
 [lib]
 name = "ostree_sys"
@@ -245,3 +246,6 @@ version = "2023.11"
 
 [package.metadata.system-deps.ostree_1.v2025_1]
 version = "2025.1"
+
+[package.metadata.system-deps.ostree_1.v2024_7]
+version = "2024.7"
