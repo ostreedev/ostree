@@ -2,8 +2,8 @@
 // from gir-files
 // DO NOT EDIT
 
-use crate::ObjectType;
-use glib::translate::*;
+use crate::{ffi,ObjectType};
+use glib::{translate::*};
 
 glib::wrapper! {
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

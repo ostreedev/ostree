@@ -2,11 +2,10 @@
 // from gir-files
 // DO NOT EDIT
 
-use crate::RepoFinder;
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
-use glib::translate::*;
-use std::fmt;
+use crate::{ffi,RepoFinder};
+#[cfg(feature = "v2018_6")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
+use glib::{translate::*};
 
 glib::wrapper! {
     #[doc(alias = "OstreeRepoFinderAvahi")]
@@ -18,8 +17,8 @@ glib::wrapper! {
 }
 
 impl RepoFinderAvahi {
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     #[doc(alias = "ostree_repo_finder_avahi_new")]
     pub fn new(context: Option<&glib::MainContext>) -> RepoFinderAvahi {
         unsafe {
@@ -27,18 +26,12 @@ impl RepoFinderAvahi {
         }
     }
 
-    #[cfg(any(feature = "v2018_6", feature = "dox"))]
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2018_6")))]
+    #[cfg(feature = "v2018_6")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2018_6")))]
     #[doc(alias = "ostree_repo_finder_avahi_stop")]
     pub fn stop(&self) {
         unsafe {
             ffi::ostree_repo_finder_avahi_stop(self.to_glib_none().0);
         }
-    }
-}
-
-impl fmt::Display for RepoFinderAvahi {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("RepoFinderAvahi")
     }
 }

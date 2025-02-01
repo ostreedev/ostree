@@ -2,12 +2,8 @@
 // from gir-files
 // DO NOT EDIT
 
-use crate::Repo;
-use glib::object::IsA;
-use glib::translate::*;
-use std::fmt;
-use std::mem;
-use std::ptr;
+use crate::{ffi,Repo};
+use glib::{prelude::*,translate::*};
 
 glib::wrapper! {
     #[doc(alias = "OstreeRepoFile")]
@@ -22,9 +18,9 @@ impl RepoFile {
     #[doc(alias = "ostree_repo_file_ensure_resolved")]
     pub fn ensure_resolved(&self) -> Result<(), glib::Error> {
         unsafe {
-            let mut error = ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_repo_file_ensure_resolved(self.to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
     }
@@ -58,10 +54,10 @@ impl RepoFile {
     #[doc(alias = "get_xattrs")]
     pub fn xattrs(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<glib::Variant, glib::Error> {
         unsafe {
-            let mut out_xattrs = ptr::null_mut();
-            let mut error = ptr::null_mut();
+            let mut out_xattrs = std::ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_repo_file_get_xattrs(self.to_glib_none().0, &mut out_xattrs, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(from_glib_full(out_xattrs)) } else { Err(from_glib_full(error)) }
         }
     }
@@ -69,8 +65,8 @@ impl RepoFile {
     #[doc(alias = "ostree_repo_file_tree_find_child")]
     pub fn tree_find_child(&self, name: &str) -> (i32, bool, glib::Variant) {
         unsafe {
-            let mut is_dir = mem::MaybeUninit::uninit();
-            let mut out_container = ptr::null_mut();
+            let mut is_dir = std::mem::MaybeUninit::uninit();
+            let mut out_container = std::ptr::null_mut();
             let ret = ffi::ostree_repo_file_tree_find_child(self.to_glib_none().0, name.to_glib_none().0, is_dir.as_mut_ptr(), &mut out_container);
             (ret, from_glib(is_dir.assume_init()), from_glib_full(out_container))
         }
@@ -107,10 +103,10 @@ impl RepoFile {
     #[doc(alias = "ostree_repo_file_tree_query_child")]
     pub fn tree_query_child(&self, n: i32, attributes: &str, flags: gio::FileQueryInfoFlags, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<gio::FileInfo, glib::Error> {
         unsafe {
-            let mut out_info = ptr::null_mut();
-            let mut error = ptr::null_mut();
+            let mut out_info = std::ptr::null_mut();
+            let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_repo_file_tree_query_child(self.to_glib_none().0, n, attributes.to_glib_none().0, flags.into_glib(), &mut out_info, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(from_glib_full(out_info)) } else { Err(from_glib_full(error)) }
         }
     }
@@ -120,11 +116,5 @@ impl RepoFile {
         unsafe {
             ffi::ostree_repo_file_tree_set_metadata(self.to_glib_none().0, checksum.to_glib_none().0, metadata.to_glib_none().0);
         }
-    }
-}
-
-impl fmt::Display for RepoFile {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("RepoFile")
     }
 }

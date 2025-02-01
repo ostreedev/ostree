@@ -2,8 +2,8 @@
 // from gir-files
 // DO NOT EDIT
 
-use glib::translate::*;
-use std::cmp;
+use crate::{ffi};
+use glib::{translate::*};
 
 glib::wrapper! {
     #[derive(Debug, Hash)]
@@ -41,14 +41,14 @@ impl Eq for RepoFinderResult {}
 
 impl PartialOrd for RepoFinderResult {
     #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-        self.compare(other).partial_cmp(&0)
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
 
 impl Ord for RepoFinderResult {
     #[inline]
-    fn cmp(&self, other: &Self) -> cmp::Ordering {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.compare(other).cmp(&0)
     }
 }

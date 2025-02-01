@@ -2,17 +2,13 @@
 // from gir-files
 // DO NOT EDIT
 
-use bitflags::bitflags;
-use glib::translate::*;
-use glib::value::FromValue;
-use glib::value::ToValue;
-use glib::StaticType;
-use glib::Type;
-use std::fmt;
+use crate::{ffi};
+use glib::{bitflags::bitflags,prelude::*,translate::*};
 
-#[cfg(any(feature = "v2017_13", feature = "dox"))]
+#[cfg(feature = "v2017_13")]
 bitflags! {
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_13")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2017_13")))]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     #[doc(alias = "OstreeChecksumFlags")]
     pub struct ChecksumFlags: u32 {
         #[doc(alias = "OSTREE_CHECKSUM_FLAGS_NONE")]
@@ -24,35 +20,30 @@ bitflags! {
     }
 }
 
-#[cfg(any(feature = "v2017_13", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_13")))]
-impl fmt::Display for ChecksumFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        <Self as fmt::Debug>::fmt(self, f)
-    }
-}
-
-#[cfg(any(feature = "v2017_13", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_13")))]
+#[cfg(feature = "v2017_13")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2017_13")))]
 #[doc(hidden)]
 impl IntoGlib for ChecksumFlags {
     type GlibType = ffi::OstreeChecksumFlags;
 
+    #[inline]
     fn into_glib(self) -> ffi::OstreeChecksumFlags {
         self.bits()
     }
 }
 
-#[cfg(any(feature = "v2017_13", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2017_13")))]
+#[cfg(feature = "v2017_13")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2017_13")))]
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeChecksumFlags> for ChecksumFlags {
+    #[inline]
     unsafe fn from_glib(value: ffi::OstreeChecksumFlags) -> Self {
         Self::from_bits_truncate(value)
     }
 }
 
 bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     #[doc(alias = "OstreeDiffFlags")]
     pub struct DiffFlags: u32 {
         #[doc(alias = "OSTREE_DIFF_FLAGS_NONE")]
@@ -62,16 +53,11 @@ bitflags! {
     }
 }
 
-impl fmt::Display for DiffFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        <Self as fmt::Debug>::fmt(self, f)
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for DiffFlags {
     type GlibType = ffi::OstreeDiffFlags;
 
+    #[inline]
     fn into_glib(self) -> ffi::OstreeDiffFlags {
         self.bits()
     }
@@ -79,12 +65,14 @@ impl IntoGlib for DiffFlags {
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeDiffFlags> for DiffFlags {
+    #[inline]
     unsafe fn from_glib(value: ffi::OstreeDiffFlags) -> Self {
         Self::from_bits_truncate(value)
     }
 }
 
 bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     #[doc(alias = "OstreeGpgSignatureFormatFlags")]
     pub struct GpgSignatureFormatFlags: u32 {
         #[doc(alias = "OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT")]
@@ -92,16 +80,11 @@ bitflags! {
     }
 }
 
-impl fmt::Display for GpgSignatureFormatFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        <Self as fmt::Debug>::fmt(self, f)
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for GpgSignatureFormatFlags {
     type GlibType = ffi::OstreeGpgSignatureFormatFlags;
 
+    #[inline]
     fn into_glib(self) -> ffi::OstreeGpgSignatureFormatFlags {
         self.bits()
     }
@@ -109,12 +92,14 @@ impl IntoGlib for GpgSignatureFormatFlags {
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeGpgSignatureFormatFlags> for GpgSignatureFormatFlags {
+    #[inline]
     unsafe fn from_glib(value: ffi::OstreeGpgSignatureFormatFlags) -> Self {
         Self::from_bits_truncate(value)
     }
 }
 
 bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     #[doc(alias = "OstreeRepoCommitModifierFlags")]
     pub struct RepoCommitModifierFlags: u32 {
         #[doc(alias = "OSTREE_REPO_COMMIT_MODIFIER_FLAGS_NONE")]
@@ -131,12 +116,8 @@ bitflags! {
         const CONSUME = ffi::OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME as _;
         #[doc(alias = "OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL")]
         const DEVINO_CANONICAL = ffi::OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL as _;
-    }
-}
-
-impl fmt::Display for RepoCommitModifierFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        <Self as fmt::Debug>::fmt(self, f)
+        #[doc(alias = "OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SELINUX_LABEL_V1")]
+        const SELINUX_LABEL_V1 = ffi::OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SELINUX_LABEL_V1 as _;
     }
 }
 
@@ -144,6 +125,7 @@ impl fmt::Display for RepoCommitModifierFlags {
 impl IntoGlib for RepoCommitModifierFlags {
     type GlibType = ffi::OstreeRepoCommitModifierFlags;
 
+    #[inline]
     fn into_glib(self) -> ffi::OstreeRepoCommitModifierFlags {
         self.bits()
     }
@@ -151,14 +133,16 @@ impl IntoGlib for RepoCommitModifierFlags {
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeRepoCommitModifierFlags> for RepoCommitModifierFlags {
+    #[inline]
     unsafe fn from_glib(value: ffi::OstreeRepoCommitModifierFlags) -> Self {
         Self::from_bits_truncate(value)
     }
 }
 
-#[cfg(any(feature = "v2015_7", feature = "dox"))]
+#[cfg(feature = "v2015_7")]
 bitflags! {
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2015_7")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2015_7")))]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     #[doc(alias = "OstreeRepoCommitState")]
     pub struct RepoCommitState: u32 {
         #[doc(alias = "OSTREE_REPO_COMMIT_STATE_NORMAL")]
@@ -170,35 +154,30 @@ bitflags! {
     }
 }
 
-#[cfg(any(feature = "v2015_7", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2015_7")))]
-impl fmt::Display for RepoCommitState {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        <Self as fmt::Debug>::fmt(self, f)
-    }
-}
-
-#[cfg(any(feature = "v2015_7", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2015_7")))]
+#[cfg(feature = "v2015_7")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2015_7")))]
 #[doc(hidden)]
 impl IntoGlib for RepoCommitState {
     type GlibType = ffi::OstreeRepoCommitState;
 
+    #[inline]
     fn into_glib(self) -> ffi::OstreeRepoCommitState {
         self.bits()
     }
 }
 
-#[cfg(any(feature = "v2015_7", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2015_7")))]
+#[cfg(feature = "v2015_7")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2015_7")))]
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeRepoCommitState> for RepoCommitState {
+    #[inline]
     unsafe fn from_glib(value: ffi::OstreeRepoCommitState) -> Self {
         Self::from_bits_truncate(value)
     }
 }
 
 bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     #[doc(alias = "OstreeRepoCommitTraverseFlags")]
     pub struct RepoCommitTraverseFlags: u32 {
         #[doc(alias = "OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE")]
@@ -208,16 +187,11 @@ bitflags! {
     }
 }
 
-impl fmt::Display for RepoCommitTraverseFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        <Self as fmt::Debug>::fmt(self, f)
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for RepoCommitTraverseFlags {
     type GlibType = ffi::OstreeRepoCommitTraverseFlags;
 
+    #[inline]
     fn into_glib(self) -> ffi::OstreeRepoCommitTraverseFlags {
         self.bits()
     }
@@ -225,12 +199,14 @@ impl IntoGlib for RepoCommitTraverseFlags {
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeRepoCommitTraverseFlags> for RepoCommitTraverseFlags {
+    #[inline]
     unsafe fn from_glib(value: ffi::OstreeRepoCommitTraverseFlags) -> Self {
         Self::from_bits_truncate(value)
     }
 }
 
 bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     #[doc(alias = "OstreeRepoListObjectsFlags")]
     pub struct RepoListObjectsFlags: u32 {
         #[doc(alias = "OSTREE_REPO_LIST_OBJECTS_LOOSE")]
@@ -244,16 +220,11 @@ bitflags! {
     }
 }
 
-impl fmt::Display for RepoListObjectsFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        <Self as fmt::Debug>::fmt(self, f)
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for RepoListObjectsFlags {
     type GlibType = ffi::OstreeRepoListObjectsFlags;
 
+    #[inline]
     fn into_glib(self) -> ffi::OstreeRepoListObjectsFlags {
         self.bits()
     }
@@ -261,12 +232,14 @@ impl IntoGlib for RepoListObjectsFlags {
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeRepoListObjectsFlags> for RepoListObjectsFlags {
+    #[inline]
     unsafe fn from_glib(value: ffi::OstreeRepoListObjectsFlags) -> Self {
         Self::from_bits_truncate(value)
     }
 }
 
 bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     #[doc(alias = "OstreeRepoListRefsExtFlags")]
     pub struct RepoListRefsExtFlags: u32 {
         #[doc(alias = "OSTREE_REPO_LIST_REFS_EXT_NONE")]
@@ -280,16 +253,11 @@ bitflags! {
     }
 }
 
-impl fmt::Display for RepoListRefsExtFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        <Self as fmt::Debug>::fmt(self, f)
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for RepoListRefsExtFlags {
     type GlibType = ffi::OstreeRepoListRefsExtFlags;
 
+    #[inline]
     fn into_glib(self) -> ffi::OstreeRepoListRefsExtFlags {
         self.bits()
     }
@@ -297,12 +265,14 @@ impl IntoGlib for RepoListRefsExtFlags {
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeRepoListRefsExtFlags> for RepoListRefsExtFlags {
+    #[inline]
     unsafe fn from_glib(value: ffi::OstreeRepoListRefsExtFlags) -> Self {
         Self::from_bits_truncate(value)
     }
 }
 
 bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     #[doc(alias = "OstreeRepoPruneFlags")]
     pub struct RepoPruneFlags: u32 {
         #[doc(alias = "OSTREE_REPO_PRUNE_FLAGS_NONE")]
@@ -316,16 +286,11 @@ bitflags! {
     }
 }
 
-impl fmt::Display for RepoPruneFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        <Self as fmt::Debug>::fmt(self, f)
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for RepoPruneFlags {
     type GlibType = ffi::OstreeRepoPruneFlags;
 
+    #[inline]
     fn into_glib(self) -> ffi::OstreeRepoPruneFlags {
         self.bits()
     }
@@ -333,12 +298,14 @@ impl IntoGlib for RepoPruneFlags {
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeRepoPruneFlags> for RepoPruneFlags {
+    #[inline]
     unsafe fn from_glib(value: ffi::OstreeRepoPruneFlags) -> Self {
         Self::from_bits_truncate(value)
     }
 }
 
 bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     #[doc(alias = "OstreeRepoPullFlags")]
     pub struct RepoPullFlags: u32 {
         #[doc(alias = "OSTREE_REPO_PULL_FLAGS_NONE")]
@@ -356,16 +323,11 @@ bitflags! {
     }
 }
 
-impl fmt::Display for RepoPullFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        <Self as fmt::Debug>::fmt(self, f)
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for RepoPullFlags {
     type GlibType = ffi::OstreeRepoPullFlags;
 
+    #[inline]
     fn into_glib(self) -> ffi::OstreeRepoPullFlags {
         self.bits()
     }
@@ -373,12 +335,14 @@ impl IntoGlib for RepoPullFlags {
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeRepoPullFlags> for RepoPullFlags {
+    #[inline]
     unsafe fn from_glib(value: ffi::OstreeRepoPullFlags) -> Self {
         Self::from_bits_truncate(value)
     }
 }
 
 bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     #[doc(alias = "OstreeRepoResolveRevExtFlags")]
     pub struct RepoResolveRevExtFlags: u32 {
         #[doc(alias = "OSTREE_REPO_RESOLVE_REV_EXT_NONE")]
@@ -388,16 +352,11 @@ bitflags! {
     }
 }
 
-impl fmt::Display for RepoResolveRevExtFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        <Self as fmt::Debug>::fmt(self, f)
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for RepoResolveRevExtFlags {
     type GlibType = ffi::OstreeRepoResolveRevExtFlags;
 
+    #[inline]
     fn into_glib(self) -> ffi::OstreeRepoResolveRevExtFlags {
         self.bits()
     }
@@ -405,14 +364,16 @@ impl IntoGlib for RepoResolveRevExtFlags {
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeRepoResolveRevExtFlags> for RepoResolveRevExtFlags {
+    #[inline]
     unsafe fn from_glib(value: ffi::OstreeRepoResolveRevExtFlags) -> Self {
         Self::from_bits_truncate(value)
     }
 }
 
-#[cfg(any(feature = "v2021_4", feature = "dox"))]
+#[cfg(feature = "v2021_4")]
 bitflags! {
-    #[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_4")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2021_4")))]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     #[doc(alias = "OstreeRepoVerifyFlags")]
     pub struct RepoVerifyFlags: u32 {
         #[doc(alias = "OSTREE_REPO_VERIFY_FLAGS_NONE")]
@@ -424,35 +385,30 @@ bitflags! {
     }
 }
 
-#[cfg(any(feature = "v2021_4", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_4")))]
-impl fmt::Display for RepoVerifyFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        <Self as fmt::Debug>::fmt(self, f)
-    }
-}
-
-#[cfg(any(feature = "v2021_4", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_4")))]
+#[cfg(feature = "v2021_4")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2021_4")))]
 #[doc(hidden)]
 impl IntoGlib for RepoVerifyFlags {
     type GlibType = ffi::OstreeRepoVerifyFlags;
 
+    #[inline]
     fn into_glib(self) -> ffi::OstreeRepoVerifyFlags {
         self.bits()
     }
 }
 
-#[cfg(any(feature = "v2021_4", feature = "dox"))]
-#[cfg_attr(feature = "dox", doc(cfg(feature = "v2021_4")))]
+#[cfg(feature = "v2021_4")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2021_4")))]
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeRepoVerifyFlags> for RepoVerifyFlags {
+    #[inline]
     unsafe fn from_glib(value: ffi::OstreeRepoVerifyFlags) -> Self {
         Self::from_bits_truncate(value)
     }
 }
 
 bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     #[doc(alias = "OstreeSePolicyRestoreconFlags")]
     pub struct SePolicyRestoreconFlags: u32 {
         #[doc(alias = "OSTREE_SEPOLICY_RESTORECON_FLAGS_NONE")]
@@ -464,16 +420,11 @@ bitflags! {
     }
 }
 
-impl fmt::Display for SePolicyRestoreconFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        <Self as fmt::Debug>::fmt(self, f)
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for SePolicyRestoreconFlags {
     type GlibType = ffi::OstreeSePolicyRestoreconFlags;
 
+    #[inline]
     fn into_glib(self) -> ffi::OstreeSePolicyRestoreconFlags {
         self.bits()
     }
@@ -481,12 +432,14 @@ impl IntoGlib for SePolicyRestoreconFlags {
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeSePolicyRestoreconFlags> for SePolicyRestoreconFlags {
+    #[inline]
     unsafe fn from_glib(value: ffi::OstreeSePolicyRestoreconFlags) -> Self {
         Self::from_bits_truncate(value)
     }
 }
 
 bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     #[doc(alias = "OstreeSysrootSimpleWriteDeploymentFlags")]
     pub struct SysrootSimpleWriteDeploymentFlags: u32 {
         #[doc(alias = "OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NONE")]
@@ -504,16 +457,11 @@ bitflags! {
     }
 }
 
-impl fmt::Display for SysrootSimpleWriteDeploymentFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        <Self as fmt::Debug>::fmt(self, f)
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for SysrootSimpleWriteDeploymentFlags {
     type GlibType = ffi::OstreeSysrootSimpleWriteDeploymentFlags;
 
+    #[inline]
     fn into_glib(self) -> ffi::OstreeSysrootSimpleWriteDeploymentFlags {
         self.bits()
     }
@@ -521,24 +469,22 @@ impl IntoGlib for SysrootSimpleWriteDeploymentFlags {
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeSysrootSimpleWriteDeploymentFlags> for SysrootSimpleWriteDeploymentFlags {
+    #[inline]
     unsafe fn from_glib(value: ffi::OstreeSysrootSimpleWriteDeploymentFlags) -> Self {
         Self::from_bits_truncate(value)
     }
 }
 
 bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     #[doc(alias = "OstreeSysrootUpgraderFlags")]
     pub struct SysrootUpgraderFlags: u32 {
         #[doc(alias = "OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED")]
         const IGNORE_UNCONFIGURED = ffi::OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED as _;
         #[doc(alias = "OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE")]
         const STAGE = ffi::OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE as _;
-    }
-}
-
-impl fmt::Display for SysrootUpgraderFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        <Self as fmt::Debug>::fmt(self, f)
+        #[doc(alias = "OSTREE_SYSROOT_UPGRADER_FLAGS_KEXEC")]
+        const KEXEC = ffi::OSTREE_SYSROOT_UPGRADER_FLAGS_KEXEC as _;
     }
 }
 
@@ -546,6 +492,7 @@ impl fmt::Display for SysrootUpgraderFlags {
 impl IntoGlib for SysrootUpgraderFlags {
     type GlibType = ffi::OstreeSysrootUpgraderFlags;
 
+    #[inline]
     fn into_glib(self) -> ffi::OstreeSysrootUpgraderFlags {
         self.bits()
     }
@@ -553,30 +500,45 @@ impl IntoGlib for SysrootUpgraderFlags {
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeSysrootUpgraderFlags> for SysrootUpgraderFlags {
+    #[inline]
     unsafe fn from_glib(value: ffi::OstreeSysrootUpgraderFlags) -> Self {
         Self::from_bits_truncate(value)
     }
 }
 
 impl StaticType for SysrootUpgraderFlags {
-    fn static_type() -> Type {
-        unsafe { from_glib(ffi::ostree_sysroot_upgrader_flags_get_type()) }
-    }
+                #[inline]
+    #[doc(alias = "ostree_sysroot_upgrader_flags_get_type")]
+   fn static_type() -> glib::Type {
+                    unsafe { from_glib(ffi::ostree_sysroot_upgrader_flags_get_type()) }
+                }
+            }
+
+impl glib::HasParamSpec for SysrootUpgraderFlags {
+                type ParamSpec = glib::ParamSpecFlags;
+                type SetValue = Self;
+                type BuilderFn = fn(&str) -> glib::ParamSpecFlagsBuilder<Self>;
+    
+                fn param_spec_builder() -> Self::BuilderFn {
+                    Self::ParamSpec::builder
+                }
 }
 
 impl glib::value::ValueType for SysrootUpgraderFlags {
     type Type = Self;
 }
 
-unsafe impl<'a> FromValue<'a> for SysrootUpgraderFlags {
+unsafe impl<'a> glib::value::FromValue<'a> for SysrootUpgraderFlags {
     type Checker = glib::value::GenericValueTypeChecker<Self>;
 
+    #[inline]
     unsafe fn from_value(value: &'a glib::Value) -> Self {
         from_glib(glib::gobject_ffi::g_value_get_flags(value.to_glib_none().0))
     }
 }
 
 impl ToValue for SysrootUpgraderFlags {
+    #[inline]
     fn to_value(&self) -> glib::Value {
         let mut value = glib::Value::for_value_type::<Self>();
         unsafe {
@@ -585,6 +547,7 @@ impl ToValue for SysrootUpgraderFlags {
         value
     }
 
+    #[inline]
     fn value_type(&self) -> glib::Type {
         Self::static_type()
     }
@@ -598,6 +561,7 @@ impl From<SysrootUpgraderFlags> for glib::Value {
 }
 
 bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     #[doc(alias = "OstreeSysrootUpgraderPullFlags")]
     pub struct SysrootUpgraderPullFlags: u32 {
         #[doc(alias = "OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_NONE")]
@@ -609,16 +573,11 @@ bitflags! {
     }
 }
 
-impl fmt::Display for SysrootUpgraderPullFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        <Self as fmt::Debug>::fmt(self, f)
-    }
-}
-
 #[doc(hidden)]
 impl IntoGlib for SysrootUpgraderPullFlags {
     type GlibType = ffi::OstreeSysrootUpgraderPullFlags;
 
+    #[inline]
     fn into_glib(self) -> ffi::OstreeSysrootUpgraderPullFlags {
         self.bits()
     }
@@ -626,6 +585,7 @@ impl IntoGlib for SysrootUpgraderPullFlags {
 
 #[doc(hidden)]
 impl FromGlib<ffi::OstreeSysrootUpgraderPullFlags> for SysrootUpgraderPullFlags {
+    #[inline]
     unsafe fn from_glib(value: ffi::OstreeSysrootUpgraderPullFlags) -> Self {
         Self::from_bits_truncate(value)
     }
