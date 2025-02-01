@@ -96,6 +96,8 @@ ComposefsConfig *otcore_load_composefs_config (const char *cmdline, GKeyFile *co
 #define OTCORE_RUN_BOOTED "/run/ostree-booted"
 // This key will be present if composefs was successfully used.
 #define OTCORE_RUN_BOOTED_KEY_COMPOSEFS "composefs"
+// True if fsverity was required for composefs.
+#define OTCORE_RUN_BOOTED_KEY_COMPOSEFS_VERITY "composefs.verity"
 // This key if present contains the public key successfully used
 // to verify the signature.
 #define OTCORE_RUN_BOOTED_KEY_COMPOSEFS_SIGNATURE "composefs.signed"
