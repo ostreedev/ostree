@@ -37,8 +37,8 @@ members = [".", "rust-bindings/sys"]
 base64 = "0.20.0"
 bitflags = "1.2.1"
 ffi = { package = "ostree-sys", path = "rust-bindings/sys", version = "0.15.0" }
-gio = "0.18"
-glib = "0.18"
+gio = "0.20"
+glib = "0.20"
 hex = "0.4.2"
 libc = "0.2"
 once_cell = "1.4.0"
@@ -101,3 +101,4 @@ v2022_7 = ["v2022_6", "ffi/v2022_7"]
 v2023_1 = ["v2022_7", "ffi/v2023_1"]
 v2023_8 = ["v2023_1", "ffi/v2023_8"]
 v2023_11 = ["v2023_8", "ffi/v2023_11"]
+v2025_1 = ["v2023_11", "ffi/v2025_1"]

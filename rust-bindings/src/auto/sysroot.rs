@@ -100,6 +100,8 @@ impl Sysroot {
         }
     }
 
+    #[cfg(feature = "v2025_1")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_1")))]
     #[doc(alias = "ostree_sysroot_deployment_kexec_load")]
     pub fn deployment_kexec_load(&self, deployment: &Deployment, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {

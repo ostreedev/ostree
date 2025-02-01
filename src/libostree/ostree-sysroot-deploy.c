@@ -4270,6 +4270,8 @@ ostree_sysroot_deployment_set_mutable (OstreeSysroot *self, OstreeDeployment *de
  * @error: Error
  *
  * Prepare the specified deployment for a kexec.
+ *
+ * Since: 2025.1
  */
 gboolean
 ostree_sysroot_deployment_kexec_load (OstreeSysroot *self, OstreeDeployment *deployment,

@@ -1854,6 +1854,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
+    #[cfg(feature = "v2024_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2024_7")))]
     pub fn ostree_repo_checkout_composefs(
         self_: *mut OstreeRepo,
         options: *mut glib::GVariant,
@@ -3084,6 +3086,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
+    #[cfg(feature = "v2025_1")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_1")))]
     pub fn ostree_sysroot_deployment_kexec_load(
         self_: *mut OstreeSysroot,
         deployment: *mut OstreeDeployment,

@@ -101,6 +101,8 @@ impl Repo {
         }
     }
 
+    #[cfg(feature = "v2024_7")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2024_7")))]
     #[doc(alias = "ostree_repo_checkout_composefs")]
     pub fn checkout_composefs(&self, options: Option<&glib::Variant>, destination_dfd: i32, destination_path: &str, checksum: &str, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
