@@ -22,10 +22,12 @@
 #include "ostree-libarchive-private.h"
 #include "ostree-sysroot-private.h"
 #include "otutil.h"
+#include <fcntl.h>
 #include <gio/gunixinputstream.h>
 #include <string.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #define SECURE_EXECUTION_SYSFS_FLAG "/sys/firmware/uv/prot_virt_guest"
 #define SECURE_EXECUTION_PARTITION "/dev/disk/by-label/se"
@@ -353,6 +355,12 @@ _ostree_secure_execution_generate_sdboot (gchar *vmlinuz, gchar *initramfs, gcha
   if (!_ostree_secure_execution_generate_initrd (initramfs, &ramdisk, cancellable, error))
     return FALSE;
   g_autofree gchar *ramdisk_filename = g_strdup_printf ("/proc/%d/fd/%d", self, ramdisk.fd);
+
+  // Since s390-tools commit f4cf4ae6ebb1 (Remove genprotimg-C and switch to genprotimg-Rust
+  // implementation) 'genprotimg' is just a symlink to 'pvimg create', which by default doesn't
+  // overwrite the output image, but introduces the '--overwrite' flag for this. Let's silently
+  // remove the file to support both tools
+  (void)unlink (SECURE_EXECUTION_BOOT_IMAGE);
 
   g_autoptr (GPtrArray) argv = g_ptr_array_new ();
   g_ptr_array_add (argv, "genprotimg");
