@@ -1285,6 +1285,8 @@ compare_verity_digests (GVariant *metadata_composefs, const guchar *fsverity_dig
  *
  *  - verity: `u`: 0 = disabled, 1 = set if present on file, 2 = enabled; any other value is a fatal
  * error
+ *
+ * Since: 2024.7
  */
 gboolean
 ostree_repo_checkout_composefs (OstreeRepo *self, GVariant *options, int destination_dfd,
