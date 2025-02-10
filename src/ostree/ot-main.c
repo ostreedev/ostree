@@ -613,6 +613,9 @@ ostree_admin_option_context_parse (GOptionContext *context, const GOptionEntry *
       return TRUE;
     }
 
+  // Disable this, it's just noise
+  ostree_sepolicy_set_null_log ();
+
   g_autoptr (GFile) sysroot_path = NULL;
   if (opt_sysroot != NULL)
     sysroot_path = g_file_new_for_path (opt_sysroot);
