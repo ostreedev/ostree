@@ -254,6 +254,27 @@ get_policy_checksum (char **out_csum, GCancellable *cancellable, GError **error)
 
 #endif
 
+__attribute__ ((format (printf, 2, 3))) static int
+_ostree_sepolicy_null_log (int type, const char *fmt, ...)
+{
+  return 0;
+}
+
+/**
+ * ostree_sepolicy_set_null_log:
+ * Disable SELinux's builtin logging; one rarely wants this enabled.
+ *
+ * Since: 2025.2
+ */
+void
+ostree_sepolicy_set_null_log (void)
+{
+#ifdef HAVE_SELINUX
+  selinux_set_callback (SELINUX_CB_LOG,
+                        (const union selinux_callback){ .func_log = _ostree_sepolicy_null_log });
+#endif
+}
+
 /**
  * ostree_sepolicy_new_from_commit:
  * @repo: The repo

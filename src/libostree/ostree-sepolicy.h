@@ -32,6 +32,9 @@ _OSTREE_PUBLIC
 GType ostree_sepolicy_get_type (void);
 
 _OSTREE_PUBLIC
+void ostree_sepolicy_set_null_log (void);
+
+_OSTREE_PUBLIC
 OstreeSePolicy *ostree_sepolicy_new (GFile *path, GCancellable *cancellable, GError **error);
 
 _OSTREE_PUBLIC
