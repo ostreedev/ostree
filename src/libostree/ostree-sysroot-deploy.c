@@ -32,9 +32,6 @@
 #include <sys/socket.h>
 #include <sys/statvfs.h>
 
-#ifdef HAVE_LIBMOUNT
-#include <libmount.h>
-#endif
 #ifdef HAVE_LIBSYSTEMD
 #include <systemd/sd-journal.h>
 #endif
