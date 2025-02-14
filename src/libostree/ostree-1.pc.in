@@ -9,5 +9,7 @@ Name: OSTree
 Description: Git for operating system binaries
 Version: @VERSION@
 Requires: gio-unix-2.0
+Requires.private: @REQUIRES_PRIVATE@
 Libs: -L${libdir} -lostree-1
+Libs.private: @LIBS_PRIVATE@
 Cflags: -I${includedir}/ostree-1

@@ -99,6 +99,9 @@ AC_CHECK_HEADER([sys/xattr.h],,[AC_MSG_ERROR([You must have sys/xattr.h from gli
 
 AS_IF([test "$YACC" != "bison -y"], [AC_MSG_ERROR([bison not found but required])])
 
+AC_SUBST([LIBS_PRIVATE])
+AC_SUBST([REQUIRES_PRIVATE])
+
 PKG_PROG_PKG_CONFIG
 
 # PKG_CHECK_VAR added to pkg-config 0.28
@@ -121,10 +124,14 @@ GIO_DEPENDENCY="gio-unix-2.0 >= 2.66.0"
 PKG_CHECK_MODULES(OT_DEP_GIO_UNIX, $GIO_DEPENDENCY)
 
 dnl 5.1.0 is an arbitrary version here
-PKG_CHECK_MODULES(OT_DEP_LZMA, liblzma >= 5.0.5)
+LIBLZMA_DEPENDENCY="liblzma >= 5.0.5"
+PKG_CHECK_MODULES(OT_DEP_LZMA, $LIBLZMA_DEPENDENCY)
+REQUIRES_PRIVATE="${LIBLZMA_DEPENDENCY}"
 
 dnl Needed for rollsum
-PKG_CHECK_MODULES(OT_DEP_ZLIB, zlib)
+ZLIB_DEPENDENCY=zlib
+PKG_CHECK_MODULES(OT_DEP_ZLIB, $ZLIB_DEPENDENCY)
+REQUIRES_PRIVATE="${REQUIRES_PRIVATE} ${ZLIB_DEPENDENCY}"
 
 dnl We're not actually linking to this, just using the header
 PKG_CHECK_MODULES(OT_DEP_E2P, e2p)
@@ -231,10 +238,16 @@ AS_IF([test x$with_curl = xyes && test x$with_soup = xno && test x$with_soup3 = 
 AM_CONDITIONAL(USE_CURL_OR_SOUP, test x$with_curl != xno || test x$with_soup != xno || test x$with_soup3 != xno)
 AS_IF([test x$with_curl != xno || test x$with_soup != xno || test x$with_soup3 != xno],
             [AC_DEFINE([HAVE_LIBCURL_OR_LIBSOUP], 1, [Define if we have soup or curl])])
-AS_IF([test x$with_curl = xyes], [fetcher_backend=curl],
-      [test x$with_soup = xyes], [fetcher_backend=libsoup],
-      [test x$with_soup3 = xyes], [fetcher_backend=libsoup3],
-      [fetcher_backend=none])
+AS_IF([test x$with_curl = xyes], [
+  fetcher_backend=curl
+  REQUIRES_PRIVATE="${REQUIRES_PRIVATE} libcurl >= $CURL_DEPENDENCY"
+], [test x$with_soup = xyes], [
+  fetcher_backend=libsoup
+  REQUIRES_PRIVATE="${REQUIRES_PRIVATE} ${SOUP_DEPENDENCY}"
+], [test x$with_soup3 = xyes], [
+  fetcher_backend=libsoup3
+  REQUIRES_PRIVATE="${REQUIRES_PRIVATE} ${SOUP3_DEPENDENCY}"
+], [fetcher_backend=none])
 
 m4_ifdef([GOBJECT_INTROSPECTION_CHECK], [
   GOBJECT_INTROSPECTION_CHECK([1.51.5])
@@ -248,25 +261,37 @@ AC_ARG_WITH(gpgme,
 	    [], [with_gpgme=yes])
 AS_IF([test x$with_gpgme != xno], [
     have_gpgme=yes
-    PKG_CHECK_MODULES([OT_DEP_GPGME], [gpgme >= $LIBGPGME_DEPENDENCY gpg-error], [have_gpgme=yes], [have_gpgme=no])
+    PKG_CHECK_MODULES([OT_DEP_GPGME], [gpgme >= $LIBGPGME_DEPENDENCY gpg-error], [
+        have_gpgme=yes
+        REQUIRES_PRIVATE="${REQUIRES_PRIVATE} gpgme >= $LIBGPGME_DEPENDENCY gpg-error"
+        ], [have_gpgme=no])
     ]
 )
 AS_IF([test x$with_gpgme != xno && test x$have_gpgme != xyes], [
-    PKG_CHECK_MODULES(OT_DEP_GPGME, gpgme-pthread >= $LIBGPGME_PTHREAD_DEPENDENCY, have_gpgme=yes, [
+    PKG_CHECK_MODULES(OT_DEP_GPGME, gpgme-pthread >= $LIBGPGME_PTHREAD_DEPENDENCY, [
+        have_gpgme=yes
+        REQUIRES_PRIVATE="${REQUIRES_PRIVATE} gpgme-pthread >= $LIBGPGME_PTHREAD_DEPENDENCY"
+    ], [
         m4_ifdef([AM_PATH_GPGME_PTHREAD], [
-            AM_PATH_GPGME_PTHREAD($LIBGPGME_PTHREAD_DEPENDENCY, have_gpgme=yes, have_gpgme=no)
+            AM_PATH_GPGME_PTHREAD($LIBGPGME_PTHREAD_DEPENDENCY, [
+                have_gpgme=yes
+		LIBS_PRIVATE="${LIBS_PRIVATE:+$LIBS_PRIVATE }${GPGME_PTHREAD_LIBS}"
+            ], have_gpgme=no)
         ],[ have_gpgme=no ])
     ])
     AS_IF([ test x$have_gpgme = xno ], [
        AC_MSG_ERROR([Need GPGME_PTHREAD version $LIBGPGME_PTHREAD_DEPENDENCY or later])
     ])
     OSTREE_FEATURES="$OSTREE_FEATURES gpgme"
-    PKG_CHECK_MODULES(OT_DEP_GPG_ERROR, [gpg-error], [], [
+    PKG_CHECK_MODULES(OT_DEP_GPG_ERROR, [gpg-error], [
+        REQUIRES_PRIVATE="${REQUIRES_PRIVATE} gpg-error"
+    ], [
 dnl This apparently doesn't ship a pkg-config file either, and we need
 dnl to link to it directly.
         AC_PATH_PROG(GPG_ERROR_CONFIG, [gpg-error-config], [AC_MSG_ERROR([Missing gpg-error-config])])
         OT_DEP_GPG_ERROR_CFLAGS="$( $GPG_ERROR_CONFIG --cflags )"
         OT_DEP_GPG_ERROR_LIBS="$( $GPG_ERROR_CONFIG --libs )"
+        LIBS_PRIVATE="${LIBS_PRIVATE:+$LIBS_PRIVATE }${OT_DEP_GPG_ERROR_LIBS}"
     ])
     OT_DEP_GPGME_CFLAGS="${OT_DEP_GPGME_CFLAGS} ${OT_DEP_GPG_ERROR_CFLAGS}"
     OT_DEP_GPGME_LIBS="${OT_DEP_GPGME_LIBS} ${OT_DEP_GPG_ERROR_LIBS}"
@@ -298,6 +323,7 @@ AS_IF([ test x$with_composefs != xno ], [
     ])
     AS_IF([ test x$have_composefs = xyes], [
       PKG_CHECK_MODULES(OT_DEP_COMPOSEFS, [composefs])
+      REQUIRES_PRIVATE="${REQUIRES_PRIVATE} composefs"
       OSTREE_FEATURES="$OSTREE_FEATURES composefs";
       AC_DEFINE([HAVE_COMPOSEFS], 1, [Define if we have libcomposefs])
     ])
@@ -310,9 +336,12 @@ AC_ARG_WITH(ed25519_libsodium,
 	    [], [with_ed25519_libsodium=no])
 AS_IF([test x$with_ed25519_libsodium != xno], [
     AC_DEFINE([HAVE_LIBSODIUM], 1, [Define if using libsodium])
-    PKG_CHECK_MODULES(OT_DEP_LIBSODIUM, libsodium >= $LIBSODIUM_DEPENDENCY, have_libsodium=yes,  have_libsodium=no)
-    AS_IF([ test x$have_libsodium = xno ], [
-       AC_MSG_ERROR([Need LIBSODIUM version $LIBSODIUM_DEPENDENCY or later])
+    PKG_CHECK_MODULES(OT_DEP_LIBSODIUM, libsodium >= $LIBSODIUM_DEPENDENCY, [
+      have_libsodium=yes
+      REQUIRES_PRIVATE="${REQUIRES_PRIVATE} libsodium >= ${LIBSODIUM_DEPENDENCY}"
+    ], [
+      have_libsodium=no
+      AC_MSG_ERROR([Need LIBSODIUM version $LIBSODIUM_DEPENDENCY or later])
     ])
 ], with_ed25519_libsodium=no )
 AM_CONDITIONAL(USE_LIBSODIUM, test "x$have_libsodium" = xyes)
@@ -376,6 +405,7 @@ AS_IF([ test x$with_libarchive != xno ], [
     AS_IF([ test x$have_libarchive = xyes], [
         AC_DEFINE([HAVE_LIBARCHIVE], 1, [Define if we have libarchive.pc])
 	PKG_CHECK_MODULES(OT_DEP_LIBARCHIVE, $LIBARCHIVE_DEPENDENCY)
+	REQUIRES_PRIVATE="${REQUIRES_PRIVATE} ${LIBARCHIVE_DEPENDENCY}"
         save_LIBS=$LIBS
         LIBS=$OT_DEP_LIBARCHIVE_LIBS
         AC_CHECK_FUNCS(archive_read_support_filter_all)
@@ -405,6 +435,7 @@ AS_IF([ test x$with_selinux != xno ], [
     AS_IF([ test x$have_selinux = xyes], [
         AC_DEFINE([HAVE_SELINUX], 1, [Define if we have libselinux.pc])
 	PKG_CHECK_MODULES(OT_DEP_SELINUX, $SELINUX_DEPENDENCY)
+	REQUIRES_PRIVATE="${REQUIRES_PRIVATE} ${SELINUX_DEPENDENCY}"
 	with_selinux=yes
     ], [
 	with_selinux=no
@@ -442,6 +473,7 @@ AC_ARG_WITH(openssl,
 AS_HELP_STRING([--with-openssl], [Enable use of OpenSSL libcrypto (checksums)]),with_openssl=$withval,with_openssl=no)
 AS_IF([ test x$with_openssl != xno ], [
       PKG_CHECK_MODULES(OT_DEP_CRYPTO, $OPENSSL_DEPENDENCY)
+      REQUIRES_PRIVATE="${REQUIRES_PRIVATE} ${OPENSSL_DEPENDENCY}"
       AC_DEFINE([HAVE_OPENSSL], 1, [Define if we have openssl])
       with_crypto=openssl
       with_openssl=yes
@@ -462,6 +494,7 @@ dnl supports --with-crypto=gnutls
 GNUTLS_DEPENDENCY="gnutls >= 3.5.0"
 AS_IF([ test $with_crypto = gnutls ], [
       PKG_CHECK_MODULES(OT_DEP_CRYPTO, $GNUTLS_DEPENDENCY)
+      REQUIRES_PRIVATE="${REQUIRES_PRIVATE} ${GNUTLS_DEPENDENCY}"
       AC_DEFINE([HAVE_GNUTLS], 1, [Define if we have gnutls])
       OSTREE_FEATURES="$OSTREE_FEATURES gnutls"
 ])
@@ -489,6 +522,7 @@ AS_IF([ test x$with_avahi != xno ], [
     AS_IF([ test x$have_avahi = xyes], [
         AC_DEFINE([HAVE_AVAHI], 1, [Define if we have avahi-client.pc and avahi-glib.pc])
         PKG_CHECK_MODULES(OT_DEP_AVAHI, $AVAHI_DEPENDENCY)
+	REQUIRES_PRIVATE="${REQUIRES_PRIVATE} ${AVAHI_DEPENDENCY}"
         with_avahi=yes
     ], [
         with_avahi=no
@@ -584,6 +618,7 @@ AS_IF([ test x$with_libsystemd != xno ], [
     AS_IF([ test x$have_libsystemd = xyes], [
         AC_DEFINE([HAVE_LIBSYSTEMD], 1, [Define if we have libsystemd.pc])
         PKG_CHECK_MODULES([LIBSYSTEMD], [libsystemd])
+	REQUIRES_PRIVATE="${REQUIRES_PRIVATE} libsystemd"
         with_libsystemd=yes
     ], [
         with_libsystemd=no
