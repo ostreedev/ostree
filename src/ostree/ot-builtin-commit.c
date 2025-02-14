@@ -62,6 +62,7 @@ static char *opt_base;
 static char **opt_trees;
 static gint opt_owner_uid = -1;
 static gint opt_owner_gid = -1;
+static gboolean opt_quote_devices;
 static gboolean opt_table_output;
 #ifndef OSTREE_DISABLE_GPGME
 static char **opt_gpg_key_ids;
@@ -124,6 +125,8 @@ static GOptionEntry options[] = {
   { "owner-gid", 0, 0, G_OPTION_ARG_INT, &opt_owner_gid, "Set file ownership group id", "GID" },
   { "canonical-permissions", 0, 0, G_OPTION_ARG_NONE, &opt_canonical_permissions,
     "Canonicalize permissions in the same way bare-user does for hardlinked files", NULL },
+  { "quote-devices", 0, 0, G_OPTION_ARG_NONE, &opt_quote_devices,
+    "Instead of erroring out on block/character devices, \"quote\" them as regular files", NULL },
   { "bootable", 0, 0, G_OPTION_ARG_NONE, &opt_bootable,
     "Flag this commit as a bootable OSTree (e.g. contains a Linux kernel)", NULL },
   { "mode-ro-executables", 0, 0, G_OPTION_ARG_NONE, &opt_ro_executables,
@@ -601,6 +604,8 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS;
   if (opt_consume)
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME;
+  if (opt_quote_devices)
+    flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_QUOTE_DEVICES;
   switch (opt_selinux_labeling_epoch)
     {
     case 0:

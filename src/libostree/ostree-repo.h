@@ -519,6 +519,9 @@ typedef OstreeRepoCommitFilterResult (*OstreeRepoCommitFilter) (OstreeRepo *repo
  * modifier filters (non-directories only); Since: 2017.14
  * @OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SELINUX_LABEL_V1: For SELinux and other systems, label
  * /usr/etc as if it was /etc.
+ * @OSTREE_REPO_COMMIT_MODIFIER_FLAGS_QUOTE_DEVICES: Instead of erroring out on block/character
+ * devices, "quote" them as regular files that can optionally be unpacked back into native devices.
+ * Since: 2024.9
  *
  * Flags modifying commit behavior. In bare-user-only mode,
  * @OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS and
@@ -535,6 +538,7 @@ typedef enum
   OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CONSUME = (1 << 4),
   OSTREE_REPO_COMMIT_MODIFIER_FLAGS_DEVINO_CANONICAL = (1 << 5),
   OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SELINUX_LABEL_V1 = (1 << 6),
+  OSTREE_REPO_COMMIT_MODIFIER_FLAGS_QUOTE_DEVICES = (1 << 7),
 } OstreeRepoCommitModifierFlags;
 
 /**
@@ -802,12 +806,13 @@ typedef struct
   gboolean enable_uncompressed_cache; /* Deprecated */
   gboolean enable_fsync;              /* Deprecated */
   gboolean process_whiteouts;
+  gboolean unquote_devices; /* Since: 2024.9 */
   gboolean no_copy_fallback;
   gboolean force_copy;           /* Since: 2017.6 */
   gboolean bareuseronly_dirs;    /* Since: 2017.7 */
   gboolean force_copy_zerosized; /* Since: 2018.9 */
   gboolean process_passthrough_whiteouts;
-  gboolean unused_bools[3];
+  gboolean unused_bools[2];
   /* 3 byte hole on 64 bit */
 
   const char *subpath;
