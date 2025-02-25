@@ -43,7 +43,6 @@ G_STATIC_ASSERT (OSTREE_REPO_MODE_BARE_USER_ONLY == 3);
 G_STATIC_ASSERT (OSTREE_REPO_MODE_BARE_SPLIT_XATTRS == 4);
 
 static GBytes *variant_to_lenprefixed_buffer (GVariant *variant);
-static GVariant *canonicalize_xattrs (GVariant *xattrs);
 
 #define ALIGN_VALUE(this, boundary) \
   ((((unsigned long)(this)) + (((unsigned long)(boundary)) - 1)) \
@@ -317,8 +316,8 @@ compare_xattrs (const void *a_pp, const void *b_pp)
 }
 
 // Sort xattrs by name
-static GVariant *
-canonicalize_xattrs (GVariant *xattrs)
+GVariant *
+_ostree_canonicalize_xattrs (GVariant *xattrs)
 {
   // We always need to provide data, so NULL is canonicalized to the empty array
   if (xattrs == NULL)
@@ -364,7 +363,7 @@ _ostree_file_header_new (GFileInfo *file_info, GVariant *xattrs)
     symlink_target = "";
 
   // We always sort the xattrs now to ensure everything is in normal/canonical form.
-  g_autoptr (GVariant) tmp_xattrs = canonicalize_xattrs (xattrs);
+  g_autoptr (GVariant) tmp_xattrs = _ostree_canonicalize_xattrs (xattrs);
 
   g_autoptr (GVariant) ret
       = g_variant_new ("(uuuus@a(ayay))", GUINT32_TO_BE (uid), GUINT32_TO_BE (gid),
@@ -1153,7 +1152,7 @@ ostree_create_directory_metadata (GFileInfo *dir_info, GVariant *xattrs)
   GVariant *ret_metadata = NULL;
 
   // We always sort the xattrs now to ensure everything is in normal/canonical form.
-  g_autoptr (GVariant) tmp_xattrs = canonicalize_xattrs (xattrs);
+  g_autoptr (GVariant) tmp_xattrs = _ostree_canonicalize_xattrs (xattrs);
 
   ret_metadata = g_variant_new (
       "(uuu@a(ayay))", GUINT32_TO_BE (g_file_info_get_attribute_uint32 (dir_info, "unix::uid")),
@@ -2342,7 +2341,8 @@ _ostree_validate_structureof_xattrs (GVariant *xattrs, GError **error)
           if (cmp == 0)
             return glnx_throw (error, "Duplicate xattr name, index=%d", i);
           else if (cmp > 0)
-            return glnx_throw (error, "Incorrectly sorted xattr name, index=%d", i);
+            return glnx_throw (error, "Incorrectly sorted xattr name (prev=%s, cur=%s), index=%d",
+                               previous, name, i);
         }
       previous = name;
       i++;

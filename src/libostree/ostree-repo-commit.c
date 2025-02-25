@@ -139,9 +139,12 @@ gboolean
 _ostree_write_bareuser_metadata (int fd, guint32 uid, guint32 gid, guint32 mode, GVariant *xattrs,
                                  GError **error)
 {
-  if (xattrs != NULL && !_ostree_validate_structureof_xattrs (xattrs, error))
-    return FALSE;
-  g_autoptr (GVariant) filemeta = create_file_metadata (uid, gid, mode, xattrs);
+  GLNX_AUTO_PREFIX_ERROR ("Writing bareuser metadata", error);
+  // Like we do elsewhere, ensure xattrs are in canonical form. We don't strictly need
+  // this because we don't actually provide this data directly as input to a checksum today,
+  // but it's good hygeine to do so.
+  g_autoptr (GVariant) tmp_xattrs = _ostree_canonicalize_xattrs (xattrs);
+  g_autoptr (GVariant) filemeta = create_file_metadata (uid, gid, mode, tmp_xattrs);
 
   if (TEMP_FAILURE_RETRY (fsetxattr (fd, "user.ostreemeta", (char *)g_variant_get_data (filemeta),
                                      g_variant_get_size (filemeta), 0))

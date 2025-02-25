@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((90 + ${extra_basic_tests:-0}))"
+echo "1..$((91 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -441,6 +441,24 @@ if ! skip_one_without_user_xattrs; then
     cd test2-checkout-from-local-clone
     assert_file_has_content yet/another/tree/green 'leaf'
     echo "ok local clone checkout"
+fi
+
+if test -z "${OSTREE_NO_XATTRS:-}"; then
+    cd ${test_tmpdir}
+    ${CMD_PREFIX} ostree --repo=repo checkout ${CHECKOUT_U_ARG} test2 test2-checkout
+    touch test2-checkout/testxattrs
+    # Intentionally heavily interspersed (not sorted) 
+    for n in a z q e f n c r i a b x t k y; do
+        setfattr -n user.$n -v x test2-checkout/testxattrs
+    done
+    cat repo/config
+    $OSTREE commit ${COMMIT_ARGS} -b test2 --tree=dir=test2-checkout --consume
+    $OSTREE ls -X test2 /testxattrs > out.txt
+    assert_file_has_content_literal out.txt "(b'user.a', [0x78])"
+    assert_file_has_content_literal out.txt "(b'user.z', [0x78])"
+    echo "ok sorted xattrs"
+else
+    echo "ok # SKIP no xattrs"
 fi
 
 $OSTREE checkout -U test2 checkout-user-test2
