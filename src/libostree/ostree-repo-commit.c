@@ -139,6 +139,7 @@ gboolean
 _ostree_write_bareuser_metadata (int fd, guint32 uid, guint32 gid, guint32 mode, GVariant *xattrs,
                                  GError **error)
 {
+  GLNX_AUTO_PREFIX_ERROR ("Writing bareuser metadata", error);
   if (xattrs != NULL && !_ostree_validate_structureof_xattrs (xattrs, error))
     return FALSE;
   g_autoptr (GVariant) filemeta = create_file_metadata (uid, gid, mode, xattrs);
