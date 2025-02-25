@@ -4098,7 +4098,10 @@ _ostree_repo_load_file_bare (OstreeRepo *self, const char *checksum, int *out_fd
 
       g_autoptr (GVariant) metadata = g_variant_ref_sink (
           g_variant_new_from_bytes (OSTREE_FILEMETA_GVARIANT_FORMAT, bytes, FALSE));
-      ret_xattrs = filemeta_to_stat (&stbuf, metadata);
+      g_autoptr (GVariant) read_xattrs = filemeta_to_stat (&stbuf, metadata);
+      // Old versions of ostree may have written these xattrs in non-canonical form.
+      // In order to aid comparisons, let's canonicalize here.
+      ret_xattrs = _ostree_canonicalize_xattrs (read_xattrs);
       if (S_ISLNK (stbuf.st_mode))
         {
           if (out_symlink)
