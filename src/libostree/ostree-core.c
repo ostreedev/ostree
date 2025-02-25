@@ -2342,7 +2342,8 @@ _ostree_validate_structureof_xattrs (GVariant *xattrs, GError **error)
           if (cmp == 0)
             return glnx_throw (error, "Duplicate xattr name, index=%d", i);
           else if (cmp > 0)
-            return glnx_throw (error, "Incorrectly sorted xattr name, index=%d", i);
+            return glnx_throw (error, "Incorrectly sorted xattr name (prev=%s, cur=%s), index=%d",
+                               previous, name, i);
         }
       previous = name;
       i++;
