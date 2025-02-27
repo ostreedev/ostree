@@ -174,6 +174,7 @@ ostree_builtin_admin (int argc, char **argv, OstreeCommandInvocation *invocation
     g_set_prgname (prgname);
   }
 
-  OstreeCommandInvocation sub_invocation = { .command = subcommand };
+  OstreeCommandInvocation sub_invocation = *invocation;
+  sub_invocation.command = subcommand;
   return subcommand->fn (argc, argv, &sub_invocation, cancellable, error);
 }

@@ -61,6 +61,7 @@ typedef struct
 struct OstreeCommandInvocation
 {
   OstreeCommand *command;
+  int parent_mountns;
 };
 
 int ostree_main (int argc, char **argv, OstreeCommand *commands);

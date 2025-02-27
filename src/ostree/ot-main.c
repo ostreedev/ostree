@@ -288,6 +288,13 @@ ostree_run (int argc, char **argv, OstreeCommand *commands, GError **res_error)
       command++;
     }
 
+  int parent_mountns = open ("/proc/self/ns/mnt", O_RDONLY | O_NOCTTY | O_CLOEXEC);
+  if (parent_mountns < 0)
+    {
+      glnx_throw_errno_prefix (&error, "open(mountns)");
+      goto out;
+    }
+
   if (!command->fn)
     {
       g_autoptr (GOptionContext) context = ostree_option_context_new_with_commands (commands);
@@ -315,7 +322,8 @@ ostree_run (int argc, char **argv, OstreeCommand *commands, GError **res_error)
   prgname = g_strdup_printf ("%s %s", g_get_prgname (), command_name);
   g_set_prgname (prgname);
 #endif
-  OstreeCommandInvocation invocation = { .command = command };
+  OstreeCommandInvocation invocation = { .command = command, .parent_mountns = parent_mountns };
+
   if (!command->fn (argc, argv, &invocation, cancellable, &error))
     goto out;
 
