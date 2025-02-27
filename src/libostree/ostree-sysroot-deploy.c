@@ -4271,6 +4271,102 @@ ostree_sysroot_deployment_set_mutable (OstreeSysroot *self, OstreeDeployment *de
 }
 
 /**
+ * ostree_sysroot_deployment_prepare_next_root
+ * @self: Sysroot
+ * @deployment: Deployment to prepare /run/nextroot for
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Prepare the specified deployment for a systemd soft-reboot by creating a new
+ * root with it at /run/nextroot
+ *
+ * Since: TODO
+ */
+gboolean
+ostree_sysroot_deployment_prepare_next_root (OstreeSysroot *self, OstreeDeployment *deployment,
+                                             GCancellable *cancellable, GError **error)
+{
+  GLNX_AUTO_PREFIX_ERROR ("Preparing /run/nextroot for a soft-reboot", error);
+  OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
+  const char *kargs_const = ostree_bootconfig_parser_get (bootconfig, "options");
+  g_autofree gchar *kargs = g_strdup (kargs_const);
+  gint exit_status;
+  g_autoptr (GPtrArray) args = g_ptr_array_new ();
+
+  /* We cannot just make a bind mount, because when the soft reboot happens, our
+     current root will be unmounted, and the bind mount will break. Therefore,
+     we have to recreate the mount at a different location. */
+
+  /* Read in mounted FSes */
+  g_autofree gchar *mounts_contents = NULL;
+  if (!g_file_get_contents ("/proc/self/mounts", &mounts_contents, NULL, error))
+    return FALSE;
+  g_auto (GStrv) mounts = g_strsplit (mounts_contents, "\n", -1);
+  for (char **iter = mounts; iter && *iter; iter++)
+    {
+      const gchar *mount_text = *iter;
+      g_auto (GStrv) mount_fields = g_strsplit (mount_text, " ", 6);
+      /* Validate all 6 tokens are present */
+      for (int i = 0; i < 6; ++i)
+        {
+          if (mount_fields[i] == NULL)
+            {
+              ot_journal_print (LOG_WARNING, "Mount %s is missing a field at %d!", mount_text, i);
+              continue;
+            }
+        }
+
+      /* Only care about /sysroot */
+      if (!g_str_equal (mount_fields[1], "/sysroot"))
+        continue;
+
+      if (!glnx_shutil_mkdir_p_at (AT_FDCWD, "/run/nextroot", 0755, cancellable, error))
+        return FALSE;
+
+      if (mount (mount_fields[0], "/run/nextroot", mount_fields[2], MS_SILENT, NULL))
+        {
+          glnx_prefix_error (error, "failed to mount /run/nextroot");
+          goto err_unlink;
+        }
+
+      /* Found it, and mounted it! */
+      goto end_loop;
+    }
+
+  g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Couldn't find mountpoint for /sysroot!");
+  return FALSE;
+
+end_loop:
+
+  /* At this point, /sysroot is mounted at /run/nextroot, do the pivot from there: */
+  g_ptr_array_add (args, "/usr/lib/ostree/ostree-prepare-root");
+  g_ptr_array_add (args, "/run/nextroot");
+  g_ptr_array_add (args, kargs);
+  g_ptr_array_add (args, NULL);
+
+  if (!g_spawn_sync (NULL, (char **)args->pdata, NULL, 0, NULL, NULL, NULL, NULL, &exit_status,
+                     error))
+    goto err_unlink;
+
+  if (!g_spawn_check_exit_status (exit_status, error))
+    {
+      glnx_prefix_error (error, "failed to prepare next root");
+      goto err_unlink;
+    }
+
+  return TRUE;
+
+err_unlink:
+  /* We're already handling an error, not much we can do if this fails too... */
+  if (unlinkat (AT_FDCWD, "/run/nextroot", AT_REMOVEDIR) < 0)
+    ot_journal_print (LOG_WARNING,
+                      "Couldn't remove /run/nextroot while cleaning up from failed next root");
+
+  return FALSE;
+}
+
+/**
  * ostree_sysroot_deployment_kexec_load
  * @self: Sysroot
  * @deployment: Deployment to prepare a kexec for
