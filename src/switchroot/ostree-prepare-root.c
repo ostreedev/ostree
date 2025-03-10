@@ -88,7 +88,7 @@
   SD_ID128_MAKE (71, 70, 33, 6a, 73, ba, 46, 01, ba, d3, 1a, f8, 88, aa, 0d, f7)
 
 // A temporary mount point
-#define TMP_SYSROOT "/sysroot.tmp"
+#define TMP_SYSROOT "/run/sysroot.tmp"
 
 #ifdef HAVE_COMPOSEFS
 #include <libcomposefs/lcfs-mount.h>
@@ -259,13 +259,27 @@ main (int argc, char *argv[])
 {
   char srcpath[PATH_MAX];
   struct stat stbuf;
+  gboolean booted = FALSE;
   g_autoptr (GError) error = NULL;
 
   if (argc < 2)
-    err (EXIT_FAILURE, "usage: ostree-prepare-root SYSROOT");
+    err (EXIT_FAILURE, "usage: ostree-prepare-root SYSROOT [KERNEL_CMDLINE]");
   const char *root_arg = argv[1];
 
-  g_autofree char *kernel_cmdline = read_proc_cmdline ();
+  /* Check if we're in initramfs or not */
+  if (fstatat (AT_FDCWD, OTCORE_RUN_BOOTED, &stbuf, 0) == 0)
+    booted = (stbuf.st_mode & S_IFMT) == S_IFREG;
+
+  g_autofree char *kernel_cmdline;
+  if (argc < 3)
+    {
+      kernel_cmdline = read_proc_cmdline ();
+    }
+  else
+    {
+      kernel_cmdline = argv[2];
+    }
+
   if (!kernel_cmdline)
     errx (EXIT_FAILURE, "Failed to read kernel cmdline");
 
@@ -316,11 +330,15 @@ main (int argc, char *argv[])
   // filename.
   g_assert (deploy_directory_name && *deploy_directory_name);
 
-  /* These are global state directories underneath /run */
-  if (mkdirat (AT_FDCWD, OTCORE_RUN_OSTREE, 0755) < 0)
-    err (EXIT_FAILURE, "Failed to create %s", OTCORE_RUN_OSTREE);
-  if (mkdirat (AT_FDCWD, OTCORE_RUN_OSTREE_PRIVATE, 0) < 0)
-    err (EXIT_FAILURE, "Failed to create %s", OTCORE_RUN_OSTREE_PRIVATE);
+  /* These already exist if we're booted */
+  if (!booted)
+    {
+      /* These are global state directories underneath /run */
+      if (mkdirat (AT_FDCWD, OTCORE_RUN_OSTREE, 0755) < 0)
+        err (EXIT_FAILURE, "Failed to create %s", OTCORE_RUN_OSTREE);
+      if (mkdirat (AT_FDCWD, OTCORE_RUN_OSTREE_PRIVATE, 0) < 0)
+        err (EXIT_FAILURE, "Failed to create %s", OTCORE_RUN_OSTREE_PRIVATE);
+    }
 
   /* Fall back to querying the repository configuration in the target disk.
    * This is an operating system builder choice.  More info:
@@ -676,9 +694,11 @@ main (int argc, char *argv[])
    * root under /sysroot/sysroot as systemd will be responsible for
    * moving /sysroot to /.
    */
+  /* Mount /sysroot at /sysroot.tmp/sysroot */
   if (mount (root_mountpoint, "sysroot", NULL, MS_MOVE | MS_SILENT, NULL) < 0)
     err (EXIT_FAILURE, "failed to MS_MOVE '%s' to 'sysroot'", root_mountpoint);
 
+  /* overlay sysroot.tmp onto /sysroot */
   if (mount (".", root_mountpoint, NULL, MS_MOVE | MS_SILENT, NULL) < 0)
     err (EXIT_FAILURE, "failed to MS_MOVE %s to %s", ".", root_mountpoint);
 
