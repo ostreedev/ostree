@@ -3785,6 +3785,15 @@ ostree_sysroot_stage_tree_with_options (OstreeSysroot *self, const char *osname,
   if (booted_deployment == NULL)
     return glnx_prefix_error (error, "Cannot stage deployment");
 
+  const char *const systemctl_argv[]
+      = { "systemctl", "start", "ostree-finalize-staged.service", NULL };
+  int estatus;
+  if (!g_spawn_sync (NULL, (char **)systemctl_argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL,
+                     NULL, &estatus, error))
+    return FALSE;
+  if (!g_spawn_check_exit_status (estatus, error))
+    return FALSE;
+
   g_autoptr (OstreeDeployment) deployment = NULL;
   if (!sysroot_initialize_deployment (self, osname, revision, origin, opts, &deployment,
                                       cancellable, error))
