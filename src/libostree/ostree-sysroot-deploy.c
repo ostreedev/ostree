@@ -1658,13 +1658,12 @@ full_system_sync (OstreeSysroot *self, SyncStats *out_stats, GCancellable *cance
     return FALSE;
 
   g_assert_cmpint (self->boot_fd, !=, -1);
-  ot_journal_print (LOG_INFO, "Starting freeze/thaw cycle for system root");
+  ot_journal_print (LOG_INFO, "Starting freeze/thaw cycle for boot");
   start_msec = g_get_monotonic_time () / 1000;
   if (!fsfreeze_thaw_cycle (self, self->boot_fd, cancellable, error))
     return FALSE;
   end_msec = g_get_monotonic_time () / 1000;
-  ot_journal_print (LOG_INFO,
-                    "Completed freeze/thaw cycle for system root in %" G_GUINT64_FORMAT " ms",
+  ot_journal_print (LOG_INFO, "Completed freeze/thaw cycle for boot in %" G_GUINT64_FORMAT " ms",
                     end_msec - start_msec);
   out_stats->boot_syncfs_msec = (end_msec - start_msec);
 
@@ -2218,6 +2217,8 @@ swap_bootloader (OstreeSysroot *sysroot, OstreeBootloader *bootloader, int curre
   if (!_ostree_sysroot_ensure_boot_fd (sysroot, error))
     return FALSE;
 
+  g_assert_cmpint (sysroot->boot_fd, !=, -1);
+
   /* The symlink was already written, and we used syncfs() to ensure
    * its data is in place.  Renaming now should give us atomic semantics;
    * see https://bugzilla.gnome.org/show_bug.cgi?id=755595
@@ -2225,8 +2226,8 @@ swap_bootloader (OstreeSysroot *sysroot, OstreeBootloader *bootloader, int curre
   if (!glnx_renameat (sysroot->boot_fd, "loader.tmp", sysroot->boot_fd, "loader", error))
     return FALSE;
 
-  /* Now we explicitly fsync this directory, even though it
-   * isn't required for atomicity, for two reasons:
+  /* As grub doesn't support replaying XFS journal,
+   * we must fsfreeze/thaw again here:
    *  - It should be very cheap as we're just syncing whatever
    *    data was written since the last sync which was hopefully
    *    less than a second ago.
@@ -2234,8 +2235,13 @@ swap_bootloader (OstreeSysroot *sysroot, OstreeBootloader *bootloader, int curre
    *    for whatever reason, and we wouldn't want to confuse the
    *    admin by going back to the previous session.
    */
-  if (fsync (sysroot->boot_fd) != 0)
-    return glnx_throw_errno_prefix (error, "fsync(boot)");
+  ot_journal_print (LOG_INFO, "Starting freeze/thaw cycle for boot");
+  guint64 start_msec = g_get_monotonic_time () / 1000;
+  if (!fsfreeze_thaw_cycle (sysroot, sysroot->boot_fd, cancellable, error))
+    return FALSE;
+  guint64 end_msec = g_get_monotonic_time () / 1000;
+  ot_journal_print (LOG_INFO, "Completed freeze/thaw cycle for boot in %" G_GUINT64_FORMAT " ms",
+                    end_msec - start_msec);
 
   /* TODO: In the future also execute this automatically via a systemd unit
    * if we detect it's necessary.
