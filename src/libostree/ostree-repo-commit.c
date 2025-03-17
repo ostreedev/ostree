@@ -2233,7 +2233,7 @@ ostree_repo_commit_transaction (OstreeRepo *self, OstreeRepoTransactionStats *ou
   if (!self->disable_fsync && g_getenv ("OSTREE_SUPPRESS_SYNCFS") == NULL)
     {
       if (syncfs (self->tmp_dir_fd) < 0)
-        return glnx_throw_errno_prefix (error, "syncfs");
+        return glnx_throw_errno_prefix (error, "syncfs(repo/tmp)");
     }
 
   if (!rename_pending_loose_objects (self, cancellable, error))
