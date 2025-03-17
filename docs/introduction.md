@@ -153,8 +153,8 @@ transparently take advantage of some BTRFS features if deployed
 on it.
 
 OSTree is orthogonal to virtualization mechanisms like AMIs and qcow2
-images, though it's most useful though if you plan to update stateful
-VMs in-place, rather than generating new images.
+images. It targets updating stateful VMs in-place, rather than generating
+new images.
 
 In practice, users of "bare metal" configurations will find the OSTree
 model most useful.
