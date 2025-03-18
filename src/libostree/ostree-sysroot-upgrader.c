@@ -25,6 +25,8 @@
 #include "ostree-sysroot-upgrader.h"
 #include "ostree.h"
 
+#include <sys/wait.h>
+
 /**
  * SECTION:ostree-sysroot-upgrader
  * @title: Simple upgrade class
@@ -53,6 +55,8 @@ struct OstreeSysrootUpgrader
   char *override_csum;
 
   char *new_revision;
+
+  int parent_mountns;
 };
 
 enum
@@ -138,6 +142,8 @@ ostree_sysroot_upgrader_initable_init (GInitable *initable, GCancellable *cancel
 
   if (!parse_refspec (self, cancellable, error))
     return FALSE;
+
+  self->parent_mountns = -1;
 
   return TRUE;
 }
@@ -379,6 +385,21 @@ ostree_sysroot_upgrader_get_origin_description (OstreeSysrootUpgrader *self)
   if (!self->origin)
     return NULL;
   return g_key_file_get_string (self->origin, "origin", "refspec", NULL);
+}
+
+/**
+ * ostree_sysroot_upgrader_set_parent_mountns:
+ * @self: Sysroot Upgrader
+ * @mountns: FD of the parent mount NS
+ *
+ * Replace FD of the parent mountns
+ */
+gboolean
+ostree_sysroot_upgrader_set_parent_mountns (OstreeSysrootUpgrader *self, int mountns)
+{
+  self->parent_mountns = mountns;
+
+  return TRUE;
 }
 
 /**
@@ -628,6 +649,36 @@ ostree_sysroot_upgrader_deploy (OstreeSysrootUpgrader *self, GCancellable *cance
                                                      error))
             return FALSE;
         }
+
+      if ((self->flags & OSTREE_SYSROOT_UPGRADER_FLAGS_SOFT_REBOOT) > 0)
+        {
+          /* Need to fork because setns will fail if we have threads (GIO loop) */
+          pid_t child_pid = fork ();
+          if (child_pid < 0)
+            {
+              return glnx_throw_errno_prefix (error, "fork() for parent mount ns");
+            }
+
+          /* Hop back into the main system's mount NS so we can mount /run/nextroot */
+          if (child_pid == 0)
+            {
+              if (self->parent_mountns >= 0 && setns (self->parent_mountns, CLONE_NEWNS))
+                {
+                  return glnx_throw_errno_prefix (error, "Couldn't recover parent mount NS!");
+                }
+              if (!ostree_sysroot_deployment_prepare_next_root (self->sysroot, new_deployment,
+                                                                cancellable, error))
+                return FALSE;
+
+              exit (0);
+            }
+
+          gint status;
+          if (waitpid (child_pid, &status, 0) < 0)
+            {
+              return glnx_throw_errno_prefix (error, "waitpid() for mount ns child");
+            }
+        }
     }
 
   return TRUE;
@@ -645,6 +696,8 @@ ostree_sysroot_upgrader_flags_get_type (void)
           "OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED", "ignore-unconfigured" },
         { OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE, "OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE", "stage" },
         { OSTREE_SYSROOT_UPGRADER_FLAGS_KEXEC, "OSTREE_SYSROOT_UPGRADER_FLAGS_KEXEC", "kexec" },
+        { OSTREE_SYSROOT_UPGRADER_FLAGS_SOFT_REBOOT, "OSTREE_SYSROOT_UPGRADER_FLAGS_SOFT_REBOOT",
+          "soft_reboot" },
         { 0, NULL, NULL }
       };
       GType g_define_type_id

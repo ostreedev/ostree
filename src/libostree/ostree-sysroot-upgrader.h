@@ -45,6 +45,7 @@ typedef enum
   OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED = (1 << 1),
   OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE = (1 << 2),
   OSTREE_SYSROOT_UPGRADER_FLAGS_KEXEC = (1 << 3),
+  OSTREE_SYSROOT_UPGRADER_FLAGS_SOFT_REBOOT = (1 << 4),
 } OstreeSysrootUpgraderFlags;
 
 _OSTREE_PUBLIC
@@ -79,6 +80,9 @@ gboolean ostree_sysroot_upgrader_set_origin (OstreeSysrootUpgrader *self, GKeyFi
 
 _OSTREE_PUBLIC
 char *ostree_sysroot_upgrader_get_origin_description (OstreeSysrootUpgrader *self);
+
+_OSTREE_PUBLIC
+gboolean ostree_sysroot_upgrader_set_parent_mountns (OstreeSysrootUpgrader *self, int mountns);
 
 _OSTREE_PUBLIC
 gboolean ostree_sysroot_upgrader_check_timestamps (OstreeRepo *repo, const char *from_rev,

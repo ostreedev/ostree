@@ -32,6 +32,7 @@
 
 static gboolean opt_reboot;
 static gboolean opt_kexec;
+static gboolean opt_soft_reboot;
 static gboolean opt_allow_downgrade;
 static gboolean opt_pull_only;
 static gboolean opt_deploy_only;
@@ -44,6 +45,8 @@ static GOptionEntry options[] = {
     "Use a different operating system root than the current one", "OSNAME" },
   { "reboot", 'r', 0, G_OPTION_ARG_NONE, &opt_reboot, "Reboot after a successful upgrade", NULL },
   { "kexec", 'k', 0, G_OPTION_ARG_NONE, &opt_kexec, "Stage new kernel in kexec", NULL },
+  { "soft-reboot", 'x', 0, G_OPTION_ARG_NONE, &opt_soft_reboot,
+    "Prepare nextroot for a systemd soft reboot", NULL },
   { "allow-downgrade", 0, 0, G_OPTION_ARG_NONE, &opt_allow_downgrade,
     "Permit deployment of chronologically older trees", NULL },
   { "override-commit", 0, 0, G_OPTION_ARG_STRING, &opt_override_commit,
@@ -86,10 +89,15 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeCommandInvocation *invoca
     flags |= OSTREE_SYSROOT_UPGRADER_FLAGS_STAGE;
   if (opt_kexec)
     flags |= OSTREE_SYSROOT_UPGRADER_FLAGS_KEXEC;
+  if (opt_soft_reboot)
+    flags |= OSTREE_SYSROOT_UPGRADER_FLAGS_SOFT_REBOOT;
 
   g_autoptr (OstreeSysrootUpgrader) upgrader = ostree_sysroot_upgrader_new_for_os_with_flags (
       sysroot, opt_osname, flags, cancellable, error);
   if (!upgrader)
+    return FALSE;
+
+  if (!ostree_sysroot_upgrader_set_parent_mountns (upgrader, invocation->parent_mountns))
     return FALSE;
 
   g_autoptr (GKeyFile) origin = ostree_sysroot_upgrader_dup_origin (upgrader);
