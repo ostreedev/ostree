@@ -156,11 +156,23 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-summary-collections.sh \
 	tests/test-pull-collections.sh \
 	tests/test-config.sh \
-	tests/test-signed-commit.sh \
+	tests/test-signed-commit-dummy.sh \
 	tests/test-signed-pull.sh \
 	tests/test-pre-signed-pull.sh \
 	tests/test-signed-pull-summary.sh \
 	$(NULL)
+
+if HAVE_ED25519
+_installed_or_uninstalled_test_scripts += \
+	tests/test-signed-commit-ed25519.sh \
+	$(NULL)
+endif
+
+if HAVE_SPKI
+_installed_or_uninstalled_test_scripts += \
+	tests/test-signed-commit-spki.sh \
+	$(NULL)
+endif
 
 if USE_GPGME
 _installed_or_uninstalled_test_scripts += \
@@ -270,7 +282,7 @@ _installed_or_uninstalled_test_programs = tests/test-varint tests/test-ot-unix-u
 	tests/test-keyfile-utils tests/test-ot-opt-utils tests/test-ot-tool-util \
 	tests/test-checksum tests/test-lzma tests/test-rollsum \
 	tests/test-basic-c tests/test-sysroot-c tests/test-pull-c tests/test-repo tests/test-include-ostree-h tests/test-kargs \
-	tests/test-rfc2616-dates
+	tests/test-rfc2616-dates tests/test-pem
 
 if USE_GPGME
 _installed_or_uninstalled_test_programs += \
@@ -402,6 +414,12 @@ tests_test_rfc2616_dates_SOURCES = \
 	tests/test-rfc2616-dates.c
 tests_test_rfc2616_dates_CFLAGS = $(TESTS_CFLAGS)
 tests_test_rfc2616_dates_LDADD = $(TESTS_LDADD)
+
+tests_test_pem_SOURCES = \
+	src/libostree/ostree-blob-reader-pem.c \
+	tests/test-pem.c
+tests_test_pem_CFLAGS = $(TESTS_CFLAGS)
+tests_test_pem_LDADD = $(TESTS_LDADD)
 
 noinst_PROGRAMS += tests/test-commit-sign-sh-ext
 tests_test_commit_sign_sh_ext_CFLAGS = $(TESTS_CFLAGS)

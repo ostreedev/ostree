@@ -769,6 +769,15 @@ ostree_sign_metadata_key
 ostree_sign_set_pk
 ostree_sign_set_sk
 ostree_sign_summary
+ostree_sign_read_pk
+ostree_sign_read_sk
 <SUBSECTION Standard>
 ostree_sign_get_type
+</SECTION>
+
+<SECTION>
+<FILE>ostree-blob-reader</FILE>
+ostree_blob_reader_read_blob
+<SUBSECTION Standard>
+ostree_blob_reader_get_type
 </SECTION>

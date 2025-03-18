@@ -188,7 +188,7 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
         {
           g_autoptr (GFile) keyfile = NULL;
           g_autoptr (GFileInputStream) key_stream_in = NULL;
-          g_autoptr (GDataInputStream) key_data_in = NULL;
+          g_autoptr (OstreeBlobReader) blob_reader = NULL;
 
           if (!g_file_test (opt_filename, G_FILE_TEST_IS_REGULAR))
             {
@@ -203,25 +203,24 @@ ostree_builtin_sign (int argc, char **argv, OstreeCommandInvocation *invocation,
           if (key_stream_in == NULL)
             goto out;
 
-          key_data_in = g_data_input_stream_new (G_INPUT_STREAM (key_stream_in));
-          g_assert (key_data_in != NULL);
+          blob_reader = ostree_sign_read_sk (sign, G_INPUT_STREAM (key_stream_in));
+          g_assert (blob_reader != NULL);
 
           /* Use simple file format with just a list of base64 public keys per line */
           while (TRUE)
             {
-              gsize len = 0;
-              g_autofree char *line
-                  = g_data_input_stream_read_line (key_data_in, &len, NULL, error);
+              g_autoptr (GBytes) blob
+                  = ostree_blob_reader_read_blob (blob_reader, cancellable, error);
               g_autoptr (GVariant) sk = NULL;
 
               if (*error != NULL)
                 goto out;
 
-              if (line == NULL)
+              if (blob == NULL)
                 break;
 
               // Pass the key as a string
-              sk = g_variant_new_string (line);
+              sk = g_variant_new_from_bytes (G_VARIANT_TYPE_BYTESTRING, blob, FALSE);
               if (!ostree_sign_set_sk (sign, sk, error))
                 {
                   ret = FALSE;
