@@ -20,15 +20,6 @@
    - uncomment the include in Makefile-libostree.am
 */
 
-LIBOSTREE_2025.2 {
-global:
-  ostree_sepolicy_set_null_log;
-  ostree_sign_read_pk;
-  ostree_sign_read_sk;
-  ostree_blob_reader_get_type;
-  ostree_blob_reader_read_blob;
-} LIBOSTREE_2025.1;
-
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the year.  This is just a copy/paste
  * source.  Replace $LASTSTABLE with the last stable version, and $NEWVERSION

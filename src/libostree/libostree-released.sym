@@ -723,6 +723,15 @@ global:
   ostree_sysroot_deployment_kexec_load;
 } LIBOSTREE_2024.7;
 
+LIBOSTREE_2025.2 {
+global:
+  ostree_sepolicy_set_null_log;
+  ostree_sign_read_pk;
+  ostree_sign_read_sk;
+  ostree_blob_reader_get_type;
+  ostree_blob_reader_read_blob;
+} LIBOSTREE_2025.1;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
