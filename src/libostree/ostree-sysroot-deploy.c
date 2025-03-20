@@ -4107,6 +4107,21 @@ _ostree_sysroot_boot_complete (OstreeSysroot *self, GCancellable *cancellable, G
   if (!_ostree_sysroot_ensure_boot_fd (self, error))
     return FALSE;
 
+  for (guint i = 0; i < self->deployments->len; i++)
+    {
+      OstreeDeployment *deployment = self->deployments->pdata[i];
+      g_autofree char *backing_relpath
+          = _ostree_sysroot_get_deployment_backing_relpath (deployment);
+      glnx_autofd int backing_dfd = -1;
+      if (!glnx_opendirat (self->sysroot_fd, backing_relpath, FALSE, &backing_dfd, error))
+        return FALSE;
+
+      // We explicitly don't want this data to persist.
+      if (!glnx_shutil_rm_rf_at (backing_dfd, OSTREE_DEPLOYMENT_USR_TRANSIENT_DIR, cancellable,
+                                 error))
+        return FALSE;
+    }
+
   glnx_autofd int failure_fd = -1;
   g_assert_cmpint (self->boot_fd, !=, -1);
   if (!ot_openat_ignore_enoent (self->boot_fd, _OSTREE_FINALIZE_STAGED_FAILURE_PATH, &failure_fd,
