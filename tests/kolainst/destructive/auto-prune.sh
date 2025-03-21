@@ -33,6 +33,8 @@ assert_not_journal_grep() {
     fi
 }
 
+block_size=$(stat --file-system /boot -c '%s')
+
 # make two fake ostree commits with modified kernels of about the same size
 cd /root
 mkdir -p rootfs/usr/lib/modules/`uname -r`
@@ -53,9 +55,8 @@ assert_bootfs_has_n_bootcsum_dirs() {
 }
 
 consume_bootfs_space() {
-    local free_blocks block_size
+    local free_blocks
     free_blocks=${1:-$(stat --file-system /boot -c '%a')}
-    block_size=$(stat --file-system /boot -c '%s')
     # leave 1 block free
     unshare -m bash -c \
       "mount -o rw,remount /boot && \
@@ -173,11 +174,13 @@ assert_journal_grep "$cursor" "updating bootloader in two steps"
 unconsume_bootfs_space
 
 mkdir -p rootfs/usr/lib/modules/`uname -r`/dtb
-(set +x; for i in {1..10000}; do echo -n x > rootfs/usr/lib/modules/`uname -r`/dtb/$i; done)
+dtbcount=10000
+(set +x; for i in {1..${dtbcount}}; do echo -n x > rootfs/usr/lib/modules/`uname -r`/dtb/$i; done)
 ostree commit --base modkernel1 -P --tree=dir=rootfs -b modkernel3
 
 # a naive estimator would think all those files just take 10000 bytes
-consume_bootfs_space "$((free_blocks_kernel_and_initrd - 10000))"
+dtb_naive_space=$((${dtbcount} / ${block_size}))
+consume_bootfs_space "$((free_blocks_kernel_and_initrd - ${dtb_naive_space}))"
 
 rpm-ostree rebase :modkernel3
 cursor=$(journal_cursor)
