@@ -73,6 +73,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-remote-headers.sh \
 	tests/test-remote-refs.sh \
 	tests/test-composefs.sh \
+	tests/test-backcompat-fsck.sh \
 	tests/test-payload-link.sh \
 	tests/test-commit-sign.sh \
 	tests/test-commit-timestamp.sh \
