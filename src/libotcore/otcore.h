@@ -89,6 +89,8 @@ ComposefsConfig *otcore_load_composefs_config (const char *cmdline, GKeyFile *co
 #define OSTREE_DEPLOYMENT_BACKING_DIR "backing"
 // The directory holding the root overlayfs
 #define OSTREE_DEPLOYMENT_ROOT_TRANSIENT_DIR "root-transient"
+// The directory holding overlayfs for /usr (ostree admin unlock)
+#define OSTREE_DEPLOYMENT_USR_TRANSIENT_DIR "usr-transient"
 
 // Written by ostree admin unlock --hotfix, read by ostree-prepare-root
 #define OTCORE_HOTFIX_USR_OVL_WORK ".usr-ovl-work"
