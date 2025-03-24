@@ -5,6 +5,8 @@ use libc::c_char;
 /// Options for deploying an ostree commit.
 #[derive(Default)]
 pub struct SysrootDeployTreeOpts<'a> {
+    /// Lock finalization
+    pub locked: bool,
     /// Use these kernel arguments.
     pub override_kernel_argv: Option<&'a [&'a str]>,
     /// Paths to initramfs files to overlay.
@@ -29,6 +31,7 @@ impl<'a, 'b: 'a> ToGlibPtr<'a, *const OstreeSysrootDeployTreeOpts> for SysrootDe
         let mut options = Box::new(unsafe { std::mem::zeroed::<OstreeSysrootDeployTreeOpts>() });
         let override_kernel_argv = self.override_kernel_argv.to_glib_none();
         let overlay_initrds = self.overlay_initrds.to_glib_none();
+        options.locked = self.locked.into();
         options.override_kernel_argv = override_kernel_argv.0;
         options.overlay_initrds = overlay_initrds.0;
         Stash(
@@ -64,6 +67,7 @@ mod tests {
         let stash = options.to_glib_none();
         let ptr = stash.0;
         unsafe {
+            assert_eq!((*ptr).locked, 0);
             assert_eq!((*ptr).override_kernel_argv, null_mut());
             assert_eq!((*ptr).overlay_initrds, null_mut());
         }
@@ -74,12 +78,14 @@ mod tests {
         let override_kernel_argv = vec!["quiet", "splash", "ro"];
         let overlay_initrds = vec!["overlay1", "overlay2"];
         let options = SysrootDeployTreeOpts {
+            locked: true,
             override_kernel_argv: Some(&override_kernel_argv),
             overlay_initrds: Some(&overlay_initrds),
         };
         let stash = options.to_glib_none();
         let ptr = stash.0;
         unsafe {
+            assert_eq!((*ptr).locked, 1);
             assert_eq!(
                 str_ptr_array_to_vec((*ptr).override_kernel_argv),
                 vec!["quiet", "splash", "ro"]
