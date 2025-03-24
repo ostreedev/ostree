@@ -25,7 +25,9 @@
 #ifdef HAVE_LIBSODIUM
 #include <sodium.h>
 #define USE_LIBSODIUM
-#elif defined(HAVE_OPENSSL)
+#endif
+
+#if defined(HAVE_OPENSSL)
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 #define USE_OPENSSL
