@@ -2108,6 +2108,8 @@ ostree_sysroot_deployment_unlock (OstreeSysroot *self, OstreeDeployment *deploym
   if (!glnx_opendirat (self->sysroot_fd, deployment_path, TRUE, &deployment_dfd, error))
     return FALSE;
 
+  g_autofree char *backing_relpath = _ostree_sysroot_get_deployment_backing_relpath (deployment);
+
   g_autoptr (OstreeSePolicy) sepolicy = ostree_sepolicy_new_at (deployment_dfd, cancellable, error);
   if (!sepolicy)
     return FALSE;
@@ -2121,10 +2123,9 @@ ostree_sysroot_deployment_unlock (OstreeSysroot *self, OstreeDeployment *deploym
     usr_mode = stbuf.st_mode;
   }
 
-  const char *ovl_options = NULL;
+  g_autofree char *ovl_options = NULL;
   static const char hotfix_ovl_options[]
       = "lowerdir=usr,upperdir=.usr-ovl-upper,workdir=.usr-ovl-work";
-  g_autofree char *unlock_ovldir = NULL;
 
   switch (unlocked_state)
     {
@@ -2141,18 +2142,22 @@ ostree_sysroot_deployment_unlock (OstreeSysroot *self, OstreeDeployment *deploym
           return FALSE;
         if (!mkdir_unmasked (deployment_dfd, ".usr-ovl-work", usr_mode, cancellable, error))
           return FALSE;
-        ovl_options = hotfix_ovl_options;
+        ovl_options = g_strdup (hotfix_ovl_options);
       }
       break;
     case OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT:
     case OSTREE_DEPLOYMENT_UNLOCKED_TRANSIENT:
       {
-        unlock_ovldir = g_strdup ("/var/tmp/ostree-unlock-ovl.XXXXXX");
-        /* We're just doing transient development/hacking?  Okay,
-         * stick the overlayfs bits in /var/tmp.
-         */
-        const char *development_ovl_upper;
-        const char *development_ovl_work;
+        // Holds the overlay backing data in the deployment backing dir, which
+        // ensures that (unlike our previous usage of /var/tmp) that it's on the same
+        // physical filesystem. It's valid to make /var/tmp a separate FS, but for
+        // this data it needs to scale to the root.
+        g_autofree char *usrovldir_relative
+            = g_build_filename (backing_relpath, OSTREE_DEPLOYMENT_USR_TRANSIENT_DIR, NULL);
+        // We explicitly don't want this data to persist, so if it happened
+        // to leak from a previous boot, ensure the dir is cleaned now.
+        if (!glnx_shutil_rm_rf_at (self->sysroot_fd, usrovldir_relative, cancellable, error))
+          return FALSE;
 
         /* Ensure that the directory is created with the same label as `/usr` */
         {
@@ -2163,18 +2168,26 @@ ostree_sysroot_deployment_unlock (OstreeSysroot *self, OstreeDeployment *deploym
           if (!_ostree_sepolicy_preparefscreatecon (&con, sepolicy, "/usr", usr_mode, error))
             return FALSE;
 
-          if (g_mkdtemp_full (unlock_ovldir, 0755) == NULL)
-            return glnx_throw_errno_prefix (error, "mkdtemp");
+          // Create a new backing dir.
+          if (!mkdir_unmasked (self->sysroot_fd, usrovldir_relative, usr_mode, cancellable, error))
+            return FALSE;
         }
 
-        development_ovl_upper = glnx_strjoina (unlock_ovldir, "/upper");
-        if (!mkdir_unmasked (AT_FDCWD, development_ovl_upper, usr_mode, cancellable, error))
+        // Open a fd for our new dir
+        int ovldir_fd = -1;
+        if (!glnx_opendirat (self->sysroot_fd, usrovldir_relative, FALSE, &ovldir_fd, error))
           return FALSE;
-        development_ovl_work = glnx_strjoina (unlock_ovldir, "/work");
-        if (!mkdir_unmasked (AT_FDCWD, development_ovl_work, usr_mode, cancellable, error))
+
+        // Create the work and upper dirs there
+        if (!mkdir_unmasked (ovldir_fd, "upper", usr_mode, cancellable, error))
           return FALSE;
-        ovl_options = glnx_strjoina ("lowerdir=usr,upperdir=", development_ovl_upper,
-                                     ",workdir=", development_ovl_work);
+        if (!mkdir_unmasked (ovldir_fd, "work", usr_mode, cancellable, error))
+          return FALSE;
+
+        // TODO investigate depending on the new mount API with overlayfs
+        ovl_options = g_strdup_printf ("lowerdir=usr,upperdir=/proc/self/fd/%d/upper"
+                                       ",workdir=/proc/self/fd/%d/work",
+                                       ovldir_fd, ovldir_fd);
       }
     }
 
@@ -2249,7 +2262,7 @@ ostree_sysroot_deployment_unlock (OstreeSysroot *self, OstreeDeployment *deploym
         if (!glnx_shutil_mkdir_p_at (AT_FDCWD, devpath_parent, 0755, cancellable, error))
           return FALSE;
 
-        if (!g_file_set_contents (devpath, unlock_ovldir, -1, error))
+        if (!g_file_set_contents (devpath, "", -1, error))
           return FALSE;
       }
     }
