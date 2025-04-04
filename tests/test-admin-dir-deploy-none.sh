@@ -25,7 +25,7 @@ set -euo pipefail
 setup_os_repository "archive" "sysroot.bootloader none"
 
 extra_admin_tests=1
-folders_instead_symlinks_in_boot=0
+folders_instead_symlinks_in_boot=1
 
 . $(dirname $0)/admin-test.sh
 

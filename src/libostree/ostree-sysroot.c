@@ -38,6 +38,8 @@
 #include "ostree-sysroot-private.h"
 #include "otcore.h"
 
+#define BOOTVERSION_FILE "boot/loader/ostree_bootversion"
+
 /**
  * SECTION:ostree-sysroot
  * @title: Root partition mount point
@@ -601,6 +603,9 @@ compare_loader_configs_for_sorting (gconstpointer a_pp, gconstpointer b_pp)
   return compare_boot_loader_configs (a, b);
 }
 
+static gboolean read_current_bootversion (OstreeSysroot *self, int *out_bootversion,
+                                          GCancellable *cancellable, GError **error);
+
 /* Read all the bootconfigs from `/boot/loader/`. */
 gboolean
 _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self, int bootversion,
@@ -613,7 +618,16 @@ _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self, int bootversion,
   g_autoptr (GPtrArray) ret_loader_configs
       = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 
-  g_autofree char *entries_path = g_strdup_printf ("boot/loader.%d/entries", bootversion);
+  g_autofree char *entries_path = NULL;
+  int current_version;
+  if (!read_current_bootversion (self, &current_version, cancellable, error))
+    return FALSE;
+
+  if (current_version == bootversion)
+    entries_path = g_strdup ("boot/loader/entries");
+  else
+    entries_path = g_strdup_printf ("boot/loader.%d/entries", bootversion);
+
   gboolean entries_exists;
   g_auto (GLnxDirFdIterator) dfd_iter = {
     0,
@@ -660,7 +674,7 @@ _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self, int bootversion,
   return TRUE;
 }
 
-/* Get the bootversion from the `/boot/loader` symlink. */
+/* Get the bootversion from the `/boot/loader` directory or symlink. */
 static gboolean
 read_current_bootversion (OstreeSysroot *self, int *out_bootversion, GCancellable *cancellable,
                           GError **error)
@@ -673,24 +687,49 @@ read_current_bootversion (OstreeSysroot *self, int *out_bootversion, GCancellabl
     return FALSE;
   if (errno == ENOENT)
     {
-      g_debug ("Didn't find $sysroot/boot/loader symlink; assuming bootversion 0");
+      g_debug ("Didn't find $sysroot/boot/loader directory or symlink; assuming bootversion 0");
       ret_bootversion = 0;
     }
   else
     {
-      if (!S_ISLNK (stbuf.st_mode))
-        return glnx_throw (error, "Not a symbolic link: boot/loader");
-
-      g_autofree char *target
-          = glnx_readlinkat_malloc (self->sysroot_fd, "boot/loader", cancellable, error);
-      if (!target)
-        return FALSE;
-      if (g_strcmp0 (target, "loader.0") == 0)
-        ret_bootversion = 0;
-      else if (g_strcmp0 (target, "loader.1") == 0)
-        ret_bootversion = 1;
+      if (S_ISLNK (stbuf.st_mode))
+        {
+          /* Traditional link, check version by reading link name */
+          g_autofree char *target
+              = glnx_readlinkat_malloc (self->sysroot_fd, "boot/loader", cancellable, error);
+          if (!target)
+            return FALSE;
+          if (g_strcmp0 (target, "loader.0") == 0)
+            ret_bootversion = 0;
+          else if (g_strcmp0 (target, "loader.1") == 0)
+            ret_bootversion = 1;
+          else
+            return glnx_throw (error, "Invalid target '%s' in boot/loader", target);
+        }
       else
-        return glnx_throw (error, "Invalid target '%s' in boot/loader", target);
+        {
+          /* Loader is a directory, check version by reading ostree_bootversion */
+          glnx_autofd int bversion_fd = -1;
+          if (!ot_openat_ignore_enoent (self->sysroot_fd, BOOTVERSION_FILE, &bversion_fd, error))
+            return FALSE;
+
+          if (bversion_fd == -1)
+            {
+              g_debug ("File " BOOTVERSION_FILE " is not available, assuming bootversion 0");
+              ret_bootversion = 0;
+            }
+          else
+            {
+              g_autofree char *version
+                  = glnx_fd_readall_utf8 (bversion_fd, NULL, cancellable, error);
+              if (g_strcmp0 (version, "loader.0") == 0)
+                ret_bootversion = 0;
+              else if (g_strcmp0 (version, "loader.1") == 0)
+                ret_bootversion = 1;
+              else
+                return glnx_throw (error, "Invalid version '%s' in " BOOTVERSION_FILE, version);
+            }
+        }
     }
 
   *out_bootversion = ret_bootversion;
