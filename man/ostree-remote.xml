@@ -86,7 +86,6 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <arg choice="req">DOMAIN</arg>
                 <arg choice="req">PATH</arg>
                 <arg choice="req">COOKIE_NAME</arg>
-                <arg choice="req">VALUE</arg>
             </cmdsynopsis>
             <cmdsynopsis>
                 <command>ostree remote list-cookies</command> <arg choice="req">NAME</arg>
