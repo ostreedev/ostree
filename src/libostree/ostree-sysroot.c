@@ -22,8 +22,10 @@
 
 #include "otutil.h"
 #include <err.h>
+#include <linux/magic.h>
 #include <sys/file.h>
 #include <sys/mount.h>
+#include <sys/vfs.h>
 #include <sys/wait.h>
 
 #include "ostree-bootloader-aboot.h"
@@ -338,6 +340,19 @@ ensure_sysroot_fd (OstreeSysroot *self, GError **error)
   return TRUE;
 }
 
+static gboolean
+validate_boot_fd (OstreeSysroot *self, int fd, GError **error)
+{
+  g_assert_cmpint (fd, !=, -1);
+  struct statfs stbuf;
+  if (fstatfs (fd, &stbuf) < 0)
+    return glnx_throw_errno_prefix (error, "fstatfs(boot)");
+  self->boot_is_vfat = (stbuf.f_type == MSDOS_SUPER_MAGIC);
+  if (self->boot_is_vfat)
+    return glnx_throw (error, "/boot cannot currently be a vfat filesystem");
+  return TRUE;
+}
+
 /* Require that both self->sysroot_fd is set.
  * If the sysroot has a boot/ subdirectory, it will be loaded.
  * If not, self->boot_fd will remain -1.
@@ -352,14 +367,18 @@ _ostree_sysroot_maybe_load_boot_fd (OstreeSysroot *self, GError **error)
     return FALSE;
   if (self->boot_fd == -1)
     {
-      int fd = glnx_opendirat_with_errno (self->sysroot_fd, "boot", TRUE);
+      glnx_autofd int fd = glnx_opendirat_with_errno (self->sysroot_fd, "boot", TRUE);
       if (fd < 0)
         {
           if (errno != ENOENT)
             return glnx_throw_errno_prefix (error, "Opening boot/");
         }
       else
-        self->boot_fd = fd;
+        {
+          if (!validate_boot_fd (self, fd, error))
+            return FALSE;
+          self->boot_fd = glnx_steal_fd (&fd);
+        }
     }
   return TRUE;
 }
@@ -372,8 +391,12 @@ _ostree_sysroot_ensure_boot_fd (OstreeSysroot *self, GError **error)
     return FALSE;
   if (self->boot_fd == -1)
     {
-      if (!glnx_opendirat (self->sysroot_fd, "boot", TRUE, &self->boot_fd, error))
+      glnx_autofd int fd = -1;
+      if (!glnx_opendirat (self->sysroot_fd, "boot", TRUE, &fd, error))
         return FALSE;
+      if (!validate_boot_fd (self, fd, error))
+        return FALSE;
+      self->boot_fd = glnx_steal_fd (&fd);
     }
   return TRUE;
 }
