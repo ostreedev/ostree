@@ -2216,8 +2216,9 @@ swap_bootloader (OstreeSysroot *sysroot, OstreeBootloader *bootloader, int curre
 
   if (!_ostree_sysroot_ensure_boot_fd (sysroot, error))
     return FALSE;
-
   g_assert_cmpint (sysroot->boot_fd, !=, -1);
+  // We use symlinks here.
+  g_assert (!sysroot->boot_is_vfat);
 
   /* The symlink was already written, and we used syncfs() to ensure
    * its data is in place.  Renaming now should give us atomic semantics;
@@ -2825,6 +2826,8 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot *self, GPtrArray *n
   g_assert (self->loadstate == OSTREE_SYSROOT_LOAD_STATE_LOADED);
 
   if (!_ostree_sysroot_ensure_writable (self, error))
+    return FALSE;
+  if (!_ostree_sysroot_ensure_boot_fd (self, error))
     return FALSE;
 
   const bool skip_early_prune = (self->opt_flags & OSTREE_SYSROOT_GLOBAL_OPT_NO_EARLY_PRUNE) > 0;
