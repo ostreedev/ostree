@@ -71,20 +71,10 @@ ot_admin_builtin_finalize_staged (int argc, char **argv, OstreeCommandInvocation
               cancellable, error))
         return FALSE;
 
-      /* In case it's an automount, open /boot so that the automount doesn't
-       * expire until before this process exits. If it did expire and got
-       * unmounted, the service would be stopped and the deployment would be
-       * finalized earlier than expected.
-       */
-      int sysroot_fd = ostree_sysroot_get_fd (sysroot);
-      glnx_autofd int boot_fd = -1;
-      g_debug ("Opening /boot directory");
-      if (!glnx_opendirat (sysroot_fd, "boot", TRUE, &boot_fd, error))
-        return FALSE;
-
-      /* We want to keep /boot open until the deployment is finalized during
+      /* By default the sysroot now holds a file descriptor for /boot open.
+       * We want that open until the deployment is finalized during
        * system shutdown, so block until we get SIGTERM which systemd will send
-       * when the unit is stopped.
+       * when the unit is stopped, then we'll exit and release it.
        */
       pause ();
     }

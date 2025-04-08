@@ -64,8 +64,13 @@ struct OstreeSysroot
   GObject parent;
 
   GFile *path;
+  // File descriptor for the sysroot. Only valid after `ostree_sysroot_ensure_initialized()`
+  // has been invoked (directly by a calling program, or transitively from another public API).
   int sysroot_fd;
+  // File descriptor for the boot partition. Should be initialized on demand internally
+  // by a public API eventually invoking `_ostree_sysroot_ensure_boot_fd()`.
   int boot_fd;
+  // Lock for this sysroot.
   GLnxLockFile lock;
 
   OstreeSysrootLoadState loadstate;

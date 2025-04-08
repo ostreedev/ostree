@@ -21,6 +21,9 @@ EOF
     systemctl daemon-reload
     systemctl enable boot.automount
 
+    # Stop this as it may also be holding /boot open now
+    systemctl stop rpm-ostreed.service
+
     # Unmount /boot, start the automount unit, and ensure the units are
     # in the correct states.
     umount /boot
