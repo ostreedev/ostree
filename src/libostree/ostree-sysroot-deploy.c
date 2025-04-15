@@ -2114,17 +2114,10 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
     {
       g_autofree char *aboot_relpath = g_strconcat ("/", bootcsumdir, "/", aboot_fn, NULL);
       ostree_bootconfig_parser_set (bootconfig, "aboot", aboot_relpath);
-    }
-  else
-    {
-      g_autofree char *aboot_relpath
-          = g_strconcat ("/", deployment_dirpath, "/usr/lib/ostree-boot/aboot.img", NULL);
-      ostree_bootconfig_parser_set (bootconfig, "aboot", aboot_relpath);
-    }
 
-  g_autofree char *abootcfg_relpath
-      = g_strconcat ("/", deployment_dirpath, "/usr/lib/ostree-boot/aboot.cfg", NULL);
-  ostree_bootconfig_parser_set (bootconfig, "abootcfg", abootcfg_relpath);
+      g_autofree char *abootcfg_relpath = g_strconcat ("/", bootcsumdir, "/aboot.cfg", NULL);
+      ostree_bootconfig_parser_set (bootconfig, "abootcfg", abootcfg_relpath);
+    }
 
   if (kernel_layout->devicetree_namever)
     {
