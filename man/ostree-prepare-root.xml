@@ -129,7 +129,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                    it is supported for example to have <literal>root.transient=true</literal> but <literal>etc.transient=false</literal> in which case changes to <literal>/etc</literal> continue
                    to persist across updates, with the default OSTree 3-way merge applied.
                    Also related to persistence it is important to emphasize that <literal>/sysroot</literal> (the physical root filesystem) is still persistent
-                   by default; in-place OS upgrades can be applied.
+                   by default; in-place OS upgrades can be applied. This option has no effect on <literal>/var</literal>.
                 </para>
                 <para>
                   Enabling this option can make it significantly easier to adopt an image-based model in some circumstances.
