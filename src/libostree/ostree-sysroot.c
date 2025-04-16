@@ -22,8 +22,10 @@
 
 #include "otutil.h"
 #include <err.h>
+#include <linux/magic.h>
 #include <sys/file.h>
 #include <sys/mount.h>
+#include <sys/vfs.h>
 #include <sys/wait.h>
 
 #include "ostree-bootloader-aboot.h"
@@ -375,6 +377,13 @@ _ostree_sysroot_ensure_boot_fd (OstreeSysroot *self, GError **error)
       if (!glnx_opendirat (self->sysroot_fd, "boot", TRUE, &self->boot_fd, error))
         return FALSE;
     }
+  struct statfs stbuf;
+  if (fstatfs (self->boot_fd, &stbuf) < 0)
+    return glnx_throw_errno_prefix (error, "fstatfs");
+  self->boot_is_vfat = (stbuf.f_type == MSDOS_SUPER_MAGIC);
+  if (self->boot_is_vfat)
+    return glnx_throw (error, "/boot cannot currently be a vfat filesystem");
+
   return TRUE;
 }
 
