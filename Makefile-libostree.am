@@ -175,9 +175,9 @@ endif # USE_GPGME
 symbol_files = $(top_srcdir)/src/libostree/libostree-released.sym
 
 # Uncomment this include when adding new development symbols.
-#if BUILDOPT_IS_DEVEL_BUILD
-#symbol_files += $(top_srcdir)/src/libostree/libostree-devel.sym
-#endif
+if BUILDOPT_IS_DEVEL_BUILD
+symbol_files += $(top_srcdir)/src/libostree/libostree-devel.sym
+endif
 
 # http://blog.jgc.org/2007/06/escaping-comma-and-space-in-gnu-make.html
 wl_versionscript_arg = -Wl,--version-script=
