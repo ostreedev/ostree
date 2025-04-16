@@ -338,9 +338,38 @@ ensure_sysroot_fd (OstreeSysroot *self, GError **error)
   return TRUE;
 }
 
+/* Require that both self->sysroot_fd is set.
+ * If the sysroot has a boot/ subdirectory, it will be loaded.
+ * If not, self->boot_fd will remain -1.
+ *
+ * This API is only for backwards compatibility with effectively broken
+ * situations where we're pointed at a sysroot that doesn't have /boot.
+ */
+static gboolean
+_ostree_sysroot_maybe_load_boot_fd (OstreeSysroot *self, GError **error)
+{
+  if (!ensure_sysroot_fd (self, error))
+    return FALSE;
+  if (self->boot_fd == -1)
+    {
+      int fd = glnx_opendirat_with_errno (self->sysroot_fd, "boot", TRUE);
+      if (fd < 0)
+        {
+          if (errno != ENOENT)
+            return glnx_throw_errno_prefix (error, "Opening boot/");
+        }
+      else
+        self->boot_fd = fd;
+    }
+  return TRUE;
+}
+
+/* Require that both self->sysroot_fd and self->boot_fd are loaded */
 gboolean
 _ostree_sysroot_ensure_boot_fd (OstreeSysroot *self, GError **error)
 {
+  if (!ensure_sysroot_fd (self, error))
+    return FALSE;
   if (self->boot_fd == -1)
     {
       if (!glnx_opendirat (self->sysroot_fd, "boot", TRUE, &self->boot_fd, error))
@@ -607,18 +636,28 @@ _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self, int bootversion,
                                           GPtrArray **out_loader_configs, GCancellable *cancellable,
                                           GError **error)
 {
-  if (!ensure_sysroot_fd (self, error))
-    return FALSE;
-
   g_autoptr (GPtrArray) ret_loader_configs
       = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 
-  g_autofree char *entries_path = g_strdup_printf ("boot/loader.%d/entries", bootversion);
+  // In our unit tests we have some cases where we do
+  // ostree --sysroot=/path/to/deployment/root remote add
+  // without a boot directory at all. This is a broken situation,
+  // but we attempt to cope.
+  if (!_ostree_sysroot_maybe_load_boot_fd (self, error))
+    return FALSE;
+  if (self->boot_fd == -1)
+    {
+      g_debug ("Deployment is missing boot directory");
+      *out_loader_configs = g_steal_pointer (&ret_loader_configs);
+      return TRUE;
+    }
+
+  g_autofree char *entries_path = g_strdup_printf ("loader.%d/entries", bootversion);
   gboolean entries_exists;
   g_auto (GLnxDirFdIterator) dfd_iter = {
     0,
   };
-  if (!ot_dfd_iter_init_allow_noent (self->sysroot_fd, entries_path, &dfd_iter, &entries_exists,
+  if (!ot_dfd_iter_init_allow_noent (self->boot_fd, entries_path, &dfd_iter, &entries_exists,
                                      error))
     return FALSE;
   if (!entries_exists)

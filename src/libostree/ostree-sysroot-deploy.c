@@ -2826,6 +2826,8 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot *self, GPtrArray *n
 
   if (!_ostree_sysroot_ensure_writable (self, error))
     return FALSE;
+  if (!_ostree_sysroot_ensure_boot_fd (self, error))
+    return FALSE;
 
   const bool skip_early_prune = (self->opt_flags & OSTREE_SYSROOT_GLOBAL_OPT_NO_EARLY_PRUNE) > 0;
   if (!skip_early_prune && !opts->disable_auto_early_prune
