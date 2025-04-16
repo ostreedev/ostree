@@ -519,7 +519,7 @@ main (int argc, char *argv[])
    * at /boot inside the deployment. */
   if (snprintf (srcpath, sizeof (srcpath), "%s/boot/loader", root_mountpoint) < 0)
     err (EXIT_FAILURE, "failed to assemble /boot/loader path");
-  if (lstat (srcpath, &stbuf) == 0 && S_ISLNK (stbuf.st_mode))
+  if (lstat (srcpath, &stbuf) == 0 && (S_ISLNK (stbuf.st_mode) || S_ISDIR (stbuf.st_mode)))
     {
       if (lstat ("boot", &stbuf) == 0 && S_ISDIR (stbuf.st_mode))
         {
