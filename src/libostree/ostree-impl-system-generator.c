@@ -289,12 +289,6 @@ _ostree_impl_system_generator (const char *normal_dir, const char *early_dir, co
   if (unlinkat (AT_FDCWD, INITRAMFS_MOUNT_VAR, 0) == 0)
     return TRUE;
 
-  // If we're not booted via ostree, do nothing
-  if (!glnx_fstatat_allow_noent (AT_FDCWD, OTCORE_RUN_OSTREE, NULL, 0, error))
-    return FALSE;
-  if (errno == ENOENT)
-    return TRUE;
-
   g_autofree char *cmdline = read_proc_cmdline ();
   if (!cmdline)
     return glnx_throw (error, "Failed to read /proc/cmdline");
