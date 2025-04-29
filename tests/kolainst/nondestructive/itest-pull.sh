@@ -18,7 +18,7 @@ trap _tmpdir_cleanup EXIT
 mkdir repo
 ostree --repo=repo init --mode=archive
 echo -e '[archive]\nzlib-level=1\n' >> repo/config
-host_nonremoteref=$(echo ${host_refspec} | sed 's,[^:]*:,,')
+host_nonremoteref=testref
 log_timestamps() {
     date
     "$@"

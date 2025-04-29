@@ -40,9 +40,9 @@ cd /root
 mkdir -p rootfs/usr/lib/modules/`uname -r`
 cp /usr/lib/modules/`uname -r`/vmlinuz rootfs/usr/lib/modules/`uname -r`
 dd if=/dev/urandom of=rootfs/usr/lib/modules/`uname -r`/vmlinuz count=1 conv=notrunc status=none
-ostree commit --base "${host_refspec}" -P --tree=dir=rootfs -b modkernel1
+ostree commit --base "${host_commit}" -P --tree=dir=rootfs -b modkernel1
 dd if=/dev/urandom of=rootfs/usr/lib/modules/`uname -r`/vmlinuz count=1 conv=notrunc status=none
-ostree commit --base "${host_refspec}" -P --tree=dir=rootfs -b modkernel2
+ostree commit --base "${host_commit}" -P --tree=dir=rootfs -b modkernel2
 
 assert_bootfs_has_n_bootcsum_dirs() {
     local expected=$1; shift
