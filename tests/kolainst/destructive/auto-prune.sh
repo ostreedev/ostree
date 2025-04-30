@@ -40,11 +40,35 @@ assert_not_journal_grep() {
     fi
 }
 
-modules_dir=usr/lib/modules/`uname -r`
+one_gb=$((1 * 1024 * 1024 * 1024))
 
-block_size=$(stat --file-system /boot -c '%s')
+modules_dir=usr/lib/modules/`uname -r`
 kernel_size=$(stat -c '%s' ${modules_dir}/vmlinuz)
 initramfs_size=$(stat -c '%s' ${modules_dir}/initramfs.img)
+bootdata_size=$((${kernel_size} + ${initramfs_size}))
+block_size=$(stat --file-system /boot -c '%s')
+total_blocks=$(stat --file-system /boot -c '%b')
+# If /boot isn't big enough to hold a full 5 kernel+initramfs pairs, then
+# we allocate one that is. I chose 5 just to account for overhead crudely.
+required_bootdata_size=$((5 * ${bootdata_size}))
+if test $((${total_blocks} * ${block_size})) -lt ${required_bootdata_size}; then
+    # Make a new loopback-mounted /boot that's large enough
+    bootimg=/var/tmp/boot.img
+    truncate -s ${required_bootdata_size} ${bootimg}
+    # Be sure to mirror existing block size
+    mkfs.ext4 -b ${block_size} ${bootimg}
+    mount -o loop ${bootimg} /var/mnt
+    # Copy existing boot data
+    cp -a /boot/* /var/mnt
+    umount /var/mnt
+     # holds a ref to /boot
+    systemctl stop rpm-ostreed
+    # Unmount it lazily anyways
+    umount -l /boot
+    # And put it in place
+    mount -o loop ${bootimg} /boot
+fi
+
 cat <<EOF
 blocks:
   vmlinuz: $((${kernel_size} / ${block_size} + 1))
