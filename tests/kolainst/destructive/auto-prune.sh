@@ -40,15 +40,24 @@ assert_not_journal_grep() {
     fi
 }
 
+modules_dir=usr/lib/modules/`uname -r`
+
 block_size=$(stat --file-system /boot -c '%s')
+kernel_size=$(stat -c '%s' ${modules_dir}/vmlinuz)
+initramfs_size=$(stat -c '%s' ${modules_dir}/initramfs.img)
+cat <<EOF
+blocks:
+  vmlinuz: $((${kernel_size} / ${block_size} + 1))
+  initramfs: $((${initramfs_size} / ${block_size} + 1))
+EOF
 
 # make two fake ostree commits with modified kernels of about the same size
 cd /root
-mkdir -p rootfs/usr/lib/modules/`uname -r`
-cp /usr/lib/modules/`uname -r`/vmlinuz rootfs/usr/lib/modules/`uname -r`
-dd if=/dev/urandom of=rootfs/usr/lib/modules/`uname -r`/vmlinuz count=1 conv=notrunc status=none
+mkdir -p rootfs/"${modules_dir}"
+cp /${modules_dir}/vmlinuz rootfs/${modules_dir}
+dd if=/dev/urandom of=rootfs/${modules_dir}/vmlinuz count=1 conv=notrunc status=none
 ostree commit --base "${host_commit}" -P --tree=dir=rootfs -b modkernel1
-dd if=/dev/urandom of=rootfs/usr/lib/modules/`uname -r`/vmlinuz count=1 conv=notrunc status=none
+dd if=/dev/urandom of=rootfs/${modules_dir}/vmlinuz count=1 conv=notrunc status=none
 ostree commit --base "${host_commit}" -P --tree=dir=rootfs -b modkernel2
 
 assert_bootfs_has_n_bootcsum_dirs() {
@@ -65,13 +74,16 @@ consume_bootfs_space() {
     local free_blocks
     free_blocks=${1:-$(stat --file-system /boot -c '%a')}
     # leave 1 block free
+    df /boot
     unshare -m bash -c \
       "mount -o rw,remount /boot && \
        dd if=/dev/zero of=/boot/bigfile count=$((free_blocks-1)) bs=${block_size}"
+    df /boot
 }
 
 unconsume_bootfs_space() {
     unshare -m bash -c "mount -o rw,remount /boot && rm /boot/bigfile"
+    df /boot
 }
 
 assert_bootfs_has_n_bootcsum_dirs 1
@@ -156,7 +168,7 @@ unconsume_bootfs_space
 # limit according to f_bfree.
 unshare -m bash -c \
   "mount -o rw,remount /boot && \
-   cp /usr/lib/modules/`uname -r`/{vmlinuz,initramfs.img} /boot"
+   cp /${modules_dir}/{vmlinuz,initramfs.img} /boot"
 free_blocks_kernel_and_initrd=$(stat --file-system /boot -c '%f')
 unshare -m bash -c \
   "mount -o rw,remount /boot && rm /boot/{vmlinuz,initramfs.img}"
@@ -185,9 +197,9 @@ assert_journal_grep "$cursor" "updating bootloader in two steps"
 
 unconsume_bootfs_space
 
-mkdir -p rootfs/usr/lib/modules/`uname -r`/dtb
+mkdir -p rootfs/${modules_dir}/dtb
 dtbcount=10000
-(set +x; for i in {1..${dtbcount}}; do echo -n x > rootfs/usr/lib/modules/`uname -r`/dtb/$i; done)
+(set +x; for i in {1..${dtbcount}}; do echo -n x > rootfs/${modules_dir}/dtb/$i; done)
 ostree commit --base modkernel1 -P --tree=dir=rootfs -b modkernel3
 
 # a naive estimator would think all those files just take 10000 bytes
