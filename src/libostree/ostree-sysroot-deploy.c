@@ -2209,8 +2209,9 @@ swap_bootloader (OstreeSysroot *sysroot, OstreeBootloader *bootloader, int curre
 
   if (!_ostree_sysroot_ensure_boot_fd (sysroot, error))
     return FALSE;
-
   g_assert_cmpint (sysroot->boot_fd, !=, -1);
+  // We use symlinks here.
+  g_assert (!sysroot->boot_is_vfat);
 
   /* The symlink was already written, and we used syncfs() to ensure
    * its data is in place.  Renaming now should give us atomic semantics;

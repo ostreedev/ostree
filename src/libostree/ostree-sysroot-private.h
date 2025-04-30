@@ -70,6 +70,9 @@ struct OstreeSysroot
   // File descriptor for the boot partition. Should be initialized on demand internally
   // by a public API eventually invoking `_ostree_sysroot_ensure_boot_fd()`.
   int boot_fd;
+  // Set if the /boot filesystem is VFAT.
+  // Only initialized if boot_fd is set.
+  gboolean boot_is_vfat;
   // Lock for this sysroot.
   GLnxLockFile lock;
 
