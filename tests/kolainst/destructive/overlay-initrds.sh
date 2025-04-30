@@ -31,7 +31,7 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
   "")
     create_initrd_with_dracut_karg ostree.test1
     # let's use the deploy API first
-    ostree admin deploy "${host_refspec}" \
+    ostree admin deploy "${host_commit}" \
       --overlay-initrd /var/tmp/ostree.test1.img
     /tmp/autopkgtest-reboot "2"
     ;;
@@ -45,7 +45,7 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
     create_initrd_with_dracut_karg ostree.test2
 
     # let's use the staging API this time
-    ostree admin deploy "${host_refspec}" --stage \
+    ostree admin deploy "${host_commit}" --stage \
       --overlay-initrd /var/tmp/ostree.test2.img
     /tmp/autopkgtest-reboot "3"
     ;;
@@ -64,7 +64,7 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
     test -f "/boot/ostree/initramfs-overlays/${test2_sha}.img"
 
     # OK, now let's deploy an identical copy of this test
-    ostree admin deploy "${host_refspec}" \
+    ostree admin deploy "${host_commit}" \
       --overlay-initrd /var/tmp/ostree.test2.img
 
     # Now the deployment with ostree.test1 should've been GC'ed; check that its
@@ -74,12 +74,12 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
 
     # deploy again to check that no bootconfig swap was needed; this verifies
     # that deployment overlay initrds can be successfully compared
-    ostree admin deploy "${host_refspec}" \
+    ostree admin deploy "${host_commit}" \
       --overlay-initrd /var/tmp/ostree.test2.img |& tee /tmp/out.txt
     assert_file_has_content /tmp/out.txt 'bootconfig swap: no'
 
     # finally, let's check that we can overlay multiple initrds
-    ostree admin deploy "${host_refspec}" --stage \
+    ostree admin deploy "${host_commit}" --stage \
       --overlay-initrd /var/tmp/ostree.test1.img \
       --overlay-initrd /var/tmp/ostree.test2.img
     /tmp/autopkgtest-reboot "4"

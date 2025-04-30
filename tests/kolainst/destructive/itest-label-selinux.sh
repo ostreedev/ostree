@@ -11,7 +11,7 @@ prepare_tmpdir /var/tmp
 date
 cd /ostree/repo/tmp
 rm co -rf
-ostree checkout -H ${host_refspec} co
+ostree checkout -H ${host_commit} co
 testbin=co/usr/bin/foo-a-generic-binary
 assert_not_has_file "${testbin}"
 # Make a test binary that we label as shell_exec_t on disk, but should be
@@ -45,9 +45,9 @@ ostree refs --delete testbranch
 rm co -rf
 echo "ok commit with sepolicy"
 
-ostree ls -X ${host_refspec} /usr/etc/sysctl.conf > ls.txt
+ostree ls -X ${host_commit} /usr/etc/sysctl.conf > ls.txt
 if grep -qF ':etc_t:' ls.txt; then
-  ostree checkout -H ${host_refspec} co
+  ostree checkout -H ${host_commit} co
   ostree commit -b testbranch --link-checkout-speedup \
        --selinux-policy co --tree=dir=co --selinux-labeling-epoch=1
   ostree ls -X testbranch /usr/etc/sysctl.conf > ls.txt
@@ -64,7 +64,7 @@ echo "ok --selinux-labeling-epoch=1"
 
 rm rootfs -rf
 if ostree checkout -H \
-    --selinux-policy / ${host_refspec} co; then
+    --selinux-policy / ${host_commit} co; then
   assert_not_reached "checked out with -H and --selinux-policy"
 fi
 # recommit just two binaries into a new branch with selinux labels stripped
@@ -124,7 +124,7 @@ assert_not_file_has_content lsz.txt ':bin_t:'
 rm -f lsz.txt
 echo 'somelib' > usr/lib/somelib.so
 echo 'someconf' > usr/etc/some.conf
-ostree commit -b newbase --selinux-policy-from-base --tree=ref=${host_refspec} --tree=dir=$(pwd)
+ostree commit -b newbase --selinux-policy-from-base --tree=ref=${host_commit} --tree=dir=$(pwd)
 ostree ls -X newbase /usr/bin/somebinary > newls.txt
 assert_file_has_content newls.txt ':bin_t:'
 ostree ls -X newbase /usr/lib/somelib.so > newls.txt

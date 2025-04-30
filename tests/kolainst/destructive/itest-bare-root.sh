@@ -15,7 +15,7 @@ cd /ostree/repo/tmp
 rm co -rf
 rm co-testref -rf
 ostree refs --delete testref
-ostree checkout -H ${host_refspec} co
+ostree checkout -H ${host_commit} co
 victim_symlink=/usr/bin/gtar  # Seems likely to stick around
 # Copy the link to avoid corrupting it
 cp co/${victim_symlink}{,.tmp}
@@ -27,7 +27,7 @@ csum=$(ostree commit -b testref --link-checkout-speedup --tree=dir=co)
 ostree fsck
 ostree ls -X testref ${victim_symlink} > ls.txt
 assert_file_has_content ls.txt 'security\.biometric'
-ostree ls -X ${host_refspec} ${victim_symlink} > ls.txt
+ostree ls -X ${host_commit} ${victim_symlink} > ls.txt
 assert_not_file_has_content ls.txt 'security\.biometric'
 ostree ls -X testref usr/bin > ls.txt
 assert_file_has_content ls.txt 'security\.crunchy'

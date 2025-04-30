@@ -10,7 +10,7 @@ require_writable_sysroot
 
 date
 # Create a new deployment
-ostree admin deploy --karg-proc-cmdline ${host_refspec}
+ostree admin deploy --karg-proc-cmdline ${host_commit}
 new_deployment_path=/ostree/deploy/${host_osname}/deploy/${host_commit}.1
 
 # Test /etc directory mtime

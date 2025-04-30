@@ -136,7 +136,7 @@ pub(crate) fn update_os_tree<P: AsRef<Path>>(
     let mut mutated = 0;
     {
         let tempdir = Dir::open_ambient_dir(tempdir.path(), cap_std::ambient_authority())?;
-        let binary_dirs = &["usr/bin", "usr/sbin", "usr/lib", "usr/lib64"];
+        let binary_dirs = &["usr/bin", "usr/lib", "usr/lib64"];
         let rootfs = Dir::open_ambient_dir("/", cap_std::ambient_authority())?;
         for v in binary_dirs {
             let v = *v;

@@ -111,12 +111,18 @@ ot_admin_builtin_set_origin (int argc, char **argv, OstreeCommandInvocation *inv
     g_autofree char *origin_remote = NULL;
     g_autofree char *origin_ref = NULL;
 
-    if (!ostree_parse_refspec (origin_refspec, &origin_remote, &origin_ref, error))
-      return FALSE;
+    if (origin_refspec != NULL)
+      {
+        if (!ostree_parse_refspec (origin_refspec, &origin_remote, &origin_ref, error))
+          return FALSE;
+      }
+    else if (branch == NULL)
+      return glnx_throw (error, "No host refspec found, branch is required");
 
+    const char *target_branch = branch ?: origin_ref;
+    g_assert (target_branch);
     {
-      g_autofree char *new_refspec
-          = g_strconcat (remotename, ":", branch ? branch : origin_ref, NULL);
+      g_autofree char *new_refspec = g_strconcat (remotename, ":", target_branch, NULL);
       g_autoptr (GKeyFile) new_origin = NULL;
 
       new_origin = ostree_sysroot_origin_new_from_refspec (sysroot, new_refspec);

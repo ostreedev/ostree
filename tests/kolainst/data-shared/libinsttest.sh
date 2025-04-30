@@ -77,6 +77,5 @@ rpmostree_query_json() {
     query=$1
     rpm-ostree status --json | jq -r "${query}"
 }
-host_refspec=$(rpmostree_query_json '.deployments[0].origin')
 host_commit=$(rpmostree_query_json '.deployments[0].checksum')
 host_osname=$(rpmostree_query_json '.deployments[0].osname')
