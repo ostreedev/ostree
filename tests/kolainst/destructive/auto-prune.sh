@@ -5,6 +5,13 @@ set -xeuo pipefail
 
 . ${KOLA_EXT_DATA}/libinsttest.sh
 
+# Log different phases
+step=0
+increment_step() {
+    echo "ok step $step"
+    step=$((step+1))
+}
+
 journal_cursor() {
     journalctl -o json -n 1 | jq -r '.["__CURSOR"]'
 }
@@ -82,6 +89,7 @@ assert_journal_grep "$cursor" "Disabling auto-prune optimization; insufficient s
 assert_file_has_content err.txt "No space left on device"
 unconsume_bootfs_space
 rpm-ostree cleanup -bpr
+increment_step
 
 # OK, now deploy our second deployment for realsies on a bootfs with ample space
 # and sanity-check that auto-pruning doesn't kick in
@@ -91,6 +99,7 @@ rpm-ostree rebase :modkernel1
 cursor=$(journal_cursor)
 ostree admin finalize-staged
 assert_not_journal_grep "$cursor" "updating bootloader in two steps"
+increment_step
 
 # and put it in rollback position; this is the deployment that'll get auto-pruned
 rpm-ostree rollback
@@ -107,6 +116,7 @@ if OSTREE_SYSROOT_OPTS=no-early-prune ostree admin finalize-staged 2>err.txt; th
     assert_not_reached "successfully wrote kernel without auto-pruning"
 fi
 assert_file_has_content err.txt "No space left on device"
+increment_step
 
 # there's 3 bootcsums now because it'll also have the partially written
 # bootcsum dir we were creating when we hit ENOSPC; this verifies that all the
@@ -123,6 +133,7 @@ assert_journal_grep "$cursor" "updating bootloader in two steps"
 
 assert_bootfs_has_n_bootcsum_dirs 2
 assert_not_streq "$bootloader_orig" "$(sha256sum /boot/loader/entries/*)"
+increment_step
 
 # This next test relies on the fact that FCOS currently uses ext4 for /boot.
 # If that ever changes, we can reprovision boot to be ext4.
@@ -159,6 +170,7 @@ if OSTREE_SYSROOT_OPTS=no-early-prune ostree admin finalize-staged 2>err.txt; th
     assert_not_reached "successfully wrote kernel without auto-pruning"
 fi
 assert_file_has_content err.txt "No space left on device" 
+increment_step
 
 # now, try again but with (now default) auto-pruning enabled
 rpm-ostree rebase :modkernel1
@@ -190,11 +202,13 @@ if OSTREE_SYSROOT_OPTS=no-early-prune ostree admin finalize-staged 2>err.txt; th
     assert_not_reached "successfully wrote kernel without auto-pruning"
 fi
 assert_file_has_content err.txt "No space left on device" 
+increment_step
 
 # now, try again but with (now default) auto-pruning enabled
 rpm-ostree rebase :modkernel3
 cursor=$(journal_cursor)
 ostree admin finalize-staged
 assert_journal_grep "$cursor" "updating bootloader in two steps"
+increment_step
 
 echo "ok bootfs auto-prune"
