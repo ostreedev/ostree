@@ -662,7 +662,7 @@ main (int argc, char *argv[])
   {
     g_autoptr (GVariant) metadata = g_variant_ref_sink (g_variant_builder_end (&metadata_builder));
     const guint8 *buf = g_variant_get_data (metadata) ?: (guint8 *)"";
-    if (!glnx_file_replace_contents_at (AT_FDCWD, OTCORE_RUN_BOOTED, buf,
+    if (!glnx_file_replace_contents_at (AT_FDCWD, "run/ostree-booted", buf,
                                         g_variant_get_size (metadata), 0, NULL, &error))
       errx (EXIT_FAILURE, "Writing %s: %s", OTCORE_RUN_BOOTED, error->message);
   }
