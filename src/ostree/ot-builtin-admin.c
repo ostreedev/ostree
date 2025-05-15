@@ -57,6 +57,8 @@ static OstreeCommand admin_subcommands[] = {
     "rollback strings" },
   { "post-copy", OSTREE_BUILTIN_FLAG_NO_REPO, ot_admin_builtin_post_copy,
     "Update the repo and deployments as needed after a copy" },
+  { "prepare-soft-reboot", OSTREE_BUILTIN_FLAG_NO_REPO, ot_admin_builtin_prepare_soft_reboot,
+    "Prepare deployment for soft-reboot" },
   { "set-origin", OSTREE_BUILTIN_FLAG_NO_REPO, ot_admin_builtin_set_origin,
     "Set Origin and create a new origin file" },
   { "status", OSTREE_BUILTIN_FLAG_NO_REPO, ot_admin_builtin_status, "List deployments" },
