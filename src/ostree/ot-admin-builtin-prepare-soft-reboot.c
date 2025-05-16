@@ -30,7 +30,7 @@ static GOptionEntry options[] = { { NULL } };
 
 gboolean
 ot_admin_builtin_prepare_soft_reboot (int argc, char **argv, OstreeCommandInvocation *invocation,
-                           GCancellable *cancellable, GError **error)
+                                      GCancellable *cancellable, GError **error)
 {
   g_autoptr (GOptionContext) context = g_option_context_new ("INDEX");
 
@@ -70,8 +70,7 @@ ot_admin_builtin_prepare_soft_reboot (int argc, char **argv, OstreeCommandInvoca
       return FALSE;
     }
 
-  if (!ostree_sysroot_deployment_prepare_next_root (sysroot, target_deployment,
-      cancellable, error))
+  if (!ostree_sysroot_deployment_prepare_next_root (sysroot, target_deployment, cancellable, error))
     return FALSE;
 
   return TRUE;

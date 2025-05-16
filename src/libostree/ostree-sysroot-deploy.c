@@ -3271,15 +3271,6 @@ get_var_dfd (OstreeSysroot *self, int osdeploy_dfd, OstreeDeployment *deployment
   return glnx_opendirat (base_dfd, base_path, TRUE, ret_fd, error);
 }
 
-static void
-child_setup_fchdir (gpointer data)
-{
-  int fd = (int)(uintptr_t)data;
-  int rc __attribute__ ((unused));
-
-  rc = fchdir (fd);
-}
-
 /*
  * Derived from rpm-ostree's rust/src/bwrap.rs
  */
@@ -3360,7 +3351,7 @@ _ostree_sysroot_run_in_deployment (int deployment_dfd, const char *const *bwrap_
 
   g_ptr_array_add (args, NULL);
 
-  return g_spawn_sync (NULL, (char **)args->pdata, NULL, 0, &child_setup_fchdir,
+  return g_spawn_sync (NULL, (char **)args->pdata, NULL, 0, &_ostree_sysroot_child_setup_fchdir,
                        (gpointer)(uintptr_t)deployment_dfd, stdout, NULL, exit_status, error);
 }
 
@@ -4287,6 +4278,22 @@ ostree_sysroot_deployment_prepare_next_root (OstreeSysroot *self, OstreeDeployme
                                              GCancellable *cancellable, GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("Preparing /run/nextroot for a soft-reboot", error);
+  g_autofree char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
+  gint estatus;
+
+  glnx_autofd int deployment_dfd = -1;
+  if (!glnx_opendirat (self->sysroot_fd, deployment_path, FALSE, &deployment_dfd, error))
+    return FALSE;
+
+  const char *argv[] = { "/usr/lib/ostree/ostree-prepare-root", "--mount", "/run/nextroot", NULL };
+
+  if (!g_spawn_sync (NULL, (char **)argv, NULL, 0, &_ostree_sysroot_child_setup_fchdir, NULL, NULL,
+                     NULL, &estatus, error))
+    return FALSE;
+
+  if (!g_spawn_check_exit_status (estatus, error))
+    return FALSE;
+
   OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
   const char *kargs_const = ostree_bootconfig_parser_get (bootconfig, "options");
   g_autofree gchar *kargs = g_strdup (kargs_const);
