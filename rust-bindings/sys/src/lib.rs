@@ -152,6 +152,7 @@ pub const OSTREE_REPO_METADATA_REF: &[u8] = b"ostree-metadata\0";
 pub const OSTREE_SHA256_DIGEST_LEN: c_int = 32;
 pub const OSTREE_SHA256_STRING_LEN: c_int = 64;
 pub const OSTREE_SIGN_NAME_ED25519: &[u8] = b"ed25519\0";
+pub const OSTREE_SIGN_NAME_SPKI: &[u8] = b"spki\0";
 pub const OSTREE_SUMMARY_GVARIANT_STRING: &[u8] = b"(a(s(taya{sv}))a{sv})\0";
 pub const OSTREE_SUMMARY_SIG_GVARIANT_STRING: &[u8] = b"a{sv}\0";
 pub const OSTREE_TIMESTAMP: c_int = 0;
@@ -296,6 +297,28 @@ impl ::std::fmt::Debug for OstreeAsyncProgressClass {
         f.debug_struct(&format!("OstreeAsyncProgressClass @ {self:p}"))
             .field("parent_class", &self.parent_class)
             .field("changed", &self.changed)
+            .finish()
+    }
+}
+
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct OstreeBlobReaderInterface {
+    pub g_iface: gobject::GTypeInterface,
+    pub read_blob: Option<
+        unsafe extern "C" fn(
+            *mut OstreeBlobReader,
+            *mut gio::GCancellable,
+            *mut *mut glib::GError,
+        ) -> *mut glib::GBytes,
+    >,
+}
+
+impl ::std::fmt::Debug for OstreeBlobReaderInterface {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        f.debug_struct(&format!("OstreeBlobReaderInterface @ {self:p}"))
+            .field("g_iface", &self.g_iface)
+            .field("read_blob", &self.read_blob)
             .finish()
     }
 }
@@ -1119,6 +1142,19 @@ impl ::std::fmt::Debug for OstreeSysrootUpgrader {
 }
 
 // Interfaces
+#[repr(C)]
+#[allow(dead_code)]
+pub struct OstreeBlobReader {
+    _data: [u8; 0],
+    _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
+}
+
+impl ::std::fmt::Debug for OstreeBlobReader {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(f, "OstreeBlobReader @ {self:p}")
+    }
+}
+
 #[repr(C)]
 #[allow(dead_code)]
 pub struct OstreeRepoFinder {
@@ -2998,6 +3034,9 @@ extern "C" {
         error: *mut *mut glib::GError,
     ) -> *mut OstreeSePolicy;
     pub fn ostree_sepolicy_fscreatecon_cleanup(unused: *mut *mut c_void);
+    #[cfg(feature = "v2025_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_2")))]
+    pub fn ostree_sepolicy_set_null_log();
     #[cfg(feature = "v2016_5")]
     #[cfg_attr(docsrs, doc(cfg(feature = "v2016_5")))]
     pub fn ostree_sepolicy_get_csum(self_: *mut OstreeSePolicy) -> *const c_char;
@@ -3397,6 +3436,16 @@ extern "C" {
     ) -> gboolean;
 
     //=========================================================================
+    // OstreeBlobReader
+    //=========================================================================
+    pub fn ostree_blob_reader_get_type() -> GType;
+    pub fn ostree_blob_reader_read_blob(
+        self_: *mut OstreeBlobReader,
+        cancellable: *mut gio::GCancellable,
+        error: *mut *mut glib::GError,
+    ) -> *mut glib::GBytes;
+
+    //=========================================================================
     // OstreeRepoFinder
     //=========================================================================
     pub fn ostree_repo_finder_get_type() -> GType;
@@ -3554,6 +3603,18 @@ extern "C" {
     #[cfg(feature = "v2020_2")]
     #[cfg_attr(docsrs, doc(cfg(feature = "v2020_2")))]
     pub fn ostree_sign_metadata_key(self_: *mut OstreeSign) -> *const c_char;
+    #[cfg(feature = "v2025_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_2")))]
+    pub fn ostree_sign_read_pk(
+        self_: *mut OstreeSign,
+        stream: *mut gio::GInputStream,
+    ) -> *mut OstreeBlobReader;
+    #[cfg(feature = "v2025_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_2")))]
+    pub fn ostree_sign_read_sk(
+        self_: *mut OstreeSign,
+        stream: *mut gio::GInputStream,
+    ) -> *mut OstreeBlobReader;
     #[cfg(feature = "v2020_2")]
     #[cfg_attr(docsrs, doc(cfg(feature = "v2020_2")))]
     pub fn ostree_sign_set_pk(

@@ -108,6 +108,15 @@ impl SePolicy {
     pub fn rootfs_dfd(&self) -> i32 {
         ObjectExt::property(self, "rootfs-dfd")
     }
+
+    #[cfg(feature = "v2025_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_2")))]
+    #[doc(alias = "ostree_sepolicy_set_null_log")]
+    pub fn set_null_log() {
+        unsafe {
+            ffi::ostree_sepolicy_set_null_log();
+        }
+    }
 }
 
 unsafe impl Send for SePolicy {}

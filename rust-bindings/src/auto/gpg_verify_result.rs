@@ -30,7 +30,7 @@ impl GpgVerifyResult {
     }
 
     //#[doc(alias = "ostree_gpg_verify_result_get")]
-    //pub fn get(&self, signature_index: u32, attrs: /*Unimplemented*/&CArray TypeId { ns_id: 1, id: 19 }) -> glib::Variant {
+    //pub fn get(&self, signature_index: u32, attrs: /*Unimplemented*/&CArray TypeId { ns_id: 1, id: 21 }) -> glib::Variant {
     //    unsafe { TODO: call ffi:ostree_gpg_verify_result_get() }
     //}
 

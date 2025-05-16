@@ -209,6 +209,13 @@ const RUST_LAYOUTS: &[(&str, Layout)] = &[
         },
     ),
     (
+        "OstreeBlobReaderInterface",
+        Layout {
+            size: size_of::<OstreeBlobReaderInterface>(),
+            alignment: align_of::<OstreeBlobReaderInterface>(),
+        },
+    ),
+    (
         "OstreeChecksumFlags",
         Layout {
             size: size_of::<OstreeChecksumFlags>(),
@@ -743,6 +750,7 @@ const RUST_CONSTANTS: &[(&str, &str)] = &[
     ("OSTREE_SHA256_DIGEST_LEN", "32"),
     ("OSTREE_SHA256_STRING_LEN", "64"),
     ("OSTREE_SIGN_NAME_ED25519", "ed25519"),
+    ("OSTREE_SIGN_NAME_SPKI", "spki"),
     ("(gint) OSTREE_STATIC_DELTA_GENERATE_OPT_LOWLATENCY", "0"),
     ("(gint) OSTREE_STATIC_DELTA_GENERATE_OPT_MAJOR", "1"),
     ("(gint) OSTREE_STATIC_DELTA_INDEX_FLAGS_NONE", "0"),
