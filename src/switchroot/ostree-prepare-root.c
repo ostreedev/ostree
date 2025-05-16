@@ -688,8 +688,8 @@ main (int argc, char *argv[])
   if (rmdir (TMP_SYSROOT) < 0)
     err (EXIT_FAILURE, "couldn't remove temporary sysroot %s", TMP_SYSROOT);
   
-  /* Moved /run mount point from initramfs(/run) to realrootfs(sysroot/run)
-  * so that systemd will not mount it again if it finds a mount point during switchroot
+  /* Moves /run mount point from initramfs(/run) to realrootfs(sysroot/run)
+  * so that systemd will not mount it again if it finds a mount point during switchroot.
   * and all the contents of /run will be moved to realrootfs as well. It will fix the
   * problem of mounting sysroot as read-only because during ostree-remount.service 
   * it checks in /run/ostree-booted if we need to mount it read-only only or not
