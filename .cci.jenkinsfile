@@ -68,7 +68,7 @@ cosaPod(runAsUser: 0, memory: "9Gi", cpu: "4") {
       coreos-assembler build
       coreos-assembler buildextend-metal
       coreos-assembler buildextend-metal4k
-      coreos-assembler buildextend-live --fast
+      coreos-assembler buildextend-live
 
     """)
   }
