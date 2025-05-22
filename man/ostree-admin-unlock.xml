@@ -83,6 +83,17 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
 		you likely want for security hotfixes).
                 </para></listitem>
             </varlistentry>
+            <varlistentry>
+                <term><option>--transient</option></term>
+
+                <listitem><para>If this option is provided, the
+                overlay filesystem will be mounted read-only. It can
+                still be affected by remounting it as read/write in a
+                new mount namespace. For example:</para>
+                <programlisting>ostree admin unlock --transient
+unshare -m -- sh -c 'mount --options-source=disable -o remount,rw /usr &amp;&amp; touch /usr/myfile'</programlisting>
+                </listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 </refentry>
