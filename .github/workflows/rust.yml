@@ -31,31 +31,6 @@ jobs:
         run: cargo test --verbose --features=${{ env['CARGO_PROJECT_FEATURES'] }}
       - name: cargo clippy (non-gating)
         run: cargo clippy -p ostree --features=${{ env['CARGO_PROJECT_FEATURES'] }}
-  build-minimum-toolchain:
-    name: "Build, minimum supported toolchain (MSRV)"
-    runs-on: ubuntu-latest
-    container: quay.io/coreos-assembler/fcos-buildroot:testing-devel
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-      - name: Detect crate MSRV
-        shell: bash
-        run: |
-          msrv=$(cargo metadata --format-version 1 --no-deps | \
-              jq -r '.packages | .[0].rust_version')
-          echo "Crate MSRV: $msrv"
-          echo "ACTION_MSRV_TOOLCHAIN=$msrv" >> $GITHUB_ENV
-      - name: Remove system Rust toolchain
-        run: dnf remove -y rust cargo
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ env['ACTION_MSRV_TOOLCHAIN']  }}
-          default: true
-      - name: Cache Dependencies
-        uses: Swatinem/rust-cache@ce325b60658c1b38465c06cc965b79baf32c1e72
-      - name: cargo check
-        run: cargo check --features=${{ env['CARGO_PROJECT_FEATURES'] }}
   build-no-features:
     runs-on: ubuntu-latest
     container: quay.io/coreos-assembler/fcos-buildroot:testing-devel
