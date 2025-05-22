@@ -9,7 +9,7 @@ name = "ostree"
 readme = "rust-bindings/README.md"
 repository = "https://github.com/ostreedev/ostree"
 rust-version = "1.77.0"
-version = "0.20.1"
+version = "0.20.2"
 
 include = [
     "/COPYING",
@@ -102,3 +102,4 @@ v2023_1 = ["v2022_7", "ffi/v2023_1"]
 v2023_8 = ["v2023_1", "ffi/v2023_8"]
 v2023_11 = ["v2023_8", "ffi/v2023_11"]
 v2025_1 = ["v2023_11", "ffi/v2025_1"]
+v2025_2 = ["v2025_1", "ffi/v2025_2"]
