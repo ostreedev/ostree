@@ -86,10 +86,10 @@ jobs:
       - name: Run tests
         run: cargo test --verbose --features=${{ env['LATEST_LIBOSTREE'] }}
   cargo-deny:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v2
-    - uses: EmbarkStudios/cargo-deny-action@v1
+    - uses: actions/checkout@v4
+    - uses: EmbarkStudios/cargo-deny-action@v2
       with:
         log-level: warn
         command: check bans sources licenses
