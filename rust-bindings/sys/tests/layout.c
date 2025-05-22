@@ -8,6 +8,7 @@
 
 int main() {
     printf("%s;%zu;%zu\n", "OstreeAsyncProgressClass", sizeof(OstreeAsyncProgressClass), alignof(OstreeAsyncProgressClass));
+    printf("%s;%zu;%zu\n", "OstreeBlobReaderInterface", sizeof(OstreeBlobReaderInterface), alignof(OstreeBlobReaderInterface));
     printf("%s;%zu;%zu\n", "OstreeChecksumFlags", sizeof(OstreeChecksumFlags), alignof(OstreeChecksumFlags));
     printf("%s;%zu;%zu\n", "OstreeCollectionRef", sizeof(OstreeCollectionRef), alignof(OstreeCollectionRef));
     printf("%s;%zu;%zu\n", "OstreeCollectionRefv", sizeof(OstreeCollectionRefv), alignof(OstreeCollectionRefv));

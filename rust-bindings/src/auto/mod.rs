@@ -178,6 +178,9 @@ pub use self::constants::REPO_METADATA_REF;
 #[cfg(feature = "v2020_4")]
 #[cfg_attr(docsrs, doc(cfg(feature = "v2020_4")))]
 pub use self::constants::SIGN_NAME_ED25519;
+#[cfg(feature = "v2024_7")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2024_7")))]
+pub use self::constants::SIGN_NAME_SPKI;
 pub use self::constants::SUMMARY_GVARIANT_STRING;
 pub use self::constants::SUMMARY_SIG_GVARIANT_STRING;
 pub use self::constants::TREE_GVARIANT_STRING;
