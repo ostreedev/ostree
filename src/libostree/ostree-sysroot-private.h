@@ -191,4 +191,13 @@ gboolean _ostree_sysroot_parse_bootlink (const char *bootlink, int *out_entry_bo
                                          char **out_osname, char **out_bootcsum,
                                          int *out_treebootserial, GError **error);
 
+static inline void
+_ostree_sysroot_child_setup_fchdir (gpointer data)
+{
+  int fd = (int)(uintptr_t)data;
+  int rc __attribute__ ((unused));
+
+  rc = fchdir (fd);
+}
+
 G_END_DECLS
