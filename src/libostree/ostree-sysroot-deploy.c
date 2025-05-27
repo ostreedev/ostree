@@ -4287,8 +4287,8 @@ ostree_sysroot_deployment_prepare_next_root (OstreeSysroot *self, OstreeDeployme
 
   const char *argv[] = { "/usr/lib/ostree/ostree-prepare-root", "--mount", "/run/nextroot", NULL };
 
-  if (!g_spawn_sync (NULL, (char **)argv, NULL, 0, &_ostree_sysroot_child_setup_fchdir, NULL, NULL,
-                     NULL, &estatus, error))
+  if (!g_spawn_sync (NULL, (char **)argv, NULL, 0, &_ostree_sysroot_child_setup_fchdir,
+                     (gpointer)(uintptr_t)deployment_dfd, NULL, NULL, &estatus, error))
     return FALSE;
 
   if (!g_spawn_check_exit_status (estatus, error))
