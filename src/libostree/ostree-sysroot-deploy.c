@@ -4285,7 +4285,9 @@ ostree_sysroot_deployment_prepare_next_root (OstreeSysroot *self, OstreeDeployme
   if (!glnx_opendirat (self->sysroot_fd, deployment_path, FALSE, &deployment_dfd, error))
     return FALSE;
 
-  const char *argv[] = { "/usr/lib/ostree/ostree-prepare-root", "--mount", "/run/nextroot", NULL };
+  g_autofree char *sysroot_path = g_file_get_path (ostree_sysroot_get_path (self));
+  const char *argv[]
+      = { "/usr/lib/ostree/ostree-prepare-root", "--mount", "/run/nextroot", sysroot_path, NULL };
 
   if (!g_spawn_sync (NULL, (char **)argv, NULL, 0, &_ostree_sysroot_child_setup_fchdir,
                      (gpointer)(uintptr_t)deployment_dfd, NULL, NULL, &estatus, error))

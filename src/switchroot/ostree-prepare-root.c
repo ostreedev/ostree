@@ -97,6 +97,12 @@
 
 #include "ostree-mount-util.h"
 
+static char *opt_mount_target = NULL;
+
+static GOptionEntry options[] = { { "mount", 0, 0, G_OPTION_ARG_STRING, &opt_mount_target,
+                                    "Mount deployment at specified target", "PATH" },
+                                  { NULL } };
+
 static bool
 sysroot_is_configured_ro (const char *sysroot)
 {
@@ -262,26 +268,52 @@ main (int argc, char *argv[])
   gboolean booted = FALSE;
   g_autoptr (GError) error = NULL;
 
-  if (argc < 2)
-    err (EXIT_FAILURE, "usage: ostree-prepare-root SYSROOT [KERNEL_CMDLINE]");
-  const char *root_arg = argv[1];
+  g_autoptr (GOptionContext) context = g_option_context_new ("SYSROOT [KERNEL_CMDLINE]");
+  g_option_context_add_main_entries (context, options, NULL);
+  if (!g_option_context_parse (context, &argc, &argv, &error))
+    errx (EXIT_FAILURE, "Error parsing options: %s", error->message);
+
+  const char *root_arg = NULL;
+  if (opt_mount_target)
+    {
+      // When --mount is used, we expect to be running in the deployment directory
+      // and the sysroot path is provided as an argument
+      if (argc < 2)
+        err (EXIT_FAILURE, "SYSROOT must be specified when using --mount option");
+      root_arg = argv[1]; // This is the sysroot path for accessing the repo
+    }
+  else
+    {
+      if (argc < 2)
+        err (EXIT_FAILURE, "usage: ostree-prepare-root [--mount PATH] SYSROOT [KERNEL_CMDLINE]");
+      root_arg = argv[1];
+    }
 
   /* Check if we're in initramfs or not */
   if (fstatat (AT_FDCWD, OTCORE_RUN_BOOTED, &stbuf, 0) == 0)
     booted = (stbuf.st_mode & S_IFMT) == S_IFREG;
 
-  g_autofree char *kernel_cmdline;
-  if (argc < 3)
+  g_autofree char *kernel_cmdline = NULL;
+  if (opt_mount_target)
     {
-      kernel_cmdline = read_proc_cmdline ();
+      // When using --mount, we don't need the kernel cmdline since we're working
+      // directly with the deployment directory
+      kernel_cmdline = g_strdup ("");
     }
   else
     {
-      kernel_cmdline = argv[2];
-    }
+      if (argc < 3)
+        {
+          kernel_cmdline = read_proc_cmdline ();
+        }
+      else
+        {
+          kernel_cmdline = argv[2];
+        }
 
-  if (!kernel_cmdline)
-    errx (EXIT_FAILURE, "Failed to read kernel cmdline");
+      if (!kernel_cmdline)
+        errx (EXIT_FAILURE, "Failed to read kernel cmdline");
+    }
 
   // Since several APIs want to operate in terms of file descriptors, let's
   // open the initramfs now.  Currently this is just used for the config parser.
@@ -319,11 +351,39 @@ main (int argc, char *argv[])
    * case with systemd in the initramfs is that root_mountpoint = "/sysroot".
    * In the fastboot embedded case we're pid1 and will setup / ourself, and
    * then root_mountpoint = "/".
+   * When using --mount, we mount to the specified target instead.
    * */
-  const char *root_mountpoint = realpath (root_arg, NULL);
-  if (root_mountpoint == NULL)
-    err (EXIT_FAILURE, "realpath(\"%s\")", root_arg);
-  g_autofree char *deploy_path = resolve_deploy_path (kernel_cmdline, root_mountpoint);
+  const char *root_mountpoint = NULL;
+  const char *sysroot_path = NULL; // For repo access
+  g_autofree char *deploy_path = NULL;
+
+  if (opt_mount_target)
+    {
+      // When using --mount, we're already in the deployment directory
+      deploy_path = realpath (".", NULL);
+      if (!deploy_path)
+        err (EXIT_FAILURE, "Failed to get current directory path");
+
+      // Create target directory if it doesn't exist
+      if (g_mkdir_with_parents (opt_mount_target, 0755) < 0)
+        err (EXIT_FAILURE, "Failed to create mount target directory: %s", opt_mount_target);
+
+      // In --mount mode, root_arg is the sysroot path for repo access
+      sysroot_path = realpath (root_arg, NULL);
+      if (!sysroot_path)
+        err (EXIT_FAILURE, "realpath(\"%s\")", root_arg);
+
+      root_mountpoint = opt_mount_target;
+    }
+  else
+    {
+      root_mountpoint = realpath (root_arg, NULL);
+      if (root_mountpoint == NULL)
+        err (EXIT_FAILURE, "realpath(\"%s\")", root_arg);
+      sysroot_path = root_mountpoint; // Same as mount point in normal mode
+      deploy_path = resolve_deploy_path (kernel_cmdline, root_mountpoint);
+    }
+
   const char *deploy_directory_name = glnx_basename (deploy_path);
   // Note that realpath() should have stripped any trailing `/` which shouldn't
   // be in the karg to start with, but we assert here to be sure we have a non-empty
@@ -393,7 +453,9 @@ main (int argc, char *argv[])
      mount or a bind mount of the deploy-dir */
   if (composefs_config->enabled != OT_TRISTATE_NO)
     {
-      const char *objdirs[] = { "/sysroot/ostree/repo/objects" };
+      g_autofree char *repo_objects_path
+          = g_build_filename (sysroot_path, "ostree/repo/objects", NULL);
+      const char *objdirs[] = { repo_objects_path };
       g_autofree char *cfs_digest = NULL;
       struct lcfs_mount_options_s cfs_options = {
         objdirs,
@@ -440,7 +502,7 @@ main (int argc, char *argv[])
           g_autoptr (GVariant) commit = NULL;
           g_autoptr (GVariant) commitmeta = NULL;
 
-          if (!load_commit_for_deploy (root_mountpoint, deploy_path, &commit, &commitmeta,
+          if (!load_commit_for_deploy (sysroot_path, deploy_path, &commit, &commitmeta,
                                        &local_error))
             errx (EXIT_FAILURE, "Error loading signatures from repo: %s", local_error->message);
 
@@ -535,13 +597,13 @@ main (int argc, char *argv[])
   /* Prepare /boot.
    * If /boot is on the same partition, use a bind mount to make it visible
    * at /boot inside the deployment. */
-  if (snprintf (srcpath, sizeof (srcpath), "%s/boot/loader", root_mountpoint) < 0)
+  if (snprintf (srcpath, sizeof (srcpath), "%s/boot/loader", sysroot_path) < 0)
     err (EXIT_FAILURE, "failed to assemble /boot/loader path");
   if (lstat (srcpath, &stbuf) == 0 && S_ISLNK (stbuf.st_mode))
     {
       if (lstat ("boot", &stbuf) == 0 && S_ISDIR (stbuf.st_mode))
         {
-          if (snprintf (srcpath, sizeof (srcpath), "%s/boot", root_mountpoint) < 0)
+          if (snprintf (srcpath, sizeof (srcpath), "%s/boot", sysroot_path) < 0)
             err (EXIT_FAILURE, "failed to assemble /boot path");
           if (mount (srcpath, TMP_SYSROOT "/boot", NULL, MS_BIND | MS_SILENT, NULL) < 0)
             err (EXIT_FAILURE, "failed to bind mount %s to boot", srcpath);
