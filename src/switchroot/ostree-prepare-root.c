@@ -740,7 +740,7 @@ main (int argc, char *argv[])
   if (opt_soft_reboot)
     {
       if (mount (TMP_SYSROOT, SYSTEMD_RUN_NEXTROOT, NULL, MS_MOVE | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to MS_MOVE '%s' to sysroot");
+        err (EXIT_FAILURE, "failed to MS_MOVE '%s' to sysroot", SYSTEMD_RUN_NEXTROOT);
     }
   else
     {
@@ -755,7 +755,7 @@ main (int argc, char *argv[])
        */
       /* Mount /sysroot at /sysroot.tmp/sysroot */
       if (mount (root_mountpoint, "sysroot", NULL, MS_MOVE | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to MS_MOVE '%s' to sysroot");
+        err (EXIT_FAILURE, "failed to MS_MOVE '%s' to sysroot", "sysroot");
 
       /* overlay sysroot.tmp onto /sysroot */
       if (mount (".", root_mountpoint, NULL, MS_MOVE | MS_SILENT, NULL) < 0)
