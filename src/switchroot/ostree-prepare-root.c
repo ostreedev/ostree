@@ -277,7 +277,7 @@ main (int argc, char *argv[])
 
   if (argc < 2)
     err (EXIT_FAILURE, "usage: ostree-prepare-root [--soft-reboot] SYSROOT [KERNEL_CMDLINE]");
-  root_arg = argv[1];
+  const char *root_arg = argv[1];
 
   /* Check if we're in initramfs or not */
   if (fstatat (AT_FDCWD, OTCORE_RUN_BOOTED, &stbuf, 0) == 0)
@@ -343,9 +343,18 @@ main (int argc, char *argv[])
    * then root_mountpoint = "/".
    * When using --mount, we mount to the specified target instead.
    * */
-  const char *root_mountpoint = NULL;
-  const char *sysroot_path = NULL; // For repo access
+  g_autofree char *root_mountpoint = NULL;
+  // initramfs: /sysroot
+  // soft-reboot: /sysroot
+  g_autofree char *sysroot_path = NULL;
+  // initramfs: /path/to/ostree/deployment (determined by kernel cmdline)
+  // soft-reboot: . (current working directory)
   g_autofree char *deploy_path = NULL;
+
+  // In --mount mode, root_arg is the sysroot path for repo access
+  sysroot_path = realpath (root_arg, NULL);
+  if (!sysroot_path)
+    err (EXIT_FAILURE, "realpath(\"%s\")", root_arg);
 
   if (opt_soft_reboot)
     {
@@ -353,12 +362,8 @@ main (int argc, char *argv[])
       if (g_mkdir_with_parents (SYSTEMD_RUN_NEXTROOT, 0755) < 0)
         err (EXIT_FAILURE, "Failed to create mount target directory: %s", SYSTEMD_RUN_NEXTROOT);
 
-      // In --mount mode, root_arg is the sysroot path for repo access
-      sysroot_path = realpath (root_arg, NULL);
-      if (!sysroot_path)
-        err (EXIT_FAILURE, "realpath(\"%s\")", root_arg);
-
       root_mountpoint = g_strdup (SYSTEMD_RUN_NEXTROOT);
+      deploy_path = g_strdup (".");
     }
   else
     {
@@ -732,25 +737,33 @@ main (int argc, char *argv[])
       errx (EXIT_FAILURE, "Writing %s: %s", OTCORE_RUN_BOOTED, error->message);
   }
 
-  if (chdir (TMP_SYSROOT) < 0)
-    err (EXIT_FAILURE, "failed to chdir to " TMP_SYSROOT);
+  if (opt_soft_reboot)
+    {
+      if (mount (TMP_SYSROOT, SYSTEMD_RUN_NEXTROOT, NULL, MS_MOVE | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to MS_MOVE '%s' to sysroot");
+    }
+  else
+    {
+      if (chdir (TMP_SYSROOT) < 0)
+        err (EXIT_FAILURE, "failed to chdir to " TMP_SYSROOT);
 
-  /* Now we have our ready made-up up root at
-   * /sysroot.tmp and the physical root at /sysroot (root_mountpoint).
-   * We want to end up with our deploy root at /sysroot/ and the physical
-   * root under /sysroot/sysroot as systemd will be responsible for
-   * moving /sysroot to /.
-   */
-  /* Mount /sysroot at /sysroot.tmp/sysroot */
-  if (mount (root_mountpoint, "sysroot", NULL, MS_MOVE | MS_SILENT, NULL) < 0)
-    err (EXIT_FAILURE, "failed to MS_MOVE '%s' to 'sysroot'", root_mountpoint);
+      /* Now we have our ready made-up up root at
+       * /sysroot.tmp and the physical root at /sysroot (root_mountpoint).
+       * We want to end up with our deploy root at /sysroot/ and the physical
+       * root under /sysroot/sysroot as systemd will be responsible for
+       * moving /sysroot to /.
+       */
+      /* Mount /sysroot at /sysroot.tmp/sysroot */
+      if (mount (root_mountpoint, "sysroot", NULL, MS_MOVE | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to MS_MOVE '%s' to sysroot");
 
-  /* overlay sysroot.tmp onto /sysroot */
-  if (mount (".", root_mountpoint, NULL, MS_MOVE | MS_SILENT, NULL) < 0)
-    err (EXIT_FAILURE, "failed to MS_MOVE %s to %s", ".", root_mountpoint);
+      /* overlay sysroot.tmp onto /sysroot */
+      if (mount (".", root_mountpoint, NULL, MS_MOVE | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to MS_MOVE %s to %s", ".", root_mountpoint);
 
-  if (chdir (root_mountpoint) < 0)
-    err (EXIT_FAILURE, "failed to chdir to %s", root_mountpoint);
+      if (chdir (root_mountpoint) < 0)
+        err (EXIT_FAILURE, "failed to chdir to %s", root_mountpoint);
+    }
 
   if (rmdir (TMP_SYSROOT) < 0)
     err (EXIT_FAILURE, "couldn't remove temporary sysroot %s", TMP_SYSROOT);
