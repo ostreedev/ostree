@@ -89,6 +89,8 @@
 
 // A temporary mount point
 #define TMP_SYSROOT "/run/sysroot.tmp"
+// For use with systemd soft reboots
+#define SYSTEMD_RUN_NEXTROOT "/run/nextroot"
 
 #ifdef HAVE_COMPOSEFS
 #include <libcomposefs/lcfs-mount.h>
@@ -97,10 +99,10 @@
 
 #include "ostree-mount-util.h"
 
-static char *opt_mount_target = NULL;
+static gboolean opt_soft_reboot = FALSE;
 
-static GOptionEntry options[] = { { "mount", 0, 0, G_OPTION_ARG_STRING, &opt_mount_target,
-                                    "Mount deployment at specified target", "PATH" },
+static GOptionEntry options[] = { { "soft-reboot", 0, 0, G_OPTION_ARG_NONE, &opt_soft_reboot,
+                                    "Mount deployment from current working directory", NULL },
                                   { NULL } };
 
 static bool
@@ -273,28 +275,16 @@ main (int argc, char *argv[])
   if (!g_option_context_parse (context, &argc, &argv, &error))
     errx (EXIT_FAILURE, "Error parsing options: %s", error->message);
 
-  const char *root_arg = NULL;
-  if (opt_mount_target)
-    {
-      // When --mount is used, we expect to be running in the deployment directory
-      // and the sysroot path is provided as an argument
-      if (argc < 2)
-        err (EXIT_FAILURE, "SYSROOT must be specified when using --mount option");
-      root_arg = argv[1]; // This is the sysroot path for accessing the repo
-    }
-  else
-    {
-      if (argc < 2)
-        err (EXIT_FAILURE, "usage: ostree-prepare-root [--mount PATH] SYSROOT [KERNEL_CMDLINE]");
-      root_arg = argv[1];
-    }
+  if (argc < 2)
+    err (EXIT_FAILURE, "usage: ostree-prepare-root [--soft-reboot] SYSROOT [KERNEL_CMDLINE]");
+  root_arg = argv[1];
 
   /* Check if we're in initramfs or not */
   if (fstatat (AT_FDCWD, OTCORE_RUN_BOOTED, &stbuf, 0) == 0)
     booted = (stbuf.st_mode & S_IFMT) == S_IFREG;
 
   g_autofree char *kernel_cmdline = NULL;
-  if (opt_mount_target)
+  if (opt_soft_reboot)
     {
       // When using --mount, we don't need the kernel cmdline since we're working
       // directly with the deployment directory
@@ -357,23 +347,18 @@ main (int argc, char *argv[])
   const char *sysroot_path = NULL; // For repo access
   g_autofree char *deploy_path = NULL;
 
-  if (opt_mount_target)
+  if (opt_soft_reboot)
     {
-      // When using --mount, we're already in the deployment directory
-      deploy_path = realpath (".", NULL);
-      if (!deploy_path)
-        err (EXIT_FAILURE, "Failed to get current directory path");
-
       // Create target directory if it doesn't exist
-      if (g_mkdir_with_parents (opt_mount_target, 0755) < 0)
-        err (EXIT_FAILURE, "Failed to create mount target directory: %s", opt_mount_target);
+      if (g_mkdir_with_parents (SYSTEMD_RUN_NEXTROOT, 0755) < 0)
+        err (EXIT_FAILURE, "Failed to create mount target directory: %s", SYSTEMD_RUN_NEXTROOT);
 
       // In --mount mode, root_arg is the sysroot path for repo access
       sysroot_path = realpath (root_arg, NULL);
       if (!sysroot_path)
         err (EXIT_FAILURE, "realpath(\"%s\")", root_arg);
 
-      root_mountpoint = opt_mount_target;
+      root_mountpoint = g_strdup (SYSTEMD_RUN_NEXTROOT);
     }
   else
     {
