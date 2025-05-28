@@ -741,6 +741,12 @@ main (int argc, char *argv[])
     {
       if (mount (TMP_SYSROOT, SYSTEMD_RUN_NEXTROOT, NULL, MS_MOVE | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to MS_MOVE '%s' to sysroot", SYSTEMD_RUN_NEXTROOT);
+
+      if (chdir (SYSTEMD_RUN_NEXTROOT) < 0)
+        err (EXIT_FAILURE, "failed to chdir to " TMP_SYSROOT);
+
+      if (mount (sysroot_path, "sysroot", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to MS_MOVE '%s' to sysroot", "sysroot");
     }
   else
     {
