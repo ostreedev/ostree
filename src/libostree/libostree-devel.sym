@@ -29,3 +29,8 @@ global:
   someostree_symbol_deleteme;
 } LIBOSTREE_$YEAR.$LASTSTABLE;
 */
+
+LIBOSTREE_2025.3 {
+global:
+  ostree_sysroot_deployment_prepare_next_root;
+} LIBOSTREE_2025.2;
