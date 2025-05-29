@@ -348,7 +348,7 @@ main (int argc, char *argv[])
   if (mount (NULL, "/", NULL, MS_REC | MS_PRIVATE | MS_SILENT, NULL) < 0)
     err (EXIT_FAILURE, "failed to make \"/\" private mount");
 
-  if (mkdir (TMP_SYSROOT, 0755) < 0)
+  if (mkdir (TMP_SYSROOT, 0755) < 0 && errno != EEXIST)
     err (EXIT_FAILURE, "couldn't create temporary sysroot %s", TMP_SYSROOT);
 
   /* Run in the deploy_path dir so we can use relative paths below */
@@ -384,7 +384,7 @@ main (int argc, char *argv[])
 
       cfs_options.flags = 0;
       cfs_options.image_mountdir = OSTREE_COMPOSEFS_LOWERMNT;
-      if (mkdirat (AT_FDCWD, OSTREE_COMPOSEFS_LOWERMNT, 0700) < 0)
+      if (mkdirat (AT_FDCWD, OSTREE_COMPOSEFS_LOWERMNT, 0700) < 0 && errno != EEXIST)
         err (EXIT_FAILURE, "Failed to create %s", OSTREE_COMPOSEFS_LOWERMNT);
 
       g_autofree char *expected_digest = NULL;
