@@ -1,0 +1,28 @@
+Dockerfile
+# We put most binaries under here
+target/
+# We don't have a lockfile by default
+Cargo.lock
+# Autotools generated stuff
+Makefile.in
+aclocal.m4
+apidoc/.gitignore
+apidoc/Makefile.in
+build-aux/compile
+build-aux/config.guess
+build-aux/config.sub
+build-aux/depcomp
+build-aux/install-sh
+build-aux/ltmain.sh
+build-aux/missing
+build-aux/test-driver
+buildutil/gtk-doc.m4
+buildutil/libglnx.m4
+buildutil/libtool.m4
+buildutil/ltoptions.m4
+buildutil/ltsugar.m4
+buildutil/ltversion.m4
+buildutil/lt~obsolete.m4
+config.h.in
+configure
+gtk-doc.make
