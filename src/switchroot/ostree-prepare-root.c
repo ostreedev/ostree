@@ -97,6 +97,8 @@
 
 #include "ostree-mount-util.h"
 
+static GOptionEntry options[] = { { NULL } };
+
 static bool
 sysroot_is_configured_ro (const char *sysroot)
 {
@@ -261,11 +263,26 @@ main (int argc, char *argv[])
   struct stat stbuf;
   g_autoptr (GError) error = NULL;
 
+  g_autoptr (GOptionContext) context = g_option_context_new ("SYSROOT [KERNEL_CMDLINE]");
+  g_option_context_add_main_entries (context, options, NULL);
+  if (!g_option_context_parse (context, &argc, &argv, &error))
+    errx (EXIT_FAILURE, "Error parsing options: %s", error->message);
+
   if (argc < 2)
-    err (EXIT_FAILURE, "usage: ostree-prepare-root SYSROOT");
+    err (EXIT_FAILURE, "usage: ostree-prepare-root SYSROOT [KERNEL_CMDLINE]");
   const char *root_arg = argv[1];
 
-  g_autofree char *kernel_cmdline = read_proc_cmdline ();
+  g_autofree char *kernel_cmdline = NULL;
+  if (argc < 3)
+    {
+      kernel_cmdline = read_proc_cmdline ();
+    }
+  else
+    {
+      // Duplicate argv[2] so g_autofree can safely manage it.
+      kernel_cmdline = g_strdup (argv[2]);
+    }
+
   if (!kernel_cmdline)
     errx (EXIT_FAILURE, "Failed to read kernel cmdline");
 
@@ -348,7 +365,7 @@ main (int argc, char *argv[])
   if (mount (NULL, "/", NULL, MS_REC | MS_PRIVATE | MS_SILENT, NULL) < 0)
     err (EXIT_FAILURE, "failed to make \"/\" private mount");
 
-  if (mkdir (TMP_SYSROOT, 0755) < 0)
+  if (mkdir (TMP_SYSROOT, 0755) < 0 && errno != EEXIST)
     err (EXIT_FAILURE, "couldn't create temporary sysroot %s", TMP_SYSROOT);
 
   /* Run in the deploy_path dir so we can use relative paths below */
@@ -384,7 +401,7 @@ main (int argc, char *argv[])
 
       cfs_options.flags = 0;
       cfs_options.image_mountdir = OSTREE_COMPOSEFS_LOWERMNT;
-      if (mkdirat (AT_FDCWD, OSTREE_COMPOSEFS_LOWERMNT, 0700) < 0)
+      if (mkdirat (AT_FDCWD, OSTREE_COMPOSEFS_LOWERMNT, 0700) < 0 && errno != EEXIST)
         err (EXIT_FAILURE, "Failed to create %s", OSTREE_COMPOSEFS_LOWERMNT);
 
       g_autofree char *expected_digest = NULL;
