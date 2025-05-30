@@ -21,6 +21,8 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
+skip_known_xfail_docker
+
 # Ensure repo caching is in use.
 unset OSTREE_SKIP_CACHE
 

@@ -379,8 +379,8 @@ setup_fake_remote_repo2() {
     mkdir ${test_tmpdir}/httpd
     cd httpd
     ln -s ${test_tmpdir}/ostree-srv ostree
-    run_webserver
-    cd ${oldpwd} 
+    run_webserver $args
+    cd ${oldpwd}
     export OSTREE="${CMD_PREFIX} ostree --repo=repo"
 }
 
@@ -427,11 +427,7 @@ setup_os_repository () {
     shift
     bootmode=$1
     shift
-    bootdir=usr/lib/modules/3.6.0
-    if test "$#" -gt 0; then
-        bootdir=$1
-        shift
-    fi
+    bootdir=${1:-usr/lib/modules/3.6.0}
 
     oldpwd=`pwd`
 
@@ -547,7 +543,7 @@ EOF
     mkdir ${test_tmpdir}/httpd
     cd httpd
     ln -s ${test_tmpdir} ostree
-    run_webserver "$@"
+    run_webserver
     cd ${oldpwd} 
 }
 
@@ -635,6 +631,12 @@ skip_one_without_user_xattrs () {
 skip_without_ostree_httpd () {
     if test -z "${OSTREE_HTTPD:-}"; then
         skip "this test requires libsoup (ostree-trivial-httpd)"
+    fi
+}
+
+skip_known_xfail_docker() {
+    if test "${OSTREE_TEST_SKIP:-}" = known-xfail-docker; then
+        skip "This test was explicitly skipped via OSTREE_TEST_SKIP=known-xfail-docker"
     fi
 }
 

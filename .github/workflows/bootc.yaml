@@ -15,18 +15,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  c9s-bootc-e2e:
+  c9s-e2e:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - name: Installdeps
+        run: sudo apt update && sudo apt install just
+      - name: Get a newer podman for heredoc support (from debian testing)
+        run: |
+          set -eux
+          echo 'deb [trusted=yes] https://ftp.debian.org/debian/ testing main' | sudo tee /etc/apt/sources.list.d/testing.list
+          sudo apt update
+          sudo apt install -y crun/testing podman/testing skopeo/testing
       - name: build
-        run: sudo podman build -t localhost/test:latest -f ci/Containerfile.c9s .
+        run: sudo just build
+      - name: unitcontainer
+        run: sudo just unitcontainer
+      - name: unittest
+        run: sudo just unittest
       - name: bootc install
         run: |
           set -xeuo pipefail
           sudo podman run --env BOOTC_SKIP_SELINUX_HOST_CHECK=1 --rm -ti --privileged -v /:/target --pid=host --security-opt label=disable \
             -v /dev:/dev -v /var/lib/containers:/var/lib/containers \
-            localhost/test:latest bootc install to-filesystem --skip-fetch-check \
+            localhost/ostree:latest bootc install to-filesystem --skip-fetch-check \
              --replace=alongside /target
           # Verify labeling for /etc
           sudo ls -dZ /ostree/deploy/default/deploy/*.0/etc |grep :etc_t:
+      - name: Upload test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-suite-log
+          path: target/unittest

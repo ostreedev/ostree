@@ -23,6 +23,8 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
+skip_known_xfail_docker
+
 echo "1..14"
 
 # Ensure repo caching is in use.

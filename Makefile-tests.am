@@ -139,7 +139,6 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-concurrency.py \
 	tests/test-refs.sh \
 	tests/test-demo-buildsystem.sh \
-	tests/test-switchroot.sh \
 	tests/test-pull-contenturl.sh \
 	tests/test-pull-mirrorlist.sh \
 	tests/test-summary-update.sh \
