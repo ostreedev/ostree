@@ -40,4 +40,6 @@
 			<xi:include href="xml/api-index-full.xml"><xi:fallback /></xi:include>
 		</index>
 	</chapter>
+
+	<xi:include href="xml/annotation-glossary.xml"><xi:fallback /></xi:include>
 </book>
