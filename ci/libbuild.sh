@@ -40,6 +40,9 @@ pkg_install_buildroot() {
             pkg_install dnf-plugins-core @buildsys-build;;
         centos)
             # Sadly this stuff is actually hardcoded in *Python code* in mock...
+            dnf -y install dnf-utils
+            dnf config-manager --enable crb
+            dnf -y install https://dl.fedoraproject.org/pub/epel/epel{,-next}-release-latest-9.noarch.rpm
             dnf -y install make gcc;;
         *) fatal "pkg_install_buildroot(): Unhandled OS ${OS_ID}";;
     esac
