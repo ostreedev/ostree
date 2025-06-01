@@ -285,6 +285,26 @@ ostree_repo_init() {
     fi
 }
 
+run_webserver() {
+    echo httpd=${OSTREE_HTTPD}
+    if test -z "${OSTREE_HTTPD:-}"; then
+        if test "$#" -gt 0; then
+            echo "fatal: unhandled arguments for webserver: $@" 1>&2
+            exit 1
+        fi
+        # Note this automatically daemonizes; close stdin to ensure it doesn't leak to the child.
+        ${test_srcdir}/webserver.py ${test_tmpdir}/httpd-port </dev/null &>/dev/null
+        echo "Waiting for webserver..."
+        while test '!' -f ${test_tmpdir}/httpd-port; do
+            sleep 0.5
+        done
+    else
+        ${OSTREE_HTTPD} --autoexit --log-file $(pwd)/httpd.log --daemonize -p ${test_tmpdir}/httpd-port "$@"
+    fi
+    port=$(cat ${test_tmpdir}/httpd-port)
+    echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
+}
+
 # The original one; use setup_fake_remote_repo2 for newer code,
 # down the line we'll try to port tests.
 setup_fake_remote_repo1() {
@@ -316,9 +336,7 @@ setup_fake_remote_repo1() {
     mkdir ${test_tmpdir}/httpd
     cd httpd
     ln -s ${test_tmpdir}/ostree-srv ostree
-    ${OSTREE_HTTPD} --autoexit --log-file $(pwd)/httpd.log --daemonize -p ${test_tmpdir}/httpd-port "$@"
-    port=$(cat ${test_tmpdir}/httpd-port)
-    echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
+    run_webserver "$@"
     cd ${oldpwd} 
 
     export OSTREE="${CMD_PREFIX} ostree --repo=repo"
@@ -361,10 +379,8 @@ setup_fake_remote_repo2() {
     mkdir ${test_tmpdir}/httpd
     cd httpd
     ln -s ${test_tmpdir}/ostree-srv ostree
-    ${OSTREE_HTTPD} --autoexit --log-file $(pwd)/httpd.log --daemonize -p ${test_tmpdir}/httpd-port $args
-    port=$(cat ${test_tmpdir}/httpd-port)
-    echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
-    cd ${oldpwd}
+    run_webserver
+    cd ${oldpwd} 
     export OSTREE="${CMD_PREFIX} ostree --repo=repo"
 }
 
@@ -411,7 +427,11 @@ setup_os_repository () {
     shift
     bootmode=$1
     shift
-    bootdir=${1:-usr/lib/modules/3.6.0}
+    bootdir=usr/lib/modules/3.6.0
+    if test "$#" -gt 0; then
+        bootdir=$1
+        shift
+    fi
 
     oldpwd=`pwd`
 
@@ -527,9 +547,7 @@ EOF
     mkdir ${test_tmpdir}/httpd
     cd httpd
     ln -s ${test_tmpdir} ostree
-    ${OSTREE_HTTPD} --autoexit --daemonize -p ${test_tmpdir}/httpd-port
-    port=$(cat ${test_tmpdir}/httpd-port)
-    echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
+    run_webserver "$@"
     cd ${oldpwd} 
 }
 
@@ -611,6 +629,12 @@ skip_one_without_user_xattrs () {
         return 0
     else
         return 1
+    fi
+}
+
+skip_without_ostree_httpd () {
+    if test -z "${OSTREE_HTTPD:-}"; then
+        skip "this test requires libsoup (ostree-trivial-httpd)"
     fi
 }
 
