@@ -55,7 +55,7 @@ jobs:
       - name: Build libostree
         run: ./ci/build.sh
       - name: Install libostree
-        run: make install
+        run: make -C target/c install
       - name: Rust build
         run: cargo test --no-run --verbose --features=${{ env['LATEST_LIBOSTREE'] }}
       - name: Run tests

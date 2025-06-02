@@ -6,6 +6,10 @@ OS_ID=$(. /etc/os-release; echo $ID)
 OS_ID_LIKE=$(. /etc/os-release; echo $ID ${ID_LIKE:-})
 OS_VERSION_ID=$(. /etc/os-release; echo $VERSION_ID)
 
+# Drop our content underneath target/ by default as it's already
+# ignored by rust
+BUILDDIR=target/c
+
 pkg_upgrade() {
     dnf -y distro-sync
 }
@@ -16,8 +20,9 @@ make() {
 
 build() {
     env NOCONFIGURE=1 ./autogen.sh
-    ./configure --sysconfdir=/etc --prefix=/usr --libdir=/usr/lib64 "$@"
-    make V=1
+    mkdir -p target/c
+    (cd target/c && ../../configure --sysconfdir=/etc --prefix=/usr --libdir=/usr/lib64 "$@")
+    make -C target/c V=1
 }
 
 pkg_install() {

@@ -1,7 +1,8 @@
 FROM quay.io/coreos-assembler/fcos-buildroot:testing-devel as builder
 WORKDIR /src
 COPY . .
-RUN env ./ci/build.sh && make install DESTDIR=/cosa/component-install
+RUN ./ci/build.sh
+RUN make -C target/c install DESTDIR=/cosa/component-install
 RUN make -C tests/kolainst
 RUN make -C tests/kolainst install DESTDIR=/cosa/component-tests
 # Uncomment this to fake a build to test the code below

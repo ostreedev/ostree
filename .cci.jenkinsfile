@@ -24,7 +24,7 @@ stage("Build") {
       stage("Unit tests") {
         try {
           shwrap("""
-            make check
+            make -C target/c check
           """)
         } finally {
             shwrap("cat test-suite.log || true")
@@ -32,11 +32,13 @@ stage("Build") {
         }
       }
       stage("Build installed tests") {
-        shwrap("make -C tests/kolainst")
+        shwrap("""
+           make -C tests/kolainst
+        """)
       }
       stage("Generate artifacts") {
         shwrap("""
-          make install DESTDIR=\$(pwd)/installed/rootfs
+          make -C target/c install DESTDIR=\$(pwd)/installed/rootfs
           make -C tests/kolainst install DESTDIR=\$(pwd)/installed/tests
           bash -c '. /usr/lib/os-release && echo \$VERSION_ID' >\$(pwd)/installed/buildroot-id
         """)
