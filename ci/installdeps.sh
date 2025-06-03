@@ -16,6 +16,7 @@ dn=$(dirname $0)
 
 pkg_upgrade
 pkg_install_buildroot
+pkg_install ccache
 pkg_builddep ostree
 # Not yet in the spec
 pkg_install composefs-devel
@@ -27,7 +28,3 @@ if test -n "${CI_PKGS:-}"; then
 fi
 pkg_install_if_os fedora gjs gnome-desktop-testing parallel coccinelle clang \
                   python3-PyYAML
-if test "${OS_ID}" = "centos"; then
-    rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-    pkg_install python34{,-PyYAML}
-fi

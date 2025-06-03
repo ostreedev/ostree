@@ -42,6 +42,8 @@ PATH="$PATH:/usr/sbin:/sbin"
 # libtest_exit_cmds+=(expr).
 libtest_exit_cmds=()
 run_exit_cmds() {
+  # Quiet termination
+  set +x
   for expr in "${libtest_exit_cmds[@]}"; do
     eval "${expr}" || true
   done
@@ -747,8 +749,9 @@ which_gpg () {
 }
 
 libtest_cleanup_gpg () {
+    set +x
     local gpg_homedir=${1:-${test_tmpdir}/gpghome}
-    gpg-connect-agent --homedir "${gpg_homedir}" killagent /bye || true
+    gpg-connect-agent --homedir "${gpg_homedir}" killagent /bye &>/dev/null || true
 }
 libtest_exit_cmds+=(libtest_cleanup_gpg)
 
