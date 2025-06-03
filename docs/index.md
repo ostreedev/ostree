@@ -114,10 +114,10 @@ It is not production ready but it might be useful to get started.
 ## Projects linking to libostree
 
 [rpm-ostree](https://github.com/projectatomic/rpm-ostree) is used by the
-Fedora-derived operating systems listed above.  It is a full hybrid
-image/package system.  By default it uses libostree to atomically replicate a base OS
+Fedora-derived operating systems listed above. It is a full hybrid
+image/package system. By default it uses libostree to atomically replicate a base OS
 (all dependency resolution is done on the server), but it supports "package layering", where
-additional RPMs can be layered on top of the base.  This brings a "best of both worlds""
+additional RPMs can be layered on top of the base. This brings a "best of both worlds"
 model for image and package systems.
 
 [eos-updater](https://github.com/endlessm/eos-updater) is a daemon that implements updates
@@ -147,7 +147,7 @@ write higher level manual bindings on top; this is more common
 for statically compiled languages.  Here's a list of such bindings:
 
  - [ostree-go](https://github.com/ostreedev/ostree-go/)
- - [ostree-rs](./rust-bindings)
+ - [ostree-rs](https://docs.rs/crate/ostree/latest) (included in this repo)
 
 ## Building
 
@@ -196,7 +196,7 @@ The licensing for the *code* of libostree can be canonically found in the indivi
 and the overall status in the [COPYING](https://github.com/ostreedev/ostree/blob/main/COPYING)
 file in the source.  Currently, that's LGPLv2+.  This also covers the man pages and API docs.
 
-The license for the manual documentation in the `doc/` directory is:
+The license for the manual documentation in the `docs/` directory is:
 `SPDX-License-Identifier: (CC-BY-SA-3.0 OR GFDL-1.3-or-later)`
 This is intended to allow use by Wikipedia and other projects.
 

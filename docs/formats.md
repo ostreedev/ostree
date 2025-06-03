@@ -26,7 +26,7 @@ nginx server.
 
 ## The archive format
 
-In the [repo](repo) section, the concept of objects was introduced,
+In the [repo](repo.md) section, the concept of objects was introduced,
 where file/content objects are checksummed and managed individually.
 (Unlike a package system, which operates on compressed aggregates).
 
