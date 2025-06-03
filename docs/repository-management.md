@@ -223,7 +223,7 @@ ostree --repo=repo-prod summary -u
  should be triggered serially by other jobs).
 
 There is some more information on the design of the summary file in
-[Repo](repo.md).
+[repo](repo.md).
 
 ## Pruning our build and dev repositories
 
@@ -259,8 +259,7 @@ commit from an uninitialized repo (or one with unrelated history), you
 can generate "scratch" (aka `--empty` deltas) which bundle all
 objects for that commit.
 
-The tradeoff here is increasing server disk space in return
-for many fewer client HTTP requests.
+The tradeoff here is increased server disk space for fewer client HTTP requests.
 
 For example:
 

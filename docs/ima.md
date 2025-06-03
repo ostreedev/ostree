@@ -17,7 +17,7 @@ provides a mechanism to cryptographically sign the digest of a regular
 file, and policies can be applied to e.g. require that code executed
 by the root user have a valid signed digest.
 
-The alignment between Linux IMA and ostree is quite strong.  OSTree
+The alignment between Linux IMA and OSTree is quite strong.  OSTree
 provides a content-addressable object store, where files are intended
 to be immutable.  This is implemented with a basic read-only bind mount.
 
@@ -27,8 +27,7 @@ files would (depending on policy) not be readable or executable.
 ## IMA signatures and OSTree checksum
 
 Mechanically, IMA signatures appear as a `security.ima` extended attribute
-on the file.   This is a signed digest of just the file content (and not
-any metadata)
+on the file. This is a signed digest of just the file content (i.e. not including file metadata).
 
 OSTree's checksums in contrast include not just the file content, but also 
 metadata such as uid, gid and mode and extended attributes;

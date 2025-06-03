@@ -24,7 +24,7 @@ by default.
 
 It is still strongly recommended to use systemd `tmpfiles.d` snippets
 to populate directory structure and the like in `/var` on firstboot,
-because this is more resilent.
+because this is more resilient.
 
 Even better, use `StateDirectory=` for systemd units.
 
@@ -33,7 +33,7 @@ Even better, use `StateDirectory=` for systemd units.
 On subsequent upgrades, normally `/var` would not be empty anymore
 (as it's typically expected that basics like `/var/tmp` etc. are created,
  if not also other local state such as `/var/log` etc.).  Hence,
-*no updates* from the commit/container will be applied.
+no updates *to existing files* from the commit/container will be applied.
 
 To be clear then:
 
