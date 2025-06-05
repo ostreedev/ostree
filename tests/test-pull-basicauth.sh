@@ -19,6 +19,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
+skip_without_ostree_httpd
 setup_fake_remote_repo1 "archive" "" "--require-basic-auth"
 
 echo '1..3'

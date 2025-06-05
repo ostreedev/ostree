@@ -139,7 +139,6 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-concurrency.py \
 	tests/test-refs.sh \
 	tests/test-demo-buildsystem.sh \
-	tests/test-switchroot.sh \
 	tests/test-pull-contenturl.sh \
 	tests/test-pull-mirrorlist.sh \
 	tests/test-summary-update.sh \
@@ -471,14 +470,6 @@ check-local:
 	echo "NOTE: Run the Rust installed tests (uninstalled) with ./tests/run-installed"
 dist_test_scripts += $(_installed_or_uninstalled_test_scripts)
 test_programs += $(_installed_or_uninstalled_test_programs)
-endif
-
-if !USE_LIBSOUP_OR_LIBSOUP3
-no-soup-for-you-warning:
-	@echo "WARNING: $(PACKAGE) was built without libsoup, which is currently" 1>&2
-	@echo "WARNING: required for many unit tests." 1>&2
-	sleep 10
-check: no-soup-for-you-warning
 endif
 
 # Unfortunately the glib test data APIs don't actually handle

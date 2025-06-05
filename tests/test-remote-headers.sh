@@ -19,9 +19,10 @@
 
 set -euo pipefail
 
-echo '1..2'
-
 . $(dirname $0)/libtest.sh
+
+skip_without_ostree_httpd
+echo '1..2'
 
 V=$($CMD_PREFIX ostree --version | \
   python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin)["libostree"]["Version"])')

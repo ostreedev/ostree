@@ -1,4 +1,7 @@
+# Don't need these in the container
 Dockerfile
+Justfile
+.github
 # We put most binaries under here
 target/
 # We don't have a lockfile by default

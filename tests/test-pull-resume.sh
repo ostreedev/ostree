@@ -21,6 +21,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
+skip_without_ostree_httpd
 setup_fake_remote_repo1 "archive" "" "--force-range-requests"
 
 echo '1..1'
