@@ -88,7 +88,9 @@
   SD_ID128_MAKE (71, 70, 33, 6a, 73, ba, 46, 01, ba, d3, 1a, f8, 88, aa, 0d, f7)
 
 // A temporary mount point
-#define TMP_SYSROOT "/sysroot.tmp"
+#define TMP_SYSROOT "/run/sysroot.tmp"
+// For use with systemd soft reboots
+#define SYSTEMD_RUN_NEXTROOT "/run/nextroot"
 
 #ifdef HAVE_COMPOSEFS
 #include <libcomposefs/lcfs-mount.h>
@@ -97,7 +99,11 @@
 
 #include "ostree-mount-util.h"
 
-static GOptionEntry options[] = { { NULL } };
+static gboolean opt_soft_reboot = FALSE;
+
+static GOptionEntry options[] = { { "soft-reboot", 0, 0, G_OPTION_ARG_NONE, &opt_soft_reboot,
+                                    "Mount deployment from current working directory", NULL },
+                                  { NULL } };
 
 static bool
 sysroot_is_configured_ro (const char *sysroot)
@@ -261,6 +267,7 @@ main (int argc, char *argv[])
 {
   char srcpath[PATH_MAX];
   struct stat stbuf;
+  gboolean booted = FALSE;
   g_autoptr (GError) error = NULL;
 
   g_autoptr (GOptionContext) context = g_option_context_new ("SYSROOT [KERNEL_CMDLINE]");
@@ -269,23 +276,26 @@ main (int argc, char *argv[])
     errx (EXIT_FAILURE, "Error parsing options: %s", error->message);
 
   if (argc < 2)
-    err (EXIT_FAILURE, "usage: ostree-prepare-root SYSROOT [KERNEL_CMDLINE]");
+    err (EXIT_FAILURE, "usage: ostree-prepare-root [--soft-reboot] SYSROOT");
   const char *root_arg = argv[1];
 
+  /* Check if we're in initramfs or not */
+  if (fstatat (AT_FDCWD, OTCORE_RUN_BOOTED, &stbuf, 0) == 0)
+    booted = (stbuf.st_mode & S_IFMT) == S_IFREG;
+
   g_autofree char *kernel_cmdline = NULL;
-  if (argc < 3)
+  if (opt_soft_reboot)
     {
-      kernel_cmdline = read_proc_cmdline ();
+      // When using --mount, we don't need the kernel cmdline since we're working
+      // directly with the deployment directory
+      kernel_cmdline = g_strdup ("");
     }
   else
     {
-      // Duplicate argv[2] so g_autofree can safely manage it.
-      kernel_cmdline = g_strdup (argv[2]);
+      kernel_cmdline = read_proc_cmdline ();
+      if (!kernel_cmdline)
+        errx (EXIT_FAILURE, "Failed to read kernel cmdline");
     }
-
-  if (!kernel_cmdline)
-    errx (EXIT_FAILURE, "Failed to read kernel cmdline");
-
   // Since several APIs want to operate in terms of file descriptors, let's
   // open the initramfs now.  Currently this is just used for the config parser.
   glnx_autofd int initramfs_rootfs_fd = -1;
@@ -322,22 +332,54 @@ main (int argc, char *argv[])
    * case with systemd in the initramfs is that root_mountpoint = "/sysroot".
    * In the fastboot embedded case we're pid1 and will setup / ourself, and
    * then root_mountpoint = "/".
+   * When using --mount, we mount to the specified target instead.
    * */
-  const char *root_mountpoint = realpath (root_arg, NULL);
-  if (root_mountpoint == NULL)
+  g_autofree char *root_mountpoint = NULL;
+  // initramfs: /sysroot
+  // soft-reboot: /sysroot
+  g_autofree char *sysroot_path = NULL;
+  // initramfs: /path/to/ostree/deployment (determined by kernel cmdline)
+  // soft-reboot: . (current working directory)
+  g_autofree char *deploy_path = NULL;
+
+  // In --mount mode, root_arg is the sysroot path for repo access
+  sysroot_path = realpath (root_arg, NULL);
+  if (!sysroot_path)
     err (EXIT_FAILURE, "realpath(\"%s\")", root_arg);
-  g_autofree char *deploy_path = resolve_deploy_path (kernel_cmdline, root_mountpoint);
+
+  if (opt_soft_reboot)
+    {
+      // Create target directory if it doesn't exist
+      if (g_mkdir_with_parents (SYSTEMD_RUN_NEXTROOT, 0755) < 0)
+        err (EXIT_FAILURE, "Failed to create mount target directory: %s", SYSTEMD_RUN_NEXTROOT);
+
+      root_mountpoint = g_strdup (SYSTEMD_RUN_NEXTROOT);
+      deploy_path = g_strdup (".");
+    }
+  else
+    {
+      root_mountpoint = realpath (root_arg, NULL);
+      if (root_mountpoint == NULL)
+        err (EXIT_FAILURE, "realpath(\"%s\")", root_arg);
+      sysroot_path = root_mountpoint; // Same as mount point in normal mode
+      deploy_path = resolve_deploy_path (kernel_cmdline, root_mountpoint);
+    }
+
   const char *deploy_directory_name = glnx_basename (deploy_path);
   // Note that realpath() should have stripped any trailing `/` which shouldn't
   // be in the karg to start with, but we assert here to be sure we have a non-empty
   // filename.
   g_assert (deploy_directory_name && *deploy_directory_name);
 
-  /* These are global state directories underneath /run */
-  if (mkdirat (AT_FDCWD, OTCORE_RUN_OSTREE, 0755) < 0)
-    err (EXIT_FAILURE, "Failed to create %s", OTCORE_RUN_OSTREE);
-  if (mkdirat (AT_FDCWD, OTCORE_RUN_OSTREE_PRIVATE, 0) < 0)
-    err (EXIT_FAILURE, "Failed to create %s", OTCORE_RUN_OSTREE_PRIVATE);
+  /* These already exist if we're booted */
+  if (!booted)
+    {
+      /* These are global state directories underneath /run */
+      if (mkdirat (AT_FDCWD, OTCORE_RUN_OSTREE, 0755) < 0)
+        err (EXIT_FAILURE, "Failed to create %s", OTCORE_RUN_OSTREE);
+      if (mkdirat (AT_FDCWD, OTCORE_RUN_OSTREE_PRIVATE, 0) < 0)
+        err (EXIT_FAILURE, "Failed to create %s", OTCORE_RUN_OSTREE_PRIVATE);
+    }
 
   /* Fall back to querying the repository configuration in the target disk.
    * This is an operating system builder choice.  More info:
@@ -392,7 +434,9 @@ main (int argc, char *argv[])
      mount or a bind mount of the deploy-dir */
   if (composefs_config->enabled != OT_TRISTATE_NO)
     {
-      const char *objdirs[] = { "/sysroot/ostree/repo/objects" };
+      g_autofree char *repo_objects_path
+          = g_build_filename (sysroot_path, "ostree/repo/objects", NULL);
+      const char *objdirs[] = { repo_objects_path };
       g_autofree char *cfs_digest = NULL;
       struct lcfs_mount_options_s cfs_options = {
         objdirs,
@@ -439,7 +483,7 @@ main (int argc, char *argv[])
           g_autoptr (GVariant) commit = NULL;
           g_autoptr (GVariant) commitmeta = NULL;
 
-          if (!load_commit_for_deploy (root_mountpoint, deploy_path, &commit, &commitmeta,
+          if (!load_commit_for_deploy (sysroot_path, deploy_path, &commit, &commitmeta,
                                        &local_error))
             errx (EXIT_FAILURE, "Error loading signatures from repo: %s", local_error->message);
 
@@ -534,13 +578,13 @@ main (int argc, char *argv[])
   /* Prepare /boot.
    * If /boot is on the same partition, use a bind mount to make it visible
    * at /boot inside the deployment. */
-  if (snprintf (srcpath, sizeof (srcpath), "%s/boot/loader", root_mountpoint) < 0)
+  if (snprintf (srcpath, sizeof (srcpath), "%s/boot/loader", sysroot_path) < 0)
     err (EXIT_FAILURE, "failed to assemble /boot/loader path");
   if (lstat (srcpath, &stbuf) == 0 && S_ISLNK (stbuf.st_mode))
     {
       if (lstat ("boot", &stbuf) == 0 && S_ISDIR (stbuf.st_mode))
         {
-          if (snprintf (srcpath, sizeof (srcpath), "%s/boot", root_mountpoint) < 0)
+          if (snprintf (srcpath, sizeof (srcpath), "%s/boot", sysroot_path) < 0)
             err (EXIT_FAILURE, "failed to assemble /boot path");
           if (mount (srcpath, TMP_SYSROOT "/boot", NULL, MS_BIND | MS_SILENT, NULL) < 0)
             err (EXIT_FAILURE, "failed to bind mount %s to boot", srcpath);
@@ -684,23 +728,39 @@ main (int argc, char *argv[])
       errx (EXIT_FAILURE, "Writing %s: %s", OTCORE_RUN_BOOTED, error->message);
   }
 
-  if (chdir (TMP_SYSROOT) < 0)
-    err (EXIT_FAILURE, "failed to chdir to " TMP_SYSROOT);
+  if (opt_soft_reboot)
+    {
+      if (mount (TMP_SYSROOT, SYSTEMD_RUN_NEXTROOT, NULL, MS_MOVE | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to MS_MOVE '%s' to sysroot", SYSTEMD_RUN_NEXTROOT);
 
-  /* Now we have our ready made-up up root at
-   * /sysroot.tmp and the physical root at /sysroot (root_mountpoint).
-   * We want to end up with our deploy root at /sysroot/ and the physical
-   * root under /sysroot/sysroot as systemd will be responsible for
-   * moving /sysroot to /.
-   */
-  if (mount (root_mountpoint, "sysroot", NULL, MS_MOVE | MS_SILENT, NULL) < 0)
-    err (EXIT_FAILURE, "failed to MS_MOVE '%s' to 'sysroot'", root_mountpoint);
+      if (chdir (SYSTEMD_RUN_NEXTROOT) < 0)
+        err (EXIT_FAILURE, "failed to chdir to " TMP_SYSROOT);
 
-  if (mount (".", root_mountpoint, NULL, MS_MOVE | MS_SILENT, NULL) < 0)
-    err (EXIT_FAILURE, "failed to MS_MOVE %s to %s", ".", root_mountpoint);
+      if (mount (sysroot_path, "sysroot", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to MS_MOVE '%s' to sysroot", "sysroot");
+    }
+  else
+    {
+      if (chdir (TMP_SYSROOT) < 0)
+        err (EXIT_FAILURE, "failed to chdir to " TMP_SYSROOT);
 
-  if (chdir (root_mountpoint) < 0)
-    err (EXIT_FAILURE, "failed to chdir to %s", root_mountpoint);
+      /* Now we have our ready made-up up root at
+       * /sysroot.tmp and the physical root at /sysroot (root_mountpoint).
+       * We want to end up with our deploy root at /sysroot/ and the physical
+       * root under /sysroot/sysroot as systemd will be responsible for
+       * moving /sysroot to /.
+       */
+      /* Mount /sysroot at /sysroot.tmp/sysroot */
+      if (mount (root_mountpoint, "sysroot", NULL, MS_MOVE | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to MS_MOVE '%s' to sysroot", "sysroot");
+
+      /* overlay sysroot.tmp onto /sysroot */
+      if (mount (".", root_mountpoint, NULL, MS_MOVE | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to MS_MOVE %s to %s", ".", root_mountpoint);
+
+      if (chdir (root_mountpoint) < 0)
+        err (EXIT_FAILURE, "failed to chdir to %s", root_mountpoint);
+    }
 
   if (rmdir (TMP_SYSROOT) < 0)
     err (EXIT_FAILURE, "couldn't remove temporary sysroot %s", TMP_SYSROOT);
