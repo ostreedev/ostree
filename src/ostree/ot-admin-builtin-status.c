@@ -41,6 +41,29 @@ static GOptionEntry options[]
           "Output \"default\" if booted into the default deployment, otherwise \"not-default\"",
           NULL },
         { NULL } };
+
+static gboolean
+deployment_is_prepared_for_soft_reboot (OstreeDeployment *deployment)
+{
+  g_autofree char *soft_reboot_pending = NULL;
+
+  // Check both possible locations for the soft-reboot-pending file
+  if (!g_file_get_contents ("/run/ostree/soft-reboot-pending", &soft_reboot_pending, NULL, NULL))
+    {
+      // Try from nextroot if we're in that context
+      if (!g_file_get_contents ("/run/nextroot/run/ostree/soft-reboot-pending",
+                                &soft_reboot_pending, NULL, NULL))
+        return FALSE;
+    }
+
+  g_autofree char *deployment_info
+      = g_strdup_printf ("%s.%d", ostree_deployment_get_csum (deployment),
+                         ostree_deployment_get_deployserial (deployment));
+
+  g_strstrip (soft_reboot_pending);
+  return g_strcmp0 (soft_reboot_pending, deployment_info) == 0;
+}
+
 static gboolean
 deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeployment *deployment,
                          gboolean is_booted, gboolean is_pending, gboolean is_rollback,
@@ -78,6 +101,8 @@ deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploym
       = origin ? g_key_file_get_string (origin, "origin", "refspec", NULL) : NULL;
 
   const char *deployment_status = "";
+  gboolean is_soft_reboot_prepared = deployment_is_prepared_for_soft_reboot (deployment);
+
   if (ostree_deployment_is_finalization_locked (deployment))
     deployment_status = " (finalization locked)";
   else if (ostree_deployment_is_staged (deployment))
@@ -86,7 +111,9 @@ deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploym
     deployment_status = " (pending)";
   else if (is_rollback)
     deployment_status = " (rollback)";
-  g_print ("%c %s %s.%d%s\n", is_booted ? '*' : ' ', ostree_deployment_get_osname (deployment),
+
+  char deployment_marker = is_booted ? '*' : (is_soft_reboot_prepared ? 'S' : ' ');
+  g_print ("%c %s %s.%d%s\n", deployment_marker, ostree_deployment_get_osname (deployment),
            ostree_deployment_get_csum (deployment), ostree_deployment_get_deployserial (deployment),
            deployment_status);
   if (version)

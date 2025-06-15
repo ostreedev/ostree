@@ -88,6 +88,9 @@ ot_admin_builtin_finalize_staged (int argc, char **argv, OstreeCommandInvocation
 
       if (!ostree_cmd__private__ ()->ostree_finalize_staged (sysroot, cancellable, error))
         return FALSE;
+
+      // Clean up soft-reboot-pending file if it exists
+      (void)unlink ("/run/ostree/soft-reboot-pending");
     }
 
   return TRUE;
