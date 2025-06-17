@@ -19,18 +19,14 @@ RUN --network=none rm tests-unit-container -rf && touch -r src .
 FROM buildroot as build
 COPY --from=binsrc /src /build
 WORKDIR /build
-RUN --mount=type=cache,target=/ccache <<EORUN
+RUN --mount=type=cache,target=/build/target <<EORUN
 set -xeuo pipefail
 mkdir -p /var/roothome
-env NOCONFIGURE=1 ./autogen.sh
-export CC="ccache gcc" CCACHE_DIR=/ccache
-env ./configure \
-    --sysconfdir=/etc --prefix=/usr --libdir=/usr/lib64 \
-    --with-openssl --with-selinux --with-composefs \
+. ci/libbuild.sh
+build --with-openssl --with-selinux --with-composefs \
     --with-dracut=yesbutnoconf \
     --disable-gtk-doc --with-curl --without-soup
-make -j $(nproc)
-make install DESTDIR=/out
+cd target/c && make install DESTDIR=/out
 EORUN
 
 # This image holds both the main binary and the tests
