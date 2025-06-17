@@ -8,6 +8,10 @@ build:
 build-unittest:
     podman build --jobs=4 --target build -t localhost/ostree-buildroot .
 
+# Do a build but don't regenerate the initramfs
+build-noinitramfs:
+    podman build --jobs=4 --target rootfs -t localhost/ostree .
+
 # We need a filesystem that supports O_TMPFILE right now (i.e. not overlayfs)
 # or ostree hard crashes in the http code =/
 unittest_args := "--pids-limit=-1 --tmpfs /var/tmp --tmpfs /tmp"
