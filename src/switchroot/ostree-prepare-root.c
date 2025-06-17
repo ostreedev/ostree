@@ -432,7 +432,7 @@ main (int argc, char *argv[])
    */
   if (lstat (".", &stbuf) < 0)
     err (EXIT_FAILURE, "lstat deploy_root");
-  g_debug ("dev=%" PRIu64 " ino=%" PRIu64, (uint64_t)stbuf.st_dev, (uint64_t)stbuf.st_ino);
+  fprintf (stderr, "dev=%" PRIu64 " ino=%" PRIu64, (uint64_t)stbuf.st_dev, (uint64_t)stbuf.st_ino);
   g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_BACKING_ROOTDEVINO,
                          g_variant_new ("(tt)", (guint64)stbuf.st_dev, (guint64)stbuf.st_ino));
 
