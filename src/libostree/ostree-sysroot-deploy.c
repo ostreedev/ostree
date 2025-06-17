@@ -4335,8 +4335,8 @@ ostree_sysroot_deployment_prepare_next_root (OstreeSysroot *self, OstreeDeployme
     .rootns_fd = rootns_fd,
   };
 
-  if (!g_spawn_sync (NULL, (char **)argv, NULL, 0, prepare_root_child_setup, &ctx, NULL,
-                     NULL, &estatus, error))
+  if (!g_spawn_sync (NULL, (char **)argv, NULL, 0, prepare_root_child_setup, &ctx, NULL, NULL,
+                     &estatus, error))
     return FALSE;
 
   if (!g_spawn_check_exit_status (estatus, error))

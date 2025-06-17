@@ -57,6 +57,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <libglnx.h>
+#include <linux/magic.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -66,6 +67,7 @@
 #include <sys/mount.h>
 #include <sys/param.h>
 #include <sys/stat.h>
+#include <sys/statfs.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -432,6 +434,13 @@ main (int argc, char *argv[])
    */
   if (lstat (".", &stbuf) < 0)
     err (EXIT_FAILURE, "lstat deploy_root");
+  {
+    struct statfs stfsbuf;
+    if (statfs (".", &stfsbuf) < 0)
+      err (EXIT_FAILURE, "fstatfs(deployment dir)");
+    // Should not already be on a composefs
+    g_assert_cmpuint (stfsbuf.f_type, !=, EROFS_SUPER_MAGIC_V1);
+  }
   fprintf (stderr, "dev=%" PRIu64 " ino=%" PRIu64, (uint64_t)stbuf.st_dev, (uint64_t)stbuf.st_ino);
   g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_BACKING_ROOTDEVINO,
                          g_variant_new ("(tt)", (guint64)stbuf.st_dev, (guint64)stbuf.st_ino));
