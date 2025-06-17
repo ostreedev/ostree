@@ -39,10 +39,15 @@ RUN rpm -e --nodeps ostree{,-libs}
 COPY --from=build /out/ /
 COPY --from=src /src/tests-unit-container /tests
 
-# The default final container
-FROM $base
+# Override userspace
+FROM $base as rootfs
+# Remove the default binaries to ensure we're getting our overrides
 RUN rpm -e --nodeps ostree{,-libs}
 COPY --from=build /out/ /
+
+# The default final container, with also a regenerated
+# initramfs in case ostree-prepare-root changed.
+FROM rootfs
 # https://docs.fedoraproject.org/en-US/bootc/initramfs/#_regenerating_the_initrd
 # since we have ostree-prepare-root there
 RUN set -x; kver=$(cd /usr/lib/modules && echo *); dracut -vf /usr/lib/modules/$kver/initramfs.img $kver
