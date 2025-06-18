@@ -60,4 +60,6 @@ mount --bind /target-sysroot /target-sysroot
 findmnt -R /target-sysroot
 [[ "$(findmnt -n -o OPTIONS /target-sysroot/sysroot)" == *rw* ]]
 
+mv /usr/lib/ostree/prepare-root.conf{.orig,}
+
 echo "ok verified default prepare-root"
