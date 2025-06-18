@@ -45,6 +45,7 @@ typedef struct
                                       GError **error);
   gboolean (*ostree_boot_complete) (OstreeSysroot *sysroot, GCancellable *cancellable,
                                     GError **error);
+  gboolean (*ostree_prepare_soft_reboot) (GError **error);
 } OstreeCmdPrivateVTable;
 
 /* Note this not really "public", we just export the symbol, but not the header */

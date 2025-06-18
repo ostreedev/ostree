@@ -133,9 +133,14 @@ gboolean otcore_mount_etc (GKeyFile *config, GVariantBuilder *metadata_builder,
 #define OTCORE_PREPARE_ROOT_KEYPATH_KEY "keypath"
 #define OTCORE_PREPARE_ROOT_TRANSIENT_KEY "transient"
 
+// For use with systemd soft reboots
+#define OTCORE_RUN_NEXTROOT "/run/nextroot"
+
 // The file written in the initramfs which contains an a{sv} of metadata
 // from ostree-prepare-root.
 #define OTCORE_RUN_BOOTED "/run/ostree-booted"
+// Written by ostree-soft-reboot.c with metadata about /run/nextroot
+#define OTCORE_RUN_NEXTROOT_BOOTED "/run/ostree/nextroot-booted"
 // This key will be present if composefs was successfully used.
 #define OTCORE_RUN_BOOTED_KEY_COMPOSEFS "composefs"
 // True if fsverity was required for composefs.

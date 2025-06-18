@@ -82,6 +82,10 @@ struct OstreeSysroot
   /* The device/inode for / and /etc, used to detect booted deployment */
   dev_t root_device;
   ino_t root_inode;
+  /* The device inode for a queued soft reboot deployment */
+  gboolean have_nextroot;
+  dev_t nextroot_device;
+  ino_t nextroot_inode;
 
   // The parsed data from /run/ostree
   GVariantDict *run_ostree_metadata;
@@ -150,6 +154,8 @@ gboolean _ostree_sysroot_finalize_staged (OstreeSysroot *self, GCancellable *can
                                           GError **error);
 gboolean _ostree_sysroot_boot_complete (OstreeSysroot *self, GCancellable *cancellable,
                                         GError **error);
+
+gboolean _ostree_prepare_soft_reboot (GError **error);
 
 OstreeDeployment *_ostree_sysroot_deserialize_deployment_from_variant (GVariant *v, GError **error);
 

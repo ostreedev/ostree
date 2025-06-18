@@ -4108,10 +4108,20 @@ _ostree_sysroot_boot_complete (OstreeSysroot *self, GCancellable *cancellable, G
   if (!ot_openat_ignore_enoent (self->boot_fd, _OSTREE_FINALIZE_STAGED_FAILURE_PATH, &failure_fd,
                                 error))
     return FALSE;
-  // If we didn't find a failure log, then there's nothing to do right now.
-  // (Actually this unit shouldn't even be invoked, but we may do more in the future)
+  // If we didn't find a failure log, check for soft-reboot completion tasks
   if (failure_fd == -1)
-    return TRUE;
+    {
+      // Check if we just completed a soft-reboot and need to update /run/ostree-booted
+      // We're completing a soft-reboot, simply move the nextroot-booted file to ostree-booted
+      if (rename (OTCORE_RUN_NEXTROOT_BOOTED, OTCORE_RUN_BOOTED) < 0)
+        {
+          if (errno != ENOENT)
+            return glnx_throw_errno_prefix (error, "Failed to rename %s to %s",
+                                            OTCORE_RUN_NEXTROOT_BOOTED, OTCORE_RUN_BOOTED);
+          g_debug ("Updated /run/ostree-booted for soft-reboot completion");
+        }
+      return TRUE;
+    }
   g_autofree char *failure_data = glnx_fd_readall_utf8 (failure_fd, NULL, cancellable, error);
   if (failure_data == NULL)
     return glnx_prefix_error (error, "Reading from %s", _OSTREE_FINALIZE_STAGED_FAILURE_PATH);
@@ -4266,6 +4276,119 @@ ostree_sysroot_deployment_set_mutable (OstreeSysroot *self, OstreeDeployment *de
 
   if (!_ostree_linuxfs_fd_alter_immutable_flag (fd, !is_mutable, cancellable, error))
     return FALSE;
+
+  return TRUE;
+}
+
+struct PrepareRootChildSetupContext
+{
+  const char *deployment_path;
+  int rootns_fd;
+};
+
+static inline void
+prepare_root_child_setup (gpointer data)
+{
+  struct PrepareRootChildSetupContext *ctx = data;
+  // Enter the root namespace first to escape the overlayfs context
+  int rc = setns (ctx->rootns_fd, CLONE_NEWNS);
+  if (rc < 0)
+    err (1, "setns");
+  // Then change to the deployment directory in the root namespace
+  rc = chdir (ctx->deployment_path);
+  if (rc < 0)
+    err (1, "chdir");
+}
+
+/**
+ * ostree_sysroot_deployment_can_soft_reboot:
+ * @self: The #OstreeSysroot object.
+ * @deployment: The #OstreeDeployment to check for soft-reboot compatibility.
+ *
+ * Checks if the given deployment can be soft-rebooted to from the currently
+ * booted deployment. A soft-reboot is generally only possible if both the
+ * currently booted deployment and the target `deployment` use the same kernel
+ * (i.e., have the same boot checksum).
+ *
+ * Returns: %TRUE if a soft-reboot is possible to the target deployment, %FALSE otherwise.
+ * Since: TODO
+ */
+gboolean
+ostree_sysroot_deployment_can_soft_reboot (OstreeSysroot *self, OstreeDeployment *deployment)
+{
+  OstreeDeployment *booted_deployment = ostree_sysroot_get_booted_deployment (self);
+  if (booted_deployment != NULL)
+    {
+      const char *booted_bootcsum = ostree_deployment_get_bootcsum (booted_deployment);
+      const char *target_bootcsum = ostree_deployment_get_bootcsum (deployment);
+      return g_str_equal (booted_bootcsum, target_bootcsum);
+    }
+  return false;
+}
+
+/**
+ * ostree_sysroot_deployment_prepare_next_root
+ * @self: Sysroot
+ * @deployment: Deployment to prepare /run/nextroot
+ * @allow_kernel_skew: Continue even if there is a kernel mismatch
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Prepare the specified deployment for a systemd soft-reboot by creating a new
+ * root with it at `/run/nextroot`.
+ *
+ * Since: TODO
+ */
+gboolean
+ostree_sysroot_deployment_prepare_next_root (OstreeSysroot *self, OstreeDeployment *deployment,
+                                             gboolean allow_kernel_skew, GCancellable *cancellable,
+                                             GError **error)
+{
+  GLNX_AUTO_PREFIX_ERROR ("Preparing /run/nextroot for a soft-reboot", error);
+
+  if (!ostree_sysroot_deployment_can_soft_reboot (self, deployment) && !allow_kernel_skew)
+    {
+      return glnx_throw (error, "Cannot soft-reboot to deployment with different kernel");
+    }
+
+  // For targeting a staged deployment, we finalize now to ensure that we have /etc
+  if (ostree_deployment_is_staged (deployment))
+    {
+      if (!_ostree_sysroot_finalize_staged (self, NULL, error))
+        return FALSE;
+    }
+
+  g_autofree char *deployment_relpath = ostree_sysroot_get_deployment_dirpath (self, deployment);
+  g_autofree char *deployment_fullpath = g_build_filename ("/sysroot", deployment_relpath, NULL);
+  gint estatus;
+
+  const char *argv[] = { "ostree", "admin", "impl-prepare-soft-reboot", NULL };
+
+  glnx_autofd int rootns_fd = -1;
+  if (!glnx_openat_rdonly (AT_FDCWD, "/proc/1/ns/mnt", TRUE, &rootns_fd, error))
+    return FALSE;
+
+  struct PrepareRootChildSetupContext ctx = {
+    .deployment_path = deployment_fullpath,
+    .rootns_fd = rootns_fd,
+  };
+
+  if (!g_spawn_sync (NULL, (char **)argv, NULL, G_SPAWN_SEARCH_PATH, prepare_root_child_setup, &ctx,
+                     NULL, NULL, &estatus, error))
+    return FALSE;
+
+  if (!g_spawn_check_exit_status (estatus, error))
+    {
+      int flags = G_SPAWN_SEARCH_PATH | G_SPAWN_STDERR_TO_DEV_NULL;
+      // If we failed to initialize the soft reboot, ensure that we've unwound any mounts
+      const char *umount_argv[] = { "umount", "-R", "/run/nextroot", NULL };
+      // To aid debugging allow skipping cleanup on failure
+      if (!g_getenv ("OSTREE_SKIP_NEXTROOT_CLEANUP"))
+        g_spawn_sync (NULL, (char **)umount_argv, NULL, flags, NULL, NULL, NULL, NULL, NULL, NULL);
+      return FALSE;
+    }
+
+  ot_journal_print (LOG_INFO, "Set up soft reboot at /run/nextroot");
 
   return TRUE;
 }

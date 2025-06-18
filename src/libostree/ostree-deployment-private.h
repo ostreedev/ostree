@@ -52,6 +52,7 @@ struct _OstreeDeployment
   OstreeDeploymentUnlockedState unlocked;
   gboolean staged;
   gboolean finalization_locked;
+  gboolean soft_reboot_target;
   char **overlay_initrds;
   char *overlay_initrds_id;
 };

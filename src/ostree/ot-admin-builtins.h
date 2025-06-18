@@ -41,6 +41,8 @@ BUILTINPROTO (cleanup);
 BUILTINPROTO (pin);
 BUILTINPROTO (finalize_staged);
 BUILTINPROTO (boot_complete);
+BUILTINPROTO (prepare_soft_reboot);
+BUILTINPROTO (impl_prepare_soft_reboot);
 BUILTINPROTO (unlock);
 BUILTINPROTO (status);
 BUILTINPROTO (set_origin);

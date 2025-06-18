@@ -107,6 +107,7 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-sysroot-cleanup.c \
 	src/libostree/ostree-sysroot-deploy.c \
 	src/libostree/ostree-sysroot-upgrader.c \
+	src/libostree/ostree-soft-reboot.c \
 	src/libostree/ostree-impl-system-generator.c \
 	src/libostree/ostree-bootconfig-parser.c \
 	src/libostree/ostree-deployment.c \
@@ -175,9 +176,9 @@ endif # USE_GPGME
 symbol_files = $(top_srcdir)/src/libostree/libostree-released.sym
 
 # Uncomment this include when adding new development symbols.
-#if BUILDOPT_IS_DEVEL_BUILD
-#symbol_files += $(top_srcdir)/src/libostree/libostree-devel.sym
-#endif
+if BUILDOPT_IS_DEVEL_BUILD
+symbol_files += $(top_srcdir)/src/libostree/libostree-devel.sym
+endif
 
 # http://blog.jgc.org/2007/06/escaping-comma-and-space-in-gnu-make.html
 wl_versionscript_arg = -Wl,--version-script=

@@ -41,6 +41,7 @@ static GOptionEntry options[]
           "Output \"default\" if booted into the default deployment, otherwise \"not-default\"",
           NULL },
         { NULL } };
+
 static gboolean
 deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeployment *deployment,
                          gboolean is_booted, gboolean is_pending, gboolean is_rollback,
@@ -77,18 +78,24 @@ deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploym
   g_autofree char *origin_refspec
       = origin ? g_key_file_get_string (origin, "origin", "refspec", NULL) : NULL;
 
-  const char *deployment_status = "";
+  g_autoptr (GString) deployment_status = g_string_new ("");
+
   if (ostree_deployment_is_finalization_locked (deployment))
-    deployment_status = " (finalization locked)";
+    g_string_append (deployment_status, " (finalization locked)");
   else if (ostree_deployment_is_staged (deployment))
-    deployment_status = " (staged)";
+    g_string_append (deployment_status, " (staged)");
   else if (is_pending)
-    deployment_status = " (pending)";
+    g_string_append (deployment_status, " (pending)");
   else if (is_rollback)
-    deployment_status = " (rollback)";
-  g_print ("%c %s %s.%d%s\n", is_booted ? '*' : ' ', ostree_deployment_get_osname (deployment),
+    g_string_append (deployment_status, " (rollback)");
+
+  if (ostree_deployment_is_soft_reboot_target (deployment))
+    g_string_append (deployment_status, " (soft-reboot)");
+
+  char deployment_marker = is_booted ? '*' : ' ';
+  g_print ("%c %s %s.%d%s\n", deployment_marker, ostree_deployment_get_osname (deployment),
            ostree_deployment_get_csum (deployment), ostree_deployment_get_deployserial (deployment),
-           deployment_status);
+           deployment_status->str);
   if (version)
     g_print ("    Version: %s\n", version);
 
