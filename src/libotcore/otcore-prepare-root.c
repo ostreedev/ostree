@@ -363,11 +363,20 @@ composefs_error_message (int errsv)
 #endif
 
 gboolean
-otcore_mount_composefs (ComposefsConfig *composefs_config, GVariantBuilder *metadata_builder,
-                        gboolean root_transient, const char *root_mountpoint,
-                        const char *deploy_path, const char *mount_target,
-                        bool *out_using_composefs, GError **error)
+otcore_mount_rootfs (ComposefsConfig *composefs_config, GVariantBuilder *metadata_builder,
+                     gboolean root_transient, const char *root_mountpoint, const char *deploy_path,
+                     const char *mount_target, bool *out_using_composefs, GError **error)
 {
+  struct stat stbuf;
+  /* Record the underlying plain deployment directory (device,inode) pair
+   * so that it can be later checked by the sysroot code to figure out
+   * which deployment was booted.
+   */
+  if (lstat (deploy_path, &stbuf) < 0)
+    return glnx_throw_errno_prefix (error, "lstat(%s)", deploy_path);
+  g_variant_builder_add (metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_BACKING_ROOTDEVINO,
+                         g_variant_new ("(tt)", (guint64)stbuf.st_dev, (guint64)stbuf.st_ino));
+
   bool using_composefs = FALSE;
 #ifdef HAVE_COMPOSEFS
   /* We construct the new sysroot in /sysroot.tmp, which is either the composefs
