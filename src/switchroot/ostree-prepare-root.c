@@ -281,10 +281,6 @@ main (int argc, char *argv[])
         err (EXIT_FAILURE, "failed to make initial bind mount %s", deploy_path);
     }
 
-  /* Pass on the state  */
-  g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT,
-                         g_variant_new_boolean (root_transient));
-
   /* Pass on the state for use by ostree-prepare-root */
   g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_SYSROOT_RO,
                          g_variant_new_boolean (sysroot_readonly));

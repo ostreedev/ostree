@@ -377,6 +377,10 @@ otcore_mount_rootfs (ComposefsConfig *composefs_config, GVariantBuilder *metadat
   g_variant_builder_add (metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_BACKING_ROOTDEVINO,
                          g_variant_new ("(tt)", (guint64)stbuf.st_dev, (guint64)stbuf.st_ino));
 
+  /* Pass on the state  */
+  g_variant_builder_add (metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT,
+                         g_variant_new_boolean (root_transient));
+
   bool using_composefs = FALSE;
 #ifdef HAVE_COMPOSEFS
   /* We construct the new sysroot in /sysroot.tmp, which is either the composefs
