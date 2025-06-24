@@ -375,7 +375,8 @@ otcore_mount_composefs (ComposefsConfig *composefs_config, GVariantBuilder *meta
   if (composefs_config->enabled == OT_TRISTATE_NO)
     return TRUE;
 
-  const char *objdirs[] = { "/sysroot/ostree/repo/objects" };
+  g_autofree char *sysroot_objects = g_strdup_printf ("%s/ostree/repo/objects", root_mountpoint);
+  const char *objdirs[] = { sysroot_objects };
   struct lcfs_mount_options_s cfs_options = {
     objdirs,
     1,
