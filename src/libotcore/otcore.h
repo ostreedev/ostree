@@ -99,6 +99,9 @@ gboolean otcore_mount_rootfs (ComposefsConfig *composefs_config, GVariantBuilder
                               const char *deploy_path, const char *mount_target,
                               bool *out_using_composefs, GError **error);
 
+gboolean otcore_mount_etc (GKeyFile *config, GVariantBuilder *metadata_builder,
+                           const char *mount_target, GError **error);
+
 // Our directory with transient state (eventually /run/ostree-booted should be a link to
 // /run/ostree/booted)
 #define OTCORE_RUN_OSTREE "/run/ostree"
@@ -128,6 +131,7 @@ gboolean otcore_mount_rootfs (ComposefsConfig *composefs_config, GVariantBuilder
 #define OTCORE_PREPARE_ROOT_COMPOSEFS_KEY "composefs"
 #define OTCORE_PREPARE_ROOT_ENABLED_KEY "enabled"
 #define OTCORE_PREPARE_ROOT_KEYPATH_KEY "keypath"
+#define OTCORE_PREPARE_ROOT_TRANSIENT_KEY "transient"
 
 // The file written in the initramfs which contains an a{sv} of metadata
 // from ostree-prepare-root.

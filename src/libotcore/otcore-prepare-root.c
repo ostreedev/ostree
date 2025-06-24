@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <ostree-core.h>
 #include <ostree-repo-private.h>
+#include <sys/mount.h>
 
 #ifdef HAVE_COMPOSEFS
 #include <libcomposefs/lcfs-mount.h>
@@ -34,6 +35,8 @@
 #define BINDING_KEYPATH "/etc/ostree/initramfs-root-binding.key"
 // The kernel argument to configure composefs
 #define CMDLINE_KEY_COMPOSEFS "ostree.prepare-root.composefs"
+// The key in the config for etc
+#define ETC_KEY "etc"
 
 static bool
 proc_cmdline_has_key_starting_with (const char *cmdline, const char *key)
@@ -361,6 +364,63 @@ composefs_error_message (int errsv)
 }
 
 #endif
+
+/**
+ * otcore_mount_etc:
+ *
+ * Mount /etc for a deployment, assuming that the current process working directory is the source.
+ */
+gboolean
+otcore_mount_etc (GKeyFile *config, GVariantBuilder *metadata_builder, const char *mount_target,
+                  GError **error)
+{
+  gboolean etc_transient = FALSE;
+  if (!ot_keyfile_get_boolean_with_default (config, ETC_KEY, OTCORE_PREPARE_ROOT_TRANSIENT_KEY,
+                                            FALSE, &etc_transient, error))
+    return glnx_prefix_error (error, "Failed to parse etc.transient value");
+
+  g_autofree char *target_etc = g_build_filename (mount_target, "etc", NULL);
+  if (etc_transient)
+    {
+      const char *ovldir = "/run/ostree/transient-etc";
+
+      g_variant_builder_add (metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_TRANSIENT_ETC,
+                             g_variant_new_string (ovldir));
+
+      // Our lower directory is usr/etc.
+      g_autofree char *lowerdir = g_build_filename (mount_target, "usr/etc", NULL);
+      // Standard overlayfs tempdirs
+      g_autofree char *upperdir = g_build_filename (ovldir, "upper", NULL);
+      g_autofree char *workdir = g_build_filename (ovldir, "work", NULL);
+
+      struct
+      {
+        const char *path;
+        int mode;
+      } subdirs[] = { { ovldir, 0700 }, { upperdir, 0755 }, { workdir, 0755 } };
+      for (int i = 0; i < G_N_ELEMENTS (subdirs); i++)
+        {
+          if (mkdirat (AT_FDCWD, subdirs[i].path, subdirs[i].mode) < 0)
+            return glnx_throw_errno_prefix (error, "Failed to create dir %s", subdirs[i].path);
+        }
+
+      g_autofree char *ovl_options
+          = g_strdup_printf ("lowerdir=%s,upperdir=%s,workdir=%s", lowerdir, upperdir, workdir);
+      if (mount ("overlay", target_etc, "overlay", MS_SILENT, ovl_options) < 0)
+        return glnx_throw_errno_prefix (error, "failed to mount transient etc overlayfs");
+    }
+  else
+    {
+      /* Bind-mount /etc (at deploy path), and remount as writable. */
+      if (mount ("etc", target_etc, NULL, MS_BIND | MS_SILENT, NULL) < 0)
+        return glnx_throw_errno_prefix (error, "failed to prepare /etc bind-mount at %s",
+                                        target_etc);
+      if (mount (target_etc, target_etc, NULL, MS_BIND | MS_REMOUNT | MS_SILENT, NULL) < 0)
+        return glnx_throw_errno_prefix (error, "failed to make writable /etc bind-mount at %s",
+                                        target_etc);
+    }
+  return TRUE;
+}
 
 gboolean
 otcore_mount_rootfs (ComposefsConfig *composefs_config, GVariantBuilder *metadata_builder,
