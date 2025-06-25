@@ -503,7 +503,7 @@ otcore_mount_rootfs (ComposefsConfig *composefs_config, GVariantBuilder *metadat
 
       g_autoptr (GBytes) commit_data = g_variant_get_data_as_bytes (commit);
       if (!validate_signature (commit_data, signatures, composefs_config->pubkeys, error))
-        return glnx_throw (error, "No valid signatures found for public key");
+        return glnx_prefix_error (error, "No valid signatures found for public key");
 
       g_print ("composefs+ostree: Validated commit signature using '%s'\n", composefs_pubkey);
       g_variant_builder_add (metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_COMPOSEFS_SIGNATURE,
