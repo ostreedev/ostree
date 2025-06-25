@@ -49,3 +49,11 @@ build-host-inst: build-host
     make -C target/c install DESTDIR=$(pwd)/target/inst
     tar --sort=name --numeric-owner --owner=0 --group=0 -C target/inst -czf target/inst.tar.gz .
 
+sourcefiles := "git ls-files '**.c' '**.cxx' '**.h' '**.hpp'"
+# Reformat source files
+clang-format:
+    {{sourcefiles}} | xargs clang-format -i
+
+# Check source files against clang-format defaults
+clang-format-check:
+    {{sourcefiles}} | xargs clang-format -i --Werror --dry-run
