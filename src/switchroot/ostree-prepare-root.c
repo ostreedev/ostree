@@ -81,8 +81,6 @@
 
 /* This key configures the / mount in the deployment root */
 #define ROOT_KEY "root"
-#define ETC_KEY "etc"
-#define TRANSIENT_KEY "transient"
 
 #define OSTREE_PREPARE_ROOT_DEPLOYMENT_MSG \
   SD_ID128_MAKE (71, 70, 33, 6a, 73, ba, 46, 01, ba, d3, 1a, f8, 88, aa, 0d, f7)
@@ -188,8 +186,8 @@ main (int argc, char *argv[])
   gboolean sysroot_readonly = FALSE;
   gboolean root_transient = FALSE;
 
-  if (!ot_keyfile_get_boolean_with_default (config, ROOT_KEY, TRANSIENT_KEY, FALSE, &root_transient,
-                                            &error))
+  if (!ot_keyfile_get_boolean_with_default (config, ROOT_KEY, OTCORE_PREPARE_ROOT_TRANSIENT_KEY,
+                                            FALSE, &root_transient, &error))
     return FALSE;
 
   // We always parse the composefs config, because we want to detect and error
@@ -263,19 +261,10 @@ main (int argc, char *argv[])
   GVariantBuilder metadata_builder;
   g_variant_builder_init (&metadata_builder, G_VARIANT_TYPE ("a{sv}"));
 
-  /* Record the underlying plain deployment directory (device,inode) pair
-   * so that it can be later checked by the sysroot code to figure out
-   * which deployment was booted.
-   */
-  if (lstat (".", &stbuf) < 0)
-    err (EXIT_FAILURE, "lstat deploy_root");
-  g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_BACKING_ROOTDEVINO,
-                         g_variant_new ("(tt)", (guint64)stbuf.st_dev, (guint64)stbuf.st_ino));
-
   // Tracks if we did successfully enable it at runtime
   bool using_composefs = false;
-  if (!otcore_mount_composefs (composefs_config, &metadata_builder, root_transient, root_mountpoint,
-                               deploy_path, TMP_SYSROOT, &using_composefs, &error))
+  if (!otcore_mount_rootfs (composefs_config, &metadata_builder, root_transient, root_mountpoint,
+                            deploy_path, TMP_SYSROOT, &using_composefs, &error))
     errx (EXIT_FAILURE, "Failed to mount composefs: %s", error->message);
 
   if (!using_composefs)
@@ -289,10 +278,6 @@ main (int argc, char *argv[])
       if (mount (deploy_path, TMP_SYSROOT, NULL, MS_BIND | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to make initial bind mount %s", deploy_path);
     }
-
-  /* Pass on the state  */
-  g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT,
-                         g_variant_new_boolean (root_transient));
 
   /* Pass on the state for use by ostree-prepare-root */
   g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_SYSROOT_RO,
@@ -319,51 +304,8 @@ main (int argc, char *argv[])
    * the deployment needs to be created and remounted as read/write. */
   if (sysroot_readonly || using_composefs || root_transient)
     {
-      gboolean etc_transient = FALSE;
-      if (!ot_keyfile_get_boolean_with_default (config, ETC_KEY, TRANSIENT_KEY, FALSE,
-                                                &etc_transient, &error))
-        errx (EXIT_FAILURE, "Failed to parse etc.transient value: %s", error->message);
-
-      static const char *tmp_sysroot_etc = TMP_SYSROOT "/etc";
-      if (etc_transient)
-        {
-          char *ovldir = "/run/ostree/transient-etc";
-
-          g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_TRANSIENT_ETC,
-                                 g_variant_new_string (ovldir));
-
-          char *lowerdir = "usr/etc";
-          if (using_composefs)
-            lowerdir = TMP_SYSROOT "/usr/etc";
-
-          g_autofree char *upperdir = g_build_filename (ovldir, "upper", NULL);
-          g_autofree char *workdir = g_build_filename (ovldir, "work", NULL);
-
-          struct
-          {
-            const char *path;
-            int mode;
-          } subdirs[] = { { ovldir, 0700 }, { upperdir, 0755 }, { workdir, 0755 } };
-          for (int i = 0; i < G_N_ELEMENTS (subdirs); i++)
-            {
-              if (mkdirat (AT_FDCWD, subdirs[i].path, subdirs[i].mode) < 0)
-                err (EXIT_FAILURE, "Failed to create dir %s", subdirs[i].path);
-            }
-
-          g_autofree char *ovl_options
-              = g_strdup_printf ("lowerdir=%s,upperdir=%s,workdir=%s", lowerdir, upperdir, workdir);
-          if (mount ("overlay", tmp_sysroot_etc, "overlay", MS_SILENT, ovl_options) < 0)
-            err (EXIT_FAILURE, "failed to mount transient etc overlayfs");
-        }
-      else
-        {
-          /* Bind-mount /etc (at deploy path), and remount as writable. */
-          if (mount ("etc", tmp_sysroot_etc, NULL, MS_BIND | MS_SILENT, NULL) < 0)
-            err (EXIT_FAILURE, "failed to prepare /etc bind-mount at /sysroot.tmp/etc");
-          if (mount (tmp_sysroot_etc, tmp_sysroot_etc, NULL, MS_BIND | MS_REMOUNT | MS_SILENT, NULL)
-              < 0)
-            err (EXIT_FAILURE, "failed to make writable /etc bind-mount at /sysroot.tmp/etc");
-        }
+      if (!otcore_mount_etc (config, &metadata_builder, TMP_SYSROOT, &error))
+        errx (EXIT_FAILURE, "Failed to mount etc: %s", error->message);
     }
 
   /* Prepare /usr.

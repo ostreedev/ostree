@@ -79,7 +79,7 @@ ComposefsConfig *otcore_load_composefs_config (const char *cmdline, GKeyFile *co
                                                gboolean load_keys, GError **error);
 
 /**
- * otcore_mount_composefs:
+ * otcore_mount_rootfs:
  * @composefs_config: Configuration for composefs.
  * @metadata_builder: (transfer none): GVariantBuilder to add metadata to.
  * @root_transient: Whether the root filesystem is transient.
@@ -89,15 +89,18 @@ ComposefsConfig *otcore_load_composefs_config (const char *cmdline, GKeyFile *co
  * @out_using_composefs: (out): Whether composefs was successfully used.
  * @error: (out): Return location for a GError, or %NULL.
  *
- * Mounts a composefs image based on the provided configuration.
+ * If composefs is enabled, it will be mounted at the target. Otherwise, the
+ * target directory is left unchanged.
  *
  * Returns: %TRUE on success, %FALSE on error.
  */
-gboolean otcore_mount_composefs (ComposefsConfig *composefs_config,
-                                 GVariantBuilder *metadata_builder, gboolean root_transient,
-                                 const char *root_mountpoint, const char *deploy_path,
-                                 const char *mount_target, bool *out_using_composefs,
-                                 GError **error);
+gboolean otcore_mount_rootfs (ComposefsConfig *composefs_config, GVariantBuilder *metadata_builder,
+                              gboolean root_transient, const char *root_mountpoint,
+                              const char *deploy_path, const char *mount_target,
+                              bool *out_using_composefs, GError **error);
+
+gboolean otcore_mount_etc (GKeyFile *config, GVariantBuilder *metadata_builder,
+                           const char *mount_target, GError **error);
 
 // Our directory with transient state (eventually /run/ostree-booted should be a link to
 // /run/ostree/booted)
@@ -128,6 +131,7 @@ gboolean otcore_mount_composefs (ComposefsConfig *composefs_config,
 #define OTCORE_PREPARE_ROOT_COMPOSEFS_KEY "composefs"
 #define OTCORE_PREPARE_ROOT_ENABLED_KEY "enabled"
 #define OTCORE_PREPARE_ROOT_KEYPATH_KEY "keypath"
+#define OTCORE_PREPARE_ROOT_TRANSIENT_KEY "transient"
 
 // The file written in the initramfs which contains an a{sv} of metadata
 // from ostree-prepare-root.
