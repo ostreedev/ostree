@@ -208,6 +208,8 @@ deployment_write_json (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploymen
   ul_jsonwrt_value_boolean (jo, "rollback", is_rollback);
   ul_jsonwrt_value_boolean (jo, "finalization-locked",
                             ostree_deployment_is_finalization_locked (deployment));
+  ul_jsonwrt_value_boolean (jo, "soft-reboot-target",
+                            ostree_deployment_is_soft_reboot_target (deployment));
   ul_jsonwrt_value_boolean (jo, "staged", ostree_deployment_is_staged (deployment));
   ul_jsonwrt_value_boolean (jo, "pinned", ostree_deployment_is_pinned (deployment));
   OstreeDeploymentUnlockedState unlocked = ostree_deployment_get_unlocked (deployment);

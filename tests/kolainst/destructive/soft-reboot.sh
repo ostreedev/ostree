@@ -12,6 +12,7 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
   systemctl mask --now zincati
 
   assert_streq $(systemctl show -P SoftRebootsCount) 0
+  assert_status_jq '.deployments[0].pending | not' '.deployments[0].["soft-reboot-target"] | not'
 
   # Create a synthetic commit for upgrade
   cd /ostree/repo/tmp
@@ -21,14 +22,21 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
   newcommit=$(ostree rev-parse soft-reboot-test)
   # Deploy the new commit normally first
   ostree admin deploy --stage soft-reboot-test
-  
+
+  assert_status_jq '.deployments[0].pending' '.deployments[0].["soft-reboot-target"] | not'
+
   # Test prepare-soft-reboot command
   echo "Testing prepare-soft-reboot..."
   ostree admin prepare-soft-reboot 0
-  
+
+  # Test human readable format
   ostree admin status > status.txt
   assert_file_has_content_literal status.txt '(pending) (soft-reboot)'
 
+  # And via JSON
+  assert_status_jq '.deployments[0].pending' '.deployments[0].["soft-reboot-target"]'
+
+  # Verify the internal state file
   test -f /run/ostree/nextroot-booted
   
   /tmp/autopkgtest-soft-reboot "2"
@@ -44,6 +52,8 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
     echo "ERROR: Expected commit ${host_commit}, but got ${current_commit}"
     exit 1
   fi
+
+  assert_status_jq '.deployments[0].booted' '.deployments[0].["soft-reboot-target"] | not'
 
   test -f /etc/new-file-for-soft-reboot
   test -f /usr/share/test-file-for-soft-reboot
