@@ -22,7 +22,7 @@ pkg_builddep ostree
 pkg_install composefs-devel
 pkg_install sudo which attr fuse strace \
     libubsan libasan libtsan redhat-rpm-config \
-    elfutils fsverity-utils
+    elfutils fsverity-utils jq
 if test -n "${CI_PKGS:-}"; then
     pkg_install ${CI_PKGS}
 fi

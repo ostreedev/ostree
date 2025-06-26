@@ -82,6 +82,14 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
             </varlistentry>
 
             <varlistentry>
+                <term><option>--json</option></term>
+
+                <listitem><para>
+                    Output in JSON format.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>-S, --skip-signatures</option></term>
 
                 <listitem><para>

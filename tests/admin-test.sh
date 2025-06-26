@@ -71,6 +71,12 @@ assert_not_file_has_content status.txt "pending"
 assert_not_file_has_content status.txt "rollback"
 validate_bootloader
 
+# And verify our JSON export
+${CMD_PREFIX} ostree admin status --json > status.json
+jq -e '.deployments[0].pending == false' status.json
+jq -e '.deployments[0].rollback == false' status.json
+assert_streq "$(jq -r '.deployments[0].checksum' status.json)" "${rev}"
+
 if has_ostree_feature composefs; then
     if ! test -f sysroot/ostree/deploy/testos/deploy/*.0/.ostree.cfs; then
         fatal "missing composefs"
