@@ -25,22 +25,26 @@
 #include "ostree.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
+#include "ul-jsonwrt.h"
 
 #include <glib/gi18n.h>
 
 static gboolean opt_verify;
 static gboolean opt_skip_signatures;
 static gboolean opt_is_default;
+static gboolean opt_json;
 
 static GOptionEntry options[]
     = { { "verify", 'V', 0, G_OPTION_ARG_NONE, &opt_verify, "Print the commit verification status",
           NULL },
+        { "json", 'J', 0, G_OPTION_ARG_NONE, &opt_json, "Emit JSON", NULL },
         { "skip-signatures", 'S', 0, G_OPTION_ARG_NONE, &opt_skip_signatures,
           "Skip signatures in output", NULL },
         { "is-default", 'D', 0, G_OPTION_ARG_NONE, &opt_is_default,
           "Output \"default\" if booted into the default deployment, otherwise \"not-default\"",
           NULL },
         { NULL } };
+
 static gboolean
 deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeployment *deployment,
                          gboolean is_booted, gboolean is_pending, gboolean is_rollback,
@@ -182,6 +186,45 @@ deployment_print_status (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploym
   return TRUE;
 }
 
+static gboolean
+deployment_write_json (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeployment *deployment,
+                       gboolean is_booted, gboolean is_pending, gboolean is_rollback,
+                       struct ul_jsonwrt *jo, GCancellable *cancellable, GError **error)
+{
+  ul_jsonwrt_object_open (jo, NULL);
+
+  const char *ref = ostree_deployment_get_csum (deployment);
+  ul_jsonwrt_value_s (jo, "checksum", ref);
+  ul_jsonwrt_value_s (jo, "stateroot", ostree_deployment_get_osname (deployment));
+  ul_jsonwrt_value_u64 (jo, "serial", ostree_deployment_get_deployserial (deployment));
+  ul_jsonwrt_value_boolean (jo, "booted", is_booted);
+  ul_jsonwrt_value_boolean (jo, "pending", is_pending);
+  ul_jsonwrt_value_boolean (jo, "rollback", is_rollback);
+  ul_jsonwrt_value_boolean (jo, "finalization-locked",
+                            ostree_deployment_is_finalization_locked (deployment));
+  ul_jsonwrt_value_boolean (jo, "staged", ostree_deployment_is_staged (deployment));
+  ul_jsonwrt_value_boolean (jo, "pinned", ostree_deployment_is_pinned (deployment));
+  OstreeDeploymentUnlockedState unlocked = ostree_deployment_get_unlocked (deployment);
+  ul_jsonwrt_value_s (jo, "unlocked", ostree_deployment_unlocked_state_to_string (unlocked));
+
+  g_autoptr (GVariant) commit = NULL;
+  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, ref, &commit, error))
+    return FALSE;
+  g_autoptr (GVariant) commit_metadata = g_variant_get_child_value (commit, 0);
+  const char *version = NULL;
+  const char *source_title = NULL;
+  (void)g_variant_lookup (commit_metadata, OSTREE_COMMIT_META_KEY_VERSION, "&s", &version);
+  (void)g_variant_lookup (commit_metadata, OSTREE_COMMIT_META_KEY_SOURCE_TITLE, "&s",
+                          &source_title);
+  if (version)
+    ul_jsonwrt_value_s (jo, "version", version);
+  if (source_title)
+    ul_jsonwrt_value_s (jo, "source-title", source_title);
+
+  ul_jsonwrt_object_close (jo);
+  return TRUE;
+}
+
 gboolean
 ot_admin_builtin_status (int argc, char **argv, OstreeCommandInvocation *invocation,
                          GCancellable *cancellable, GError **error)
@@ -205,6 +248,26 @@ ot_admin_builtin_status (int argc, char **argv, OstreeCommandInvocation *invocat
   g_autoptr (OstreeDeployment) rollback_deployment = NULL;
   if (booted_deployment)
     ostree_sysroot_query_deployments_for (sysroot, NULL, &pending_deployment, &rollback_deployment);
+
+  if (opt_json)
+    {
+      struct ul_jsonwrt jo_buf;
+      ul_jsonwrt_init (&jo_buf, stdout, 0);
+      struct ul_jsonwrt *jo = &jo_buf;
+      ul_jsonwrt_root_open (jo);
+      ul_jsonwrt_array_open (jo, "deployments");
+      for (guint i = 0; i < deployments->len; i++)
+        {
+          OstreeDeployment *deployment = deployments->pdata[i];
+          if (!deployment_write_json (sysroot, repo, deployment, deployment == booted_deployment,
+                                      deployment == pending_deployment,
+                                      deployment == rollback_deployment, jo, cancellable, error))
+            return FALSE;
+        }
+      ul_jsonwrt_array_close (jo);
+      ul_jsonwrt_root_close (jo);
+      return TRUE;
+    }
 
   if (opt_is_default)
     {

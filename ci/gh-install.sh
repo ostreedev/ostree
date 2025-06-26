@@ -101,6 +101,7 @@ case "$ID" in
             libsystemd-dev
             libtool
             libcap2-bin
+            jq
             procps
             python3
             python3-yaml
