@@ -41,6 +41,8 @@ libotutil_la_SOURCES = \
 	src/libotutil/otutil.h \
 	src/libotutil/ot-tool-util.c \
 	src/libotutil/ot-tool-util.h \
+	src/libotutil/ul-jsonwrt.h \
+	src/libotutil/ul-jsonwrt.c \
 	$(NULL)
 
 if USE_GPGME
