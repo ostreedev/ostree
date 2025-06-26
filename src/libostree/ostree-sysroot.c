@@ -867,16 +867,16 @@ parse_deployment (OstreeSysroot *self, const char *boot_link, OstreeDeployment *
   if (!glnx_opendirat (self->sysroot_fd, relative_boot_link, TRUE, &deployment_dfd, error))
     return FALSE;
 
+  struct stat stbuf;
+  if (!glnx_fstat (deployment_dfd, &stbuf, error))
+    return FALSE;
+
   /* See if this is the booted deployment */
   const gboolean looking_for_booted_deployment
       = (self->root_is_ostree_booted && !self->booted_deployment);
   gboolean is_booted_deployment = FALSE;
   if (looking_for_booted_deployment)
     {
-      struct stat stbuf;
-      if (!glnx_fstat (deployment_dfd, &stbuf, error))
-        return FALSE;
-
       /* ostree-prepare-root records the (device, inode) pair of the underlying real deployment
        * directory (before we might have mounted a composefs or overlayfs on top).
        *
@@ -904,6 +904,9 @@ parse_deployment (OstreeSysroot *self, const char *boot_link, OstreeDeployment *
       is_booted_deployment
           = stbuf.st_dev == expected_root_dev && stbuf.st_ino == expected_root_inode;
     }
+  gboolean is_soft_reboot_target
+      = self->have_nextroot
+        && (stbuf.st_dev == self->nextroot_device && stbuf.st_ino == self->nextroot_inode);
 
   g_autoptr (OstreeDeployment) ret_deployment
       = ostree_deployment_new (-1, osname, treecsum, deployserial, bootcsum, treebootserial);
@@ -915,7 +918,6 @@ parse_deployment (OstreeSysroot *self, const char *boot_link, OstreeDeployment *
       ret_deployment, _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_FLAG_DEVELOPMENT);
   g_autofree char *unlocked_transient_path = _ostree_sysroot_get_runstate_path (
       ret_deployment, _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_FLAG_TRANSIENT);
-  struct stat stbuf;
   if (lstat (unlocked_development_path, &stbuf) == 0)
     ret_deployment->unlocked = OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT;
   else if (lstat (unlocked_transient_path, &stbuf) == 0)
@@ -932,6 +934,7 @@ parse_deployment (OstreeSysroot *self, const char *boot_link, OstreeDeployment *
         }
       /* TODO: warn on unknown unlock types? */
     }
+  ret_deployment->soft_reboot_target = is_soft_reboot_target;
 
   g_debug ("Deployment %s.%d unlocked=%d", treecsum, deployserial, ret_deployment->unlocked);
 
@@ -1137,7 +1140,18 @@ _ostree_sysroot_reload_staged (OstreeSysroot *self, GError **error)
   if (!self->root_is_ostree_booted)
     return TRUE; /* Note early return */
 
-  g_assert (self->booted_deployment);
+  /* In normal cases, we should have a booted deployment. However, during
+   * soft-reboot scenarios, the current deployment may not correspond to
+   * any bootloader entry, so booted_deployment could be NULL. */
+  if (!self->booted_deployment)
+    {
+      /* Check if we're in a soft-reboot scenario */
+      if (!(g_file_test ("/run/nextroot", G_FILE_TEST_IS_DIR)
+            && g_file_test ("/run/nextroot/sysroot", G_FILE_TEST_IS_DIR)))
+        {
+          g_assert (self->booted_deployment);
+        }
+    }
 
   g_clear_object (&self->staged_deployment);
   g_clear_pointer (&self->staged_deployment_data, g_variant_unref);
@@ -1190,6 +1204,44 @@ _ostree_sysroot_reload_staged (OstreeSysroot *self, GError **error)
   return TRUE;
 }
 
+/* Reload state from /run/ostree/nextroot-booted */
+static gboolean
+_ostree_sysroot_reload_soft_reboot (OstreeSysroot *self, GError **error)
+{
+  GLNX_AUTO_PREFIX_ERROR ("Loading nextroot", error);
+  // Reset state
+  self->have_nextroot = FALSE;
+
+  glnx_autofd int fd = -1;
+  if (!ot_openat_ignore_enoent (AT_FDCWD, OTCORE_RUN_NEXTROOT_BOOTED, &fd, error))
+    return FALSE;
+  // If there's no such file, we're done
+  if (fd == -1)
+    return TRUE;
+
+  // Parse the GVariant metadata from this; search for OTCORE_RUN_BOOTED_KEY_BACKING_ROOTDEVINO
+  // to find similar code.
+  g_autoptr (GVariant) metadata = NULL;
+  if (!ot_variant_read_fd (fd, 0, G_VARIANT_TYPE_VARDICT, TRUE, &metadata, error))
+    return glnx_prefix_error (error, "failed to read %s", OTCORE_RUN_NEXTROOT_BOOTED);
+
+  // Get the backing device/inode from metadata
+  guint64 backing_dev, backing_ino;
+  g_autoptr (GVariant) backing_devino = g_variant_lookup_value (
+      metadata, OTCORE_RUN_BOOTED_KEY_BACKING_ROOTDEVINO, G_VARIANT_TYPE ("(tt)"));
+  if (!backing_devino)
+    return glnx_throw (error, "Missing %s key in %s", OTCORE_RUN_BOOTED_KEY_BACKING_ROOTDEVINO,
+                       OTCORE_RUN_NEXTROOT_BOOTED);
+
+  // Load the device/inode, and we're done
+  g_variant_get (backing_devino, "(tt)", &backing_dev, &backing_ino);
+  self->have_nextroot = TRUE;
+  self->nextroot_device = (dev_t)backing_dev;
+  self->nextroot_inode = (ino_t)backing_ino;
+
+  return TRUE;
+}
+
 /* Loads the current bootversion, subbootversion, and deployments, starting from the
  * bootloader configs which are the source of truth.
  */
@@ -1206,6 +1258,9 @@ sysroot_load_from_bootloader_configs (OstreeSysroot *self, GCancellable *cancell
   int subbootversion = 0;
   if (!_ostree_sysroot_read_current_subbootversion (self, bootversion, &subbootversion, cancellable,
                                                     error))
+    return FALSE;
+
+  if (!_ostree_sysroot_reload_soft_reboot (self, error))
     return FALSE;
 
   g_autoptr (GPtrArray) boot_loader_configs = NULL;

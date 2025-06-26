@@ -476,3 +476,16 @@ ostree_deployment_is_finalization_locked (OstreeDeployment *self)
 {
   return self->finalization_locked;
 }
+
+/**
+ * ostree_deployment_is_soft_reboot_target:
+ * @self: Deployment
+ *
+ * Returns: `TRUE` if deployment is set for a soft reboot.
+ * Since: TODO
+ */
+gboolean
+ostree_deployment_is_soft_reboot_target (OstreeDeployment *self)
+{
+  return self->soft_reboot_target;
+}

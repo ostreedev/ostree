@@ -21,6 +21,8 @@ ConditionKernelCommandLine=ostree
 # marked as a triggering condition in case in the future we want
 # to do something else.
 ConditionPathExists=|/boot/ostree/finalize-failure.stamp
+# Also run when soft-reboot cleanup is needed
+ConditionPathExists=|/run/ostree/nextroot-booted
 # We start early
 DefaultDependencies=no
 After=sysinit.target

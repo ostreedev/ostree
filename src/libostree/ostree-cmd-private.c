@@ -50,6 +50,7 @@ ostree_cmd__private__ (void)
     _ostree_repo_static_delta_dump,   _ostree_repo_static_delta_query_exists,
     _ostree_repo_static_delta_delete, _ostree_repo_verify_bindings,
     _ostree_sysroot_finalize_staged,  _ostree_sysroot_boot_complete,
+    _ostree_prepare_soft_reboot,
   };
 
   return &table;

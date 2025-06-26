@@ -382,7 +382,12 @@ otcore_mount_etc (GKeyFile *config, GVariantBuilder *metadata_builder, const cha
   g_autofree char *target_etc = g_build_filename (mount_target, "etc", NULL);
   if (etc_transient)
     {
-      const char *ovldir = "/run/ostree/transient-etc";
+      // Right now we just reuse the global /run tmpfs as a place to put temporary files.
+      // In order to handle soft reboots, we need a randomly named temporary directory.
+      g_autofree char *ovldir_buf = g_strdup ("/run/ostree/transient-etc.XXXXXX");
+      const char *ovldir = g_mkdtemp_full (ovldir_buf, 0700);
+      if (!ovldir)
+        return glnx_throw_errno_prefix (error, "failed to create transient etc tempdir");
 
       g_variant_builder_add (metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_TRANSIENT_ETC,
                              g_variant_new_string (ovldir));
