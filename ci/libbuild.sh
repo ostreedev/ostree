@@ -19,10 +19,12 @@ make() {
 }
 
 build() {
-    env NOCONFIGURE=1 ./autogen.sh
+    if test '!' -f configure; then env NOCONFIGURE=1 ./autogen.sh; fi
     mkdir -p target/c
-    (cd target/c && ../../configure --sysconfdir=/etc --prefix=/usr --libdir=/usr/lib64 "$@")
-    make -C target/c V=1
+    cd target/c
+    if test '!' -f Makefile; then ../../configure --sysconfdir=/etc --prefix=/usr --libdir=/usr/lib64 "$@"; fi
+    make V=1
+    cd -
 }
 
 pkg_install() {
