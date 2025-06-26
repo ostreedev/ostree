@@ -5,6 +5,9 @@
 #ifndef UTIL_LINUX_JSONWRT_H
 #define UTIL_LINUX_JSONWRT_H
 
+#include <stdio.h>
+#include <stdint.h>
+
 enum {
 	UL_JSON_OBJECT,
 	UL_JSON_ARRAY,

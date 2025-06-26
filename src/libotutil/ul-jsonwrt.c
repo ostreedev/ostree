@@ -9,10 +9,13 @@
 #include <stdio.h>
 #include <inttypes.h>
 #include <ctype.h>
-#include <cctype.h>
 
-#include "c.h"
-#include "jsonwrt.h"
+// The following includes were modified from upstream
+#include "ul-jsonwrt.h"
+#include <glib.h>
+#define c_toupper g_ascii_toupper
+#define c_tolower g_ascii_tolower
+#define assert g_assert
 
 /*
  * Requirements enumerated via testing (V8, Firefox, IE11):
