@@ -38,9 +38,9 @@ jobs:
       # https://github.com/actions/checkout/issues/760
       - name: Mark git checkout as safe
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - run: sudo apt install clang-format
+      - run: sudo apt install clang-format just
       - name: Test style
-        run: ./ci/clang-format.sh
+        run: just clang-format-check
   build-integration:
     runs-on: ubuntu-latest
     container: quay.io/coreos-assembler/fcos-buildroot:testing-devel
