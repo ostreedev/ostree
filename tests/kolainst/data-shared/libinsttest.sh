@@ -79,3 +79,24 @@ rpmostree_query_json() {
 }
 host_commit=$(rpmostree_query_json '.deployments[0].checksum')
 host_osname=$(rpmostree_query_json '.deployments[0].osname')
+
+# $1  - json file
+# $2+ - assertions
+assert_jq() {
+    f=$1; shift
+    for expression in "$@"; do
+        if ! jq -e "${expression}" >/dev/null < $f; then
+            jq . < $f | sed -e 's/^/# /' >&2
+            echo 1>&2 "${expression} failed to match $f"
+            exit 1
+        fi
+    done
+}
+
+# Assert that ostree admin status --json matches the provided jq predicates.
+assert_status_jq() {
+    local t=$(mktemp --suffix=.json)
+    ostree admin status --json > $t
+    assert_jq $t "$@"
+    rm $t
+}
