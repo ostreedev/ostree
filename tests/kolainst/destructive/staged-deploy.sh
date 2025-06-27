@@ -35,6 +35,10 @@ EOF
     ## TODO remove workaround for https://github.com/coreos/rpm-ostree/pull/2021
     mkdir -p /var/lib/rpm-ostree/history
     rpm-ostree cleanup -pr
+
+    ostree admin status --json > status.json
+    jq -e '.deployments[0].staged | not' status.json
+
     commit=${host_commit}
   # Test the deploy --stage functionality; first, we stage a deployment
   # reboot, and validate that it worked.
@@ -49,7 +53,13 @@ EOF
     newcommit=$(ostree rev-parse staged-deploy)
     orig_mtime=$(stat -c '%.Y' /sysroot/ostree/deploy)
     systemctl show -p ActiveState ostree-finalize-staged.service | grep -q inactive
+
+    # Do the staged deployment
     ostree admin deploy --stage staged-deploy
+
+    # Verify state
+    ostree admin status --json > status.json
+    jq -e '.deployments[0].staged' status.json
     systemctl show -p ActiveState ostree-finalize-staged.service | grep active
     new_mtime=$(stat -c '%.Y' /sysroot/ostree/deploy)
     test "${orig_mtime}" != "${new_mtime}"
