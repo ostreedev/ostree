@@ -3297,6 +3297,19 @@ reload_remote_config (OstreeRepo *self, GCancellable *cancellable, GError **erro
 static gboolean
 reload_sysroot_config (OstreeRepo *self, GCancellable *cancellable, GError **error)
 {
+  {
+    g_autofree char *boot_counting_str = NULL;
+
+    (void)ot_keyfile_get_value_with_default_group_optional (
+        self->config, "sysroot", "boot-counting-tries", "0", &boot_counting_str, NULL);
+
+    if (boot_counting_str)
+      /* Ensure boot count value is in [0,5] */
+      self->boot_counting = MAX (0, MIN (INT_MAX, g_ascii_strtoull (boot_counting_str, NULL, 10)));
+    else
+      self->boot_counting = 0;
+  }
+
   g_autofree char *bootloader = NULL;
 
   if (!ot_keyfile_get_value_with_default_group_optional (self->config, "sysroot", "bootloader",
