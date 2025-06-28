@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "ostree.h"
 #include "ostree-deployment.h"
 
 G_BEGIN_DECLS
@@ -55,9 +56,12 @@ struct _OstreeDeployment
   gboolean soft_reboot_target;
   char **overlay_initrds;
   char *overlay_initrds_id;
+  gchar *version;
+  gboolean version_is_cached;
 };
 
 void _ostree_deployment_set_bootcsum (OstreeDeployment *self, const char *bootcsum);
+const char *_ostree_deployment_get_version (OstreeDeployment *self, OstreeRepo *repo);
 
 void _ostree_deployment_set_overlay_initrds (OstreeDeployment *self, char **overlay_initrds);
 
