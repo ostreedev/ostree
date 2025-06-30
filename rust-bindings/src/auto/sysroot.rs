@@ -100,6 +100,13 @@ impl Sysroot {
         }
     }
 
+    #[doc(alias = "ostree_sysroot_deployment_can_soft_reboot")]
+    pub fn deployment_can_soft_reboot(&self, deployment: &Deployment) -> bool {
+        unsafe {
+            from_glib(ffi::ostree_sysroot_deployment_can_soft_reboot(self.to_glib_none().0, deployment.to_glib_none().0))
+        }
+    }
+
     #[cfg(feature = "v2025_1")]
     #[cfg_attr(docsrs, doc(cfg(feature = "v2025_1")))]
     #[doc(alias = "ostree_sysroot_deployment_kexec_load")]
@@ -107,6 +114,16 @@ impl Sysroot {
         unsafe {
             let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_deployment_kexec_load(self.to_glib_none().0, deployment.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
+    #[doc(alias = "ostree_sysroot_deployment_prepare_next_root")]
+    pub fn deployment_prepare_next_root(&self, deployment: &Deployment, allow_kernel_skew: bool, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = std::ptr::null_mut();
+            let is_ok = ffi::ostree_sysroot_deployment_prepare_next_root(self.to_glib_none().0, deployment.to_glib_none().0, allow_kernel_skew.into_glib(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
