@@ -277,6 +277,10 @@ _OSTREE_PUBLIC gboolean ostree_sysroot_deployment_prepare_next_root (OstreeSysro
                                                                      GCancellable *cancellable,
                                                                      GError **error);
 
+_OSTREE_PUBLIC gboolean ostree_sysroot_clear_soft_reboot (OstreeSysroot *self,
+                                                          GCancellable *cancellable,
+                                                          GError **error);
+
 _OSTREE_PUBLIC
 gboolean ostree_sysroot_deployment_kexec_load (OstreeSysroot *self, OstreeDeployment *deployment,
                                                GCancellable *cancellable, GError **error);

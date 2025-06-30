@@ -83,7 +83,7 @@ struct OstreeSysroot
   dev_t root_device;
   ino_t root_inode;
   /* The device inode for a queued soft reboot deployment */
-  gboolean have_nextroot;
+  gboolean expecting_nextroot;
   dev_t nextroot_device;
   ino_t nextroot_inode;
 
@@ -95,6 +95,7 @@ struct OstreeSysroot
   int bootversion;
   int subbootversion;
   OstreeDeployment *booted_deployment;
+  OstreeDeployment *soft_reboot_target_deployment;
   OstreeDeployment *staged_deployment;
   GVariant *staged_deployment_data;
   // True if loaded_ts is initialized
@@ -156,6 +157,8 @@ void _ostree_deployment_set_bootconfig_from_kargs (OstreeDeployment *deployment,
                                                    char **override_kernel_argv);
 
 gboolean _ostree_sysroot_reload_staged (OstreeSysroot *self, GError **error);
+
+gboolean _ostree_sysroot_ensure_finalize_staged_service (GError **error);
 
 gboolean _ostree_sysroot_finalize_staged (OstreeSysroot *self, GCancellable *cancellable,
                                           GError **error);
