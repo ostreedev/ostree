@@ -97,6 +97,12 @@ AC_CHECK_FUNCS([nanotime clock_gettime])
 AC_STRUCT_TIMEZONE
 AC_CHECK_HEADER([sys/xattr.h],,[AC_MSG_ERROR([You must have sys/xattr.h from glibc])])
 
+dnl new mount api
+AC_CHECK_FUNCS([open_tree])
+AM_CONDITIONAL([HAVE_SOFT_REBOOT], [test x$ac_cv_func_open_tree = xyes])
+AM_COND_IF([HAVE_SOFT_REBOOT],
+  [AC_DEFINE([HAVE_SOFT_REBOOT], 1, [Define if we have soft reboots])])
+
 AS_IF([test "$YACC" != "bison -y"], [AC_MSG_ERROR([bison not found but required])])
 
 AC_SUBST([LIBS_PRIVATE])

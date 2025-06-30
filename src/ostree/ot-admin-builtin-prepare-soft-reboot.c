@@ -26,7 +26,14 @@
 #include "ot-admin-functions.h"
 #include "otutil.h"
 
-static GOptionEntry options[] = { { NULL } };
+static gboolean opt_reboot;
+static gboolean opt_reset;
+
+static GOptionEntry options[]
+    = { { "reboot", 0, 0, G_OPTION_ARG_NONE, &opt_reboot, "Initiate a soft reboot on success",
+          NULL },
+        { "reset", 0, 0, G_OPTION_ARG_NONE, &opt_reset, "Undo queued soft reboot state", NULL },
+        { NULL } };
 
 gboolean
 ot_admin_builtin_prepare_soft_reboot (int argc, char **argv, OstreeCommandInvocation *invocation,
@@ -39,6 +46,9 @@ ot_admin_builtin_prepare_soft_reboot (int argc, char **argv, OstreeCommandInvoca
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER, invocation, &sysroot,
                                           cancellable, error))
     return FALSE;
+
+  if (opt_reset)
+    return ostree_sysroot_clear_soft_reboot (sysroot, cancellable, error);
 
   if (argc < 2)
     {
@@ -68,9 +78,15 @@ ot_admin_builtin_prepare_soft_reboot (int argc, char **argv, OstreeCommandInvoca
       return FALSE;
     }
 
-  if (!ostree_sysroot_deployment_prepare_next_root (sysroot, target_deployment, FALSE, cancellable,
-                                                    error))
+  if (!ostree_sysroot_deployment_set_soft_reboot (sysroot, target_deployment, FALSE, cancellable,
+                                                  error))
     return FALSE;
+
+  if (opt_reboot)
+    {
+      execlp ("systemctl", "systemctl", "soft-reboot", NULL);
+      return glnx_throw_errno_prefix (error, "exec(systemctl soft-reboot)");
+    }
 
   return TRUE;
 }

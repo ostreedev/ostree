@@ -34,5 +34,6 @@ LIBOSTREE_2025.3 {
 global:
   ostree_deployment_is_soft_reboot_target;
   ostree_sysroot_deployment_can_soft_reboot;
-  ostree_sysroot_deployment_prepare_next_root;
+  ostree_sysroot_deployment_set_soft_reboot;
+  ostree_sysroot_clear_soft_reboot;
 } LIBOSTREE_2025.2;

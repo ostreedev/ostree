@@ -961,7 +961,9 @@ parse_deployment (OstreeSysroot *self, const char *boot_link, OstreeDeployment *
   ret_deployment->device = stbuf.st_dev;
   ret_deployment->inode = stbuf.st_ino;
 
-  g_debug ("Deployment %s.%d unlocked=%d", treecsum, deployserial, ret_deployment->unlocked);
+  g_debug ("Deployment %s.%d unlocked=%d dev=%" G_GUINT64_FORMAT " ino=%" G_GUINT64_FORMAT,
+           treecsum, deployserial, ret_deployment->unlocked, ret_deployment->device,
+           ret_deployment->inode);
 
   if (is_booted_deployment)
     self->booted_deployment = g_object_ref (ret_deployment);
@@ -1224,14 +1226,18 @@ _ostree_sysroot_reload_soft_reboot (OstreeSysroot *self, GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("Loading nextroot", error);
   // Reset state
-  self->have_nextroot = FALSE;
+  self->expecting_nextroot = FALSE;
+  g_clear_object (&self->soft_reboot_target_deployment);
 
   glnx_autofd int fd = -1;
   if (!ot_openat_ignore_enoent (AT_FDCWD, OTCORE_RUN_NEXTROOT_BOOTED, &fd, error))
     return FALSE;
   // If there's no such file, we're done
   if (fd == -1)
-    return TRUE;
+    {
+      g_debug ("No %s", OTCORE_RUN_NEXTROOT_BOOTED);
+      return TRUE;
+    }
 
   // Parse the GVariant metadata from this; search for OTCORE_RUN_BOOTED_KEY_BACKING_ROOTDEVINO
   // to find similar code.
@@ -1246,10 +1252,12 @@ _ostree_sysroot_reload_soft_reboot (OstreeSysroot *self, GError **error)
   if (!backing_devino)
     return glnx_throw (error, "Missing %s key in %s", OTCORE_RUN_BOOTED_KEY_BACKING_ROOTDEVINO,
                        OTCORE_RUN_NEXTROOT_BOOTED);
-
   // Load the device/inode, and we're done
   g_variant_get (backing_devino, "(tt)", &backing_dev, &backing_ino);
-  self->have_nextroot = TRUE;
+  g_debug ("Expecting nextroot dev %" G_GUINT64_FORMAT " ino %" G_GUINT64_FORMAT, backing_dev,
+           backing_ino);
+
+  self->expecting_nextroot = TRUE;
   self->nextroot_device = (dev_t)backing_dev;
   self->nextroot_inode = (ino_t)backing_ino;
 
@@ -1327,17 +1335,28 @@ sysroot_load_from_bootloader_configs (OstreeSysroot *self, GCancellable *cancell
     g_ptr_array_insert (deployments, 0, g_object_ref (self->staged_deployment));
 
   /* Synchronize internal state now that we've loaded all deployments */
+  g_debug ("expecting nextroot: %d", self->expecting_nextroot);
   for (guint i = 0; i < deployments->len; i++)
     {
       OstreeDeployment *deployment = deployments->pdata[i];
       ostree_deployment_set_index (deployment, i);
 
       g_assert (deployment->devino_initialized);
-      if (self->have_nextroot && deployment->device == self->nextroot_device
+      if (self->expecting_nextroot && deployment->device == self->nextroot_device
           && deployment->inode == self->nextroot_inode)
         {
           deployment->soft_reboot_target = TRUE;
+          g_assert (!self->soft_reboot_target_deployment);
+          self->soft_reboot_target_deployment = g_object_ref (deployment);
         }
+    }
+
+  if (self->expecting_nextroot && !self->soft_reboot_target_deployment)
+    {
+      g_debug ("Soft reboot target not found");
+      if (!glnx_unlinkat (AT_FDCWD, OTCORE_RUN_NEXTROOT_BOOTED, 0, error))
+        return FALSE;
+      self->expecting_nextroot = FALSE;
     }
 
   /* Determine whether we're "physical" or not, the first time we load deployments */

@@ -42,6 +42,7 @@
 gboolean
 _ostree_prepare_soft_reboot (GError **error)
 {
+#ifdef HAVE_SOFT_REBOOT
   const char *sysroot_path = "/sysroot";
   const char *target_deployment = ".";
 
@@ -81,10 +82,24 @@ _ostree_prepare_soft_reboot (GError **error)
   if (!otcore_mount_etc (config, &metadata_builder, OTCORE_RUN_NEXTROOT, error))
     return FALSE;
 
-  // Note we should have inherited the readonly sysroot
-  g_autofree char *target_sysroot = g_build_filename (OTCORE_RUN_NEXTROOT, "sysroot", NULL);
-  if (mount (sysroot_path, target_sysroot, NULL, MS_BIND | MS_SILENT, NULL) < 0)
-    return glnx_throw_errno_prefix (error, "failed to bind mount sysroot");
+  // And set up /sysroot. Here since we hardcode composefs, we also hardcode
+  // having a read-only /sysroot.
+  g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_SYSROOT_RO,
+                         g_variant_new_boolean (true));
+  {
+    struct mount_attr attr = { .attr_set = MOUNT_ATTR_RDONLY };
+    glnx_autofd int sysroot_fd
+        = open_tree (AT_FDCWD, sysroot_path, OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC);
+    if (sysroot_fd < 0)
+      return glnx_throw_errno_prefix (error, "open_tree(%s)", sysroot_path);
+    if (mount_setattr (sysroot_fd, "", AT_EMPTY_PATH, &attr, sizeof (struct mount_attr)) < 0)
+      return glnx_throw_errno_prefix (error, "syscall(mount_setattr) of sysroot");
+    g_autofree char *target_sysroot = g_build_filename (OTCORE_RUN_NEXTROOT, "sysroot", NULL);
+    if (move_mount (sysroot_fd, "", -1, target_sysroot, MOVE_MOUNT_F_EMPTY_PATH) < 0)
+      return glnx_throw_errno_prefix (error, "syscall(move_mount) of sysroot");
+
+    g_debug ("initialized /sysroot");
+  }
 
   /* This can be used by other things to signal ostree is in use */
   {
@@ -96,4 +111,7 @@ _ostree_prepare_soft_reboot (GError **error)
   }
 
   return TRUE;
+#else
+  return glnx_throw (error, "soft reboot not supported");
+#endif
 }
