@@ -3948,11 +3948,59 @@ ostree_sysroot_change_finalization (OstreeSysroot *self, OstreeDeployment *deplo
   return TRUE;
 }
 
+// Reconcile on shutdown in case /run/nextroot got unmounted, then we need to remove
+// the nextroot run file.
+static gboolean
+finalize_reconcile_soft_reboot (OstreeSysroot *self, GError **error)
+{
+  GLNX_AUTO_PREFIX_ERROR ("Handling soft reboot state", error);
+
+  // If there's no soft reboot state, we're done
+  if (!self->have_nextroot)
+    return TRUE;
+
+  struct statx stbuf = {
+    0,
+  };
+  if (statx (AT_FDCWD, OTCORE_RUN_NEXTROOT, AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT,
+             STATX_BASIC_STATS, &stbuf)
+      < 0)
+    {
+      if (errno != ENOENT)
+        return glnx_throw_errno_prefix (error, "statx(%s)", OTCORE_RUN_NEXTROOT);
+      return TRUE;
+    }
+
+  // Shouldn't happen...
+  if ((stbuf.stx_attributes_mask & STATX_ATTR_MOUNT_ROOT) == 0)
+    {
+      ot_journal_print (LOG_WARNING, "kernel too old for STATX_ATTR_MOUNT_ROOT");
+      return TRUE;
+    }
+  if ((stbuf.stx_attributes & STATX_ATTR_MOUNT_ROOT) == 0)
+    {
+      // Something unmounted /run/nextroot, so ensure our state file is removed
+      if (unlinkat (AT_FDCWD, OTCORE_RUN_NEXTROOT_BOOTED, 0) < 0)
+        {
+          if (errno != ENOENT)
+            return glnx_throw_errno_prefix (error, "Removing %s", OTCORE_RUN_NEXTROOT_BOOTED);
+          return TRUE;
+        }
+      ot_journal_print (LOG_INFO, "%s is not a mountpoint; clearing pending state in %s",
+                        OTCORE_RUN_NEXTROOT, OTCORE_RUN_NEXTROOT_BOOTED);
+    }
+
+  return TRUE;
+}
+
 /* Invoked at shutdown time by ostree-finalize-staged.service */
 static gboolean
 _ostree_sysroot_finalize_staged_inner (OstreeSysroot *self, GCancellable *cancellable,
                                        GError **error)
 {
+  if (!finalize_reconcile_soft_reboot (self, error))
+    return FALSE;
+
   /* It's totally fine if there's no staged deployment; perhaps down the line
    * though we could teach the ostree cmdline to tell systemd to activate the
    * service when a staged deployment is created.

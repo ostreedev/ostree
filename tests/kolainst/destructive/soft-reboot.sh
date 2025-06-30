@@ -62,6 +62,14 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
   test '!' -f /run/ostree/nextroot-booted
   
   echo "Soft reboot test completed successfully!"
+  
+  # Now verify we reconcile if the dir is manually unmounted
+
+  systemctl start ostree-finalize-staged
+  ostree admin prepare-soft-reboot 1
+  umount -R /run/nextroot
+  systemctl stop ostree-finalize-staged
+  test '!' -f /run/ostree/nextroot-booted
   ;;
   *) 
   fatal "Unexpected AUTOPKGTEST_REBOOT_MARK=${AUTOPKGTEST_REBOOT_MARK}" 
