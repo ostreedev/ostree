@@ -32,8 +32,8 @@
  * @inout_deployments: All deployments in this subdir will be appended to this array
  */
 gboolean
-_ostree_sysroot_list_deployment_dirs_for_os (int deploydir_dfd, const char *osname,
-                                             GPtrArray *inout_deployments,
+_ostree_sysroot_list_deployment_dirs_for_os (OstreeSysroot *self, int deploydir_dfd,
+                                             const char *osname, GPtrArray *inout_deployments,
                                              GCancellable *cancellable, GError **error)
 {
   g_auto (GLnxDirFdIterator) dfd_iter = {
@@ -63,8 +63,11 @@ _ostree_sysroot_list_deployment_dirs_for_os (int deploydir_dfd, const char *osna
       if (!_ostree_sysroot_parse_deploy_path_name (dent->d_name, &csum, &deployserial, error))
         return FALSE;
 
-      g_ptr_array_add (inout_deployments,
-                       ostree_deployment_new (-1, osname, csum, deployserial, NULL, -1));
+      OstreeDeployment *deploy = _ostree_sysroot_new_deployment_object (
+          self, osname, csum, deployserial, NULL, -1, error);
+      if (!deploy)
+        return FALSE;
+      g_ptr_array_add (inout_deployments, deploy);
     }
 
   return TRUE;
@@ -100,8 +103,8 @@ list_all_deployment_directories (OstreeSysroot *self, GPtrArray **out_deployment
       if (dent->d_type != DT_DIR)
         continue;
 
-      if (!_ostree_sysroot_list_deployment_dirs_for_os (dfd_iter.fd, dent->d_name, ret_deployments,
-                                                        cancellable, error))
+      if (!_ostree_sysroot_list_deployment_dirs_for_os (self, dfd_iter.fd, dent->d_name,
+                                                        ret_deployments, cancellable, error))
         return FALSE;
     }
 

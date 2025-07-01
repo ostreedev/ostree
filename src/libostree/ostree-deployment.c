@@ -255,6 +255,10 @@ ostree_deployment_clone (OstreeDeployment *self)
   OstreeDeployment *ret = ostree_deployment_new (
       self->index, self->osname, self->csum, self->deployserial, self->bootcsum, self->bootserial);
 
+  ret->devino_initialized = TRUE;
+  ret->device = self->device;
+  ret->inode = self->inode;
+
   new_bootconfig = ostree_bootconfig_parser_clone (self->bootconfig);
   ostree_deployment_set_bootconfig (ret, new_bootconfig);
 
