@@ -603,14 +603,14 @@ merge_configuration_from (OstreeSysroot *sysroot, OstreeDeployment *merge_deploy
  * A dfd for the result is returned in @out_deployment_dfd.
  */
 static gboolean
-checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeployment *deployment,
-                          const char *revision, int *out_deployment_dfd, guint64 *checkout_elapsed,
-                          guint64 *composefs_elapsed, GCancellable *cancellable, GError **error)
+checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, const char *stateroot,
+                          const char *csum, int deployserial, int *out_deployment_dfd,
+                          guint64 *checkout_elapsed, guint64 *composefs_elapsed,
+                          GCancellable *cancellable, GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("Checking out deployment tree", error);
   /* Find the directory with deployments for this stateroot */
-  g_autofree char *osdeploy_path
-      = g_strconcat ("ostree/deploy/", ostree_deployment_get_osname (deployment), "/deploy", NULL);
+  g_autofree char *osdeploy_path = g_strconcat ("ostree/deploy/", stateroot, "/deploy", NULL);
   if (!glnx_shutil_mkdir_p_at (sysroot->sysroot_fd, osdeploy_path, 0775, cancellable, error))
     return FALSE;
 
@@ -619,9 +619,7 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
     return FALSE;
 
   /* Clean up anything that was there before, from e.g. an interrupted checkout */
-  const char *csum = ostree_deployment_get_csum (deployment);
-  g_autofree char *checkout_target_name
-      = g_strdup_printf ("%s.%d", csum, ostree_deployment_get_deployserial (deployment));
+  g_autofree char *checkout_target_name = g_strdup_printf ("%s.%d", csum, deployserial);
   if (!glnx_shutil_rm_rf_at (osdeploy_dfd, checkout_target_name, cancellable, error))
     return FALSE;
 
@@ -3194,24 +3192,20 @@ sysroot_initialize_deployment (OstreeSysroot *self, const char *osname, const ch
   if (!allocate_deployserial (self, osname, revision, &new_deployserial, cancellable, error))
     return FALSE;
 
-  g_autoptr (OstreeDeployment) new_deployment
-      = ostree_deployment_new (0, osname, revision, new_deployserial, NULL, -1);
-  ostree_deployment_set_origin (new_deployment, origin);
-
   /* Check out the userspace tree onto the filesystem */
   glnx_autofd int deployment_dfd = -1;
   guint64 checkout_elapsed = 0;
   guint64 composefs_elapsed = 0;
-  if (!checkout_deployment_tree (self, repo, new_deployment, revision, &deployment_dfd,
+  if (!checkout_deployment_tree (self, repo, osname, revision, new_deployserial, &deployment_dfd,
                                  &checkout_elapsed, &composefs_elapsed, cancellable, error))
     return FALSE;
 
-  struct stat stbuf;
-  if (fstat (deployment_dfd, &stbuf) < 0)
-    return glnx_throw_errno_prefix (error, "fstat(deployment fd)");
-  new_deployment->devino_initialized = TRUE;
-  new_deployment->device = stbuf.st_dev;
-  new_deployment->inode = stbuf.st_ino;
+  g_autoptr (OstreeDeployment) new_deployment = _ostree_sysroot_new_deployment_object (
+      self, osname, revision, new_deployserial, NULL, -1, error);
+  if (!new_deployment)
+    return FALSE;
+  ostree_deployment_set_index (new_deployment, 0);
+  ostree_deployment_set_origin (new_deployment, origin);
 
   g_autoptr (OstreeKernelLayout) kernel_layout = NULL;
   if (!get_kernel_from_tree (self, deployment_dfd, &kernel_layout, cancellable, error))
