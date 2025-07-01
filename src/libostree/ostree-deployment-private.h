@@ -55,6 +55,11 @@ struct _OstreeDeployment
   gboolean soft_reboot_target;
   char **overlay_initrds;
   char *overlay_initrds_id;
+
+  // Private cache of expected backing device/inode
+  gboolean devino_initialized;
+  dev_t device;
+  ino_t inode;
 };
 
 void _ostree_deployment_set_bootcsum (OstreeDeployment *self, const char *bootcsum);

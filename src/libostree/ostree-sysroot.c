@@ -826,6 +826,31 @@ _ostree_sysroot_get_runstate_path (OstreeDeployment *deployment, const char *key
                           ostree_deployment_get_deployserial (deployment), key);
 }
 
+// Should be preferred over ostree_deployment_new as this also initializes cached
+// state for device/inode.
+OstreeDeployment *
+_ostree_sysroot_new_deployment_object (OstreeSysroot *self, const char *osname, const char *csum,
+                                       int deployserial, const char *bootcsum, int bootserial,
+                                       GError **error)
+{
+  if (!ensure_sysroot_fd (self, error))
+    return FALSE;
+
+  // This deployment isn't associated with an index.
+  g_autoptr (OstreeDeployment) ret
+      = ostree_deployment_new (-1, osname, csum, deployserial, bootcsum, bootserial);
+
+  g_autofree char *relpath = ostree_sysroot_get_deployment_dirpath (self, ret);
+  struct stat stbuf;
+  if (!glnx_fstatat (self->sysroot_fd, relpath, &stbuf, AT_SYMLINK_NOFOLLOW, error))
+    return NULL;
+  ret->devino_initialized = TRUE;
+  ret->device = stbuf.st_dev;
+  ret->inode = stbuf.st_ino;
+
+  return g_steal_pointer (&ret);
+}
+
 static gboolean
 parse_deployment (OstreeSysroot *self, const char *boot_link, OstreeDeployment **out_deployment,
                   GCancellable *cancellable, GError **error)
@@ -904,9 +929,6 @@ parse_deployment (OstreeSysroot *self, const char *boot_link, OstreeDeployment *
       is_booted_deployment
           = stbuf.st_dev == expected_root_dev && stbuf.st_ino == expected_root_inode;
     }
-  gboolean is_soft_reboot_target
-      = self->have_nextroot
-        && (stbuf.st_dev == self->nextroot_device && stbuf.st_ino == self->nextroot_inode);
 
   g_autoptr (OstreeDeployment) ret_deployment
       = ostree_deployment_new (-1, osname, treecsum, deployserial, bootcsum, treebootserial);
@@ -934,7 +956,10 @@ parse_deployment (OstreeSysroot *self, const char *boot_link, OstreeDeployment *
         }
       /* TODO: warn on unknown unlock types? */
     }
-  ret_deployment->soft_reboot_target = is_soft_reboot_target;
+
+  ret_deployment->devino_initialized = TRUE;
+  ret_deployment->device = stbuf.st_dev;
+  ret_deployment->inode = stbuf.st_ino;
 
   g_debug ("Deployment %s.%d unlocked=%d", treecsum, deployserial, ret_deployment->unlocked);
 
@@ -1179,7 +1204,7 @@ _ostree_sysroot_reload_staged (OstreeSysroot *self, GError **error)
       if (target)
         {
           g_autoptr (OstreeDeployment) staged
-              = _ostree_sysroot_deserialize_deployment_from_variant (target, error);
+              = _ostree_sysroot_deserialize_deployment_from_variant (self, target, error);
           if (!staged)
             return FALSE;
 
@@ -1312,11 +1337,18 @@ sysroot_load_from_bootloader_configs (OstreeSysroot *self, GCancellable *cancell
   if (self->staged_deployment)
     g_ptr_array_insert (deployments, 0, g_object_ref (self->staged_deployment));
 
-  /* And then set their index variables */
+  /* Synchronize internal state now that we've loaded all deployments */
   for (guint i = 0; i < deployments->len; i++)
     {
       OstreeDeployment *deployment = deployments->pdata[i];
       ostree_deployment_set_index (deployment, i);
+
+      g_assert (deployment->devino_initialized);
+      if (self->have_nextroot && deployment->device == self->nextroot_device
+          && deployment->inode == self->nextroot_inode)
+        {
+          deployment->soft_reboot_target = TRUE;
+        }
     }
 
   /* Determine whether we're "physical" or not, the first time we load deployments */

@@ -3033,8 +3033,8 @@ allocate_deployserial (OstreeSysroot *self, const char *osname, const char *revi
   if (!glnx_opendirat (self->sysroot_fd, "ostree/deploy", TRUE, &deploy_dfd, error))
     return FALSE;
 
-  if (!_ostree_sysroot_list_deployment_dirs_for_os (deploy_dfd, osname, tmp_current_deployments,
-                                                    cancellable, error))
+  if (!_ostree_sysroot_list_deployment_dirs_for_os (self, deploy_dfd, osname,
+                                                    tmp_current_deployments, cancellable, error))
     return FALSE;
 
   for (guint i = 0; i < tmp_current_deployments->len; i++)
@@ -3205,6 +3205,13 @@ sysroot_initialize_deployment (OstreeSysroot *self, const char *osname, const ch
   if (!checkout_deployment_tree (self, repo, new_deployment, revision, &deployment_dfd,
                                  &checkout_elapsed, &composefs_elapsed, cancellable, error))
     return FALSE;
+
+  struct stat stbuf;
+  if (fstat (deployment_dfd, &stbuf) < 0)
+    return glnx_throw_errno_prefix (error, "fstat(deployment fd)");
+  new_deployment->devino_initialized = TRUE;
+  new_deployment->device = stbuf.st_dev;
+  new_deployment->inode = stbuf.st_ino;
 
   g_autoptr (OstreeKernelLayout) kernel_layout = NULL;
   if (!get_kernel_from_tree (self, deployment_dfd, &kernel_layout, cancellable, error))
@@ -3651,7 +3658,8 @@ require_str_key (GVariantDict *dict, const char *name, const char **ret, GError 
  * higher level code.
  */
 OstreeDeployment *
-_ostree_sysroot_deserialize_deployment_from_variant (GVariant *v, GError **error)
+_ostree_sysroot_deserialize_deployment_from_variant (OstreeSysroot *self, GVariant *v,
+                                                     GError **error)
 {
   g_autoptr (GVariantDict) dict = g_variant_dict_new (v);
   const char *name = NULL;
@@ -3667,7 +3675,8 @@ _ostree_sysroot_deserialize_deployment_from_variant (GVariant *v, GError **error
   gint deployserial;
   if (!_ostree_sysroot_parse_deploy_path_name (name, &checksum, &deployserial, error))
     return NULL;
-  return ostree_deployment_new (-1, osname, checksum, deployserial, bootcsum, -1);
+  return _ostree_sysroot_new_deployment_object (self, osname, checksum, deployserial, bootcsum, -1,
+                                                error);
 }
 
 /**
@@ -4000,7 +4009,7 @@ _ostree_sysroot_finalize_staged_inner (OstreeSysroot *self, GCancellable *cancel
                         &merge_deployment_v))
     {
       g_autoptr (OstreeDeployment) merge_deployment_stub
-          = _ostree_sysroot_deserialize_deployment_from_variant (merge_deployment_v, error);
+          = _ostree_sysroot_deserialize_deployment_from_variant (self, merge_deployment_v, error);
       if (!merge_deployment_stub)
         return FALSE;
       for (guint i = 0; i < self->deployments->len; i++)
