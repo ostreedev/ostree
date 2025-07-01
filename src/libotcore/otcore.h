@@ -139,7 +139,11 @@ gboolean otcore_mount_etc (GKeyFile *config, GVariantBuilder *metadata_builder,
 // The file written in the initramfs which contains an a{sv} of metadata
 // from ostree-prepare-root.
 #define OTCORE_RUN_BOOTED "/run/ostree-booted"
+// Written when a soft reboot is queued, but not applied
+#define OTCORE_RUN_NEXTROOT_QUEUED "/run/ostree/nextroot-queued"
 // Written by ostree-soft-reboot.c with metadata about /run/nextroot
+// that is then processed by ostree-boot-complete.c and turned into
+// the canonical /run/ostree-booted.
 #define OTCORE_RUN_NEXTROOT_BOOTED "/run/ostree/nextroot-booted"
 // This key will be present if composefs was successfully used.
 #define OTCORE_RUN_BOOTED_KEY_COMPOSEFS "composefs"
