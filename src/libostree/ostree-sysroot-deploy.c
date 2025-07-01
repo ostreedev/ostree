@@ -3779,6 +3779,8 @@ ostree_sysroot_stage_tree_with_options (OstreeSysroot *self, const char *osname,
                                         GCancellable *cancellable, GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("Staging deployment", error);
+  // The service which performs finalization
+  const char *svc = "ostree-finalize-staged.service";
 
   if (!_ostree_sysroot_ensure_writable (self, error))
     return FALSE;
@@ -3787,14 +3789,14 @@ ostree_sysroot_stage_tree_with_options (OstreeSysroot *self, const char *osname,
   if (booted_deployment == NULL)
     return glnx_prefix_error (error, "Cannot stage deployment");
 
-  const char *const systemctl_argv[]
-      = { "systemctl", "start", "ostree-finalize-staged.service", NULL };
+  const char *const systemctl_argv[] = { "systemctl", "start", "--quiet", svc, NULL };
   int estatus;
-  if (!g_spawn_sync (NULL, (char **)systemctl_argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL,
-                     NULL, &estatus, error))
+  if (!g_spawn_sync (NULL, (char **)systemctl_argv, NULL,
+                     G_SPAWN_SEARCH_PATH | G_SPAWN_STDERR_TO_DEV_NULL, NULL, NULL, NULL, NULL,
+                     &estatus, error))
     return FALSE;
   if (!g_spawn_check_exit_status (estatus, error))
-    return FALSE;
+    return glnx_prefix_error (error, "Failed to start %s", svc);
 
   g_autoptr (OstreeDeployment) deployment = NULL;
   if (!sysroot_initialize_deployment (self, osname, revision, origin, opts, &deployment,
