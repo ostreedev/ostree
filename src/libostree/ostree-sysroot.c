@@ -1165,18 +1165,7 @@ _ostree_sysroot_reload_staged (OstreeSysroot *self, GError **error)
   if (!self->root_is_ostree_booted)
     return TRUE; /* Note early return */
 
-  /* In normal cases, we should have a booted deployment. However, during
-   * soft-reboot scenarios, the current deployment may not correspond to
-   * any bootloader entry, so booted_deployment could be NULL. */
-  if (!self->booted_deployment)
-    {
-      /* Check if we're in a soft-reboot scenario */
-      if (!(g_file_test ("/run/nextroot", G_FILE_TEST_IS_DIR)
-            && g_file_test ("/run/nextroot/sysroot", G_FILE_TEST_IS_DIR)))
-        {
-          g_assert (self->booted_deployment);
-        }
-    }
+  g_assert (self->booted_deployment);
 
   g_clear_object (&self->staged_deployment);
   g_clear_pointer (&self->staged_deployment_data, g_variant_unref);
