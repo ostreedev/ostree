@@ -27,14 +27,6 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
         <title>ostree admin os-init</title>
         <productname>OSTree</productname>
 
-        <authorgroup>
-            <author>
-                <contrib>Developer</contrib>
-                <firstname>Colin</firstname>
-                <surname>Walters</surname>
-                <email>walters@verbum.org</email>
-            </author>
-        </authorgroup>
     </refentryinfo>
 
     <refmeta>

@@ -27,14 +27,6 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
         <title>ostree find-remotes</title>
         <productname>OSTree</productname>
 
-        <authorgroup>
-            <author>
-                <contrib>Developer</contrib>
-                <firstname>Matthew</firstname>
-                <surname>Leeds</surname>
-                <email>matthew.leeds@endlessm.com</email>
-            </author>
-        </authorgroup>
     </refentryinfo>
 
     <refmeta>
