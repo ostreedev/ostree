@@ -271,11 +271,15 @@ gboolean ostree_sysroot_simple_write_deployment (OstreeSysroot *sysroot, const c
 _OSTREE_PUBLIC gboolean ostree_sysroot_deployment_can_soft_reboot (OstreeSysroot *self,
                                                                    OstreeDeployment *deployment);
 
-_OSTREE_PUBLIC gboolean ostree_sysroot_deployment_prepare_next_root (OstreeSysroot *self,
-                                                                     OstreeDeployment *deployment,
-                                                                     gboolean allow_kernel_skew,
-                                                                     GCancellable *cancellable,
-                                                                     GError **error);
+_OSTREE_PUBLIC gboolean ostree_sysroot_deployment_set_soft_reboot (OstreeSysroot *self,
+                                                                   OstreeDeployment *deployment,
+                                                                   gboolean allow_kernel_skew,
+                                                                   GCancellable *cancellable,
+                                                                   GError **error);
+
+_OSTREE_PUBLIC gboolean ostree_sysroot_clear_soft_reboot (OstreeSysroot *self,
+                                                          GCancellable *cancellable,
+                                                          GError **error);
 
 _OSTREE_PUBLIC
 gboolean ostree_sysroot_deployment_kexec_load (OstreeSysroot *self, OstreeDeployment *deployment,
