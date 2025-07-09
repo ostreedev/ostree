@@ -116,7 +116,7 @@ ostree_builtin_config (int argc, char **argv, OstreeCommandInvocation *invocatio
       config = ostree_repo_copy_config (repo);
       g_key_file_set_string (config, section, key, value);
 
-      if (!ostree_repo_write_config (repo, config, error))
+      if (!ostree_repo_write_config_and_reload (repo, config, error))
         return FALSE;
     }
   else if (!strcmp (op, "get"))

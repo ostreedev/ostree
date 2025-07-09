@@ -21,7 +21,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo '1..3'
+echo '1..4'
 
 ostree_repo_init repo
 ${CMD_PREFIX} ostree remote add --repo=repo --set=xa.title=Flathub --set=xa.title-is-set=true flathub https://dl.flathub.org/repo/
@@ -97,3 +97,20 @@ if ${CMD_PREFIX} ostree config --repo=repo unset core.lock-timeout-secs extra 2>
 fi
 assert_file_has_content err.txt "error: Too many arguments given"
 echo "ok config unset"
+
+# Test config validation - should reject invalid values immediately
+if ${CMD_PREFIX} ostree config --repo=repo set core.min-free-space-size "invalidvalue" 2>err.txt; then
+    assert_not_reached "ostree config set should reject invalid core.min-free-space-size"
+fi
+assert_file_has_content err.txt "Invalid min-free-space-size"
+
+# Set a valid value, now try resetting it
+ostree config --repo=repo set core.min-free-space-size "100MB"
+if ${CMD_PREFIX} ostree config --repo=repo set core.min-free-space-size "invalidvalue" 2>err.txt; then
+    assert_not_reached "ostree config set should reject invalid core.min-free-space-size"
+fi
+assert_file_has_content err.txt "Invalid min-free-space-size"
+v=$(${CMD_PREFIX} ostree config --repo=repo get core.min-free-space-size)
+assert_streq "$v" "100MB"
+
+echo "ok config validation"
