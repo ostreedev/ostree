@@ -27,14 +27,6 @@ SPDX-License-Identifier: LGPL-2.0+
                 <title>ostree.repo</title>
                 <productname>OSTree</productname>
 
-                <authorgroup>
-                        <author>
-                                <contrib>Developer</contrib>
-                                <firstname>Colin</firstname>
-                                <surname>Walters</surname>
-                                <email>walters@verbum.org</email>
-                        </author>
-                </authorgroup>
         </refentryinfo>
 
         <refmeta>

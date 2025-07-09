@@ -25,14 +25,6 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
         <title>ostree prepare-root</title>
         <productname>OSTree</productname>
 
-        <authorgroup>
-            <author>
-                <contrib>Developer</contrib>
-                <firstname>Colin</firstname>
-                <surname>Walters</surname>
-                <email>walters@verbum.org</email>
-            </author>
-        </authorgroup>
     </refentryinfo>
 
     <refmeta>
