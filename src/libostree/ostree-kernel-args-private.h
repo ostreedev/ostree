@@ -41,4 +41,6 @@ OstreeKernelArgsEntry *_ostree_kernel_args_entry_new (void);
 
 void _ostree_kernel_args_entry_value_free (OstreeKernelArgsEntry *e);
 
+gboolean _ostree_kernel_args_equal (OstreeKernelArgs *a, OstreeKernelArgs *b);
+
 G_END_DECLS

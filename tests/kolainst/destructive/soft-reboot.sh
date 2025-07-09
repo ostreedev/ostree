@@ -146,6 +146,15 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
     fatal "soft reboot prep with kernel change"
   fi
   assert_file_has_content_literal err.txt "different kernel state"
+  rm -vf err.txt
+
+  rpm-ostree cleanup -p
+
+  rpm-ostree kargs --append=foo=bar
+  if ostree admin prepare-soft-reboot 0 2>err.txt; then
+    fatal "soft reboot prep with kernel args change"
+  fi
+  assert_file_has_content_literal err.txt "different kernel state"
 
   echo "ok soft reboot all tests"
   ;;

@@ -24,8 +24,6 @@
 
 G_BEGIN_DECLS
 
-typedef struct _OstreeKernelArgs OstreeKernelArgs;
-
 _OSTREE_PUBLIC
 void ostree_kernel_args_free (OstreeKernelArgs *kargs);
 

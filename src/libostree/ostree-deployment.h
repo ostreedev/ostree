@@ -18,6 +18,7 @@
 #pragma once
 
 #include "ostree-bootconfig-parser.h"
+#include "ostree-types.h"
 
 G_BEGIN_DECLS
 

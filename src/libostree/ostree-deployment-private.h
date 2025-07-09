@@ -68,4 +68,6 @@ void _ostree_deployment_set_overlay_initrds (OstreeDeployment *self, char **over
 
 char **_ostree_deployment_get_overlay_initrds (OstreeDeployment *self);
 
+OstreeKernelArgs *_ostree_deployment_get_kargs (OstreeDeployment *self);
+
 G_END_DECLS

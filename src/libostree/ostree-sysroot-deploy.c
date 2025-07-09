@@ -39,6 +39,7 @@
 #include "libglnx.h"
 #include "ostree-core-private.h"
 #include "ostree-deployment-private.h"
+#include "ostree-kernel-args-private.h"
 #include "ostree-linuxfsutil.h"
 #include "ostree-repo-private.h"
 #include "ostree-sepolicy-private.h"
@@ -4369,13 +4370,27 @@ gboolean
 ostree_sysroot_deployment_can_soft_reboot (OstreeSysroot *self, OstreeDeployment *deployment)
 {
   OstreeDeployment *booted_deployment = ostree_sysroot_get_booted_deployment (self);
-  if (booted_deployment != NULL)
-    {
-      const char *booted_bootcsum = ostree_deployment_get_bootcsum (booted_deployment);
-      const char *target_bootcsum = ostree_deployment_get_bootcsum (deployment);
-      return g_str_equal (booted_bootcsum, target_bootcsum);
-    }
-  return false;
+  if (booted_deployment == NULL)
+    return FALSE;
+
+  const char *booted_bootcsum = ostree_deployment_get_bootcsum (booted_deployment);
+  const char *target_bootcsum = ostree_deployment_get_bootcsum (deployment);
+  if (!g_str_equal (booted_bootcsum, target_bootcsum))
+    return FALSE;
+
+  g_autoptr (OstreeKernelArgs) booted_kargs = _ostree_deployment_get_kargs (booted_deployment);
+  g_assert (booted_kargs);
+
+  g_autoptr (OstreeKernelArgs) target_kargs = _ostree_deployment_get_kargs (deployment);
+  // The target kargs can be unset, which means use the merge kargs (same as booted, usually)
+  if (!target_kargs)
+    return TRUE;
+
+  // Compare kargs without the ostree= entry, as that will vary per bootlink even for
+  // the same boot checksum.
+  g_assert (ostree_kernel_args_delete (booted_kargs, "ostree", NULL));
+  g_assert (ostree_kernel_args_delete (target_kargs, "ostree", NULL));
+  return _ostree_kernel_args_equal (booted_kargs, target_kargs);
 }
 
 static void
