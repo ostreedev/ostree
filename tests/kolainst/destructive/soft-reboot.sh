@@ -140,6 +140,13 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
                    '.deployments[1].booted | not' '.deployments[1].["soft-reboot-target"] | not'
   echo "ok soft reboot to non-staged"
 
+  # We can't soft reboot into a changed kernel state
+  rpm-ostree initramfs --enable
+  if ostree admin prepare-soft-reboot 0 2>err.txt; then
+    fatal "soft reboot prep with kernel change"
+  fi
+  assert_file_has_content_literal err.txt "different kernel state"
+
   echo "ok soft reboot all tests"
   ;;
   *) 
