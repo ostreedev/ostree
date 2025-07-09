@@ -902,3 +902,24 @@ ostree_kernel_args_delete_if_present (OstreeKernelArgs *kargs, const char *arg, 
     return ostree_kernel_args_delete (kargs, arg, error);
   return TRUE;
 }
+
+gboolean
+_ostree_kernel_args_equal (OstreeKernelArgs *a, OstreeKernelArgs *b)
+{
+  if (a == b)
+    return TRUE;
+  if (a == NULL || b == NULL)
+    return FALSE;
+  if (a->order->len != b->order->len)
+    return FALSE;
+  for (guint i = 0; i < a->order->len; i++)
+    {
+      OstreeKernelArgsEntry *entry_a = g_ptr_array_index (a->order, i);
+      OstreeKernelArgsEntry *entry_b = g_ptr_array_index (b->order, i);
+      if (!g_str_equal (entry_a->key, entry_b->key))
+        return FALSE;
+      if (g_strcmp0 (entry_a->value, entry_b->value) != 0)
+        return FALSE;
+    }
+  return TRUE;
+}

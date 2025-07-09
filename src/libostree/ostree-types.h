@@ -38,5 +38,6 @@ typedef struct OstreeMutableTree OstreeMutableTree;
 typedef struct OstreeRepoFile OstreeRepoFile;
 typedef struct _OstreeContentWriter OstreeContentWriter;
 typedef struct OstreeRemote OstreeRemote;
+typedef struct _OstreeKernelArgs OstreeKernelArgs;
 
 G_END_DECLS

@@ -17,6 +17,7 @@
 
 #include "config.h"
 
+#include "ostree-bootconfig-parser.h"
 #include "ostree-deployment-private.h"
 #include "ostree.h"
 #include "otutil.h"
@@ -492,4 +493,22 @@ gboolean
 ostree_deployment_is_soft_reboot_target (OstreeDeployment *self)
 {
   return self->soft_reboot_target;
+}
+
+/**
+ * ostree_deployment_get_kargs:
+ * @self: Deployment
+ *
+ * Returns: (transfer full) (nullable): Kernel arguments
+ */
+OstreeKernelArgs *
+_ostree_deployment_get_kargs (OstreeDeployment *self)
+{
+  OstreeBootconfigParser *bootcfg = ostree_deployment_get_bootconfig (self);
+  if (!bootcfg)
+    return NULL;
+  const char *kargs = ostree_bootconfig_parser_get (bootcfg, "options");
+  if (!kargs)
+    return NULL;
+  return ostree_kernel_args_from_string (kargs);
 }
