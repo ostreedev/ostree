@@ -732,6 +732,17 @@ global:
   ostree_blob_reader_read_blob;
 } LIBOSTREE_2025.1;
 
+LIBOSTREE_2025.3 {
+global:
+  ostree_repo_write_config_and_reload;
+  ostree_deployment_is_soft_reboot_target;
+  ostree_sysroot_deployment_can_soft_reboot;
+  ostree_sysroot_deployment_set_soft_reboot;
+  ostree_sysroot_clear_soft_reboot;
+  ostree_bootconfig_parser_get_tries_left;
+  ostree_bootconfig_parser_get_tries_done;
+} LIBOSTREE_2025.2;
+
 /* NOTE: Only add more content here in release commits!  See the
  * comments at the top of this file.
  */
