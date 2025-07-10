@@ -352,6 +352,7 @@ ostree_repo_get_remote_list_option
 ostree_repo_get_remote_option
 ostree_repo_get_parent
 ostree_repo_write_config
+ostree_repo_write_config_and_reload
 OstreeRepoTransactionStats
 ostree_repo_scan_hardlinks
 ostree_repo_prepare_transaction

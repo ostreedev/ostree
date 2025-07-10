@@ -192,6 +192,9 @@ OstreeRepo *ostree_repo_get_parent (OstreeRepo *self);
 
 _OSTREE_PUBLIC
 gboolean ostree_repo_write_config (OstreeRepo *self, GKeyFile *new_config, GError **error);
+_OSTREE_PUBLIC
+gboolean ostree_repo_write_config_and_reload (OstreeRepo *self, GKeyFile *new_config,
+                                              GError **error);
 
 /**
  * OstreeRepoCommitState:

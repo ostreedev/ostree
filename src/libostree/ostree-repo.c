@@ -435,6 +435,7 @@ pop_repo_lock (OstreeRepo *self, OstreeRepoLockType lock_type, gboolean blocking
 
   return TRUE;
 }
+static gboolean reload_config_inner (OstreeRepo *self, GCancellable *cancellable, GError **error);
 
 /**
  * ostree_repo_lock_push:
@@ -1566,6 +1567,9 @@ ostree_repo_copy_config (OstreeRepo *self)
  * @error: a #GError
  *
  * Save @new_config in place of this repository's config file.
+ *
+ * Note: This will not validate many elements of the configuration.
+ * Prefer `ostree_repo_write_config_and_reload`.
  */
 gboolean
 ostree_repo_write_config (OstreeRepo *self, GKeyFile *new_config, GError **error)
@@ -1616,6 +1620,36 @@ ostree_repo_write_config (OstreeRepo *self, GKeyFile *new_config, GError **error
     return FALSE;
 
   return TRUE;
+}
+
+/**
+ * ostree_repo_write_config_and_reload:
+ * @self: Repo
+ * @new_config: Overwrite the config file with this data, and reload
+ * @error: a #GError
+ *
+ * Save @new_config in place of this repository's config file and reload.
+ * The config will be validated.
+ */
+gboolean
+ostree_repo_write_config_and_reload (OstreeRepo *self, GKeyFile *new_config, GError **error)
+{
+  g_return_val_if_fail (self->inited, FALSE);
+
+  g_autoptr (GKeyFile) old_config = g_steal_pointer (&self->config);
+  // Test reloading with the new config
+  self->config = new_config;
+  gboolean r = reload_config_inner (self, NULL, error);
+  self->config = g_steal_pointer (&old_config);
+  if (!r)
+    {
+      // Best effort to revert back to the old config, but if that fails
+      // we're in a doubly bad state.
+      (void)reload_config_inner (self, NULL, NULL);
+      return FALSE;
+    }
+  // Now perform the actual write
+  return ostree_repo_write_config (self, new_config, error);
 }
 
 /* Bind a subset of an a{sv} to options in a given GKeyfile section */
@@ -2993,19 +3027,6 @@ reload_core_config (OstreeRepo *self, GCancellable *cancellable, GError **error)
   g_autofree char *contents = NULL;
   g_autofree char *parent_repo_path = NULL;
   gboolean is_archive;
-  gsize len;
-
-  g_clear_pointer (&self->config, g_key_file_unref);
-  self->config = g_key_file_new ();
-
-  contents = glnx_file_get_contents_utf8_at (self->repo_dir_fd, "config", &len, NULL, error);
-  if (!contents)
-    return FALSE;
-  if (!g_key_file_load_from_data (self->config, contents, len, 0, error))
-    {
-      g_prefix_error (error, "Couldn't parse config file: ");
-      return FALSE;
-    }
 
   version = g_key_file_get_value (self->config, "core", "repo_version", error);
   if (!version)
@@ -3353,6 +3374,18 @@ reload_sysroot_config (OstreeRepo *self, GCancellable *cancellable, GError **err
   return TRUE;
 }
 
+static gboolean
+reload_config_inner (OstreeRepo *self, GCancellable *cancellable, GError **error)
+{
+  if (!reload_core_config (self, cancellable, error))
+    return FALSE;
+  if (!reload_remote_config (self, cancellable, error))
+    return FALSE;
+  if (!reload_sysroot_config (self, cancellable, error))
+    return FALSE;
+  return TRUE;
+}
+
 /**
  * ostree_repo_reload_config:
  * @self: repo
@@ -3367,13 +3400,21 @@ reload_sysroot_config (OstreeRepo *self, GCancellable *cancellable, GError **err
 gboolean
 ostree_repo_reload_config (OstreeRepo *self, GCancellable *cancellable, GError **error)
 {
-  if (!reload_core_config (self, cancellable, error))
+  g_clear_pointer (&self->config, g_key_file_unref);
+  self->config = g_key_file_new ();
+
+  gsize len;
+  g_autofree char *contents
+      = glnx_file_get_contents_utf8_at (self->repo_dir_fd, "config", &len, NULL, error);
+  if (!contents)
     return FALSE;
-  if (!reload_remote_config (self, cancellable, error))
-    return FALSE;
-  if (!reload_sysroot_config (self, cancellable, error))
-    return FALSE;
-  return TRUE;
+  if (!g_key_file_load_from_data (self->config, contents, len, 0, error))
+    {
+      g_prefix_error (error, "Couldn't parse config file: ");
+      return FALSE;
+    }
+
+  return reload_config_inner (self, cancellable, error);
 }
 
 gboolean

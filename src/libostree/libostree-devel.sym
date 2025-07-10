@@ -32,6 +32,7 @@ global:
 
 LIBOSTREE_2025.3 {
 global:
+  ostree_repo_write_config_and_reload;
   ostree_deployment_is_soft_reboot_target;
   ostree_sysroot_deployment_can_soft_reboot;
   ostree_sysroot_deployment_set_soft_reboot;
