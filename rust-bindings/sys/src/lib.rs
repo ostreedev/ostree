@@ -1670,6 +1670,7 @@ extern "C" {
     #[cfg(feature = "v2018_3")]
     #[cfg_attr(docsrs, doc(cfg(feature = "v2018_3")))]
     pub fn ostree_deployment_is_pinned(self_: *mut OstreeDeployment) -> gboolean;
+    pub fn ostree_deployment_is_soft_reboot_target(self_: *mut OstreeDeployment) -> gboolean;
     #[cfg(feature = "v2018_3")]
     #[cfg_attr(docsrs, doc(cfg(feature = "v2018_3")))]
     pub fn ostree_deployment_is_staged(self_: *mut OstreeDeployment) -> gboolean;
@@ -3125,11 +3126,22 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
+    pub fn ostree_sysroot_deployment_can_soft_reboot(
+        self_: *mut OstreeSysroot,
+        deployment: *mut OstreeDeployment,
+    ) -> gboolean;
     #[cfg(feature = "v2025_1")]
     #[cfg_attr(docsrs, doc(cfg(feature = "v2025_1")))]
     pub fn ostree_sysroot_deployment_kexec_load(
         self_: *mut OstreeSysroot,
         deployment: *mut OstreeDeployment,
+        cancellable: *mut gio::GCancellable,
+        error: *mut *mut glib::GError,
+    ) -> gboolean;
+    pub fn ostree_sysroot_deployment_prepare_next_root(
+        self_: *mut OstreeSysroot,
+        deployment: *mut OstreeDeployment,
+        allow_kernel_skew: gboolean,
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;

@@ -71,6 +71,7 @@ v2023_11 = ["v2023_8"]
 v2025_1 = ["v2024_7"]
 v2024_7 = ["v2023_11"]
 v2025_2 = ["v2025_1"]
+v2025_3 = ["v2025_2"]
 
 [lib]
 name = "ostree_sys"
@@ -86,7 +87,7 @@ license = "MIT"
 links = "ostree-1"
 name = "ostree-sys"
 repository = "https://github.com/ostreedev/ostree-rs"
-version = "0.15.1"
+version = "0.15.2"
 edition = "2021"
 
 [package.metadata.docs.rs]
@@ -253,3 +254,6 @@ version = "2024.7"
 
 [package.metadata.system-deps.ostree_1.v2025_2]
 version = "2025.2"
+
+[package.metadata.system-deps.ostree_1.v2025_3]
+version = "2025.3"
