@@ -247,6 +247,7 @@ struct OstreeRepo
   GHashTable
       *bls_append_values;     /* Parsed key-values from bls-append-except-default key in config. */
   gboolean enable_bootprefix; /* If true, prepend bootloader entries with /boot */
+  guint boot_counting;
 
   OstreeRepo *parent_repo;
 };

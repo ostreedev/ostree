@@ -37,4 +37,6 @@ global:
   ostree_sysroot_deployment_can_soft_reboot;
   ostree_sysroot_deployment_set_soft_reboot;
   ostree_sysroot_clear_soft_reboot;
+  ostree_bootconfig_parser_get_tries_left;
+  ostree_bootconfig_parser_get_tries_done;
 } LIBOSTREE_2025.2;

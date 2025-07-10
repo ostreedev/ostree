@@ -17,15 +17,18 @@
 
 #include "config.h"
 
-#include "ostree-bootconfig-parser.h"
+#include "ostree-bootconfig-parser-private.h"
 #include "otutil.h"
 
 struct _OstreeBootconfigParser
 {
   GObject parent_instance;
 
-  gboolean parsed;
+  char *filename;
   const char *separators;
+
+  guint64 tries_left;
+  guint64 tries_done;
 
   GHashTable *options;
 
@@ -51,9 +54,86 @@ ostree_bootconfig_parser_clone (OstreeBootconfigParser *self)
   GLNX_HASH_TABLE_FOREACH_KV (self->options, const char *, k, const char *, v)
     g_hash_table_replace (parser->options, g_strdup (k), g_strdup (v));
 
+  parser->filename = g_strdup (self->filename);
   parser->overlay_initrds = g_strdupv (self->overlay_initrds);
 
   return parser;
+}
+
+/*
+ * Parses a suffix of two counters in the form "+LEFT-DONE" from the end of the
+ * filename (excluding file extension).
+ */
+static void
+parse_bootloader_tries (const char *filename, guint64 *out_left, guint64 *out_done)
+{
+  *out_left = 0;
+  *out_done = 0;
+
+  const char *counter = strrchr (filename, '+');
+  if (!counter)
+    return;
+  counter += 1;
+
+  guint64 tries_left = 0;
+  guint64 tries_done = 0;
+
+  // Negative numbers are invalid
+  if (*counter == '-')
+    return;
+
+  {
+    char *endp = NULL;
+    tries_left = g_ascii_strtoull (counter, &endp, 10);
+    if (endp == counter || (tries_left == G_MAXUINT64 && errno == ERANGE))
+      return;
+    counter = endp;
+  }
+
+  /* Parse done counter only if present */
+  if (*counter == '-')
+    {
+      counter += 1;
+      char *endp = NULL;
+      tries_done = g_ascii_strtoull (counter, &endp, 10);
+      if (endp == counter || (tries_done == G_MAXUINT64 && errno == ERANGE))
+        return;
+    }
+
+  *out_left = tries_left;
+  *out_done = tries_done;
+}
+
+/**
+ * ostree_bootconfig_parser_get_tries_left:
+ * @self: Parser
+ *
+ * Returns: Amount of boot tries left
+ *
+ * Since: 2025.2
+ */
+guint64
+ostree_bootconfig_parser_get_tries_left (OstreeBootconfigParser *self)
+{
+  return self->tries_left;
+}
+
+/**
+ * ostree_bootconfig_parser_get_tries_done:
+ * @self: Parser
+ *
+ * Returns: Amount of boot tries
+ */
+guint64
+ostree_bootconfig_parser_get_tries_done (OstreeBootconfigParser *self)
+{
+  return self->tries_done;
+}
+
+const char *
+_ostree_bootconfig_parser_filename (OstreeBootconfigParser *self)
+{
+  return self->filename;
 }
 
 /**
@@ -70,7 +150,7 @@ gboolean
 ostree_bootconfig_parser_parse_at (OstreeBootconfigParser *self, int dfd, const char *path,
                                    GCancellable *cancellable, GError **error)
 {
-  g_assert (!self->parsed);
+  g_assert (!self->filename);
 
   g_autofree char *contents = glnx_file_get_contents_utf8_at (dfd, path, NULL, cancellable, error);
   if (!contents)
@@ -116,8 +196,10 @@ ostree_bootconfig_parser_parse_at (OstreeBootconfigParser *self, int dfd, const 
       self->overlay_initrds = (char **)g_ptr_array_free (g_steal_pointer (&overlay_initrds), FALSE);
     }
 
-  self->parsed = TRUE;
+  const char *basename = glnx_basename (path);
+  parse_bootloader_tries (basename, &self->tries_left, &self->tries_done);
 
+  self->filename = g_strdup (basename);
   return TRUE;
 }
 
@@ -262,6 +344,7 @@ ostree_bootconfig_parser_finalize (GObject *object)
 {
   OstreeBootconfigParser *self = OSTREE_BOOTCONFIG_PARSER (object);
 
+  g_free (self->filename);
   g_strfreev (self->overlay_initrds);
   g_hash_table_unref (self->options);
 

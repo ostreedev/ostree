@@ -23,6 +23,7 @@
 #include <gio/gunixinputstream.h>
 #include <gio/gunixoutputstream.h>
 #include <glib-unix.h>
+#include <inttypes.h>
 #include <linux/kexec.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -37,6 +38,7 @@
 #endif
 
 #include "libglnx.h"
+#include "ostree-bootconfig-parser-private.h"
 #include "ostree-core-private.h"
 #include "ostree-deployment-private.h"
 #include "ostree-kernel-args-private.h"
@@ -1806,6 +1808,7 @@ static char *
 bootloader_entry_filename (OstreeSysroot *sysroot, guint n_deployments,
                            OstreeDeployment *deployment)
 {
+  g_autofree char *bootconf_name = NULL;
   guint index = n_deployments - ostree_deployment_get_index (deployment);
   // Allow opt-out to dropping the stateroot in case of compatibility issues.
   // As of 2024.5, we have a new naming scheme because grub2 parses the *filename* and ignores
@@ -1814,12 +1817,28 @@ bootloader_entry_filename (OstreeSysroot *sysroot, guint n_deployments,
   if (use_old_naming)
     {
       const char *stateroot = ostree_deployment_get_osname (deployment);
-      return g_strdup_printf ("ostree-%d-%s.conf", index, stateroot);
+      bootconf_name = g_strdup_printf ("ostree-%d-%s", index, stateroot);
     }
   else
     {
-      return g_strdup_printf ("ostree-%d.conf", index);
+      bootconf_name = g_strdup_printf ("ostree-%d", index);
     }
+
+  if (!sysroot->repo->boot_counting)
+    return g_strdup_printf ("%s.conf", bootconf_name);
+
+  guint max_tries = sysroot->repo->boot_counting;
+  OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
+
+  if (!_ostree_bootconfig_parser_filename (bootconfig))
+    return g_strdup_printf ("%s+%u.conf", bootconf_name, max_tries);
+  else if (!ostree_bootconfig_parser_get_tries_left (bootconfig)
+           && !ostree_bootconfig_parser_get_tries_done (bootconfig))
+    return g_strdup_printf ("%s.conf", bootconf_name);
+  else
+    return g_strdup_printf ("%s+%" PRIu64 "-%" PRIu64 ".conf", bootconf_name,
+                            ostree_bootconfig_parser_get_tries_left (bootconfig),
+                            ostree_bootconfig_parser_get_tries_done (bootconfig));
 }
 
 /* Given @deployment, prepare it to be booted; basically copying its
@@ -1856,7 +1875,6 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
   const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
   g_autofree char *bootcsumdir = g_strdup_printf ("ostree/%s-%s", osname, bootcsum);
   g_autofree char *bootconfdir = g_strdup_printf ("loader.%d/entries", new_bootversion);
-  g_autofree char *bootconf_name = bootloader_entry_filename (sysroot, n_deployments, deployment);
 
   if (!glnx_shutil_mkdir_p_at (sysroot->boot_fd, bootcsumdir, 0775, cancellable, error))
     return FALSE;
@@ -2163,8 +2181,11 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
   if (!glnx_opendirat (sysroot->boot_fd, bootconfdir, TRUE, &bootconf_dfd, error))
     return FALSE;
 
+  g_autofree char *bootconf_filename
+      = bootloader_entry_filename (sysroot, n_deployments, deployment);
+
   if (!ostree_bootconfig_parser_write_at (ostree_deployment_get_bootconfig (deployment),
-                                          bootconf_dfd, bootconf_name, cancellable, error))
+                                          bootconf_dfd, bootconf_filename, cancellable, error))
     return FALSE;
 
   return TRUE;
@@ -4303,7 +4324,7 @@ ostree_sysroot_deployment_set_kargs_in_place (OstreeSysroot *self, OstreeDeploym
       OstreeBootconfigParser *new_bootconfig = ostree_deployment_get_bootconfig (deployment);
       ostree_bootconfig_parser_set (new_bootconfig, "options", kargs_str);
 
-      g_autofree char *bootconf_name
+      g_autofree char *bootconf_filename
           = bootloader_entry_filename (self, self->deployments->len, deployment);
 
       g_autofree char *bootconfdir = g_strdup_printf ("loader.%d/entries", self->bootversion);
@@ -4311,7 +4332,7 @@ ostree_sysroot_deployment_set_kargs_in_place (OstreeSysroot *self, OstreeDeploym
       if (!glnx_opendirat (self->boot_fd, bootconfdir, TRUE, &bootconf_dfd, error))
         return FALSE;
 
-      if (!ostree_bootconfig_parser_write_at (new_bootconfig, bootconf_dfd, bootconf_name,
+      if (!ostree_bootconfig_parser_write_at (new_bootconfig, bootconf_dfd, bootconf_filename,
                                               cancellable, error))
         return FALSE;
     }

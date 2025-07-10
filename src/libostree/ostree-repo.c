@@ -3318,6 +3318,16 @@ reload_remote_config (OstreeRepo *self, GCancellable *cancellable, GError **erro
 static gboolean
 reload_sysroot_config (OstreeRepo *self, GCancellable *cancellable, GError **error)
 {
+  g_autofree char *boot_counting_str = NULL;
+
+  if (!ot_keyfile_get_value_with_default_group_optional (
+          self->config, "sysroot", "boot-counting-tries", "0", &boot_counting_str, error))
+    return FALSE;
+  guint64 v;
+  if (!g_ascii_string_to_unsigned (boot_counting_str, 10, 0, 5, &v, error))
+    return glnx_prefix_error (error, "Parsing sysroot.boot-counting-tries");
+  self->boot_counting = (guint)v;
+
   g_autofree char *bootloader = NULL;
 
   if (!ot_keyfile_get_value_with_default_group_optional (self->config, "sysroot", "bootloader",

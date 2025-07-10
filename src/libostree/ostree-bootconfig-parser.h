@@ -67,4 +67,10 @@ void ostree_bootconfig_parser_set_overlay_initrds (OstreeBootconfigParser *self,
 _OSTREE_PUBLIC
 char **ostree_bootconfig_parser_get_overlay_initrds (OstreeBootconfigParser *self);
 
+_OSTREE_PUBLIC
+guint64 ostree_bootconfig_parser_get_tries_left (OstreeBootconfigParser *self);
+
+_OSTREE_PUBLIC
+guint64 ostree_bootconfig_parser_get_tries_done (OstreeBootconfigParser *self);
+
 G_END_DECLS
