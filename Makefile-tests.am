@@ -163,25 +163,30 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-signed-pull-summary.sh \
 	$(NULL)
 
+ed25519_tests = tests/test-signed-commit-ed25519.sh
 if HAVE_ED25519
-_installed_or_uninstalled_test_scripts += \
-	tests/test-signed-commit-ed25519.sh \
-	$(NULL)
+_installed_or_uninstalled_test_scripts += $(ed25519_tests)
+else
+EXTRA_DIST += $(ed25519_tests)
 endif
 
+spki_tests = tests/test-signed-commit-spki.sh
 if HAVE_SPKI
-_installed_or_uninstalled_test_scripts += \
-	tests/test-signed-commit-spki.sh \
-	$(NULL)
+_installed_or_uninstalled_test_scripts += $(spki_tests)
+else
+EXTRA_DIST += $(spki_tests)
 endif
 
-if USE_GPGME
-_installed_or_uninstalled_test_scripts += \
+gpgme_tests = \
 	tests/test-remote-gpg-import.sh \
 	tests/test-remote-gpg-list-keys.sh \
 	tests/test-gpg-signed-commit.sh \
 	tests/test-admin-gpg.sh \
 	$(NULL)
+if USE_GPGME
+_installed_or_uninstalled_test_scripts += $(gpgme_tests)
+else
+EXTRA_DIST += $(gpgme_tests)
 endif
 
 test_extra_programs = \
@@ -197,15 +202,19 @@ tests_repo_finder_mount_SOURCES = tests/repo-finder-mount.c
 tests_repo_finder_mount_CFLAGS = $(common_tests_cflags)
 tests_repo_finder_mount_LDADD = $(common_tests_ldadd) libostreetest.la
 
+fuse_tests = tests/test-rofiles-fuse.sh
 if BUILDOPT_FUSE
-_installed_or_uninstalled_test_scripts += tests/test-rofiles-fuse.sh
+_installed_or_uninstalled_test_scripts += $(fuse_tests)
 uninstalled_test_data += tests/rofiles-fuse-symlink-stamp
 else
-EXTRA_DIST += tests/test-rofiles-fuse.sh
+EXTRA_DIST += $(fuse_tests)
 endif
 
+libsoup_tests = tests/test-remote-cookies.sh
 if USE_LIBSOUP_OR_LIBSOUP3
-_installed_or_uninstalled_test_scripts += tests/test-remote-cookies.sh
+_installed_or_uninstalled_test_scripts += $(libsoup_tests)
+else
+EXTRA_DIST += $(libsoup_tests)
 endif
 
 # These call into gjs scripts
