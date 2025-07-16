@@ -35,6 +35,8 @@
 #define BINDING_KEYPATH "/etc/ostree/initramfs-root-binding.key"
 // The kernel argument to configure composefs
 #define CMDLINE_KEY_COMPOSEFS "ostree.prepare-root.composefs"
+/* This key configures the / mount in the deployment root */
+#define ROOT_KEY "root"
 // The key in the config for etc
 #define ETC_KEY "etc"
 
@@ -183,6 +185,10 @@ otcore_load_rootfs_config (const char *cmdline, GKeyFile *config, gboolean load_
   GLNX_AUTO_PREFIX_ERROR ("Parsing rootfs config", error);
 
   g_autoptr (RootConfig) ret = g_new0 (RootConfig, 1);
+
+  if (!ot_keyfile_get_boolean_with_default (config, ROOT_KEY, OTCORE_PREPARE_ROOT_TRANSIENT_KEY,
+                                            FALSE, &ret->root_transient, error))
+    return NULL;
 
   g_autofree char *enabled = g_key_file_get_value (config, OTCORE_PREPARE_ROOT_COMPOSEFS_KEY,
                                                    OTCORE_PREPARE_ROOT_ENABLED_KEY, NULL);
@@ -429,8 +435,8 @@ otcore_mount_etc (GKeyFile *config, GVariantBuilder *metadata_builder, const cha
 
 gboolean
 otcore_mount_rootfs (RootConfig *rootfs_config, GVariantBuilder *metadata_builder,
-                     gboolean root_transient, const char *root_mountpoint, const char *deploy_path,
-                     const char *mount_target, bool *out_using_composefs, GError **error)
+                     const char *root_mountpoint, const char *deploy_path, const char *mount_target,
+                     bool *out_using_composefs, GError **error)
 {
   struct stat stbuf;
   /* Record the underlying plain deployment directory (device,inode) pair
@@ -444,7 +450,7 @@ otcore_mount_rootfs (RootConfig *rootfs_config, GVariantBuilder *metadata_builde
 
   /* Pass on the state  */
   g_variant_builder_add (metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT,
-                         g_variant_new_boolean (root_transient));
+                         g_variant_new_boolean (rootfs_config->root_transient));
 
   bool using_composefs = FALSE;
 #ifdef HAVE_COMPOSEFS
@@ -472,12 +478,16 @@ otcore_mount_rootfs (RootConfig *rootfs_config, GVariantBuilder *metadata_builde
   // https://github.com/systemd/systemd/blob/604b2001081adcbd64ee1fbe7de7a6d77c5209fe/src/basic/mountpoint-util.h#L36
   // which bumps up these defaults for the rootfs a bit.
   g_autofree char *root_upperdir
-      = root_transient ? g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "root/upper", NULL) : NULL;
+      = rootfs_config->root_transient
+            ? g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "root/upper", NULL)
+            : NULL;
   g_autofree char *root_workdir
-      = root_transient ? g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "root/work", NULL) : NULL;
+      = rootfs_config->root_transient
+            ? g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "root/work", NULL)
+            : NULL;
 
   // Propagate these options for transient root, if provided
-  if (root_transient)
+  if (rootfs_config->root_transient)
     {
       if (!glnx_shutil_mkdir_p_at (AT_FDCWD, root_upperdir, 0755, NULL, error))
         return glnx_prefix_error (error, "Failed to create %s", root_upperdir);

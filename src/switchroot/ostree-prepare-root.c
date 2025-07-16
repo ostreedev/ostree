@@ -79,9 +79,6 @@
 #define SYSROOT_KEY "sysroot"
 #define READONLY_KEY "readonly"
 
-/* This key configures the / mount in the deployment root */
-#define ROOT_KEY "root"
-
 #define OSTREE_PREPARE_ROOT_DEPLOYMENT_MSG \
   SD_ID128_MAKE (71, 70, 33, 6a, 73, ba, 46, 01, ba, d3, 1a, f8, 88, aa, 0d, f7)
 
@@ -184,11 +181,6 @@ main (int argc, char *argv[])
     errx (EXIT_FAILURE, "Failed to parse config: %s", error->message);
 
   gboolean sysroot_readonly = FALSE;
-  gboolean root_transient = FALSE;
-
-  if (!ot_keyfile_get_boolean_with_default (config, ROOT_KEY, OTCORE_PREPARE_ROOT_TRANSIENT_KEY,
-                                            FALSE, &root_transient, &error))
-    return FALSE;
 
   // We always parse the composefs config, because we want to detect and error
   // out if it's enabled, but not supported at compile time.
@@ -263,13 +255,13 @@ main (int argc, char *argv[])
 
   // Tracks if we did successfully enable it at runtime
   bool using_composefs = false;
-  if (!otcore_mount_rootfs (rootfs_config, &metadata_builder, root_transient, root_mountpoint,
-                            deploy_path, TMP_SYSROOT, &using_composefs, &error))
+  if (!otcore_mount_rootfs (rootfs_config, &metadata_builder, root_mountpoint, deploy_path,
+                            TMP_SYSROOT, &using_composefs, &error))
     errx (EXIT_FAILURE, "Failed to mount composefs: %s", error->message);
 
   if (!using_composefs)
     {
-      if (root_transient)
+      if (rootfs_config->root_transient)
         {
           errx (EXIT_FAILURE, "Must enable composefs with root.transient");
         }
@@ -302,7 +294,7 @@ main (int argc, char *argv[])
   /* Prepare /etc.
    * No action required if sysroot is writable. Otherwise, a bind-mount for
    * the deployment needs to be created and remounted as read/write. */
-  if (sysroot_readonly || using_composefs || root_transient)
+  if (sysroot_readonly || using_composefs || rootfs_config->root_transient)
     {
       if (!otcore_mount_etc (config, &metadata_builder, TMP_SYSROOT, &error))
         errx (EXIT_FAILURE, "Failed to mount etc: %s", error->message);

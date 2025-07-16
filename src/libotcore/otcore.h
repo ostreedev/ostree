@@ -67,6 +67,7 @@ GKeyFile *otcore_load_config (int rootfs, const char *filename, GError **error);
 typedef struct
 {
   OtTristate composefs_enabled;
+  gboolean root_transient;
   gboolean require_verity;
   gboolean is_signed;
   char *signature_pubkey;
@@ -95,9 +96,8 @@ RootConfig *otcore_load_rootfs_config (const char *cmdline, GKeyFile *config, gb
  * Returns: %TRUE on success, %FALSE on error.
  */
 gboolean otcore_mount_rootfs (RootConfig *rootfs_config, GVariantBuilder *metadata_builder,
-                              gboolean root_transient, const char *root_mountpoint,
-                              const char *deploy_path, const char *mount_target,
-                              bool *out_using_composefs, GError **error);
+                              const char *root_mountpoint, const char *deploy_path,
+                              const char *mount_target, bool *out_using_composefs, GError **error);
 
 gboolean otcore_mount_etc (GKeyFile *config, GVariantBuilder *metadata_builder,
                            const char *mount_target, GError **error);
