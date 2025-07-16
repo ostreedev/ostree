@@ -71,12 +71,12 @@ typedef struct
   gboolean is_signed;
   char *signature_pubkey;
   GPtrArray *pubkeys;
-} ComposefsConfig;
-void otcore_free_composefs_config (ComposefsConfig *config);
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (ComposefsConfig, otcore_free_composefs_config)
+} RootConfig;
+void otcore_free_rootfs_config (RootConfig *config);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (RootConfig, otcore_free_rootfs_config)
 
-ComposefsConfig *otcore_load_composefs_config (const char *cmdline, GKeyFile *config,
-                                               gboolean load_keys, GError **error);
+RootConfig *otcore_load_rootfs_config (const char *cmdline, GKeyFile *config, gboolean load_keys,
+                                       GError **error);
 
 /**
  * otcore_mount_rootfs:
@@ -94,7 +94,7 @@ ComposefsConfig *otcore_load_composefs_config (const char *cmdline, GKeyFile *co
  *
  * Returns: %TRUE on success, %FALSE on error.
  */
-gboolean otcore_mount_rootfs (ComposefsConfig *composefs_config, GVariantBuilder *metadata_builder,
+gboolean otcore_mount_rootfs (RootConfig *composefs_config, GVariantBuilder *metadata_builder,
                               gboolean root_transient, const char *root_mountpoint,
                               const char *deploy_path, const char *mount_target,
                               bool *out_using_composefs, GError **error);

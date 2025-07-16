@@ -56,8 +56,8 @@ _ostree_prepare_soft_reboot (GError **error)
     return FALSE;
 
   g_autofree char *kernel_cmdline = read_proc_cmdline ();
-  g_autoptr (ComposefsConfig) composefs_config
-      = otcore_load_composefs_config (kernel_cmdline, config, TRUE, error);
+  g_autoptr (RootConfig) composefs_config
+      = otcore_load_rootfs_config (kernel_cmdline, config, TRUE, error);
   if (!composefs_config)
     return FALSE;
 

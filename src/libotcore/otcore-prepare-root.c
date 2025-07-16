@@ -165,24 +165,24 @@ otcore_load_config (int rootfs_fd, const char *filename, GError **error)
 }
 
 void
-otcore_free_composefs_config (ComposefsConfig *config)
+otcore_free_rootfs_config (RootConfig *config)
 {
   g_clear_pointer (&config->pubkeys, g_ptr_array_unref);
   g_free (config->signature_pubkey);
   g_free (config);
 }
 
-// Parse the [composefs] section of the prepare-root.conf.
-ComposefsConfig *
-otcore_load_composefs_config (const char *cmdline, GKeyFile *config, gboolean load_keys,
-                              GError **error)
+// Parse key bits of prepare-root.conf into a data structure.
+RootConfig *
+otcore_load_rootfs_config (const char *cmdline, GKeyFile *config, gboolean load_keys,
+                           GError **error)
 {
   g_assert (cmdline);
   g_assert (config);
 
-  GLNX_AUTO_PREFIX_ERROR ("Loading composefs config", error);
+  GLNX_AUTO_PREFIX_ERROR ("Parsing rootfs config", error);
 
-  g_autoptr (ComposefsConfig) ret = g_new0 (ComposefsConfig, 1);
+  g_autoptr (RootConfig) ret = g_new0 (RootConfig, 1);
 
   g_autofree char *enabled = g_key_file_get_value (config, OTCORE_PREPARE_ROOT_COMPOSEFS_KEY,
                                                    OTCORE_PREPARE_ROOT_ENABLED_KEY, NULL);
@@ -428,7 +428,7 @@ otcore_mount_etc (GKeyFile *config, GVariantBuilder *metadata_builder, const cha
 }
 
 gboolean
-otcore_mount_rootfs (ComposefsConfig *composefs_config, GVariantBuilder *metadata_builder,
+otcore_mount_rootfs (RootConfig *composefs_config, GVariantBuilder *metadata_builder,
                      gboolean root_transient, const char *root_mountpoint, const char *deploy_path,
                      const char *mount_target, bool *out_using_composefs, GError **error)
 {

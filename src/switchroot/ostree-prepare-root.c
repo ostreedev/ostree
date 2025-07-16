@@ -192,8 +192,8 @@ main (int argc, char *argv[])
 
   // We always parse the composefs config, because we want to detect and error
   // out if it's enabled, but not supported at compile time.
-  g_autoptr (ComposefsConfig) composefs_config
-      = otcore_load_composefs_config (kernel_cmdline, config, TRUE, &error);
+  g_autoptr (RootConfig) composefs_config
+      = otcore_load_rootfs_config (kernel_cmdline, config, TRUE, &error);
   if (!composefs_config)
     errx (EXIT_FAILURE, "%s", error->message);
 

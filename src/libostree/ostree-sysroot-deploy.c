@@ -656,8 +656,8 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, const char *
   // out if it's enabled, but not supported at compile time.
   // However, we don't load the keys here, because they may not exist, such
   // as in the initial deploy
-  g_autoptr (ComposefsConfig) composefs_config
-      = otcore_load_composefs_config ("", prepare_root_config, FALSE, error);
+  g_autoptr (RootConfig) composefs_config
+      = otcore_load_rootfs_config ("", prepare_root_config, FALSE, error);
   if (!composefs_config)
     return glnx_prefix_error (error, "Reading composefs config");
 
