@@ -289,14 +289,14 @@ main (int argc, char *argv[])
 
   // We always parse the composefs config, because we want to detect and error
   // out if it's enabled, but not supported at compile time.
-  g_autoptr (RootConfig) composefs_config
+  g_autoptr (RootConfig) rootfs_config
       = otcore_load_rootfs_config (kernel_cmdline, config, TRUE, &error);
-  if (!composefs_config)
+  if (!rootfs_config)
     errx (EXIT_FAILURE, "%s", error->message);
 
   // If composefs is enabled, that also implies sysroot.readonly=true because it's
   // the new default we want to use (not because it's actually required)
-  const bool sysroot_readonly_default = composefs_config->enabled == OT_TRISTATE_YES;
+  const bool sysroot_readonly_default = rootfs_config->enabled == OT_TRISTATE_YES;
   if (!ot_keyfile_get_boolean_with_default (config, SYSROOT_KEY, READONLY_KEY,
                                             sysroot_readonly_default, &sysroot_readonly, &error))
     errx (EXIT_FAILURE, "Failed to parse sysroot.readonly value: %s", error->message);
@@ -328,7 +328,7 @@ main (int argc, char *argv[])
    * However, we only do this if composefs is not enabled, because we don't
    * want to parse the target root filesystem before verifying its integrity.
    */
-  if (!sysroot_readonly && composefs_config->enabled != OT_TRISTATE_YES)
+  if (!sysroot_readonly && rootfs_config->enabled != OT_TRISTATE_YES)
     {
       sysroot_readonly = sysroot_is_configured_ro (root_arg);
       // Encourage porting to the new config file
@@ -373,7 +373,7 @@ main (int argc, char *argv[])
 #ifdef HAVE_COMPOSEFS
   /* We construct the new sysroot in /sysroot.tmp, which is either the composefs
      mount or a bind mount of the deploy-dir */
-  if (composefs_config->enabled != OT_TRISTATE_NO)
+  if (rootfs_config->enabled != OT_TRISTATE_NO)
     {
       const char *objdirs[] = { "/sysroot/ostree/repo/objects" };
       g_autofree char *cfs_digest = NULL;
@@ -415,9 +415,9 @@ main (int argc, char *argv[])
           cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
         }
 
-      if (composefs_config->is_signed)
+      if (rootfs_config->is_signed)
         {
-          const char *composefs_pubkey = composefs_config->signature_pubkey;
+          const char *composefs_pubkey = rootfs_config->signature_pubkey;
           g_autoptr (GError) local_error = NULL;
           g_autoptr (GVariant) commit = NULL;
           g_autoptr (GVariant) commitmeta = NULL;
@@ -432,7 +432,7 @@ main (int argc, char *argv[])
             errx (EXIT_FAILURE, "Signature validation requested, but no signatures in commit");
 
           g_autoptr (GBytes) commit_data = g_variant_get_data_as_bytes (commit);
-          if (!validate_signature (commit_data, signatures, composefs_config->pubkeys))
+          if (!validate_signature (commit_data, signatures, rootfs_config->pubkeys))
             errx (EXIT_FAILURE, "No valid signatures found for public key");
 
           g_print ("composefs+ostree: Validated commit signature using '%s'\n", composefs_pubkey);
@@ -452,12 +452,12 @@ main (int argc, char *argv[])
           expected_digest = g_malloc (OSTREE_SHA256_STRING_LEN + 1);
           ot_bin2hex (expected_digest, cfs_digest_buf, g_variant_get_size (cfs_digest_v));
 
-          g_assert (composefs_config->require_verity);
+          g_assert (rootfs_config->require_verity);
           cfs_options.flags |= LCFS_MOUNT_FLAGS_REQUIRE_VERITY;
           g_print ("composefs: Verifying digest: %s\n", expected_digest);
           cfs_options.expected_fsverity_digest = expected_digest;
         }
-      else if (composefs_config->require_verity)
+      else if (rootfs_config->require_verity)
         {
           cfs_options.flags |= LCFS_MOUNT_FLAGS_REQUIRE_VERITY;
         }
@@ -476,8 +476,8 @@ main (int argc, char *argv[])
       else
         {
           int errsv = errno;
-          g_assert (composefs_config->enabled != OT_TRISTATE_NO);
-          if (composefs_config->enabled == OT_TRISTATE_MAYBE && errsv == ENOENT)
+          g_assert (rootfs_config->enabled != OT_TRISTATE_NO);
+          if (rootfs_config->enabled == OT_TRISTATE_MAYBE && errsv == ENOENT)
             {
               g_print ("composefs: No image present\n");
             }
@@ -490,7 +490,7 @@ main (int argc, char *argv[])
     }
 #else
   /* if composefs is configured as "maybe", we should continue */
-  if (composefs_config->enabled == OT_TRISTATE_YES)
+  if (rootfs_config->enabled == OT_TRISTATE_YES)
     errx (EXIT_FAILURE, "composefs: enabled at runtime, but support is not compiled in");
 #endif
 
@@ -590,7 +590,7 @@ main (int argc, char *argv[])
    * Also, hotfixes are incompatible with signed composefs use for security reasons.
    */
   if (lstat (OTCORE_HOTFIX_USR_OVL_WORK, &stbuf) == 0
-      && !(using_composefs && composefs_config->is_signed))
+      && !(using_composefs && rootfs_config->is_signed))
     {
       /* Do we have a persistent overlayfs for /usr?  If so, mount it now. */
       const char usr_ovl_options[]
