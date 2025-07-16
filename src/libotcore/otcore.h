@@ -66,6 +66,7 @@ typedef struct
 {
   OtTristate composefs_enabled;
   gboolean root_transient;
+  gboolean root_transient_ro;
   gboolean require_verity;
   gboolean is_signed;
   char *signature_pubkey;
@@ -105,6 +106,7 @@ RootConfig *otcore_load_rootfs_config (const char *cmdline, GKeyFile *config,
 #define OTCORE_PREPARE_ROOT_ENABLED_KEY "enabled"
 #define OTCORE_PREPARE_ROOT_KEYPATH_KEY "keypath"
 #define OTCORE_PREPARE_ROOT_TRANSIENT_KEY "transient"
+#define OTCORE_PREPARE_ROOT_TRANSIENT_RO_KEY "transient-ro"
 
 // The file written in the initramfs which contains an a{sv} of metadata
 // from ostree-prepare-root.
@@ -118,6 +120,8 @@ RootConfig *otcore_load_rootfs_config (const char *cmdline, GKeyFile *config,
 #define OTCORE_RUN_BOOTED_KEY_COMPOSEFS_SIGNATURE "composefs.signed"
 // This key will be present if the root is transient
 #define OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT "root.transient"
+// This key will be present if the root is transient readonly
+#define OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT_RO "root.transient-ro"
 // This key will be present if the sysroot-ro flag was found
 #define OTCORE_RUN_BOOTED_KEY_SYSROOT_RO "sysroot-ro"
 // Always holds the (device, inode) pair of the booted deployment

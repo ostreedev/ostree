@@ -179,6 +179,20 @@ otcore_load_rootfs_config (const char *cmdline, GKeyFile *config, gboolean load_
                                             FALSE, &ret->root_transient, error))
     return NULL;
 
+
+  if (!ot_keyfile_get_boolean_with_default (config, ROOT_KEY, OTCORE_PREPARE_ROOT_TRANSIENT_RO_KEY,
+                                            FALSE, &ret->root_transient_ro, error))
+    return NULL;
+  if (ret->root_transient && ret->root_transient_ro)
+    {
+      return glnx_null_throw (error, "Cannot set both root.transient and root.transient-ro");
+    }
+  // This way callers can test for just root_transient
+  else if (ret->root_transient_ro)
+    {
+      ret->root_transient = TRUE;
+    }
+
   g_autofree char *enabled = g_key_file_get_value (config, OTCORE_PREPARE_ROOT_COMPOSEFS_KEY,
                                                    OTCORE_PREPARE_ROOT_ENABLED_KEY, NULL);
   if (g_strcmp0 (enabled, "signed") == 0)

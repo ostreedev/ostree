@@ -332,6 +332,11 @@ main (int argc, char *argv[])
   const bool sysroot_currently_writable = !path_is_on_readonly_fs (root_arg);
   g_print ("sysroot.readonly configuration value: %d (fs writable: %d)\n", (int)sysroot_readonly,
            (int)sysroot_currently_writable);
+  if (rootfs_config->root_transient)
+    {
+      g_print ("root.transient: %d (ro: %d)\n", (int)rootfs_config->root_transient,
+               (int)rootfs_config->root_transient_ro);
+    }
 
   /* Remount root MS_PRIVATE here to avoid errors due to the kernel-enforced
    * constraint that disallows MS_SHARED mounts to be moved.
@@ -402,6 +407,8 @@ main (int argc, char *argv[])
 
           cfs_options.workdir = root_workdir;
           cfs_options.upperdir = root_upperdir;
+          if (rootfs_config->root_transient_ro)
+            cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
         }
       else
         {
@@ -502,6 +509,9 @@ main (int argc, char *argv[])
   /* Pass on the state  */
   g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT,
                          g_variant_new_boolean (rootfs_config->root_transient));
+
+  g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT_RO,
+                         g_variant_new_boolean (rootfs_config->root_transient_ro));
 
   /* Pass on the state for use by ostree-prepare-root */
   g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_SYSROOT_RO,
