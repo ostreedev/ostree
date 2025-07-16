@@ -64,7 +64,7 @@ GKeyFile *otcore_load_config (int rootfs, const char *filename, GError **error);
 
 typedef struct
 {
-  OtTristate enabled;
+  OtTristate composefs_enabled;
   gboolean require_verity;
   gboolean is_signed;
   char *signature_pubkey;

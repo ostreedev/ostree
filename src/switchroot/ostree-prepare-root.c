@@ -296,7 +296,7 @@ main (int argc, char *argv[])
 
   // If composefs is enabled, that also implies sysroot.readonly=true because it's
   // the new default we want to use (not because it's actually required)
-  const bool sysroot_readonly_default = rootfs_config->enabled == OT_TRISTATE_YES;
+  const bool sysroot_readonly_default = rootfs_config->composefs_enabled == OT_TRISTATE_YES;
   if (!ot_keyfile_get_boolean_with_default (config, SYSROOT_KEY, READONLY_KEY,
                                             sysroot_readonly_default, &sysroot_readonly, &error))
     errx (EXIT_FAILURE, "Failed to parse sysroot.readonly value: %s", error->message);
@@ -328,7 +328,7 @@ main (int argc, char *argv[])
    * However, we only do this if composefs is not enabled, because we don't
    * want to parse the target root filesystem before verifying its integrity.
    */
-  if (!sysroot_readonly && rootfs_config->enabled != OT_TRISTATE_YES)
+  if (!sysroot_readonly && rootfs_config->composefs_enabled != OT_TRISTATE_YES)
     {
       sysroot_readonly = sysroot_is_configured_ro (root_arg);
       // Encourage porting to the new config file
@@ -373,7 +373,7 @@ main (int argc, char *argv[])
 #ifdef HAVE_COMPOSEFS
   /* We construct the new sysroot in /sysroot.tmp, which is either the composefs
      mount or a bind mount of the deploy-dir */
-  if (rootfs_config->enabled != OT_TRISTATE_NO)
+  if (rootfs_config->composefs_enabled != OT_TRISTATE_NO)
     {
       const char *objdirs[] = { "/sysroot/ostree/repo/objects" };
       g_autofree char *cfs_digest = NULL;
@@ -476,8 +476,8 @@ main (int argc, char *argv[])
       else
         {
           int errsv = errno;
-          g_assert (rootfs_config->enabled != OT_TRISTATE_NO);
-          if (rootfs_config->enabled == OT_TRISTATE_MAYBE && errsv == ENOENT)
+          g_assert (rootfs_config->composefs_enabled != OT_TRISTATE_NO);
+          if (rootfs_config->composefs_enabled == OT_TRISTATE_MAYBE && errsv == ENOENT)
             {
               g_print ("composefs: No image present\n");
             }
@@ -490,7 +490,7 @@ main (int argc, char *argv[])
     }
 #else
   /* if composefs is configured as "maybe", we should continue */
-  if (rootfs_config->enabled == OT_TRISTATE_YES)
+  if (rootfs_config->composefs_enabled == OT_TRISTATE_YES)
     errx (EXIT_FAILURE, "composefs: enabled at runtime, but support is not compiled in");
 #endif
 

@@ -658,7 +658,7 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
   if (!rootfs_config)
     return glnx_prefix_error (error, "Reading rootfs config");
 
-  OtTristate composefs_enabled = rootfs_config->enabled;
+  OtTristate composefs_enabled = rootfs_config->composefs_enabled;
   g_debug ("composefs enabled by config: %d repo: %d", composefs_enabled, repo->composefs_wanted);
   if (repo->composefs_wanted == OT_TRISTATE_YES)
     composefs_enabled = repo->composefs_wanted;
