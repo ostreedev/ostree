@@ -80,7 +80,7 @@ RootConfig *otcore_load_rootfs_config (const char *cmdline, GKeyFile *config, gb
 
 /**
  * otcore_mount_rootfs:
- * @composefs_config: Configuration for composefs.
+ * @rootfs_config: Configuration for root
  * @metadata_builder: (transfer none): GVariantBuilder to add metadata to.
  * @root_transient: Whether the root filesystem is transient.
  * @root_mountpoint: The mount point of the physical root filesystem.
@@ -94,7 +94,7 @@ RootConfig *otcore_load_rootfs_config (const char *cmdline, GKeyFile *config, gb
  *
  * Returns: %TRUE on success, %FALSE on error.
  */
-gboolean otcore_mount_rootfs (RootConfig *composefs_config, GVariantBuilder *metadata_builder,
+gboolean otcore_mount_rootfs (RootConfig *rootfs_config, GVariantBuilder *metadata_builder,
                               gboolean root_transient, const char *root_mountpoint,
                               const char *deploy_path, const char *mount_target,
                               bool *out_using_composefs, GError **error);

@@ -428,7 +428,7 @@ otcore_mount_etc (GKeyFile *config, GVariantBuilder *metadata_builder, const cha
 }
 
 gboolean
-otcore_mount_rootfs (RootConfig *composefs_config, GVariantBuilder *metadata_builder,
+otcore_mount_rootfs (RootConfig *rootfs_config, GVariantBuilder *metadata_builder,
                      gboolean root_transient, const char *root_mountpoint, const char *deploy_path,
                      const char *mount_target, bool *out_using_composefs, GError **error)
 {
@@ -450,7 +450,7 @@ otcore_mount_rootfs (RootConfig *composefs_config, GVariantBuilder *metadata_bui
 #ifdef HAVE_COMPOSEFS
   /* We construct the new sysroot in /sysroot.tmp, which is either the composefs
      mount or a bind mount of the deploy-dir */
-  if (composefs_config->enabled == OT_TRISTATE_NO)
+  if (rootfs_config->enabled == OT_TRISTATE_NO)
     return TRUE;
 
   g_autofree char *sysroot_objects = g_strdup_printf ("%s/ostree/repo/objects", root_mountpoint);
@@ -492,9 +492,9 @@ otcore_mount_rootfs (RootConfig *composefs_config, GVariantBuilder *metadata_bui
       cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
     }
 
-  if (composefs_config->is_signed)
+  if (rootfs_config->is_signed)
     {
-      const char *composefs_pubkey = composefs_config->signature_pubkey;
+      const char *composefs_pubkey = rootfs_config->signature_pubkey;
       g_autoptr (GVariant) commit = NULL;
       g_autoptr (GVariant) commitmeta = NULL;
 
@@ -507,7 +507,7 @@ otcore_mount_rootfs (RootConfig *composefs_config, GVariantBuilder *metadata_bui
         return glnx_throw (error, "Signature validation requested, but no signatures in commit");
 
       g_autoptr (GBytes) commit_data = g_variant_get_data_as_bytes (commit);
-      if (!validate_signature (commit_data, signatures, composefs_config->pubkeys, error))
+      if (!validate_signature (commit_data, signatures, rootfs_config->pubkeys, error))
         return glnx_prefix_error (error, "No valid signatures found for public key");
 
       g_print ("composefs+ostree: Validated commit signature using '%s'\n", composefs_pubkey);
@@ -526,12 +526,12 @@ otcore_mount_rootfs (RootConfig *composefs_config, GVariantBuilder *metadata_bui
       expected_digest = g_malloc (OSTREE_SHA256_STRING_LEN + 1);
       ot_bin2hex (expected_digest, cfs_digest_buf, g_variant_get_size (cfs_digest_v));
 
-      g_assert (composefs_config->require_verity);
+      g_assert (rootfs_config->require_verity);
       cfs_options.flags |= LCFS_MOUNT_FLAGS_REQUIRE_VERITY;
       g_print ("composefs: Verifying digest: %s\n", expected_digest);
       cfs_options.expected_fsverity_digest = expected_digest;
     }
-  else if (composefs_config->require_verity)
+  else if (rootfs_config->require_verity)
     {
       cfs_options.flags |= LCFS_MOUNT_FLAGS_REQUIRE_VERITY;
     }
@@ -549,8 +549,8 @@ otcore_mount_rootfs (RootConfig *composefs_config, GVariantBuilder *metadata_bui
   else
     {
       int errsv = errno;
-      g_assert (composefs_config->enabled != OT_TRISTATE_NO);
-      if (composefs_config->enabled == OT_TRISTATE_MAYBE && errsv == ENOENT)
+      g_assert (rootfs_config->enabled != OT_TRISTATE_NO);
+      if (rootfs_config->enabled == OT_TRISTATE_MAYBE && errsv == ENOENT)
         {
           g_print ("composefs: No image present\n");
         }
@@ -562,7 +562,7 @@ otcore_mount_rootfs (RootConfig *composefs_config, GVariantBuilder *metadata_bui
     }
 #else
   /* if composefs is configured as "maybe", we should continue */
-  if (composefs_config->enabled == OT_TRISTATE_YES)
+  if (rootfs_config->enabled == OT_TRISTATE_YES)
     return glnx_throw (error, "composefs: enabled at runtime, but support is not compiled in");
 #endif
   *out_using_composefs = using_composefs;

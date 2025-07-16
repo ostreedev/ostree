@@ -192,14 +192,14 @@ main (int argc, char *argv[])
 
   // We always parse the composefs config, because we want to detect and error
   // out if it's enabled, but not supported at compile time.
-  g_autoptr (RootConfig) composefs_config
+  g_autoptr (RootConfig) rootfs_config
       = otcore_load_rootfs_config (kernel_cmdline, config, TRUE, &error);
-  if (!composefs_config)
+  if (!rootfs_config)
     errx (EXIT_FAILURE, "%s", error->message);
 
   // If composefs is enabled, that also implies sysroot.readonly=true because it's
   // the new default we want to use (not because it's actually required)
-  const bool sysroot_readonly_default = composefs_config->enabled == OT_TRISTATE_YES;
+  const bool sysroot_readonly_default = rootfs_config->enabled == OT_TRISTATE_YES;
   if (!ot_keyfile_get_boolean_with_default (config, SYSROOT_KEY, READONLY_KEY,
                                             sysroot_readonly_default, &sysroot_readonly, &error))
     errx (EXIT_FAILURE, "Failed to parse sysroot.readonly value: %s", error->message);
@@ -231,7 +231,7 @@ main (int argc, char *argv[])
    * However, we only do this if composefs is not enabled, because we don't
    * want to parse the target root filesystem before verifying its integrity.
    */
-  if (!sysroot_readonly && composefs_config->enabled != OT_TRISTATE_YES)
+  if (!sysroot_readonly && rootfs_config->enabled != OT_TRISTATE_YES)
     {
       sysroot_readonly = sysroot_is_configured_ro (root_arg);
       // Encourage porting to the new config file
@@ -263,7 +263,7 @@ main (int argc, char *argv[])
 
   // Tracks if we did successfully enable it at runtime
   bool using_composefs = false;
-  if (!otcore_mount_rootfs (composefs_config, &metadata_builder, root_transient, root_mountpoint,
+  if (!otcore_mount_rootfs (rootfs_config, &metadata_builder, root_transient, root_mountpoint,
                             deploy_path, TMP_SYSROOT, &using_composefs, &error))
     errx (EXIT_FAILURE, "Failed to mount composefs: %s", error->message);
 
@@ -316,7 +316,7 @@ main (int argc, char *argv[])
    * Also, hotfixes are incompatible with signed composefs use for security reasons.
    */
   if (lstat (OTCORE_HOTFIX_USR_OVL_WORK, &stbuf) == 0
-      && !(using_composefs && composefs_config->is_signed))
+      && !(using_composefs && rootfs_config->is_signed))
     {
       /* Do we have a persistent overlayfs for /usr?  If so, mount it now. */
       const char usr_ovl_options[]

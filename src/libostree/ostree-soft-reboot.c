@@ -56,12 +56,12 @@ _ostree_prepare_soft_reboot (GError **error)
     return FALSE;
 
   g_autofree char *kernel_cmdline = read_proc_cmdline ();
-  g_autoptr (RootConfig) composefs_config
+  g_autoptr (RootConfig) rootfs_config
       = otcore_load_rootfs_config (kernel_cmdline, config, TRUE, error);
-  if (!composefs_config)
+  if (!rootfs_config)
     return FALSE;
 
-  if (composefs_config->enabled != OT_TRISTATE_YES)
+  if (rootfs_config->enabled != OT_TRISTATE_YES)
     return glnx_throw (error, "soft reboot not supported without composefs");
 
   GVariantBuilder metadata_builder;
@@ -72,7 +72,7 @@ _ostree_prepare_soft_reboot (GError **error)
 
   // Tracks if we did successfully enable it at runtime
   bool using_composefs = false;
-  if (!otcore_mount_rootfs (composefs_config, &metadata_builder, root_transient, sysroot_path,
+  if (!otcore_mount_rootfs (rootfs_config, &metadata_builder, root_transient, sysroot_path,
                             target_deployment, OTCORE_RUN_NEXTROOT, &using_composefs, error))
     return glnx_prefix_error (error, "failed to mount composefs");
 
