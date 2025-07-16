@@ -65,6 +65,7 @@ GKeyFile *otcore_load_config (int rootfs, const char *filename, GError **error);
 typedef struct
 {
   OtTristate composefs_enabled;
+  gboolean root_transient;
   gboolean require_verity;
   gboolean is_signed;
   char *signature_pubkey;
@@ -103,6 +104,7 @@ RootConfig *otcore_load_rootfs_config (const char *cmdline, GKeyFile *config,
 #define OTCORE_PREPARE_ROOT_COMPOSEFS_KEY "composefs"
 #define OTCORE_PREPARE_ROOT_ENABLED_KEY "enabled"
 #define OTCORE_PREPARE_ROOT_KEYPATH_KEY "keypath"
+#define OTCORE_PREPARE_ROOT_TRANSIENT_KEY "transient"
 
 // The file written in the initramfs which contains an a{sv} of metadata
 // from ostree-prepare-root.

@@ -26,6 +26,8 @@
 #define BINDING_KEYPATH "/etc/ostree/initramfs-root-binding.key"
 // The kernel argument to configure composefs
 #define CMDLINE_KEY_COMPOSEFS "ostree.prepare-root.composefs"
+/* This key configures the / mount in the deployment root */
+#define ROOT_KEY "root"
 
 static bool
 proc_cmdline_has_key_starting_with (const char *cmdline, const char *key)
@@ -172,6 +174,10 @@ otcore_load_rootfs_config (const char *cmdline, GKeyFile *config, gboolean load_
   GLNX_AUTO_PREFIX_ERROR ("Parsing rootfs config", error);
 
   g_autoptr (RootConfig) ret = g_new0 (RootConfig, 1);
+
+  if (!ot_keyfile_get_boolean_with_default (config, ROOT_KEY, OTCORE_PREPARE_ROOT_TRANSIENT_KEY,
+                                            FALSE, &ret->root_transient, error))
+    return NULL;
 
   g_autofree char *enabled = g_key_file_get_value (config, OTCORE_PREPARE_ROOT_COMPOSEFS_KEY,
                                                    OTCORE_PREPARE_ROOT_ENABLED_KEY, NULL);

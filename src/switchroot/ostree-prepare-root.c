@@ -79,8 +79,6 @@
 #define SYSROOT_KEY "sysroot"
 #define READONLY_KEY "readonly"
 
-/* This key configures the / mount in the deployment root */
-#define ROOT_KEY "root"
 #define ETC_KEY "etc"
 #define TRANSIENT_KEY "transient"
 
@@ -281,11 +279,6 @@ main (int argc, char *argv[])
     errx (EXIT_FAILURE, "Failed to parse config: %s", error->message);
 
   gboolean sysroot_readonly = FALSE;
-  gboolean root_transient = FALSE;
-
-  if (!ot_keyfile_get_boolean_with_default (config, ROOT_KEY, TRANSIENT_KEY, FALSE, &root_transient,
-                                            &error))
-    return FALSE;
 
   // We always parse the composefs config, because we want to detect and error
   // out if it's enabled, but not supported at compile time.
@@ -394,13 +387,13 @@ main (int argc, char *argv[])
       // https://github.com/systemd/systemd/blob/604b2001081adcbd64ee1fbe7de7a6d77c5209fe/src/basic/mountpoint-util.h#L36
       // which bumps up these defaults for the rootfs a bit.
       g_autofree char *root_upperdir
-          = root_transient ? g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "root/upper", NULL)
+          = rootfs_config->root_transient ? g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "root/upper", NULL)
                            : NULL;
       g_autofree char *root_workdir
-          = root_transient ? g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "root/work", NULL) : NULL;
+          = rootfs_config->root_transient ? g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "root/work", NULL) : NULL;
 
       // Propagate these options for transient root, if provided
-      if (root_transient)
+      if (rootfs_config->root_transient)
         {
           if (!glnx_shutil_mkdir_p_at (AT_FDCWD, root_upperdir, 0755, NULL, &error))
             errx (EXIT_FAILURE, "Failed to create %s: %s", root_upperdir, error->message);
@@ -496,7 +489,7 @@ main (int argc, char *argv[])
 
   if (!using_composefs)
     {
-      if (root_transient)
+      if (rootfs_config->root_transient)
         {
           errx (EXIT_FAILURE, "Must enable composefs with root.transient");
         }
@@ -508,7 +501,7 @@ main (int argc, char *argv[])
 
   /* Pass on the state  */
   g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT,
-                         g_variant_new_boolean (root_transient));
+                         g_variant_new_boolean (rootfs_config->root_transient));
 
   /* Pass on the state for use by ostree-prepare-root */
   g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_SYSROOT_RO,
@@ -533,7 +526,7 @@ main (int argc, char *argv[])
   /* Prepare /etc.
    * No action required if sysroot is writable. Otherwise, a bind-mount for
    * the deployment needs to be created and remounted as read/write. */
-  if (sysroot_readonly || using_composefs || root_transient)
+  if (sysroot_readonly || using_composefs || rootfs_config->root_transient)
     {
       gboolean etc_transient = FALSE;
       if (!ot_keyfile_get_boolean_with_default (config, ETC_KEY, TRANSIENT_KEY, FALSE,
