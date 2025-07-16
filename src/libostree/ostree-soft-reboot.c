@@ -35,9 +35,7 @@
 #include "otcore.h"
 
 /* This key configures the / mount in the deployment root */
-#define ROOT_KEY "root"
 #define ETC_KEY "etc"
-#define TRANSIENT_KEY "transient"
 
 gboolean
 _ostree_prepare_soft_reboot (GError **error)
@@ -50,18 +48,13 @@ _ostree_prepare_soft_reboot (GError **error)
   if (!config)
     return FALSE;
 
-  gboolean root_transient = FALSE;
-  if (!ot_keyfile_get_boolean_with_default (config, ROOT_KEY, TRANSIENT_KEY, FALSE, &root_transient,
-                                            error))
-    return FALSE;
-
   g_autofree char *kernel_cmdline = read_proc_cmdline ();
-  g_autoptr (ComposefsConfig) composefs_config
-      = otcore_load_composefs_config (kernel_cmdline, config, TRUE, error);
-  if (!composefs_config)
+  g_autoptr (RootConfig) rootfs_config
+      = otcore_load_rootfs_config (kernel_cmdline, config, TRUE, error);
+  if (!rootfs_config)
     return FALSE;
 
-  if (composefs_config->enabled != OT_TRISTATE_YES)
+  if (rootfs_config->composefs_enabled != OT_TRISTATE_YES)
     return glnx_throw (error, "soft reboot not supported without composefs");
 
   GVariantBuilder metadata_builder;
@@ -72,8 +65,8 @@ _ostree_prepare_soft_reboot (GError **error)
 
   // Tracks if we did successfully enable it at runtime
   bool using_composefs = false;
-  if (!otcore_mount_rootfs (composefs_config, &metadata_builder, root_transient, sysroot_path,
-                            target_deployment, OTCORE_RUN_NEXTROOT, &using_composefs, error))
+  if (!otcore_mount_rootfs (rootfs_config, &metadata_builder, sysroot_path, target_deployment,
+                            OTCORE_RUN_NEXTROOT, &using_composefs, error))
     return glnx_prefix_error (error, "failed to mount composefs");
 
   if (!using_composefs)

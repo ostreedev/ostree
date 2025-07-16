@@ -79,9 +79,6 @@
 #define SYSROOT_KEY "sysroot"
 #define READONLY_KEY "readonly"
 
-/* This key configures the / mount in the deployment root */
-#define ROOT_KEY "root"
-
 #define OSTREE_PREPARE_ROOT_DEPLOYMENT_MSG \
   SD_ID128_MAKE (71, 70, 33, 6a, 73, ba, 46, 01, ba, d3, 1a, f8, 88, aa, 0d, f7)
 
@@ -184,22 +181,17 @@ main (int argc, char *argv[])
     errx (EXIT_FAILURE, "Failed to parse config: %s", error->message);
 
   gboolean sysroot_readonly = FALSE;
-  gboolean root_transient = FALSE;
-
-  if (!ot_keyfile_get_boolean_with_default (config, ROOT_KEY, OTCORE_PREPARE_ROOT_TRANSIENT_KEY,
-                                            FALSE, &root_transient, &error))
-    return FALSE;
 
   // We always parse the composefs config, because we want to detect and error
   // out if it's enabled, but not supported at compile time.
-  g_autoptr (ComposefsConfig) composefs_config
-      = otcore_load_composefs_config (kernel_cmdline, config, TRUE, &error);
-  if (!composefs_config)
+  g_autoptr (RootConfig) rootfs_config
+      = otcore_load_rootfs_config (kernel_cmdline, config, TRUE, &error);
+  if (!rootfs_config)
     errx (EXIT_FAILURE, "%s", error->message);
 
   // If composefs is enabled, that also implies sysroot.readonly=true because it's
   // the new default we want to use (not because it's actually required)
-  const bool sysroot_readonly_default = composefs_config->enabled == OT_TRISTATE_YES;
+  const bool sysroot_readonly_default = rootfs_config->composefs_enabled == OT_TRISTATE_YES;
   if (!ot_keyfile_get_boolean_with_default (config, SYSROOT_KEY, READONLY_KEY,
                                             sysroot_readonly_default, &sysroot_readonly, &error))
     errx (EXIT_FAILURE, "Failed to parse sysroot.readonly value: %s", error->message);
@@ -231,7 +223,7 @@ main (int argc, char *argv[])
    * However, we only do this if composefs is not enabled, because we don't
    * want to parse the target root filesystem before verifying its integrity.
    */
-  if (!sysroot_readonly && composefs_config->enabled != OT_TRISTATE_YES)
+  if (!sysroot_readonly && rootfs_config->composefs_enabled != OT_TRISTATE_YES)
     {
       sysroot_readonly = sysroot_is_configured_ro (root_arg);
       // Encourage porting to the new config file
@@ -263,13 +255,13 @@ main (int argc, char *argv[])
 
   // Tracks if we did successfully enable it at runtime
   bool using_composefs = false;
-  if (!otcore_mount_rootfs (composefs_config, &metadata_builder, root_transient, root_mountpoint,
-                            deploy_path, TMP_SYSROOT, &using_composefs, &error))
+  if (!otcore_mount_rootfs (rootfs_config, &metadata_builder, root_mountpoint, deploy_path,
+                            TMP_SYSROOT, &using_composefs, &error))
     errx (EXIT_FAILURE, "Failed to mount composefs: %s", error->message);
 
   if (!using_composefs)
     {
-      if (root_transient)
+      if (rootfs_config->root_transient)
         {
           errx (EXIT_FAILURE, "Must enable composefs with root.transient");
         }
@@ -302,7 +294,7 @@ main (int argc, char *argv[])
   /* Prepare /etc.
    * No action required if sysroot is writable. Otherwise, a bind-mount for
    * the deployment needs to be created and remounted as read/write. */
-  if (sysroot_readonly || using_composefs || root_transient)
+  if (sysroot_readonly || using_composefs || rootfs_config->root_transient)
     {
       if (!otcore_mount_etc (config, &metadata_builder, TMP_SYSROOT, &error))
         errx (EXIT_FAILURE, "Failed to mount etc: %s", error->message);
@@ -316,7 +308,7 @@ main (int argc, char *argv[])
    * Also, hotfixes are incompatible with signed composefs use for security reasons.
    */
   if (lstat (OTCORE_HOTFIX_USR_OVL_WORK, &stbuf) == 0
-      && !(using_composefs && composefs_config->is_signed))
+      && !(using_composefs && rootfs_config->is_signed))
     {
       /* Do we have a persistent overlayfs for /usr?  If so, mount it now. */
       const char usr_ovl_options[]

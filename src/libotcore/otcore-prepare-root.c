@@ -35,6 +35,8 @@
 #define BINDING_KEYPATH "/etc/ostree/initramfs-root-binding.key"
 // The kernel argument to configure composefs
 #define CMDLINE_KEY_COMPOSEFS "ostree.prepare-root.composefs"
+/* This key configures the / mount in the deployment root */
+#define ROOT_KEY "root"
 // The key in the config for etc
 #define ETC_KEY "etc"
 
@@ -165,42 +167,46 @@ otcore_load_config (int rootfs_fd, const char *filename, GError **error)
 }
 
 void
-otcore_free_composefs_config (ComposefsConfig *config)
+otcore_free_rootfs_config (RootConfig *config)
 {
   g_clear_pointer (&config->pubkeys, g_ptr_array_unref);
   g_free (config->signature_pubkey);
   g_free (config);
 }
 
-// Parse the [composefs] section of the prepare-root.conf.
-ComposefsConfig *
-otcore_load_composefs_config (const char *cmdline, GKeyFile *config, gboolean load_keys,
-                              GError **error)
+// Parse key bits of prepare-root.conf into a data structure.
+RootConfig *
+otcore_load_rootfs_config (const char *cmdline, GKeyFile *config, gboolean load_keys,
+                           GError **error)
 {
   g_assert (cmdline);
   g_assert (config);
 
-  GLNX_AUTO_PREFIX_ERROR ("Loading composefs config", error);
+  GLNX_AUTO_PREFIX_ERROR ("Parsing rootfs config", error);
 
-  g_autoptr (ComposefsConfig) ret = g_new0 (ComposefsConfig, 1);
+  g_autoptr (RootConfig) ret = g_new0 (RootConfig, 1);
+
+  if (!ot_keyfile_get_boolean_with_default (config, ROOT_KEY, OTCORE_PREPARE_ROOT_TRANSIENT_KEY,
+                                            FALSE, &ret->root_transient, error))
+    return NULL;
 
   g_autofree char *enabled = g_key_file_get_value (config, OTCORE_PREPARE_ROOT_COMPOSEFS_KEY,
                                                    OTCORE_PREPARE_ROOT_ENABLED_KEY, NULL);
   if (g_strcmp0 (enabled, "signed") == 0)
     {
-      ret->enabled = OT_TRISTATE_YES;
+      ret->composefs_enabled = OT_TRISTATE_YES;
       ret->require_verity = true;
       ret->is_signed = true;
     }
   else if (g_strcmp0 (enabled, "verity") == 0)
     {
-      ret->enabled = OT_TRISTATE_YES;
+      ret->composefs_enabled = OT_TRISTATE_YES;
       ret->require_verity = true;
       ret->is_signed = false;
     }
   else if (!ot_keyfile_get_tristate_with_default (config, OTCORE_PREPARE_ROOT_COMPOSEFS_KEY,
                                                   OTCORE_PREPARE_ROOT_ENABLED_KEY, OT_TRISTATE_NO,
-                                                  &ret->enabled, error))
+                                                  &ret->composefs_enabled, error))
     return NULL;
 
   // Look for a key - we default to the initramfs binding path.
@@ -243,7 +249,7 @@ otcore_load_composefs_config (const char *cmdline, GKeyFile *config, gboolean lo
     {
       if (g_strcmp0 (ostree_composefs, "signed") == 0)
         {
-          ret->enabled = OT_TRISTATE_YES;
+          ret->composefs_enabled = OT_TRISTATE_YES;
           ret->is_signed = true;
           ret->require_verity = true;
         }
@@ -251,7 +257,7 @@ otcore_load_composefs_config (const char *cmdline, GKeyFile *config, gboolean lo
         {
           // The other states force off signatures
           ret->is_signed = false;
-          if (!_ostree_parse_tristate (ostree_composefs, &ret->enabled, error))
+          if (!_ostree_parse_tristate (ostree_composefs, &ret->composefs_enabled, error))
             return glnx_prefix_error (error, "handling karg " CMDLINE_KEY_COMPOSEFS), NULL;
         }
     }
@@ -428,9 +434,9 @@ otcore_mount_etc (GKeyFile *config, GVariantBuilder *metadata_builder, const cha
 }
 
 gboolean
-otcore_mount_rootfs (ComposefsConfig *composefs_config, GVariantBuilder *metadata_builder,
-                     gboolean root_transient, const char *root_mountpoint, const char *deploy_path,
-                     const char *mount_target, bool *out_using_composefs, GError **error)
+otcore_mount_rootfs (RootConfig *rootfs_config, GVariantBuilder *metadata_builder,
+                     const char *root_mountpoint, const char *deploy_path, const char *mount_target,
+                     bool *out_using_composefs, GError **error)
 {
   struct stat stbuf;
   /* Record the underlying plain deployment directory (device,inode) pair
@@ -444,13 +450,13 @@ otcore_mount_rootfs (ComposefsConfig *composefs_config, GVariantBuilder *metadat
 
   /* Pass on the state  */
   g_variant_builder_add (metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT,
-                         g_variant_new_boolean (root_transient));
+                         g_variant_new_boolean (rootfs_config->root_transient));
 
   bool using_composefs = FALSE;
 #ifdef HAVE_COMPOSEFS
   /* We construct the new sysroot in /sysroot.tmp, which is either the composefs
      mount or a bind mount of the deploy-dir */
-  if (composefs_config->enabled == OT_TRISTATE_NO)
+  if (rootfs_config->composefs_enabled == OT_TRISTATE_NO)
     return TRUE;
 
   g_autofree char *sysroot_objects = g_strdup_printf ("%s/ostree/repo/objects", root_mountpoint);
@@ -472,12 +478,16 @@ otcore_mount_rootfs (ComposefsConfig *composefs_config, GVariantBuilder *metadat
   // https://github.com/systemd/systemd/blob/604b2001081adcbd64ee1fbe7de7a6d77c5209fe/src/basic/mountpoint-util.h#L36
   // which bumps up these defaults for the rootfs a bit.
   g_autofree char *root_upperdir
-      = root_transient ? g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "root/upper", NULL) : NULL;
+      = rootfs_config->root_transient
+            ? g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "root/upper", NULL)
+            : NULL;
   g_autofree char *root_workdir
-      = root_transient ? g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "root/work", NULL) : NULL;
+      = rootfs_config->root_transient
+            ? g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "root/work", NULL)
+            : NULL;
 
   // Propagate these options for transient root, if provided
-  if (root_transient)
+  if (rootfs_config->root_transient)
     {
       if (!glnx_shutil_mkdir_p_at (AT_FDCWD, root_upperdir, 0755, NULL, error))
         return glnx_prefix_error (error, "Failed to create %s", root_upperdir);
@@ -492,9 +502,9 @@ otcore_mount_rootfs (ComposefsConfig *composefs_config, GVariantBuilder *metadat
       cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
     }
 
-  if (composefs_config->is_signed)
+  if (rootfs_config->is_signed)
     {
-      const char *composefs_pubkey = composefs_config->signature_pubkey;
+      const char *composefs_pubkey = rootfs_config->signature_pubkey;
       g_autoptr (GVariant) commit = NULL;
       g_autoptr (GVariant) commitmeta = NULL;
 
@@ -507,7 +517,7 @@ otcore_mount_rootfs (ComposefsConfig *composefs_config, GVariantBuilder *metadat
         return glnx_throw (error, "Signature validation requested, but no signatures in commit");
 
       g_autoptr (GBytes) commit_data = g_variant_get_data_as_bytes (commit);
-      if (!validate_signature (commit_data, signatures, composefs_config->pubkeys, error))
+      if (!validate_signature (commit_data, signatures, rootfs_config->pubkeys, error))
         return glnx_prefix_error (error, "No valid signatures found for public key");
 
       g_print ("composefs+ostree: Validated commit signature using '%s'\n", composefs_pubkey);
@@ -526,12 +536,12 @@ otcore_mount_rootfs (ComposefsConfig *composefs_config, GVariantBuilder *metadat
       expected_digest = g_malloc (OSTREE_SHA256_STRING_LEN + 1);
       ot_bin2hex (expected_digest, cfs_digest_buf, g_variant_get_size (cfs_digest_v));
 
-      g_assert (composefs_config->require_verity);
+      g_assert (rootfs_config->require_verity);
       cfs_options.flags |= LCFS_MOUNT_FLAGS_REQUIRE_VERITY;
       g_print ("composefs: Verifying digest: %s\n", expected_digest);
       cfs_options.expected_fsverity_digest = expected_digest;
     }
-  else if (composefs_config->require_verity)
+  else if (rootfs_config->require_verity)
     {
       cfs_options.flags |= LCFS_MOUNT_FLAGS_REQUIRE_VERITY;
     }
@@ -549,8 +559,8 @@ otcore_mount_rootfs (ComposefsConfig *composefs_config, GVariantBuilder *metadat
   else
     {
       int errsv = errno;
-      g_assert (composefs_config->enabled != OT_TRISTATE_NO);
-      if (composefs_config->enabled == OT_TRISTATE_MAYBE && errsv == ENOENT)
+      g_assert (rootfs_config->composefs_enabled != OT_TRISTATE_NO);
+      if (rootfs_config->composefs_enabled == OT_TRISTATE_MAYBE && errsv == ENOENT)
         {
           g_print ("composefs: No image present\n");
         }
@@ -562,7 +572,7 @@ otcore_mount_rootfs (ComposefsConfig *composefs_config, GVariantBuilder *metadat
     }
 #else
   /* if composefs is configured as "maybe", we should continue */
-  if (composefs_config->enabled == OT_TRISTATE_YES)
+  if (rootfs_config->composefs_enabled == OT_TRISTATE_YES)
     return glnx_throw (error, "composefs: enabled at runtime, but support is not compiled in");
 #endif
   *out_using_composefs = using_composefs;
