@@ -69,11 +69,11 @@ typedef struct
   gboolean is_signed;
   char *signature_pubkey;
   GPtrArray *pubkeys;
-} ComposefsConfig;
-void otcore_free_composefs_config (ComposefsConfig *config);
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (ComposefsConfig, otcore_free_composefs_config)
+} RootConfig;
+void otcore_free_rootfs_config (RootConfig *config);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (RootConfig, otcore_free_rootfs_config)
 
-ComposefsConfig *otcore_load_composefs_config (const char *cmdline, GKeyFile *config,
+RootConfig *otcore_load_rootfs_config (const char *cmdline, GKeyFile *config,
                                                gboolean load_keys, GError **error);
 
 // Our directory with transient state (eventually /run/ostree-booted should be a link to
