@@ -61,7 +61,7 @@ _ostree_prepare_soft_reboot (GError **error)
   if (!rootfs_config)
     return FALSE;
 
-  if (rootfs_config->enabled != OT_TRISTATE_YES)
+  if (rootfs_config->composefs_enabled != OT_TRISTATE_YES)
     return glnx_throw (error, "soft reboot not supported without composefs");
 
   GVariantBuilder metadata_builder;
