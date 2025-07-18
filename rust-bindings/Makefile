@@ -1,5 +1,5 @@
 GIR_REPO := https://github.com/gtk-rs/gir.git
-GIR_VERSION := 5433e2582f831d551789ee95fa04188d2a5fd3e5 # 0.20.4
+GIR_VERSION := 19ccbbc9a3d1cc9271b7a5fa5d84b5652ee99492 # 0.21.0
 GIR_FILES_VERSION := 0.20.0
 OSTREE_REPO := ../ostree
 OSTREE_VERSION := patch-v2022.2

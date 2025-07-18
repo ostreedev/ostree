@@ -4385,7 +4385,7 @@ ostree_sysroot_deployment_set_mutable (OstreeSysroot *self, OstreeDeployment *de
  * (i.e., have the same boot checksum).
  *
  * Returns: %TRUE if a soft-reboot is possible to the target deployment, %FALSE otherwise.
- * Since: TODO
+ * Since: 2025.3
  */
 gboolean
 ostree_sysroot_deployment_can_soft_reboot (OstreeSysroot *self, OstreeDeployment *deployment)
@@ -4438,7 +4438,7 @@ impl_clear_soft_reboot (void)
  * Prepare the specified deployment for a systemd soft-reboot by creating a new
  * root with it at `/run/nextroot`.
  *
- * Since: TODO
+ * Since: 2025.3
  */
 gboolean
 ostree_sysroot_deployment_set_soft_reboot (OstreeSysroot *self, OstreeDeployment *deployment,
@@ -4512,7 +4512,7 @@ ostree_sysroot_deployment_set_soft_reboot (OstreeSysroot *self, OstreeDeployment
  * If there is a soft reboot queued in /run/nextroot, clear it. If one
  * is not queued, this function successfully does nothing.
  *
- * Since: TODO
+ * Since: 2025.3
  */
 gboolean
 ostree_sysroot_clear_soft_reboot (OstreeSysroot *self, GCancellable *cancellable, GError **error)
