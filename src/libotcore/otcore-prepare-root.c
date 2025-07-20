@@ -408,7 +408,7 @@ otcore_mount_etc (GKeyFile *config, GVariantBuilder *metadata_builder, const cha
       {
         const char *path;
         int mode;
-      } subdirs[] = { { ovldir, 0700 }, { upperdir, 0755 }, { workdir, 0755 } };
+      } subdirs[] = { { upperdir, 0755 }, { workdir, 0755 } };
       for (int i = 0; i < G_N_ELEMENTS (subdirs); i++)
         {
           if (mkdirat (AT_FDCWD, subdirs[i].path, subdirs[i].mode) < 0)
