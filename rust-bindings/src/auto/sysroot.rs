@@ -74,6 +74,16 @@ impl Sysroot {
     //    unsafe { TODO: call ffi:ostree_sysroot_cleanup_prune_repo() }
     //}
 
+    #[doc(alias = "ostree_sysroot_clear_soft_reboot")]
+    pub fn clear_soft_reboot(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = std::ptr::null_mut();
+            let is_ok = ffi::ostree_sysroot_clear_soft_reboot(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
     #[cfg(feature = "v2018_5")]
     #[cfg_attr(docsrs, doc(cfg(feature = "v2018_5")))]
     #[doc(alias = "ostree_sysroot_deploy_tree")]
@@ -119,16 +129,6 @@ impl Sysroot {
         }
     }
 
-    #[doc(alias = "ostree_sysroot_deployment_prepare_next_root")]
-    pub fn deployment_prepare_next_root(&self, deployment: &Deployment, allow_kernel_skew: bool, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
-        unsafe {
-            let mut error = std::ptr::null_mut();
-            let is_ok = ffi::ostree_sysroot_deployment_prepare_next_root(self.to_glib_none().0, deployment.to_glib_none().0, allow_kernel_skew.into_glib(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
-        }
-    }
-
     #[doc(alias = "ostree_sysroot_deployment_set_kargs")]
     pub fn deployment_set_kargs(&self, deployment: &Deployment, new_kargs: &[&str], cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
@@ -166,6 +166,16 @@ impl Sysroot {
         unsafe {
             let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_deployment_set_pinned(self.to_glib_none().0, deployment.to_glib_none().0, is_pinned.into_glib(), &mut error);
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
+
+    #[doc(alias = "ostree_sysroot_deployment_set_soft_reboot")]
+    pub fn deployment_set_soft_reboot(&self, deployment: &Deployment, allow_kernel_skew: bool, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = std::ptr::null_mut();
+            let is_ok = ffi::ostree_sysroot_deployment_set_soft_reboot(self.to_glib_none().0, deployment.to_glib_none().0, allow_kernel_skew.into_glib(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }
@@ -369,7 +379,7 @@ impl Sysroot {
         let user_data: Box_<glib::thread_guard::ThreadGuard<P>> = Box_::new(glib::thread_guard::ThreadGuard::new(callback));
         unsafe extern "C" fn lock_async_trampoline<P: FnOnce(Result<(), glib::Error>) + 'static>(_source_object: *mut glib::gobject_ffi::GObject, res: *mut gio::ffi::GAsyncResult, user_data: glib::ffi::gpointer) {
             let mut error = std::ptr::null_mut();
-            let _ = ffi::ostree_sysroot_lock_finish(_source_object as *mut _, res, &mut error);
+            ffi::ostree_sysroot_lock_finish(_source_object as *mut _, res, &mut error);
             let result = if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) };
             let callback: Box_<glib::thread_guard::ThreadGuard<P>> = Box_::from_raw(user_data as *mut _);
             let callback: P = callback.into_inner();

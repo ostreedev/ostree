@@ -2,11 +2,11 @@
 // from gir-files
 // DO NOT EDIT
 
+use crate::{ffi,BootconfigParser};
 #[cfg(feature = "v2016_4")]
 #[cfg_attr(docsrs, doc(cfg(feature = "v2016_4")))]
-use crate::DeploymentUnlockedState;
-use crate::{ffi, BootconfigParser};
-use glib::translate::*;
+use crate::{DeploymentUnlockedState};
+use glib::{translate::*};
 
 glib::wrapper! {
     #[doc(alias = "OstreeDeployment")]
@@ -19,100 +19,97 @@ glib::wrapper! {
 
 impl Deployment {
     #[doc(alias = "ostree_deployment_new")]
-    pub fn new(
-        index: i32,
-        osname: &str,
-        csum: &str,
-        deployserial: i32,
-        bootcsum: Option<&str>,
-        bootserial: i32,
-    ) -> Deployment {
+    pub fn new(index: i32, osname: &str, csum: &str, deployserial: i32, bootcsum: Option<&str>, bootserial: i32) -> Deployment {
         unsafe {
-            from_glib_full(ffi::ostree_deployment_new(
-                index,
-                osname.to_glib_none().0,
-                csum.to_glib_none().0,
-                deployserial,
-                bootcsum.to_glib_none().0,
-                bootserial,
-            ))
+            from_glib_full(ffi::ostree_deployment_new(index, osname.to_glib_none().0, csum.to_glib_none().0, deployserial, bootcsum.to_glib_none().0, bootserial))
         }
     }
 
     #[doc(alias = "ostree_deployment_clone")]
-    #[must_use]
+#[must_use]
     pub fn clone(&self) -> Deployment {
-        unsafe { from_glib_full(ffi::ostree_deployment_clone(self.to_glib_none().0)) }
+        unsafe {
+            from_glib_full(ffi::ostree_deployment_clone(self.to_glib_none().0))
+        }
     }
 
     #[doc(alias = "ostree_deployment_equal")]
     pub fn equal(&self, bp: &Deployment) -> bool {
         unsafe {
-            from_glib(ffi::ostree_deployment_equal(
-                ToGlibPtr::<*mut ffi::OstreeDeployment>::to_glib_none(self).0
-                    as glib::ffi::gconstpointer,
-                ToGlibPtr::<*mut ffi::OstreeDeployment>::to_glib_none(bp).0
-                    as glib::ffi::gconstpointer,
-            ))
+            from_glib(ffi::ostree_deployment_equal(ToGlibPtr::<*mut ffi::OstreeDeployment>::to_glib_none(self).0 as glib::ffi::gconstpointer, ToGlibPtr::<*mut ffi::OstreeDeployment>::to_glib_none(bp).0 as glib::ffi::gconstpointer))
         }
     }
 
     #[doc(alias = "ostree_deployment_get_bootconfig")]
     #[doc(alias = "get_bootconfig")]
     pub fn bootconfig(&self) -> Option<BootconfigParser> {
-        unsafe { from_glib_none(ffi::ostree_deployment_get_bootconfig(self.to_glib_none().0)) }
+        unsafe {
+            from_glib_none(ffi::ostree_deployment_get_bootconfig(self.to_glib_none().0))
+        }
     }
 
     #[doc(alias = "ostree_deployment_get_bootcsum")]
     #[doc(alias = "get_bootcsum")]
     pub fn bootcsum(&self) -> glib::GString {
-        unsafe { from_glib_none(ffi::ostree_deployment_get_bootcsum(self.to_glib_none().0)) }
+        unsafe {
+            from_glib_none(ffi::ostree_deployment_get_bootcsum(self.to_glib_none().0))
+        }
     }
 
     #[doc(alias = "ostree_deployment_get_bootserial")]
     #[doc(alias = "get_bootserial")]
     pub fn bootserial(&self) -> i32 {
-        unsafe { ffi::ostree_deployment_get_bootserial(self.to_glib_none().0) }
+        unsafe {
+            ffi::ostree_deployment_get_bootserial(self.to_glib_none().0)
+        }
     }
 
     #[doc(alias = "ostree_deployment_get_csum")]
     #[doc(alias = "get_csum")]
     pub fn csum(&self) -> glib::GString {
-        unsafe { from_glib_none(ffi::ostree_deployment_get_csum(self.to_glib_none().0)) }
+        unsafe {
+            from_glib_none(ffi::ostree_deployment_get_csum(self.to_glib_none().0))
+        }
     }
 
     #[doc(alias = "ostree_deployment_get_deployserial")]
     #[doc(alias = "get_deployserial")]
     pub fn deployserial(&self) -> i32 {
-        unsafe { ffi::ostree_deployment_get_deployserial(self.to_glib_none().0) }
+        unsafe {
+            ffi::ostree_deployment_get_deployserial(self.to_glib_none().0)
+        }
     }
 
     #[doc(alias = "ostree_deployment_get_index")]
     #[doc(alias = "get_index")]
     pub fn index(&self) -> i32 {
-        unsafe { ffi::ostree_deployment_get_index(self.to_glib_none().0) }
+        unsafe {
+            ffi::ostree_deployment_get_index(self.to_glib_none().0)
+        }
     }
 
     #[doc(alias = "ostree_deployment_get_origin")]
     #[doc(alias = "get_origin")]
     pub fn origin(&self) -> Option<glib::KeyFile> {
-        unsafe { from_glib_none(ffi::ostree_deployment_get_origin(self.to_glib_none().0)) }
+        unsafe {
+            from_glib_none(ffi::ostree_deployment_get_origin(self.to_glib_none().0))
+        }
     }
 
     #[doc(alias = "ostree_deployment_get_origin_relpath")]
     #[doc(alias = "get_origin_relpath")]
     pub fn origin_relpath(&self) -> glib::GString {
         unsafe {
-            from_glib_full(ffi::ostree_deployment_get_origin_relpath(
-                self.to_glib_none().0,
-            ))
+            from_glib_full(ffi::ostree_deployment_get_origin_relpath(self.to_glib_none().0))
         }
     }
 
     #[doc(alias = "ostree_deployment_get_osname")]
     #[doc(alias = "get_osname")]
     pub fn osname(&self) -> glib::GString {
-        unsafe { from_glib_none(ffi::ostree_deployment_get_osname(self.to_glib_none().0)) }
+        unsafe {
+            from_glib_none(ffi::ostree_deployment_get_osname(self.to_glib_none().0))
+        }
     }
 
     #[cfg(feature = "v2016_4")]
@@ -120,16 +117,15 @@ impl Deployment {
     #[doc(alias = "ostree_deployment_get_unlocked")]
     #[doc(alias = "get_unlocked")]
     pub fn unlocked(&self) -> DeploymentUnlockedState {
-        unsafe { from_glib(ffi::ostree_deployment_get_unlocked(self.to_glib_none().0)) }
+        unsafe {
+            from_glib(ffi::ostree_deployment_get_unlocked(self.to_glib_none().0))
+        }
     }
 
     #[doc(alias = "ostree_deployment_hash")]
     pub fn hash(&self) -> u32 {
         unsafe {
-            ffi::ostree_deployment_hash(
-                ToGlibPtr::<*mut ffi::OstreeDeployment>::to_glib_none(self).0
-                    as glib::ffi::gconstpointer,
-            )
+            ffi::ostree_deployment_hash(ToGlibPtr::<*mut ffi::OstreeDeployment>::to_glib_none(self).0 as glib::ffi::gconstpointer)
         }
     }
 
@@ -138,9 +134,7 @@ impl Deployment {
     #[doc(alias = "ostree_deployment_is_finalization_locked")]
     pub fn is_finalization_locked(&self) -> bool {
         unsafe {
-            from_glib(ffi::ostree_deployment_is_finalization_locked(
-                self.to_glib_none().0,
-            ))
+            from_glib(ffi::ostree_deployment_is_finalization_locked(self.to_glib_none().0))
         }
     }
 
@@ -148,15 +142,15 @@ impl Deployment {
     #[cfg_attr(docsrs, doc(cfg(feature = "v2018_3")))]
     #[doc(alias = "ostree_deployment_is_pinned")]
     pub fn is_pinned(&self) -> bool {
-        unsafe { from_glib(ffi::ostree_deployment_is_pinned(self.to_glib_none().0)) }
+        unsafe {
+            from_glib(ffi::ostree_deployment_is_pinned(self.to_glib_none().0))
+        }
     }
 
     #[doc(alias = "ostree_deployment_is_soft_reboot_target")]
     pub fn is_soft_reboot_target(&self) -> bool {
         unsafe {
-            from_glib(ffi::ostree_deployment_is_soft_reboot_target(
-                self.to_glib_none().0,
-            ))
+            from_glib(ffi::ostree_deployment_is_soft_reboot_target(self.to_glib_none().0))
         }
     }
 
@@ -164,16 +158,15 @@ impl Deployment {
     #[cfg_attr(docsrs, doc(cfg(feature = "v2018_3")))]
     #[doc(alias = "ostree_deployment_is_staged")]
     pub fn is_staged(&self) -> bool {
-        unsafe { from_glib(ffi::ostree_deployment_is_staged(self.to_glib_none().0)) }
+        unsafe {
+            from_glib(ffi::ostree_deployment_is_staged(self.to_glib_none().0))
+        }
     }
 
     #[doc(alias = "ostree_deployment_set_bootconfig")]
     pub fn set_bootconfig(&self, bootconfig: Option<&BootconfigParser>) {
         unsafe {
-            ffi::ostree_deployment_set_bootconfig(
-                self.to_glib_none().0,
-                bootconfig.to_glib_none().0,
-            );
+            ffi::ostree_deployment_set_bootconfig(self.to_glib_none().0, bootconfig.to_glib_none().0);
         }
     }
 
@@ -212,9 +205,7 @@ impl Deployment {
     #[doc(alias = "ostree_deployment_unlocked_state_to_string")]
     pub fn unlocked_state_to_string(state: DeploymentUnlockedState) -> glib::GString {
         unsafe {
-            from_glib_none(ffi::ostree_deployment_unlocked_state_to_string(
-                state.into_glib(),
-            ))
+            from_glib_none(ffi::ostree_deployment_unlocked_state_to_string(state.into_glib()))
         }
     }
 }

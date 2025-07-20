@@ -1577,6 +1577,10 @@ extern "C" {
     pub fn ostree_bootconfig_parser_get_overlay_initrds(
         self_: *mut OstreeBootconfigParser,
     ) -> *mut *mut c_char;
+    pub fn ostree_bootconfig_parser_get_tries_done(self_: *mut OstreeBootconfigParser) -> u64;
+    #[cfg(feature = "v2025_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_2")))]
+    pub fn ostree_bootconfig_parser_get_tries_left(self_: *mut OstreeBootconfigParser) -> u64;
     pub fn ostree_bootconfig_parser_parse(
         self_: *mut OstreeBootconfigParser,
         path: *mut gio::GFile,
@@ -2781,6 +2785,11 @@ extern "C" {
         new_config: *mut glib::GKeyFile,
         error: *mut *mut glib::GError,
     ) -> gboolean;
+    pub fn ostree_repo_write_config_and_reload(
+        self_: *mut OstreeRepo,
+        new_config: *mut glib::GKeyFile,
+        error: *mut *mut glib::GError,
+    ) -> gboolean;
     pub fn ostree_repo_write_content(
         self_: *mut OstreeRepo,
         expected_checksum: *const c_char,
@@ -3100,6 +3109,11 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
+    pub fn ostree_sysroot_clear_soft_reboot(
+        self_: *mut OstreeSysroot,
+        cancellable: *mut gio::GCancellable,
+        error: *mut *mut glib::GError,
+    ) -> gboolean;
     #[cfg(feature = "v2018_5")]
     #[cfg_attr(docsrs, doc(cfg(feature = "v2018_5")))]
     pub fn ostree_sysroot_deploy_tree(
@@ -3138,13 +3152,6 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
-    pub fn ostree_sysroot_deployment_prepare_next_root(
-        self_: *mut OstreeSysroot,
-        deployment: *mut OstreeDeployment,
-        allow_kernel_skew: gboolean,
-        cancellable: *mut gio::GCancellable,
-        error: *mut *mut glib::GError,
-    ) -> gboolean;
     pub fn ostree_sysroot_deployment_set_kargs(
         self_: *mut OstreeSysroot,
         deployment: *mut OstreeDeployment,
@@ -3172,6 +3179,13 @@ extern "C" {
         self_: *mut OstreeSysroot,
         deployment: *mut OstreeDeployment,
         is_pinned: gboolean,
+        error: *mut *mut glib::GError,
+    ) -> gboolean;
+    pub fn ostree_sysroot_deployment_set_soft_reboot(
+        self_: *mut OstreeSysroot,
+        deployment: *mut OstreeDeployment,
+        allow_kernel_skew: gboolean,
+        cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
     #[cfg(feature = "v2016_4")]
