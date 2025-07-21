@@ -14,7 +14,7 @@ build-noinitramfs *ARGS:
 
 # We need a filesystem that supports O_TMPFILE right now (i.e. not overlayfs)
 # or ostree hard crashes in the http code =/
-unittest_args := "--pids-limit=-1 --tmpfs /var/tmp --tmpfs /tmp"
+unittest_args := "--pids-limit=-1 --tmpfs /run --tmpfs /var/tmp --tmpfs /tmp"
 
 # Build and then run unit tests. If this fails, it will try to print
 # the errors to stderr. However, the full unabridged test log can
