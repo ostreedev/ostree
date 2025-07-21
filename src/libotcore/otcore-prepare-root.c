@@ -189,6 +189,18 @@ otcore_load_rootfs_config (const char *cmdline, GKeyFile *config, gboolean load_
   if (!ot_keyfile_get_boolean_with_default (config, ROOT_KEY, OTCORE_PREPARE_ROOT_TRANSIENT_KEY,
                                             FALSE, &ret->root_transient, error))
     return NULL;
+  if (!ot_keyfile_get_boolean_with_default (config, ROOT_KEY, OTCORE_PREPARE_ROOT_TRANSIENT_RO_KEY,
+                                            FALSE, &ret->root_transient_ro, error))
+    return NULL;
+  if (ret->root_transient && ret->root_transient_ro)
+    {
+      return glnx_null_throw (error, "Cannot set both root.transient and root.transient-ro");
+    }
+  // This way callers can test for just root_transient
+  else if (ret->root_transient_ro)
+    {
+      ret->root_transient = TRUE;
+    }
 
   g_autofree char *enabled = g_key_file_get_value (config, OTCORE_PREPARE_ROOT_COMPOSEFS_KEY,
                                                    OTCORE_PREPARE_ROOT_ENABLED_KEY, NULL);
@@ -451,6 +463,8 @@ otcore_mount_rootfs (RootConfig *rootfs_config, GVariantBuilder *metadata_builde
   /* Pass on the state  */
   g_variant_builder_add (metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT,
                          g_variant_new_boolean (rootfs_config->root_transient));
+  g_variant_builder_add (metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT_RO,
+                         g_variant_new_boolean (rootfs_config->root_transient_ro));
 
   bool using_composefs = FALSE;
 #ifdef HAVE_COMPOSEFS
@@ -496,6 +510,8 @@ otcore_mount_rootfs (RootConfig *rootfs_config, GVariantBuilder *metadata_builde
 
       cfs_options.workdir = root_workdir;
       cfs_options.upperdir = root_upperdir;
+      if (rootfs_config->root_transient_ro)
+        cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
     }
   else
     {
