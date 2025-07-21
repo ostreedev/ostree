@@ -1674,6 +1674,8 @@ extern "C" {
     #[cfg(feature = "v2018_3")]
     #[cfg_attr(docsrs, doc(cfg(feature = "v2018_3")))]
     pub fn ostree_deployment_is_pinned(self_: *mut OstreeDeployment) -> gboolean;
+    #[cfg(feature = "v2025_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_3")))]
     pub fn ostree_deployment_is_soft_reboot_target(self_: *mut OstreeDeployment) -> gboolean;
     #[cfg(feature = "v2018_3")]
     #[cfg_attr(docsrs, doc(cfg(feature = "v2018_3")))]
@@ -3109,6 +3111,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
+    #[cfg(feature = "v2025_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_3")))]
     pub fn ostree_sysroot_clear_soft_reboot(
         self_: *mut OstreeSysroot,
         cancellable: *mut gio::GCancellable,
@@ -3140,6 +3144,8 @@ extern "C" {
         cancellable: *mut gio::GCancellable,
         error: *mut *mut glib::GError,
     ) -> gboolean;
+    #[cfg(feature = "v2025_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_3")))]
     pub fn ostree_sysroot_deployment_can_soft_reboot(
         self_: *mut OstreeSysroot,
         deployment: *mut OstreeDeployment,
@@ -3181,6 +3187,8 @@ extern "C" {
         is_pinned: gboolean,
         error: *mut *mut glib::GError,
     ) -> gboolean;
+    #[cfg(feature = "v2025_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_3")))]
     pub fn ostree_sysroot_deployment_set_soft_reboot(
         self_: *mut OstreeSysroot,
         deployment: *mut OstreeDeployment,
