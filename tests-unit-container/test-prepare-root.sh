@@ -9,9 +9,11 @@ set -xeuo pipefail
 test "${TEST_CONTAINER}" = 1
 
 cleanup() {
-	if mountpoint /target-sysroot &>/dev/null; then
-		umount -lR /target-sysroot
-	fi
+	for mnt in /target-sysroot /sysroot.tmp; do
+		if mountpoint "$mnt" &>/dev/null; then
+			umount -lR "$mnt"
+		fi
+	done
 	rm -rf /run/ostree-booted /run/ostree
 }
 trap cleanup EXIT
@@ -21,11 +23,17 @@ test '!' -f /run/ostree-booted
 mkdir /target-sysroot
 # Needs to be a mount point
 mount --bind /target-sysroot /target-sysroot
+
 ostree admin init-fs --epoch=1 /target-sysroot
 cd /target-sysroot
 ostree admin --sysroot=. stateroot-init default
 # now we just fake out a deployment
-mkdir -p ostree/deploy/default/deploy/1234/{etc,usr,sysroot}
+mkdir -p ostree/deploy/default/deploy/1234/{etc,usr/etc,usr/bin,sysroot}
+# Populate some data
+(cd ostree/deploy/default/deploy/1234
+ echo passwd > usr/etc/passwd
+ echo bash > usr/bin/bash
+)
 
 ln -sr ostree/deploy/default/deploy/1234 boot/ostree.0
 t=$(mktemp)
@@ -45,6 +53,8 @@ test -f /run/ostree-booted
 for d in etc usr; do
 	mountpoint /target-sysroot/${d}
 done
+# Not transient by default
+test $(findmnt -no FSTYPE /target-sysroot/etc) '!=' tmpfs
 
 # Default is ro in our images
 grep -q 'readonly.*true' /usr/lib/ostree/prepare-root.conf
@@ -53,6 +63,7 @@ grep -q 'readonly.*true' /usr/lib/ostree/prepare-root.conf
 cleanup
 test '!' -f /run/ostree-booted
 
+# Test with the default config
 mv /usr/lib/ostree/prepare-root.conf{,.orig}
 
 mount --bind /target-sysroot /target-sysroot
@@ -60,4 +71,28 @@ mount --bind /target-sysroot /target-sysroot
 findmnt -R /target-sysroot
 [[ "$(findmnt -n -o OPTIONS /target-sysroot/sysroot)" == *rw* ]]
 
+# Reset the config to what's in the image
+mv /usr/lib/ostree/prepare-root.conf{.orig,}
+
+cleanup
+
 echo "ok verified default prepare-root"
+
+cp /usr/lib/ostree/prepare-root.conf{,.orig}
+cat <<EOF >>/usr/lib/ostree/prepare-root.conf
+[etc]
+transient = true
+EOF
+
+mount --bind /target-sysroot /target-sysroot
+/usr/lib/ostree/ostree-prepare-root /target-sysroot
+
+# Verify we have a tmpfs upper for etc
+etc_options=$(findmnt -no OPTIONS /target-sysroot/etc)
+[[ $etc_options =~ "upperdir=/run/ostree/transient-etc" ]]
+
+# Reset the config
+mv /usr/lib/ostree/prepare-root.conf{.orig,}
+cleanup
+
+echo "ok verified etc.transient"
