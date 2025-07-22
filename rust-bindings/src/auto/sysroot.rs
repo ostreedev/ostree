@@ -74,6 +74,8 @@ impl Sysroot {
     //    unsafe { TODO: call ffi:ostree_sysroot_cleanup_prune_repo() }
     //}
 
+    #[cfg(feature = "v2025_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_3")))]
     #[doc(alias = "ostree_sysroot_clear_soft_reboot")]
     pub fn clear_soft_reboot(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
@@ -110,6 +112,8 @@ impl Sysroot {
         }
     }
 
+    #[cfg(feature = "v2025_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_3")))]
     #[doc(alias = "ostree_sysroot_deployment_can_soft_reboot")]
     pub fn deployment_can_soft_reboot(&self, deployment: &Deployment) -> bool {
         unsafe {
@@ -171,6 +175,8 @@ impl Sysroot {
         }
     }
 
+    #[cfg(feature = "v2025_3")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_3")))]
     #[doc(alias = "ostree_sysroot_deployment_set_soft_reboot")]
     pub fn deployment_set_soft_reboot(&self, deployment: &Deployment, allow_kernel_skew: bool, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
