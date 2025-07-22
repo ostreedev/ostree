@@ -72,6 +72,9 @@ _ostree_prepare_soft_reboot (GError **error)
   if (!using_composefs)
     return glnx_throw (error, "failed to mount with composefs");
 
+  if (!otcore_mount_boot (sysroot_path, OTCORE_RUN_NEXTROOT, error))
+    return FALSE;
+
   if (!otcore_mount_etc (config, &metadata_builder, OTCORE_RUN_NEXTROOT, error))
     return FALSE;
 
