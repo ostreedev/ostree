@@ -87,7 +87,7 @@ license = "MIT"
 links = "ostree-1"
 name = "ostree-sys"
 repository = "https://github.com/ostreedev/ostree-rs"
-version = "0.15.2"
+version = "0.15.3"
 edition = "2021"
 
 [package.metadata.docs.rs]
