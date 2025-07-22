@@ -41,11 +41,10 @@ pub use constants::*;
 
 #[cfg(any(feature = "v2018_6", feature = "dox"))]
 mod collection_ref;
-#[cfg(any(feature = "v2018_6", feature = "dox"))]
-pub use crate::collection_ref::*;
 mod functions;
 pub use crate::functions::*;
 mod mutable_tree;
+#[allow(unused_imports)]
 pub use crate::mutable_tree::*;
 #[cfg(any(feature = "v2019_3", feature = "dox"))]
 #[allow(missing_docs)]
@@ -67,11 +66,10 @@ pub use crate::repo_checkout_at_options::*;
 mod repo_transaction_stats;
 pub use repo_transaction_stats::RepoTransactionStats;
 mod se_policy;
+#[allow(unused_imports)]
 pub use crate::se_policy::*;
 #[cfg(any(feature = "v2020_1", feature = "dox"))]
 mod commit_sizes_entry;
-#[cfg(any(feature = "v2020_1", feature = "dox"))]
-pub use crate::commit_sizes_entry::*;
 #[cfg(any(feature = "v2017_4", feature = "dox"))]
 mod sysroot_write_deployments_opts;
 #[cfg(any(feature = "v2017_4", feature = "dox"))]
@@ -92,5 +90,6 @@ pub mod prelude {
     #[doc(hidden)]
     pub use gio::prelude::*;
     #[doc(hidden)]
+    #[allow(unused_imports)]
     pub use glib::prelude::*;
 }

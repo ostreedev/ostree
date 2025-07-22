@@ -8,6 +8,7 @@ use std::path::PathBuf;
 /// Builder object for `Sysroot`.
 pub struct SysrootBuilder {
     path: Option<PathBuf>,
+    #[cfg(any(feature = "v2020_1", feature = "dox"))]
     mount_namespace_in_use: bool,
 }
 
