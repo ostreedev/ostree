@@ -384,6 +384,35 @@ composefs_error_message (int errsv)
 #endif
 
 /**
+ * otcore_mount_boot:
+ *
+ * Mount /boot as a bind mount for a deployment if it's on the same partition
+ * as the physical root.
+ */
+gboolean
+otcore_mount_boot (const char *physical_root, const char *deployment, GError **error)
+{
+  g_autofree char *boot_loader = g_build_filename (physical_root, "boot/loader", NULL);
+  struct stat stbuf;
+
+  /* If /boot is on the same partition, use a bind mount to make it visible
+   * at /boot inside the deployment.
+   */
+  if (!(lstat (boot_loader, &stbuf) == 0 && S_ISLNK (stbuf.st_mode)))
+    return TRUE;
+
+  g_autofree char *target_boot = g_build_filename (deployment, "boot", NULL);
+  if (!(lstat (target_boot, &stbuf) == 0 && S_ISDIR (stbuf.st_mode)))
+    return TRUE;
+
+  g_autofree char *src_boot = g_build_filename (physical_root, "boot", NULL);
+  if (mount (src_boot, target_boot, NULL, MS_BIND | MS_SILENT, NULL) < 0)
+    return glnx_throw (error, "failed to bind mount /boot");
+
+  return TRUE;
+}
+
+/**
  * otcore_mount_etc:
  *
  * Mount /etc for a deployment, assuming that the current process working directory is the source.
