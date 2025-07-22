@@ -53,8 +53,9 @@ test -f /run/ostree-booted
 for d in etc usr; do
 	mountpoint /target-sysroot/${d}
 done
-# Not transient by default
-test $(findmnt -no FSTYPE /target-sysroot/etc) '!=' tmpfs
+# etc is not transient by default
+etc_options=$(findmnt -no OPTIONS /target-sysroot/etc)
+[[ ! $etc_options =~ "upperdir=/run/ostree/transient-etc" ]]
 
 # Default is ro in our images
 grep -q 'readonly.*true' /usr/lib/ostree/prepare-root.conf
