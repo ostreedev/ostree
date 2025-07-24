@@ -280,21 +280,8 @@ main (int argc, char *argv[])
   g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_SYSROOT_RO,
                          g_variant_new_boolean (sysroot_readonly));
 
-  /* Prepare /boot.
-   * If /boot is on the same partition, use a bind mount to make it visible
-   * at /boot inside the deployment. */
-  if (snprintf (srcpath, sizeof (srcpath), "%s/boot/loader", root_mountpoint) < 0)
-    err (EXIT_FAILURE, "failed to assemble /boot/loader path");
-  if (lstat (srcpath, &stbuf) == 0 && S_ISLNK (stbuf.st_mode))
-    {
-      if (lstat ("boot", &stbuf) == 0 && S_ISDIR (stbuf.st_mode))
-        {
-          if (snprintf (srcpath, sizeof (srcpath), "%s/boot", root_mountpoint) < 0)
-            err (EXIT_FAILURE, "failed to assemble /boot path");
-          if (mount (srcpath, TMP_SYSROOT "/boot", NULL, MS_BIND | MS_SILENT, NULL) < 0)
-            err (EXIT_FAILURE, "failed to bind mount %s to boot", srcpath);
-        }
-    }
+  if (!otcore_mount_boot (root_mountpoint, TMP_SYSROOT, &error))
+    errx (EXIT_FAILURE, "%s", error->message);
 
   /* Prepare /etc.
    * No action required if sysroot is writable. Otherwise, a bind-mount for
