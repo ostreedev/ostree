@@ -38,7 +38,10 @@ unitcontainer-build:
 unitcontainer: unitcontainer-build 
     # need cap-add=all for mounting
     podman run --rm --net=none {{unitpriv}} {{unittest_args}} --cap-add=all --env=TEST_CONTAINER=1 localhost/ostree-bintest /tests/run.sh
-    
+# For iterating on the tests
+unitcontainer-fast:
+    podman run --rm --net=none {{unitpriv}} {{unittest_args}} --cap-add=all --env=TEST_CONTAINER=1 -v $(pwd)/tests-unit-container:/tests:ro --security-opt=label=disable localhost/ostree-bintest /tests/run.sh
+
 # Run a build on the host system
 build-host:
     . ci/libbuild.sh && build

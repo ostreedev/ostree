@@ -28,7 +28,7 @@ ostree admin init-fs --epoch=1 /target-sysroot
 cd /target-sysroot
 ostree admin --sysroot=. stateroot-init default
 # now we just fake out a deployment
-mkdir -p ostree/deploy/default/deploy/1234/{etc,usr/etc,usr/bin,sysroot}
+mkdir -p ostree/deploy/default/deploy/1234/{boot,etc,usr/etc,usr/bin,sysroot}
 # Populate some data
 (cd ostree/deploy/default/deploy/1234
  echo passwd > usr/etc/passwd
@@ -53,8 +53,13 @@ test -f /run/ostree-booted
 for d in etc usr; do
 	mountpoint /target-sysroot/${d}
 done
-# Not transient by default
-test $(findmnt -no FSTYPE /target-sysroot/etc) '!=' tmpfs
+# etc is not transient by default
+etc_options=$(findmnt -no OPTIONS /target-sysroot/etc)
+[[ ! $etc_options =~ "upperdir=/run/ostree/transient-etc" ]]
+# We don't have /boot as a bind mount by default here
+if mountpoint /target-sysroot/boot &>/dev/null; then
+	exit 1
+fi
 
 # Default is ro in our images
 grep -q 'readonly.*true' /usr/lib/ostree/prepare-root.conf
@@ -96,3 +101,17 @@ mv /usr/lib/ostree/prepare-root.conf{.orig,}
 cleanup
 
 echo "ok verified etc.transient"
+
+# Set up boot/loader via traditional ostree swapped symlink pattern
+# which will cause prepare-root to also make a bind mount.
+mkdir /target-sysroot/boot/loader.0
+ln -s /target-sysroot/boot/loader.0 /target-sysroot/boot/loader 
+
+mount --bind /target-sysroot /target-sysroot
+/usr/lib/ostree/ostree-prepare-root /target-sysroot
+
+mountpoint /target-sysroot/boot
+
+cleanup
+
+echo "ok verified /boot"
