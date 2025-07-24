@@ -25,7 +25,6 @@ use ostree_ext::ostree;
 use rand::seq::SliceRandom;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use sh_inline::bash;
 use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::Path;
@@ -132,12 +131,15 @@ impl InterruptStrategy {
 
 /// TODO add readonly sysroot handling into base ostree
 fn testinit() -> Result<()> {
+    let sh = xshell::Shell::new()?;
     assert!(std::path::Path::new("/run/ostree-booted").exists());
-    bash!(
+    cmd!(
+        sh,
         r"if ! test -w /sysroot; then
    mount -o remount,rw /sysroot
 fi"
-    )?;
+    )
+    .run()?;
     Ok(())
 }
 
@@ -146,16 +148,19 @@ fi"
 /// reworked the tree mutation to operate on an ostree repo
 /// rather than a filesystem.
 fn generate_update(commit: &str) -> Result<()> {
+    let sh = xshell::Shell::new()?;
     println!("Generating update from {}", commit);
     crate::treegen::update_os_tree(SRVREPO, TESTREF, TREEGEN_PERCENTAGE)
         .context("Failed to generate new content")?;
     // Amortize the prune across multiple runs; we don't want to leak space,
     // but traversing all the objects is expensive.  So here we only prune 1/5 of the time.
     if rand::thread_rng().gen_ratio(1, 5) {
-        bash!(
+        cmd!(
+            sh,
             "ostree --repo=${srvrepo} prune --refs-only --depth=1",
             srvrepo = SRVREPO
-        )?;
+        )
+        .run()?;
     }
     Ok(())
 }
@@ -165,7 +170,9 @@ fn generate_update(commit: &str) -> Result<()> {
 /// and then teach our webserver to redirect to the system for objects it doesn't
 /// have.
 fn generate_srv_repo(commit: &str) -> Result<()> {
-    bash!(
+    let sh = xshell::Shell::new()?;
+    cmd!(
+        sh,
         r#"
         ostree --repo=${srvrepo} init --mode=archive
         ostree --repo=${srvrepo} config set archive.zlib-level 1
@@ -176,6 +183,7 @@ fn generate_srv_repo(commit: &str) -> Result<()> {
         commit = commit,
         testref = TESTREF
     )
+    .run()
     .context("Failed to generate srv repo")?;
     generate_update(commit)?;
     Ok(())
@@ -200,11 +208,14 @@ struct RebootStats {
 }
 
 fn upgrade_and_finalize() -> Result<()> {
-    bash!(
+    let sh = xshell::Shell::new()?;
+    cmd!(
+        sh,
         "rpm-ostree upgrade
         systemctl start ostree-finalize-staged
         systemctl stop ostree-finalize-staged"
     )
+    .run()
     .context("Upgrade and finalize failed")?;
     Ok(())
 }
@@ -309,9 +320,10 @@ fn parse_and_validate_reboot_mark<M: AsRef<str>>(
 }
 
 fn validate_pending_commit(pending_commit: &str, commitstates: &CommitStates) -> Result<()> {
+    let sh = xshell::Shell::new()?;
     if pending_commit != commitstates.target {
-        bash!("rpm-ostree status -v")?;
-        bash!("ostree show ${pending_commit}", pending_commit)?;
+        cmd!(sh, "rpm-ostree status -v").run()?;
+        cmd!(sh, "ostree show ${pending_commit}", pending_commit).run()?;
         anyhow::bail!(
             "Expected target commit={} but pending={} ({:?})",
             commitstates.target,
@@ -622,7 +634,8 @@ pub(crate) fn itest_transactionality() -> Result<()> {
             // FIXME: make this saner
             let origref = ORIGREF;
             let testref = TESTREF;
-            bash!(
+            cmd!(
+                sh,
                 "
                 ostree admin set-origin testrepo ${url} ${testref}
                 ostree refs --create testrepo:${testref} ${commit}
@@ -632,7 +645,8 @@ pub(crate) fn itest_transactionality() -> Result<()> {
                 origref,
                 testref,
                 commit
-            )?;
+            )
+            .run()?;
             // We gather a single "cycle time" at start as a way of gauging how
             // long an upgrade should take, so we know when to interrupt.  This
             // obviously has some pitfalls, mainly when there are e.g. other competing
