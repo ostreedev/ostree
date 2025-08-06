@@ -1211,10 +1211,6 @@ get_kernel_from_tree_usrlib_modules (OstreeSysroot *sysroot, int deployment_dfd,
     }
   glnx_close_fd (&fd);
 
-  /* look for a aboot.cfg file. */
-  if (!ot_openat_ignore_enoent (ret_layout->boot_dfd, "aboot.cfg", &fd, error))
-    return FALSE;
-
   /* Testing aid for https://github.com/ostreedev/ostree/issues/2154 */
   const gboolean no_dtb = (sysroot->debug_flags & OSTREE_SYSROOT_DEBUG_TEST_NO_DTB) > 0;
   if (!no_dtb)
