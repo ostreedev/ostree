@@ -151,5 +151,5 @@ pub(crate) fn update_os_tree<P: AsRef<Path>>(
     assert!(mutated > 0);
     println!("Mutated ELF files: {}", mutated);
     let tempdir = tempdir.path();
-    cmd!(sh, "ostree --repo={repo_path} commit --consume -b {ostref} --base={ostref} --tree=dir={tempdir} --owner-uid 0 --owner-gid 0 --selinux-policy-from-base --link-checkout-speedup --no-bindings --no-xattrs").run().context("Failed to commit updated content")
+    cmd!(sh, "ostree --repo={repo_path} commit --consume -b {ostref} --base={ostref} --tree=dir={tempdir} --owner-uid 0 --owner-gid 0 --selinux-policy-from-base --link-checkout-speedup --no-bindings --no-xattrs").run().context("Failed to commit updated content")?
 }
