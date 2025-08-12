@@ -2390,6 +2390,35 @@ ostree_sysroot_write_deployments (OstreeSysroot *self, GPtrArray *new_deployment
                                                         error);
 }
 
+static gboolean
+maybe_run_bootloader_plugin (const char *verb, GError **error)
+{
+  GSpawnFlags flags;
+  int estatus;
+  const char *const bootplugin_argv[] = { "/usr/lib/ostree/bootloader-plugin", verb, NULL };
+
+#if GLIB_CHECK_VERSION(2, 74, 0)
+  flags = G_SPAWN_CHILD_INHERITS_STDERR;
+#else
+  flags = G_SPAWN_DEFAULT;
+#endif
+
+  if (g_file_test (bootplugin_argv[0], G_FILE_TEST_EXISTS))
+    {
+      if (!g_spawn_sync (NULL, (char **)bootplugin_argv, NULL, flags, NULL, NULL, NULL, NULL,
+                         &estatus, error))
+        {
+          return glnx_prefix_error (error, "bootloader-plugin %s exec failed", verb);
+        }
+      if (!g_spawn_check_exit_status (estatus, error))
+        {
+          return glnx_prefix_error (error, "bootloader-plugin %s failed", verb);
+        }
+    }
+
+  return TRUE;
+}
+
 /* Handle writing out a new bootloader config. One reason this needs to be a
  * helper function is to handle wrapping it with temporarily remounting /boot
  * rw.
@@ -2450,10 +2479,16 @@ write_deployments_bootswap (OstreeSysroot *self, GPtrArray *new_deployments,
   if (!prepare_new_bootloader_link (self, self->bootversion, new_bootversion, cancellable, error))
     return FALSE;
 
+  if (!maybe_run_bootloader_plugin ("deploy", error))
+    return FALSE;
+
   if (!full_system_sync (self, cancellable, error))
     return FALSE;
 
   if (!swap_bootloader (self, bootloader, self->bootversion, new_bootversion, cancellable, error))
+    return FALSE;
+
+  if (!maybe_run_bootloader_plugin ("swap", error))
     return FALSE;
 
   if (out_subbootdir)
