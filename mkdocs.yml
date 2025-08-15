@@ -8,6 +8,7 @@ pages:
       - Repository: 'manual/repo.md'
       - Deployments: 'manual/deployment.md'
       - Atomic Upgrades: 'manual/atomic-upgrades.md'
+      - Booting and Deployments: 'manual/boot-transaction.md'
       - Adapting Existing Systems: 'manual/adapting-existing.md'
       - Formats: 'manual/formats.md'
       - Build Systems and Repos: 'manual/buildsystem-and-repos.md'
