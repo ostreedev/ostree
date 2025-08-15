@@ -64,16 +64,18 @@ GKeyFile *otcore_load_config (int rootfs, const char *filename, GError **error);
 
 typedef struct
 {
-  OtTristate enabled;
+  OtTristate composefs_enabled;
+  gboolean root_transient;
+  gboolean root_transient_ro;
   gboolean require_verity;
   gboolean is_signed;
   char *signature_pubkey;
   GPtrArray *pubkeys;
-} ComposefsConfig;
-void otcore_free_composefs_config (ComposefsConfig *config);
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (ComposefsConfig, otcore_free_composefs_config)
+} RootConfig;
+void otcore_free_rootfs_config (RootConfig *config);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (RootConfig, otcore_free_rootfs_config)
 
-ComposefsConfig *otcore_load_composefs_config (const char *cmdline, GKeyFile *config,
+RootConfig *otcore_load_rootfs_config (const char *cmdline, GKeyFile *config,
                                                gboolean load_keys, GError **error);
 
 // Our directory with transient state (eventually /run/ostree-booted should be a link to
@@ -103,6 +105,8 @@ ComposefsConfig *otcore_load_composefs_config (const char *cmdline, GKeyFile *co
 #define OTCORE_PREPARE_ROOT_COMPOSEFS_KEY "composefs"
 #define OTCORE_PREPARE_ROOT_ENABLED_KEY "enabled"
 #define OTCORE_PREPARE_ROOT_KEYPATH_KEY "keypath"
+#define OTCORE_PREPARE_ROOT_TRANSIENT_KEY "transient"
+#define OTCORE_PREPARE_ROOT_TRANSIENT_RO_KEY "transient-ro"
 
 // The file written in the initramfs which contains an a{sv} of metadata
 // from ostree-prepare-root.
@@ -116,6 +120,8 @@ ComposefsConfig *otcore_load_composefs_config (const char *cmdline, GKeyFile *co
 #define OTCORE_RUN_BOOTED_KEY_COMPOSEFS_SIGNATURE "composefs.signed"
 // This key will be present if the root is transient
 #define OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT "root.transient"
+// This key will be present if the root is transient readonly
+#define OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT_RO "root.transient-ro"
 // This key will be present if the sysroot-ro flag was found
 #define OTCORE_RUN_BOOTED_KEY_SYSROOT_RO "sysroot-ro"
 // Always holds the (device, inode) pair of the booted deployment

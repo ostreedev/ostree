@@ -79,8 +79,6 @@
 #define SYSROOT_KEY "sysroot"
 #define READONLY_KEY "readonly"
 
-/* This key configures the / mount in the deployment root */
-#define ROOT_KEY "root"
 #define ETC_KEY "etc"
 #define TRANSIENT_KEY "transient"
 
@@ -281,22 +279,17 @@ main (int argc, char *argv[])
     errx (EXIT_FAILURE, "Failed to parse config: %s", error->message);
 
   gboolean sysroot_readonly = FALSE;
-  gboolean root_transient = FALSE;
-
-  if (!ot_keyfile_get_boolean_with_default (config, ROOT_KEY, TRANSIENT_KEY, FALSE, &root_transient,
-                                            &error))
-    return FALSE;
 
   // We always parse the composefs config, because we want to detect and error
   // out if it's enabled, but not supported at compile time.
-  g_autoptr (ComposefsConfig) composefs_config
-      = otcore_load_composefs_config (kernel_cmdline, config, TRUE, &error);
-  if (!composefs_config)
+  g_autoptr (RootConfig) rootfs_config
+      = otcore_load_rootfs_config (kernel_cmdline, config, TRUE, &error);
+  if (!rootfs_config)
     errx (EXIT_FAILURE, "%s", error->message);
 
   // If composefs is enabled, that also implies sysroot.readonly=true because it's
   // the new default we want to use (not because it's actually required)
-  const bool sysroot_readonly_default = composefs_config->enabled == OT_TRISTATE_YES;
+  const bool sysroot_readonly_default = rootfs_config->composefs_enabled == OT_TRISTATE_YES;
   if (!ot_keyfile_get_boolean_with_default (config, SYSROOT_KEY, READONLY_KEY,
                                             sysroot_readonly_default, &sysroot_readonly, &error))
     errx (EXIT_FAILURE, "Failed to parse sysroot.readonly value: %s", error->message);
@@ -328,7 +321,7 @@ main (int argc, char *argv[])
    * However, we only do this if composefs is not enabled, because we don't
    * want to parse the target root filesystem before verifying its integrity.
    */
-  if (!sysroot_readonly && composefs_config->enabled != OT_TRISTATE_YES)
+  if (!sysroot_readonly && rootfs_config->composefs_enabled != OT_TRISTATE_YES)
     {
       sysroot_readonly = sysroot_is_configured_ro (root_arg);
       // Encourage porting to the new config file
@@ -339,6 +332,11 @@ main (int argc, char *argv[])
   const bool sysroot_currently_writable = !path_is_on_readonly_fs (root_arg);
   g_print ("sysroot.readonly configuration value: %d (fs writable: %d)\n", (int)sysroot_readonly,
            (int)sysroot_currently_writable);
+  if (rootfs_config->root_transient)
+    {
+      g_print ("root.transient: %d (ro: %d)\n", (int)rootfs_config->root_transient,
+               (int)rootfs_config->root_transient_ro);
+    }
 
   /* Remount root MS_PRIVATE here to avoid errors due to the kernel-enforced
    * constraint that disallows MS_SHARED mounts to be moved.
@@ -373,7 +371,7 @@ main (int argc, char *argv[])
 #ifdef HAVE_COMPOSEFS
   /* We construct the new sysroot in /sysroot.tmp, which is either the composefs
      mount or a bind mount of the deploy-dir */
-  if (composefs_config->enabled != OT_TRISTATE_NO)
+  if (rootfs_config->composefs_enabled != OT_TRISTATE_NO)
     {
       const char *objdirs[] = { "/sysroot/ostree/repo/objects" };
       g_autofree char *cfs_digest = NULL;
@@ -394,13 +392,13 @@ main (int argc, char *argv[])
       // https://github.com/systemd/systemd/blob/604b2001081adcbd64ee1fbe7de7a6d77c5209fe/src/basic/mountpoint-util.h#L36
       // which bumps up these defaults for the rootfs a bit.
       g_autofree char *root_upperdir
-          = root_transient ? g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "root/upper", NULL)
+          = rootfs_config->root_transient ? g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "root/upper", NULL)
                            : NULL;
       g_autofree char *root_workdir
-          = root_transient ? g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "root/work", NULL) : NULL;
+          = rootfs_config->root_transient ? g_build_filename (OTCORE_RUN_OSTREE_PRIVATE, "root/work", NULL) : NULL;
 
       // Propagate these options for transient root, if provided
-      if (root_transient)
+      if (rootfs_config->root_transient)
         {
           if (!glnx_shutil_mkdir_p_at (AT_FDCWD, root_upperdir, 0755, NULL, &error))
             errx (EXIT_FAILURE, "Failed to create %s: %s", root_upperdir, error->message);
@@ -409,15 +407,17 @@ main (int argc, char *argv[])
 
           cfs_options.workdir = root_workdir;
           cfs_options.upperdir = root_upperdir;
+          if (rootfs_config->root_transient_ro)
+            cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
         }
       else
         {
           cfs_options.flags = LCFS_MOUNT_FLAGS_READONLY;
         }
 
-      if (composefs_config->is_signed)
+      if (rootfs_config->is_signed)
         {
-          const char *composefs_pubkey = composefs_config->signature_pubkey;
+          const char *composefs_pubkey = rootfs_config->signature_pubkey;
           g_autoptr (GError) local_error = NULL;
           g_autoptr (GVariant) commit = NULL;
           g_autoptr (GVariant) commitmeta = NULL;
@@ -432,7 +432,7 @@ main (int argc, char *argv[])
             errx (EXIT_FAILURE, "Signature validation requested, but no signatures in commit");
 
           g_autoptr (GBytes) commit_data = g_variant_get_data_as_bytes (commit);
-          if (!validate_signature (commit_data, signatures, composefs_config->pubkeys))
+          if (!validate_signature (commit_data, signatures, rootfs_config->pubkeys))
             errx (EXIT_FAILURE, "No valid signatures found for public key");
 
           g_print ("composefs+ostree: Validated commit signature using '%s'\n", composefs_pubkey);
@@ -452,12 +452,12 @@ main (int argc, char *argv[])
           expected_digest = g_malloc (OSTREE_SHA256_STRING_LEN + 1);
           ot_bin2hex (expected_digest, cfs_digest_buf, g_variant_get_size (cfs_digest_v));
 
-          g_assert (composefs_config->require_verity);
+          g_assert (rootfs_config->require_verity);
           cfs_options.flags |= LCFS_MOUNT_FLAGS_REQUIRE_VERITY;
           g_print ("composefs: Verifying digest: %s\n", expected_digest);
           cfs_options.expected_fsverity_digest = expected_digest;
         }
-      else if (composefs_config->require_verity)
+      else if (rootfs_config->require_verity)
         {
           cfs_options.flags |= LCFS_MOUNT_FLAGS_REQUIRE_VERITY;
         }
@@ -476,8 +476,8 @@ main (int argc, char *argv[])
       else
         {
           int errsv = errno;
-          g_assert (composefs_config->enabled != OT_TRISTATE_NO);
-          if (composefs_config->enabled == OT_TRISTATE_MAYBE && errsv == ENOENT)
+          g_assert (rootfs_config->composefs_enabled != OT_TRISTATE_NO);
+          if (rootfs_config->composefs_enabled == OT_TRISTATE_MAYBE && errsv == ENOENT)
             {
               g_print ("composefs: No image present\n");
             }
@@ -490,13 +490,13 @@ main (int argc, char *argv[])
     }
 #else
   /* if composefs is configured as "maybe", we should continue */
-  if (composefs_config->enabled == OT_TRISTATE_YES)
+  if (rootfs_config->composefs_enabled == OT_TRISTATE_YES)
     errx (EXIT_FAILURE, "composefs: enabled at runtime, but support is not compiled in");
 #endif
 
   if (!using_composefs)
     {
-      if (root_transient)
+      if (rootfs_config->root_transient)
         {
           errx (EXIT_FAILURE, "Must enable composefs with root.transient");
         }
@@ -508,7 +508,10 @@ main (int argc, char *argv[])
 
   /* Pass on the state  */
   g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT,
-                         g_variant_new_boolean (root_transient));
+                         g_variant_new_boolean (rootfs_config->root_transient));
+
+  g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_ROOT_TRANSIENT_RO,
+                         g_variant_new_boolean (rootfs_config->root_transient_ro));
 
   /* Pass on the state for use by ostree-prepare-root */
   g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_SYSROOT_RO,
@@ -533,7 +536,7 @@ main (int argc, char *argv[])
   /* Prepare /etc.
    * No action required if sysroot is writable. Otherwise, a bind-mount for
    * the deployment needs to be created and remounted as read/write. */
-  if (sysroot_readonly || using_composefs || root_transient)
+  if (sysroot_readonly || using_composefs || rootfs_config->root_transient)
     {
       gboolean etc_transient = FALSE;
       if (!ot_keyfile_get_boolean_with_default (config, ETC_KEY, TRANSIENT_KEY, FALSE,
@@ -590,7 +593,7 @@ main (int argc, char *argv[])
    * Also, hotfixes are incompatible with signed composefs use for security reasons.
    */
   if (lstat (OTCORE_HOTFIX_USR_OVL_WORK, &stbuf) == 0
-      && !(using_composefs && composefs_config->is_signed))
+      && !(using_composefs && rootfs_config->is_signed))
     {
       /* Do we have a persistent overlayfs for /usr?  If so, mount it now. */
       const char usr_ovl_options[]

@@ -26,6 +26,8 @@
 #define BINDING_KEYPATH "/etc/ostree/initramfs-root-binding.key"
 // The kernel argument to configure composefs
 #define CMDLINE_KEY_COMPOSEFS "ostree.prepare-root.composefs"
+/* This key configures the / mount in the deployment root */
+#define ROOT_KEY "root"
 
 static bool
 proc_cmdline_has_key_starting_with (const char *cmdline, const char *key)
@@ -154,42 +156,60 @@ otcore_load_config (int rootfs_fd, const char *filename, GError **error)
 }
 
 void
-otcore_free_composefs_config (ComposefsConfig *config)
+otcore_free_rootfs_config (RootConfig *config)
 {
   g_clear_pointer (&config->pubkeys, g_ptr_array_unref);
   g_free (config->signature_pubkey);
   g_free (config);
 }
 
-// Parse the [composefs] section of the prepare-root.conf.
-ComposefsConfig *
-otcore_load_composefs_config (const char *cmdline, GKeyFile *config, gboolean load_keys,
+// Parse key bits of prepare-root.conf into a data structure.
+RootConfig *
+otcore_load_rootfs_config (const char *cmdline, GKeyFile *config, gboolean load_keys,
                               GError **error)
 {
   g_assert (cmdline);
   g_assert (config);
 
-  GLNX_AUTO_PREFIX_ERROR ("Loading composefs config", error);
+  GLNX_AUTO_PREFIX_ERROR ("Parsing rootfs config", error);
 
-  g_autoptr (ComposefsConfig) ret = g_new0 (ComposefsConfig, 1);
+  g_autoptr (RootConfig) ret = g_new0 (RootConfig, 1);
+
+  if (!ot_keyfile_get_boolean_with_default (config, ROOT_KEY, OTCORE_PREPARE_ROOT_TRANSIENT_KEY,
+                                            FALSE, &ret->root_transient, error))
+    return NULL;
+
+
+  if (!ot_keyfile_get_boolean_with_default (config, ROOT_KEY, OTCORE_PREPARE_ROOT_TRANSIENT_RO_KEY,
+                                            FALSE, &ret->root_transient_ro, error))
+    return NULL;
+  if (ret->root_transient && ret->root_transient_ro)
+    {
+      return glnx_null_throw (error, "Cannot set both root.transient and root.transient-ro");
+    }
+  // This way callers can test for just root_transient
+  else if (ret->root_transient_ro)
+    {
+      ret->root_transient = TRUE;
+    }
 
   g_autofree char *enabled = g_key_file_get_value (config, OTCORE_PREPARE_ROOT_COMPOSEFS_KEY,
                                                    OTCORE_PREPARE_ROOT_ENABLED_KEY, NULL);
   if (g_strcmp0 (enabled, "signed") == 0)
     {
-      ret->enabled = OT_TRISTATE_YES;
+      ret->composefs_enabled = OT_TRISTATE_YES;
       ret->require_verity = true;
       ret->is_signed = true;
     }
   else if (g_strcmp0 (enabled, "verity") == 0)
     {
-      ret->enabled = OT_TRISTATE_YES;
+      ret->composefs_enabled = OT_TRISTATE_YES;
       ret->require_verity = true;
       ret->is_signed = false;
     }
   else if (!ot_keyfile_get_tristate_with_default (config, OTCORE_PREPARE_ROOT_COMPOSEFS_KEY,
                                                   OTCORE_PREPARE_ROOT_ENABLED_KEY, OT_TRISTATE_NO,
-                                                  &ret->enabled, error))
+                                                  &ret->composefs_enabled, error))
     return NULL;
 
   // Look for a key - we default to the initramfs binding path.
@@ -232,7 +252,7 @@ otcore_load_composefs_config (const char *cmdline, GKeyFile *config, gboolean lo
     {
       if (g_strcmp0 (ostree_composefs, "signed") == 0)
         {
-          ret->enabled = OT_TRISTATE_YES;
+          ret->composefs_enabled = OT_TRISTATE_YES;
           ret->is_signed = true;
           ret->require_verity = true;
         }
@@ -240,7 +260,7 @@ otcore_load_composefs_config (const char *cmdline, GKeyFile *config, gboolean lo
         {
           // The other states force off signatures
           ret->is_signed = false;
-          if (!_ostree_parse_tristate (ostree_composefs, &ret->enabled, error))
+          if (!_ostree_parse_tristate (ostree_composefs, &ret->composefs_enabled, error))
             return glnx_prefix_error (error, "handling karg " CMDLINE_KEY_COMPOSEFS), NULL;
         }
     }

@@ -653,12 +653,12 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
   // out if it's enabled, but not supported at compile time.
   // However, we don't load the keys here, because they may not exist, such
   // as in the initial deploy
-  g_autoptr (ComposefsConfig) composefs_config
-      = otcore_load_composefs_config ("", prepare_root_config, FALSE, error);
-  if (!composefs_config)
-    return glnx_prefix_error (error, "Reading composefs config");
+  g_autoptr (RootConfig) rootfs_config
+      = otcore_load_rootfs_config ("", prepare_root_config, FALSE, error);
+  if (!rootfs_config)
+    return glnx_prefix_error (error, "Reading rootfs config");
 
-  OtTristate composefs_enabled = composefs_config->enabled;
+  OtTristate composefs_enabled = rootfs_config->composefs_enabled;
   g_debug ("composefs enabled by config: %d repo: %d", composefs_enabled, repo->composefs_wanted);
   if (repo->composefs_wanted == OT_TRISTATE_YES)
     composefs_enabled = repo->composefs_wanted;
@@ -677,7 +677,7 @@ checkout_deployment_tree (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploy
   g_auto (GVariantBuilder) cfs_checkout_opts_builder
       = G_VARIANT_BUILDER_INIT (G_VARIANT_TYPE_VARDICT);
   guint32 composefs_requested = 1;
-  if (composefs_config->require_verity)
+  if (rootfs_config->require_verity)
     composefs_requested = 2;
   g_variant_builder_add (&cfs_checkout_opts_builder, "{sv}", "verity",
                          g_variant_new_uint32 (composefs_requested));
