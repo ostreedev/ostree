@@ -1635,21 +1635,22 @@ typedef struct
   guint64 boot_syncfs_msec;
 } SyncStats;
 
-/* First, sync the root directory as well as /var and /boot which may
- * be separate mount points.  Then *in addition*, do a global
- * `sync()`.
+/* sync /ostree and /boot which may be separate mount points.
  */
 static gboolean
 full_system_sync (OstreeSysroot *self, SyncStats *out_stats, GCancellable *cancellable,
                   GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("Full sync", error);
-  ot_journal_print (LOG_INFO, "Starting syncfs() for system root");
+  ot_journal_print (LOG_INFO, "Starting syncfs() for /ostree");
   guint64 start_msec = g_get_monotonic_time () / 1000;
-  if (syncfs (self->sysroot_fd) != 0)
-    return glnx_throw_errno_prefix (error, "syncfs(sysroot)");
+  glnx_autofd int ostree_dfd = -1;
+  if (!glnx_opendirat (self->sysroot_fd, "ostree", TRUE, &ostree_dfd, error))
+    return glnx_throw_errno_prefix (error, "glnx_opendirat(/ostree)");
+  if (syncfs (ostree_dfd) != 0)
+    return glnx_throw_errno_prefix (error, "syncfs(/ostree)");
   guint64 end_msec = g_get_monotonic_time () / 1000;
-  ot_journal_print (LOG_INFO, "Completed syncfs() for system root in %" G_GUINT64_FORMAT " ms",
+  ot_journal_print (LOG_INFO, "Completed syncfs() for /ostree in %" G_GUINT64_FORMAT " ms",
                     end_msec - start_msec);
 
   out_stats->root_syncfs_msec = (end_msec - start_msec);
