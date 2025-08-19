@@ -130,6 +130,14 @@ _ostree_aboot_get_bls_config (OstreeBootloaderAboot *self, int bootversion, gcha
   return TRUE;
 }
 
+static void
+child_setup_fchdir (gpointer data)
+{
+  int fd = (int)(uintptr_t)data;
+  int rc = fchdir (fd);
+  g_assert (rc == 0);
+}
+
 static gboolean
 _ostree_bootloader_aboot_post_bls_sync (OstreeBootloader *bootloader, int bootversion,
                                         GCancellable *cancellable, GError **error)
@@ -159,13 +167,12 @@ _ostree_bootloader_aboot_post_bls_sync (OstreeBootloader *bootloader, int bootve
                                      &initramfs, &options, cancellable, error))
     return FALSE;
 
-  g_autofree char *path_str = g_file_get_path (self->sysroot->path);
-
   const char *const aboot_argv[]
-      = { "aboot-deploy", "-r", path_str, "-c", abootcfg, "-o", options, aboot, NULL };
+      = { "aboot-deploy", "-r", ".", "-c", abootcfg, "-o", options, aboot, NULL };
   int estatus;
-  if (!g_spawn_sync (NULL, (char **)aboot_argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, NULL,
-                     &estatus, error))
+
+  if (!g_spawn_sync (NULL, (char **)aboot_argv, NULL, G_SPAWN_SEARCH_PATH, child_setup_fchdir,
+                     (gpointer)(uintptr_t)self->sysroot->sysroot_fd, NULL, NULL, &estatus, error))
     {
       return FALSE;
     }
