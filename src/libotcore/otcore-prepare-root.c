@@ -565,7 +565,8 @@ otcore_mount_rootfs (RootConfig *rootfs_config, GVariantBuilder *metadata_builde
       if (!validate_signature (commit_data, signatures, rootfs_config->pubkeys, error))
         return glnx_prefix_error (error, "No valid signatures found for public key");
 
-      g_print ("composefs+ostree: Validated commit signature using '%s'\n", composefs_pubkey);
+      ot_journal_print (LOG_INFO, "composefs+ostree: Validated commit signature using '%s'",
+                        composefs_pubkey);
       g_variant_builder_add (metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_COMPOSEFS_SIGNATURE,
                              g_variant_new_string (composefs_pubkey));
 
@@ -583,7 +584,7 @@ otcore_mount_rootfs (RootConfig *rootfs_config, GVariantBuilder *metadata_builde
 
       g_assert (rootfs_config->require_verity);
       cfs_options.flags |= LCFS_MOUNT_FLAGS_REQUIRE_VERITY;
-      g_print ("composefs: Verifying digest: %s\n", expected_digest);
+      ot_journal_print (LOG_INFO, "composefs: Verifying digest: %s", expected_digest);
       cfs_options.expected_fsverity_digest = expected_digest;
     }
   else if (rootfs_config->require_verity)
@@ -599,7 +600,8 @@ otcore_mount_rootfs (RootConfig *rootfs_config, GVariantBuilder *metadata_builde
                              g_variant_new_boolean (true));
       g_variant_builder_add (metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_COMPOSEFS_VERITY,
                              g_variant_new_boolean (using_verity));
-      g_print ("composefs: mounted successfully (verity=%s)\n", using_verity ? "true" : "false");
+      ot_journal_print (LOG_INFO, "composefs: mounted successfully (verity=%s)",
+                        using_verity ? "true" : "false");
     }
   else
     {
@@ -607,7 +609,7 @@ otcore_mount_rootfs (RootConfig *rootfs_config, GVariantBuilder *metadata_builde
       g_assert (rootfs_config->composefs_enabled != OT_TRISTATE_NO);
       if (rootfs_config->composefs_enabled == OT_TRISTATE_MAYBE && errsv == ENOENT)
         {
-          g_print ("composefs: No image present\n");
+          ot_journal_print (LOG_INFO, "composefs: No image present");
         }
       else
         {
