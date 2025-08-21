@@ -1628,44 +1628,31 @@ fsfreeze_thaw_cycle (OstreeSysroot *self, int rootfs_dfd, GCancellable *cancella
   return TRUE;
 }
 
-typedef struct
-{
-  guint64 root_syncfs_msec;
-  guint64 boot_syncfs_msec;
-} SyncStats;
-
 /* sync /ostree and /boot which may be separate mount points.
  */
 static gboolean
-full_system_sync (OstreeSysroot *self, SyncStats *out_stats, GCancellable *cancellable,
-                  GError **error)
+full_system_sync (OstreeSysroot *self, GCancellable *cancellable, GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("Full sync", error);
-  ot_journal_print (LOG_INFO, "Starting syncfs() for /ostree");
-  guint64 start_msec = g_get_monotonic_time () / 1000;
-  glnx_autofd int ostree_dfd = -1;
-  if (!glnx_opendirat (self->sysroot_fd, "ostree", TRUE, &ostree_dfd, error))
-    return glnx_throw_errno_prefix (error, "glnx_opendirat(/ostree)");
-  if (syncfs (ostree_dfd) != 0)
-    return glnx_throw_errno_prefix (error, "syncfs(/ostree)");
-  guint64 end_msec = g_get_monotonic_time () / 1000;
-  ot_journal_print (LOG_INFO, "Completed syncfs() for /ostree in %" G_GUINT64_FORMAT " ms",
-                    end_msec - start_msec);
-
-  out_stats->root_syncfs_msec = (end_msec - start_msec);
 
   if (!_ostree_sysroot_ensure_boot_fd (self, error))
     return FALSE;
-
   g_assert_cmpint (self->boot_fd, !=, -1);
+
+  // Must have been initialized
+  g_assert (self->repo);
+  // Because we require that /ostree is on the same fs as /ostree/repo, reuse
+  // the logic to syncfs the repo fd.
+  if (!_ostree_repo_syncfs (self->repo, error))
+    return FALSE;
+
   ot_journal_print (LOG_INFO, "Starting freeze/thaw cycle for boot");
-  start_msec = g_get_monotonic_time () / 1000;
+  guint64 start_msec = g_get_monotonic_time () / 1000;
   if (!fsfreeze_thaw_cycle (self, self->boot_fd, cancellable, error))
     return FALSE;
-  end_msec = g_get_monotonic_time () / 1000;
+  guint64 end_msec = g_get_monotonic_time () / 1000;
   ot_journal_print (LOG_INFO, "Completed freeze/thaw cycle for boot in %" G_GUINT64_FORMAT " ms",
                     end_msec - start_msec);
-  out_stats->boot_syncfs_msec = (end_msec - start_msec);
 
   return TRUE;
 }
@@ -2410,8 +2397,7 @@ ostree_sysroot_write_deployments (OstreeSysroot *self, GPtrArray *new_deployment
 static gboolean
 write_deployments_bootswap (OstreeSysroot *self, GPtrArray *new_deployments,
                             OstreeSysrootWriteDeploymentsOpts *opts, OstreeBootloader *bootloader,
-                            SyncStats *out_syncstats, char **out_subbootdir,
-                            GCancellable *cancellable, GError **error)
+                            char **out_subbootdir, GCancellable *cancellable, GError **error)
 {
   const int new_bootversion = self->bootversion ? 0 : 1;
 
@@ -2464,7 +2450,7 @@ write_deployments_bootswap (OstreeSysroot *self, GPtrArray *new_deployments,
   if (!prepare_new_bootloader_link (self, self->bootversion, new_bootversion, cancellable, error))
     return FALSE;
 
-  if (!full_system_sync (self, out_syncstats, cancellable, error))
+  if (!full_system_sync (self, cancellable, error))
     return FALSE;
 
   if (!swap_bootloader (self, bootloader, self->bootversion, new_bootversion, cancellable, error))
@@ -2994,9 +2980,6 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot *self, GPtrArray *n
     return glnx_throw (error, "Attempting to remove booted deployment");
 
   gboolean bootloader_is_atomic = FALSE;
-  SyncStats syncstats = {
-    0,
-  };
   g_autoptr (OstreeBootloader) bootloader = NULL;
   g_autofree char *new_subbootdir = NULL;
   if (!requires_new_bootversion)
@@ -3004,7 +2987,7 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot *self, GPtrArray *n
       if (!create_new_bootlinks (self, self->bootversion, new_deployments, cancellable, error))
         return FALSE;
 
-      if (!full_system_sync (self, &syncstats, cancellable, error))
+      if (!full_system_sync (self, cancellable, error))
         return FALSE;
 
       if (!swap_bootlinks (self, self->bootversion, new_deployments, &new_subbootdir, cancellable,
@@ -3020,8 +3003,8 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot *self, GPtrArray *n
 
       bootloader_is_atomic = bootloader != NULL && _ostree_bootloader_is_atomic (bootloader);
 
-      if (!write_deployments_bootswap (self, new_deployments, opts, bootloader, &syncstats,
-                                       &new_subbootdir, cancellable, error))
+      if (!write_deployments_bootswap (self, new_deployments, opts, bootloader, &new_subbootdir,
+                                       cancellable, error))
         return FALSE;
     }
 
@@ -3032,15 +3015,14 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot *self, GPtrArray *n
                            requires_new_bootversion ? "yes" : "no", new_subbootdir,
                            new_deployments->len - self->deployments->len);
     const gchar *bootloader_config = ostree_repo_get_bootloader (ostree_sysroot_repo (self));
-    ot_journal_send (
-        "MESSAGE_ID=" SD_ID128_FORMAT_STR, SD_ID128_FORMAT_VAL (OSTREE_DEPLOYMENT_COMPLETE_ID),
-        "MESSAGE=%s", msg, "OSTREE_BOOTLOADER=%s",
-        bootloader ? _ostree_bootloader_get_name (bootloader) : "none",
-        "OSTREE_BOOTLOADER_CONFIG=%s", bootloader_config, "OSTREE_BOOTLOADER_ATOMIC=%s",
-        bootloader_is_atomic ? "yes" : "no", "OSTREE_DID_BOOTSWAP=%s",
-        requires_new_bootversion ? "yes" : "no", "OSTREE_N_DEPLOYMENTS=%u", new_deployments->len,
-        "OSTREE_SYNCFS_ROOT_MSEC=%" G_GUINT64_FORMAT, syncstats.root_syncfs_msec,
-        "OSTREE_SYNCFS_BOOT_MSEC=%" G_GUINT64_FORMAT, syncstats.boot_syncfs_msec, NULL);
+    ot_journal_send ("MESSAGE_ID=" SD_ID128_FORMAT_STR,
+                     SD_ID128_FORMAT_VAL (OSTREE_DEPLOYMENT_COMPLETE_ID), "MESSAGE=%s", msg,
+                     "OSTREE_BOOTLOADER=%s",
+                     bootloader ? _ostree_bootloader_get_name (bootloader) : "none",
+                     "OSTREE_BOOTLOADER_CONFIG=%s", bootloader_config,
+                     "OSTREE_BOOTLOADER_ATOMIC=%s", bootloader_is_atomic ? "yes" : "no",
+                     "OSTREE_DID_BOOTSWAP=%s", requires_new_bootversion ? "yes" : "no",
+                     "OSTREE_N_DEPLOYMENTS=%u", new_deployments->len, NULL);
     _ostree_sysroot_emit_journal_msg (self, msg);
   }
 

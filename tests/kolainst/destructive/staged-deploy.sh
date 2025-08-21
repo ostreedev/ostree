@@ -54,6 +54,9 @@ EOF
     orig_mtime=$(stat -c '%.Y' /sysroot/ostree/deploy)
     systemctl show -p ActiveState ostree-finalize-staged.service | grep -q inactive
 
+    syncfs=$(journalctl --grep='Completed syncfs.*for system repo' | wc -l)
+    assert_streq "$syncfs" 2
+
     # Do the staged deployment
     ostree admin deploy --stage staged-deploy
 
@@ -90,6 +93,10 @@ EOF
     rm -f svc.txt
     # And there should not be a staged deployment
     test '!' -f /run/ostree/staged-deployment
+
+    # Also verify we did a syncfs run during finalization
+    syncfs=$(journalctl -b -1 -u ostree-finalize-staged --grep='Completed syncfs.*for system repo' | wc -l)
+    assert_streq "$syncfs" 2
 
     test '!' -f /run/ostree/staged-deployment
     ostree admin status > status.txt
