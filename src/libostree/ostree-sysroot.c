@@ -1076,9 +1076,29 @@ ensure_repo (OstreeSysroot *self, GError **error)
     return TRUE;
   if (!ensure_sysroot_fd (self, error))
     return FALSE;
+  // TODO: Consider if we can use openat2 with RESOLVE_NO_XDEV
   self->repo = ostree_repo_open_at (self->sysroot_fd, "ostree/repo", NULL, error);
   if (!self->repo)
     return FALSE;
+
+  // Because the ostree model requires hardlinks, ensure up front
+  // here that /ostree is on the same filesystem as /ostree/repo.
+  // See `full_system_sync` which also requires this.
+  {
+    struct stat repo_stat, ostree_stat;
+    glnx_autofd int ostree_fd = -1;
+    if (!glnx_opendirat (self->sysroot_fd, "ostree", TRUE, &ostree_fd, error))
+      return FALSE;
+    if (!glnx_fstat (ostree_fd, &ostree_stat, error))
+      return FALSE;
+    if (!glnx_fstat (ostree_repo_get_dfd (self->repo), &repo_stat, error))
+      return FALSE;
+    if (ostree_stat.st_dev != repo_stat.st_dev)
+      return glnx_throw (error,
+                         "Unexpected state: ostree/ on device %" G_GUINT64_FORMAT
+                         " but ostree/repo on device %" G_GUINT64_FORMAT,
+                         (guint64)ostree_stat.st_dev, (guint64)repo_stat.st_dev);
+  }
 
   /* Flag it as having been created via ostree_sysroot_get_repo(), and hold a
    * weak ref for the remote-add handling.

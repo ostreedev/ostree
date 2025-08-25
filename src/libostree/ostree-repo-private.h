@@ -394,6 +394,7 @@ gboolean _ostree_repo_load_file_bare (OstreeRepo *self, const char *checksum, in
                                       GError **error);
 
 gboolean _ostree_repo_update_mtime (OstreeRepo *self, GError **error);
+gboolean _ostree_repo_syncfs (OstreeRepo *self, GError **error);
 
 gboolean _ostree_repo_add_remote (OstreeRepo *self, OstreeRemote *remote);
 gboolean _ostree_repo_remove_remote (OstreeRepo *self, OstreeRemote *remote);

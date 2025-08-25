@@ -2227,14 +2227,8 @@ ostree_repo_commit_transaction (OstreeRepo *self, OstreeRepoTransactionStats *ou
   if ((self->test_error_flags & OSTREE_REPO_TEST_ERROR_PRE_COMMIT) > 0)
     return glnx_throw (error, "OSTREE_REPO_TEST_ERROR_PRE_COMMIT specified");
 
-  /* FIXME: Added OSTREE_SUPPRESS_SYNCFS since valgrind in el7 doesn't know
-   * about `syncfs`...we should delete this later.
-   */
-  if (!self->disable_fsync && g_getenv ("OSTREE_SUPPRESS_SYNCFS") == NULL)
-    {
-      if (syncfs (self->tmp_dir_fd) < 0)
-        return glnx_throw_errno_prefix (error, "syncfs(repo/tmp)");
-    }
+  if (!_ostree_repo_syncfs (self, error))
+    return FALSE;
 
   if (!rename_pending_loose_objects (self, cancellable, error))
     return FALSE;
