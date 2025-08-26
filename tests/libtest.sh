@@ -180,7 +180,7 @@ fi
 
 CMD_PREFIX=""
 if test -n "${OT_TESTS_VALGRIND:-}"; then
-    CMD_PREFIX="env G_SLICE=always-malloc OSTREE_SUPPRESS_SYNCFS=1 valgrind -q --error-exitcode=1 --leak-check=full --num-callers=30 --suppressions=${test_srcdir}/glib.supp --suppressions=${test_srcdir}/ostree.supp"
+    CMD_PREFIX="env G_SLICE=always-malloc valgrind -q --error-exitcode=1 --leak-check=full --num-callers=30 --suppressions=${test_srcdir}/glib.supp --suppressions=${test_srcdir}/ostree.supp"
 fi
 
 if test -z "${OSTREE_HTTPD:-}"; then

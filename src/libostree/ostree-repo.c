@@ -1527,11 +1527,6 @@ _ostree_repo_syncfs (OstreeRepo *self, GError **error)
 
   if (self->disable_fsync)
     return TRUE;
-  /* FIXME: Added OSTREE_SUPPRESS_SYNCFS since valgrind in el7 doesn't know
-   * about `syncfs`...we should delete this later.
-   */
-  if (g_getenv ("OSTREE_SUPPRESS_SYNCFS") != NULL)
-    return TRUE;
 
   gboolean is_system = ostree_repo_is_system (self);
   if (is_system)
