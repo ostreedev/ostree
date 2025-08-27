@@ -34,7 +34,7 @@ ostree_repo_init repo --mode=archive
 
 mkdir files
 for bin in ${bindatafiles}; do
-    cp $(which ${bin}) files
+    cp $(command -v ${bin}) files
 done
 
 ${CMD_PREFIX} ostree --repo=repo commit -b test -s test --tree=dir=files
