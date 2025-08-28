@@ -108,6 +108,10 @@ require_internal_units (const char *normal_dir, const char *early_dir, const cha
                  "local-fs.target.requires/ostree-remount.service")
       < 0)
     return glnx_throw_errno_prefix (error, "symlinkat");
+  if (symlinkat (SYSTEM_DATA_UNIT_PATH "/ostree-shutdown.service", normal_dir_dfd,
+                 "local-fs.target.wants/ostree-shutdown.service")
+      < 0)
+    return glnx_throw_errno_prefix (error, "symlinkat");
 
   if (!glnx_shutil_mkdir_p_at (normal_dir_dfd, "multi-user.target.wants", 0755, cancellable, error))
     return FALSE;
