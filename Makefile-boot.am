@@ -38,6 +38,7 @@ endif
 if BUILDOPT_SYSTEMD
 systemdsystemunit_DATA = src/boot/ostree-prepare-root.service \
 	src/boot/ostree-remount.service \
+	src/boot/ostree-shutdown.service \
 	src/boot/ostree-boot-complete.service \
 	src/boot/ostree-finalize-staged.service \
 	src/boot/ostree-finalize-staged-hold.service \
@@ -69,6 +70,7 @@ EXTRA_DIST += src/boot/dracut/module-setup.sh \
 	src/boot/ostree-boot-complete.service \
 	src/boot/ostree-prepare-root.service \
 	src/boot/ostree-remount.service \
+	src/boot/ostree-shutdown.service \
 	src/boot/ostree-finalize-staged.service \
 	src/boot/ostree-finalize-staged-hold.service \
 	src/boot/ostree-state-overlay@.service \
