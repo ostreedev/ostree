@@ -997,7 +997,6 @@ checkout_tree_at_recurse (OstreeRepo *self, OstreeRepoCheckoutAtOptions *options
   g_autoptr (GVariant) dirtree = NULL;
   g_autoptr (GVariant) dirmeta = NULL;
   g_autoptr (GVariant) xattrs = NULL;
-  g_autoptr (GVariant) modified_xattrs = NULL;
 
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_DIR_TREE, dirtree_checksum, &dirtree,
                                  error))
@@ -1055,8 +1054,8 @@ checkout_tree_at_recurse (OstreeRepo *self, OstreeRepoCheckoutAtOptions *options
     if (sepolicy_enabled && _ostree_sepolicy_host_enabled (options->sepolicy))
       {
         /* We'll set the xattr via setfscreatecon(), so don't do it via generic xattrs below. */
-        modified_xattrs = _ostree_filter_selinux_xattr (xattrs);
-        xattrs = modified_xattrs;
+        g_autoptr (GVariant) old_xattrs = g_steal_pointer (&xattrs);
+        xattrs = _ostree_filter_selinux_xattr (old_xattrs);
 
         if (!_ostree_sepolicy_preparefscreatecon (&fscreatecon, options->sepolicy,
                                                   state->selabel_path_buf->str, mode, error))
