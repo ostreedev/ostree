@@ -325,6 +325,25 @@ main (int argc, char *argv[])
         err (EXIT_FAILURE, "failed to bind mount (class:readonly) /usr");
     }
 
+  /* Prepare /sysroot.
+   * The future / (currently at /sysroot.tmp) is an overlayfs or composefs that uses
+   * the physical root (currently at /sysroot), and we want to mount the physical root
+   * on top of the future / (at /sysroot.tmp/sysroot).
+   * If we MS_MOVE /sysroot to /sysroot.tmp/sysroot, we end up with a mount cycle,
+   * and systemd fails to unmount sysroot.mount.
+   * To avoid the mount cycle, bind-mount the physical root and then detach it.
+   */
+  if (mount (root_mountpoint, TMP_SYSROOT "/sysroot", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+    err (EXIT_FAILURE, "failed to MS_BIND '%s' to 'sysroot'", root_mountpoint);
+
+  if (umount2 (root_mountpoint, MNT_DETACH) < 0)
+    err (EXIT_FAILURE, "failed to MS_DETACH '%s'", root_mountpoint);
+
+  /* Resolve deploy path again so we can use paths relative to the physical root bind-mount */
+  g_autofree char *deploy_path2 = resolve_deploy_path (kernel_cmdline, TMP_SYSROOT "/sysroot");
+  if (chdir (deploy_path2) < 0)
+    err (EXIT_FAILURE, "failed to chdir to deploy_path2");
+
   /* Prepare /var.
    * When a read-only sysroot is configured, this adds a dedicated bind-mount (to itself)
    * so that the stateroot location stays writable. */
@@ -377,20 +396,12 @@ main (int argc, char *argv[])
       errx (EXIT_FAILURE, "Writing %s: %s", OTCORE_RUN_BOOTED, error->message);
   }
 
-  if (chdir (TMP_SYSROOT) < 0)
-    err (EXIT_FAILURE, "failed to chdir to " TMP_SYSROOT);
-
-  /* Now we have our ready made-up up root at
-   * /sysroot.tmp and the physical root at /sysroot (root_mountpoint).
-   * We want to end up with our deploy root at /sysroot/ and the physical
-   * root under /sysroot/sysroot as systemd will be responsible for
-   * moving /sysroot to /.
+  /* Now we have our ready made-up deploy root at /sysroot.tmp,
+   * we just need to move it to /sysroot (root_mountpoint).
+   * systemd will be responsible for moving /sysroot to /.
    */
-  if (mount (root_mountpoint, "sysroot", NULL, MS_MOVE | MS_SILENT, NULL) < 0)
-    err (EXIT_FAILURE, "failed to MS_MOVE '%s' to 'sysroot'", root_mountpoint);
-
-  if (mount (".", root_mountpoint, NULL, MS_MOVE | MS_SILENT, NULL) < 0)
-    err (EXIT_FAILURE, "failed to MS_MOVE %s to %s", ".", root_mountpoint);
+  if (mount (TMP_SYSROOT, root_mountpoint, NULL, MS_MOVE | MS_SILENT, NULL) < 0)
+    err (EXIT_FAILURE, "failed to MS_MOVE %s to %s", TMP_SYSROOT, root_mountpoint);
 
   if (chdir (root_mountpoint) < 0)
     err (EXIT_FAILURE, "failed to chdir to %s", root_mountpoint);
