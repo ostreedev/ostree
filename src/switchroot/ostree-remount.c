@@ -42,12 +42,6 @@
 #include "ostree-mount-util.h"
 #include "otcore.h"
 
-static gboolean opt_shutdown;
-
-static GOptionEntry options[] = { { "shutdown", 'S', 0, G_OPTION_ARG_NONE, &opt_shutdown,
-                                    "Perform shutdown unmounting", NULL },
-                                  { NULL } };
-
 static void
 do_remount (const char *target, bool writable)
 {
@@ -139,61 +133,10 @@ relabel_dir_for_upper (const char *upper_path, const char *real_path, gboolean i
 #endif
 }
 
-// ostree-prepare-root sets things up so that /sysroot points to the "physical" (real) root in the
-// initramfs, and then with composefs `/` is an overlay+EROFS that holds references to content in
-// that physical filesystem.
-//
-// In a typical mutable system where the OS is in a mutable `/` (or `/usr), systemd explicitly
-// skips unmounting both `/` and `/usr`. It will remount them read-only though - and that's
-// the semantic we want to match here.
-static void
-do_shutdown (void)
-{
-  const char *sysroot = "/sysroot";
-  if (mount (sysroot, sysroot, NULL, MS_REMOUNT | MS_SILENT | MS_RDONLY, NULL) < 0)
-    {
-      // Hopefully at this point nothing has any write references, but if they
-      // do we still want to continue.
-      perror ("Remounting /sysroot read-only");
-    }
-  // And fully detach it from the mountns because otherwise systemd thinks
-  // it can be unmounted, but it can't - it's required by `/` (and in a
-  // composefs setup `/etc`) and possibly `/var`. Again, we only really
-  // care that it got mounted read-only and hence outstanding data flushed.
-  // A better fix in the future would be to teach systemd to honor `-.mount`
-  // having a `Requires=sysroot.mount` meaning we can't unmount the latter.
-  if (umount2 (sysroot, MNT_DETACH) < 0)
-    err (EXIT_FAILURE, "umount(/sysroot)");
-
-  // And finally: /etc
-  // NOTE! This one is intentionally last in that we want to try to make
-  // this read-only, but if it fails, systemd-shutdown will have another
-  // attempt after a process killing spree. If anything happens to be
-  // holding a writable fd at this point, conceptually it would have
-  // created race conditions vs ostree-finalize-staged.service, and so
-  // having this service fail will be a signal that those things need
-  // to be fixed.
-  do_remount ("/etc", false);
-  // Don't add anything else after this.
-}
-
 int
 main (int argc, char *argv[])
 {
   g_autoptr (GError) error = NULL;
-  g_autoptr (GOptionContext) context = g_option_context_new ("");
-  g_option_context_add_main_entries (context, options, NULL);
-  if (!g_option_context_parse (context, &argc, &argv, &error))
-    errx (EXIT_FAILURE, "Error parsing options: %s", error->message);
-
-  // Handle the shutdown option
-  if (opt_shutdown)
-    {
-      do_shutdown ();
-      return 0;
-    }
-  // Otherwise fall through to the default startup
-
   g_autoptr (GVariant) ostree_run_metadata_v = NULL;
   {
     glnx_autofd int fd = open (OTCORE_RUN_BOOTED, O_RDONLY | O_CLOEXEC);

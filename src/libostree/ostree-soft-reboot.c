@@ -63,6 +63,22 @@ _ostree_prepare_soft_reboot (GError **error)
   if (!glnx_shutil_mkdir_p_at (AT_FDCWD, OTCORE_RUN_NEXTROOT, 0755, NULL, error))
     return FALSE;
 
+  /* Bind-mount /sysroot on itself.
+   * The composefs mount at /run/nextboot is going to use /sysroot,
+   * causing systemd to fail to umount sysroot.mount during soft-reboot.
+   * Create a temporary bind-mount, and MNT_DETACH it when we are done
+   */
+  if (mount (sysroot_path, sysroot_path, NULL, MS_BIND | MS_SILENT, NULL) < 0)
+    err (EXIT_FAILURE, "failed to MS_BIND '%s'", sysroot_path);
+
+  /* Our curent working directory is in the old /sysroot,
+   * ie we are under the bind mount, so run 'cd $PWD'
+   * to move to the new /sysroot
+   */
+  g_autofree char *cwd = g_get_current_dir ();
+  if (chdir (cwd) < 0)
+    err (EXIT_FAILURE, "failed to chdir to '%s'", cwd);
+
   // Tracks if we did successfully enable it at runtime
   bool using_composefs = false;
   if (!otcore_mount_rootfs (rootfs_config, &metadata_builder, sysroot_path, target_deployment,
@@ -77,6 +93,14 @@ _ostree_prepare_soft_reboot (GError **error)
 
   if (!otcore_mount_etc (config, &metadata_builder, OTCORE_RUN_NEXTROOT, error))
     return FALSE;
+
+  // detach the temporary /sysroot bind-mount
+  if (umount2 (sysroot_path, MNT_DETACH) < 0)
+    err (EXIT_FAILURE, "failed to MS_DETACH '%s'", sysroot_path);
+
+  // run 'cd $PWD' again to go back to the old /sysroot
+  if (chdir (cwd) < 0)
+    err (EXIT_FAILURE, "failed to chdir to '%s'", cwd);
 
   // And set up /sysroot. Here since we hardcode composefs, we also hardcode
   // having a read-only /sysroot.
