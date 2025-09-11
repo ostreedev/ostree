@@ -44,15 +44,14 @@ Boston, MA 02111-1307, USA.
   </refsynopsisdiv>
 
   <refsect1>
-    <title>Experimental</title>
+    <title>Dealing with /opt</title>
     <para>
-      <emphasis role="bold">Note this feature is currently considered
-      experimental.</emphasis> It may not work correctly and some of its
-      semantics may be subject to change. Positive or negative feedback are both
-      welcome and may be provided at
-      <ulink url="https://github.com/ostreedev/ostree/discussions"/>. If using
-      the feature via rpm-ostree, feedback may also be provided at
-      <ulink url="https://github.com/coreos/rpm-ostree/issues/233"/>.
+      <emphasis role="bold">Note:</emphasis> In general, the preference for
+      handling <filename>/opt</filename> software is to use symbolic links for
+      just the parts that need to be mutable to some place in
+      <filename>/var</filename> that can be created e.g. by a
+      <literal>tmpfiles.d</literal> dropin. For more information, see
+      <ulink url="https://bootc-dev.github.io/bootc/building/guidance.html#handling-read-only-vs-writable-locations"/>.
     </para>
   </refsect1>
 
