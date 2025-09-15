@@ -278,19 +278,31 @@ otcore_load_rootfs_config (const char *cmdline, GKeyFile *config, gboolean load_
 }
 
 #ifdef HAVE_COMPOSEFS
-static GVariant *
+static gboolean
 load_variant (const char *root_mountpoint, const char *digest, const char *extension,
-              const GVariantType *type, GError **error)
+              const GVariantType *type, gboolean allow_noent, GVariant **out, GError **error)
 {
   g_autofree char *path = g_strdup_printf ("%s/ostree/repo/objects/%.2s/%s.%s", root_mountpoint,
                                            digest, digest + 2, extension);
 
   char *data = NULL;
   gsize data_size;
-  if (!g_file_get_contents (path, &data, &data_size, error))
-    return NULL;
+  g_autoptr (GError) local_error = NULL;
 
-  return g_variant_ref_sink (g_variant_new_from_data (type, data, data_size, FALSE, g_free, data));
+  if (!g_file_get_contents (path, &data, &data_size, &local_error))
+    {
+      if (allow_noent && g_error_matches (local_error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
+        {
+          *out = NULL;
+          return TRUE;
+        }
+
+      g_propagate_error (error, g_steal_pointer (&local_error));
+      return FALSE;
+    }
+
+  *out = g_variant_ref_sink (g_variant_new_from_data (type, data, data_size, FALSE, g_free, data));
+  return TRUE;
 }
 
 // Given a mount point, directly load the .commit object.  At the current time this tool
@@ -299,27 +311,21 @@ static gboolean
 load_commit_for_deploy (const char *root_mountpoint, const char *deploy_path, GVariant **commit_out,
                         GVariant **commitmeta_out, GError **error)
 {
-  g_autoptr (GError) local_error = NULL;
   g_autofree char *digest = g_path_get_basename (deploy_path);
   char *dot = strchr (digest, '.');
   if (dot != NULL)
     *dot = 0;
 
-  g_autoptr (GVariant) commit_v
-      = load_variant (root_mountpoint, digest, "commit", OSTREE_COMMIT_GVARIANT_FORMAT, error);
-  if (commit_v == NULL)
+  g_autoptr (GVariant) commit_v = NULL;
+  g_autoptr (GVariant) commitmeta_v = NULL;
+
+  if (!load_variant (root_mountpoint, digest, "commit", OSTREE_COMMIT_GVARIANT_FORMAT, FALSE,
+                     &commit_v, error))
     return FALSE;
 
-  g_autoptr (GVariant) commitmeta_v = load_variant (root_mountpoint, digest, "commitmeta",
-                                                    G_VARIANT_TYPE ("a{sv}"), &local_error);
-  if (commitmeta_v == NULL)
-    {
-      if (g_error_matches (local_error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
-        glnx_throw (error, "No commitmeta for commit %s", digest);
-      else
-        g_propagate_error (error, g_steal_pointer (&local_error));
-      return FALSE;
-    }
+  if (!load_variant (root_mountpoint, digest, "commitmeta", G_VARIANT_TYPE ("a{sv}"), TRUE,
+                     &commitmeta_v, error))
+    return FALSE;
 
   *commit_out = g_steal_pointer (&commit_v);
   *commitmeta_out = g_steal_pointer (&commitmeta_v);
@@ -553,8 +559,12 @@ otcore_mount_rootfs (RootConfig *rootfs_config, GVariantBuilder *metadata_builde
       g_autoptr (GVariant) commit = NULL;
       g_autoptr (GVariant) commitmeta = NULL;
 
-      if (!load_commit_for_deploy (root_mountpoint, deploy_path, &commit, &commitmeta, error))
+      if (!load_commit_for_deploy (root_mountpoint, deploy_path, &commit, &commitmeta,
+                                   error))
         return glnx_prefix_error (error, "Error loading signatures from repo");
+
+      if (commitmeta == NULL)
+        return glnx_throw (error, "No commitmeta for deploy %s", deploy_path);
 
       g_autoptr (GVariant) signatures = g_variant_lookup_value (
           commitmeta, OSTREE_SIGN_METADATA_ED25519_KEY, G_VARIANT_TYPE ("aay"));
