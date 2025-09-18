@@ -142,7 +142,6 @@ resolve_deploy_path (const char *kernel_cmdline, const char *root_mountpoint)
 int
 main (int argc, char *argv[])
 {
-  char srcpath[PATH_MAX];
   struct stat stbuf;
   g_autoptr (GError) error = NULL;
 
@@ -325,37 +324,6 @@ main (int argc, char *argv[])
         err (EXIT_FAILURE, "failed to bind mount (class:readonly) /usr");
     }
 
-  /* Prepare /sysroot.
-   * The future / (currently at /sysroot.tmp) is an overlayfs or composefs that uses
-   * the physical root (currently at /sysroot), and we want to mount the physical root
-   * on top of the future / (at /sysroot.tmp/sysroot).
-   * If we MS_MOVE /sysroot to /sysroot.tmp/sysroot, we end up with a mount cycle,
-   * and systemd fails to unmount sysroot.mount.
-   * To avoid the mount cycle, bind-mount the physical root and then detach it.
-   */
-  if (mount (root_mountpoint, TMP_SYSROOT "/sysroot", NULL, MS_BIND | MS_SILENT, NULL) < 0)
-    err (EXIT_FAILURE, "failed to MS_BIND '%s' to 'sysroot'", root_mountpoint);
-
-  if (umount2 (root_mountpoint, MNT_DETACH) < 0)
-    err (EXIT_FAILURE, "failed to MS_DETACH '%s'", root_mountpoint);
-
-  /* Resolve deploy path again so we can use paths relative to the physical root bind-mount */
-  g_autofree char *deploy_path2 = resolve_deploy_path (kernel_cmdline, TMP_SYSROOT "/sysroot");
-  if (chdir (deploy_path2) < 0)
-    err (EXIT_FAILURE, "failed to chdir to deploy_path2");
-
-  /* Prepare /var.
-   * When a read-only sysroot is configured, this adds a dedicated bind-mount (to itself)
-   * so that the stateroot location stays writable. */
-  if (sysroot_readonly)
-    {
-      /* Bind-mount /var (at stateroot path), and remount as writable. */
-      if (mount ("../../var", "../../var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to prepare /var bind-mount at %s", srcpath);
-      if (mount ("../../var", "../../var", NULL, MS_BIND | MS_REMOUNT | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to make writable /var bind-mount at %s", srcpath);
-    }
-
 #ifndef HAVE_SYSTEMD_AND_LIBMOUNT
   /* When running under systemd, /var will be handled by a 'var.mount' unit outside of initramfs.
    * Bind-mount `/var` in the deployment to the "stateroot", which is
@@ -364,6 +332,8 @@ main (int argc, char *argv[])
    */
   if (mount ("../../var", TMP_SYSROOT "/var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
     err (EXIT_FAILURE, "failed to bind mount ../../var to var");
+  if (mount (NULL, TMP_SYSROOT "/var", NULL, MS_BIND | MS_REMOUNT | MS_SILENT, NULL) < 0)
+    err (EXIT_FAILURE, "failed to make /var bind-mount writable");
 
   /* To avoid having submounts of /var propagate into $stateroot/var, the
    * mount is made with slave+shared propagation. See the comment in
@@ -384,6 +354,20 @@ main (int argc, char *argv[])
                                         g_variant_get_size (metadata), 0, NULL, &error))
       errx (EXIT_FAILURE, "Writing %s: %s", OTCORE_RUN_BOOTED, error->message);
   }
+
+  /* Prepare /sysroot.
+   * The future / (currently at /sysroot.tmp) is an overlayfs or composefs that uses
+   * the physical root (currently at /sysroot), and we want to mount the physical root
+   * on top of the future / (at /sysroot.tmp/sysroot).
+   * If we MS_MOVE /sysroot to /sysroot.tmp/sysroot, we end up with a mount cycle,
+   * and systemd fails to unmount sysroot.mount.
+   * To avoid the mount cycle, bind-mount the physical root and then detach it.
+   */
+  if (mount (root_mountpoint, TMP_SYSROOT "/sysroot", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+    err (EXIT_FAILURE, "failed to MS_BIND '%s' to 'sysroot'", root_mountpoint);
+
+  if (umount2 (root_mountpoint, MNT_DETACH) < 0)
+    err (EXIT_FAILURE, "failed to MS_DETACH '%s'", root_mountpoint);
 
   /* Now we have our ready made-up deploy root at /sysroot.tmp,
    * we just need to move it to /sysroot (root_mountpoint).
