@@ -203,6 +203,7 @@ deployment_write_json (OstreeSysroot *sysroot, OstreeRepo *repo, OstreeDeploymen
   ul_jsonwrt_value_s (jo, "checksum", ref);
   ul_jsonwrt_value_s (jo, "stateroot", ostree_deployment_get_osname (deployment));
   ul_jsonwrt_value_u64 (jo, "serial", ostree_deployment_get_deployserial (deployment));
+  ul_jsonwrt_value_u64 (jo, "index", ostree_deployment_get_index (deployment));
   ul_jsonwrt_value_boolean (jo, "booted", is_booted);
   ul_jsonwrt_value_boolean (jo, "pending", is_pending);
   ul_jsonwrt_value_boolean (jo, "rollback", is_rollback);
