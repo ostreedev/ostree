@@ -248,7 +248,12 @@ fstab_generator (const char *ostree_target, const bool is_aboot, const char *nor
                                "[Mount]\n"
                                "Where=%s\n"
                                "What=%s\n"
-                               "Options=bind,slave,shared\n",
+#ifdef BUILDOPT_MOUNTHELPER
+                               "Type=ostreebindrw\n"
+                               "Options=slave,shared\n",
+#else
+                               "Options=bind,rw,slave,shared\n",
+#endif
                                var_path, stateroot_var_path))
     return FALSE;
   if (!g_output_stream_flush (outstream, cancellable, error))
