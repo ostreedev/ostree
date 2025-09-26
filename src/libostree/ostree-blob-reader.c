@@ -29,6 +29,19 @@ ostree_blob_reader_default_init (OstreeBlobReaderInterface *iface)
   g_debug ("OstreeBlobReader initialization");
 }
 
+/**
+ * ostree_blob_reader_read_blob
+ * @self: A OstreeBlobReader
+ * @cancellable: a #GCancellable
+ * @error: a #GError
+ *
+ * Read one blob from the reader, or %NULL if there are no more.
+ * On error, @error is set and %NULL is returned.
+ *
+ * Returns: (nullable): A #GBytes blob, or %NULL if there are no more
+ *
+ * Since: 2016.5
+ */
 GBytes *
 ostree_blob_reader_read_blob (OstreeBlobReader *self, GCancellable *cancellable, GError **error)
 {
