@@ -133,10 +133,15 @@ impl Repo {
         }
     }
 
-    //#[doc(alias = "ostree_repo_commit_add_composefs_metadata")]
-    //pub fn commit_add_composefs_metadata(&self, format_version: u32, dict: /*Ignored*/&glib::VariantDict, repo_root: &RepoFile, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
-    //    unsafe { TODO: call ffi:ostree_repo_commit_add_composefs_metadata() }
-    //}
+    #[doc(alias = "ostree_repo_commit_add_composefs_metadata")]
+    pub fn commit_add_composefs_metadata(&self, format_version: u32, dict: &glib::VariantDict, repo_root: &RepoFile, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
+        unsafe {
+            let mut error = std::ptr::null_mut();
+            let is_ok = ffi::ostree_repo_commit_add_composefs_metadata(self.to_glib_none().0, format_version, dict.to_glib_none().0, repo_root.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+        }
+    }
 
     #[doc(alias = "ostree_repo_commit_transaction")]
     pub fn commit_transaction(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<RepoTransactionStats, glib::Error> {

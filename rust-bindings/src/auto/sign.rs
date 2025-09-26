@@ -6,6 +6,9 @@ use crate::{ffi};
 #[cfg(feature = "v2020_2")]
 #[cfg_attr(docsrs, doc(cfg(feature = "v2020_2")))]
 use crate::{Repo};
+#[cfg(feature = "v2025_2")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2025_2")))]
+use crate::{BlobReader};
 use glib::{prelude::*};
 #[cfg(feature = "v2020_2")]
 #[cfg_attr(docsrs, doc(cfg(feature = "v2020_2")))]
@@ -163,19 +166,23 @@ pub trait SignExt: IsA<Sign> + 'static {
         }
     }
 
-    //#[cfg(feature = "v2025_2")]
-    //#[cfg_attr(docsrs, doc(cfg(feature = "v2025_2")))]
-    //#[doc(alias = "ostree_sign_read_pk")]
-    //fn read_pk(&self, stream: &impl IsA<gio::InputStream>) -> /*Ignored*/BlobReader {
-    //    unsafe { TODO: call ffi:ostree_sign_read_pk() }
-    //}
+    #[cfg(feature = "v2025_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_2")))]
+    #[doc(alias = "ostree_sign_read_pk")]
+    fn read_pk(&self, stream: &impl IsA<gio::InputStream>) -> BlobReader {
+        unsafe {
+            from_glib_full(ffi::ostree_sign_read_pk(self.as_ref().to_glib_none().0, stream.as_ref().to_glib_none().0))
+        }
+    }
 
-    //#[cfg(feature = "v2025_2")]
-    //#[cfg_attr(docsrs, doc(cfg(feature = "v2025_2")))]
-    //#[doc(alias = "ostree_sign_read_sk")]
-    //fn read_sk(&self, stream: &impl IsA<gio::InputStream>) -> /*Ignored*/BlobReader {
-    //    unsafe { TODO: call ffi:ostree_sign_read_sk() }
-    //}
+    #[cfg(feature = "v2025_2")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_2")))]
+    #[doc(alias = "ostree_sign_read_sk")]
+    fn read_sk(&self, stream: &impl IsA<gio::InputStream>) -> BlobReader {
+        unsafe {
+            from_glib_full(ffi::ostree_sign_read_sk(self.as_ref().to_glib_none().0, stream.as_ref().to_glib_none().0))
+        }
+    }
 
     #[cfg(feature = "v2020_2")]
     #[cfg_attr(docsrs, doc(cfg(feature = "v2020_2")))]

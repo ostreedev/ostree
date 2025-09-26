@@ -18,6 +18,7 @@ girs_directories = [ "../gir-files" ]
 
 generate = [
     "OSTree.AsyncProgress",
+    "OSTree.BlobReader",
     "OSTree.BootconfigParser",
     "OSTree.ChecksumFlags",
     "OSTree.ContentWriter",
@@ -83,6 +84,7 @@ manual = [
     "GLib.Quark",
     "GLib.String",
     "GLib.Variant",
+    "GLib.VariantDict",
     "GLib.VariantType",
 
     # [MANUAL] types implemented by hand
