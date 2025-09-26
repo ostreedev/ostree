@@ -367,8 +367,8 @@ ostree_sign_ed25519_set_sk (OstreeSign *self, GVariant *secret_key, GError **err
     }
   else if (g_variant_is_of_type (secret_key, G_VARIANT_TYPE_BYTESTRING))
     {
-      secret_key_buf
-          = (guchar *)g_variant_get_fixed_array (secret_key, &n_elements, sizeof (guchar));
+      const guchar *data = g_variant_get_fixed_array (secret_key, &n_elements, sizeof (guchar));
+      secret_key_buf = g_memdup (data, n_elements);
     }
   else
     {
