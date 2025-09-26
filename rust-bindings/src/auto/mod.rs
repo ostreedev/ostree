@@ -5,6 +5,9 @@
 mod async_progress;
 pub use self::async_progress::AsyncProgress;
 
+mod blob_reader;
+pub use self::blob_reader::BlobReader;
+
 mod bootconfig_parser;
 pub use self::bootconfig_parser::BootconfigParser;
 
@@ -186,6 +189,7 @@ pub use self::constants::SUMMARY_SIG_GVARIANT_STRING;
 pub use self::constants::TREE_GVARIANT_STRING;
 
 pub(crate) mod traits {
+    pub use super::blob_reader::BlobReaderExt;
     pub use super::repo_finder::RepoFinderExt;
     pub use super::sign::SignExt;
 }

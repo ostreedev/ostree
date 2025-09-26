@@ -92,12 +92,17 @@ pub fn commit_get_timestamp(commit_variant: &glib::Variant) -> u64 {
     }
 }
 
-//#[cfg(feature = "v2021_1")]
-//#[cfg_attr(docsrs, doc(cfg(feature = "v2021_1")))]
-//#[doc(alias = "ostree_commit_metadata_for_bootable")]
-//pub fn commit_metadata_for_bootable(root: &impl IsA<gio::File>, dict: /*Ignored*/&glib::VariantDict, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
-//    unsafe { TODO: call ffi:ostree_commit_metadata_for_bootable() }
-//}
+#[cfg(feature = "v2021_1")]
+#[cfg_attr(docsrs, doc(cfg(feature = "v2021_1")))]
+#[doc(alias = "ostree_commit_metadata_for_bootable")]
+pub fn commit_metadata_for_bootable(root: &impl IsA<gio::File>, dict: &glib::VariantDict, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
+    unsafe {
+        let mut error = std::ptr::null_mut();
+        let is_ok = ffi::ostree_commit_metadata_for_bootable(root.as_ref().to_glib_none().0, dict.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
+        debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
+        if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
+    }
+}
 
 #[doc(alias = "ostree_content_file_parse")]
 pub fn content_file_parse(compressed: bool, content_path: &impl IsA<gio::File>, trusted: bool, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(gio::InputStream, gio::FileInfo, glib::Variant), glib::Error> {

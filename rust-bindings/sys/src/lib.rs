@@ -3473,6 +3473,8 @@ extern "C" {
     // OstreeBlobReader
     //=========================================================================
     pub fn ostree_blob_reader_get_type() -> GType;
+    #[cfg(feature = "v2016_5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_5")))]
     pub fn ostree_blob_reader_read_blob(
         self_: *mut OstreeBlobReader,
         cancellable: *mut gio::GCancellable,
