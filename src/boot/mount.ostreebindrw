@@ -1,0 +1,6 @@
+#!/bin/bash
+set -euo pipefail
+
+mount --bind $@
+# remount rw
+[ -w "$2" ] || mount -o remount,bind,rw $2
