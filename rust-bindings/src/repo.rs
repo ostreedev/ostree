@@ -132,7 +132,7 @@ impl Repo {
     pub fn auto_transaction<P: IsA<gio::Cancellable>>(
         &self,
         cancellable: Option<&P>,
-    ) -> Result<TransactionGuard, glib::Error> {
+    ) -> Result<TransactionGuard<'_>, glib::Error> {
         let _ = self.prepare_transaction(cancellable)?;
         Ok(TransactionGuard { repo: Some(self) })
     }
