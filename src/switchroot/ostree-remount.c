@@ -53,18 +53,27 @@ do_remount (const char *target, bool writable)
    */
   if (S_ISLNK (stbuf.st_mode))
     return;
-  /* If not a mountpoint, skip it */
+
   struct statvfs stvfsbuf;
   if (statvfs (target, &stvfsbuf) == -1)
-    return;
+    err (EXIT_FAILURE, "failed to statvfs(%s)", target);
 
-  const bool currently_writable = ((stvfsbuf.f_flag & ST_RDONLY) == 0);
-  if (writable == currently_writable)
-    return;
+  if (writable)
+    {
+      // vfs could be 'rw' but fs 'ro', so use access to check
+      if (access (target, W_OK) == 0)
+        return;
+    }
+  else
+    {
+      // ensure vfs 'ro' mount flags is set even if fs is ro
+      if ((stvfsbuf.f_flag & ST_RDONLY) != 0)
+        return;
+    }
 
   int mnt_flags = MS_REMOUNT | MS_SILENT;
   if (!writable)
-    mnt_flags |= MS_RDONLY;
+    mnt_flags |= MS_BIND | MS_RDONLY;
   if (mount (target, target, NULL, mnt_flags, NULL) < 0)
     {
       /* Also ignore EINVAL - if the target isn't a mountpoint
@@ -76,7 +85,7 @@ do_remount (const char *target, bool writable)
         return;
     }
 
-  printf ("Remounted %s: %s\n", writable ? "rw" : "ro", target);
+  warn ("Remounted %s: %s\n", writable ? "rw" : "ro", target);
 }
 
 /* Relabel the directory $real_path, which is going to be an overlayfs mount,
@@ -226,27 +235,20 @@ main (int argc, char *argv[])
     }
 
   /* Handle remounting /sysroot; if it's explicitly marked as read-only (opt in)
-   * then ensure it's readonly, otherwise mount writable, the same as /
+   * then ensure it's readonly, otherwise remount writable, the same as /
    */
   gboolean sysroot_configured_readonly = FALSE;
   g_variant_dict_lookup (ostree_run_metadata, OTCORE_RUN_BOOTED_KEY_SYSROOT_RO, "b",
                          &sysroot_configured_readonly);
   do_remount ("/sysroot", !sysroot_configured_readonly);
 
-  /* And also make sure to make /etc rw again. We make this conditional on
-   * sysroot_configured_readonly && !transient_etc because only in that case is it a
-   * bind-mount. */
+  /* Make sure /etc is 'rw'. We make this conditional on sysroot_configured_readonly
+   * && !transient_etc because only in that case is it a bind-mount.
+   */
   if (sysroot_configured_readonly && !transient_etc)
     do_remount ("/etc", true);
 
-  /* If /var was created as as an OSTree default bind mount (instead of being a separate
-   * filesystem) then remounting the root mount read-only also remounted it. So just like /etc, we
-   * need to make it read-write by default. If it was a separate filesystem, we expect it to be
-   * writable anyways, so it doesn't hurt to remount it if so.
-   *
-   * And if we started out with a writable system root, then we need
-   * to ensure that the /var bind mount created by the systemd generator
-   * is writable too.
+  /* Make sure /var is 'rw'.
    */
   do_remount ("/var", true);
 
