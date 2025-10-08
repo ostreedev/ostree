@@ -97,7 +97,7 @@ case "$ID" in
             liblzma-dev
             libmount-dev
             libselinux1-dev
-            libsoup2.4-dev
+            libsoup-3.0-dev
             libsystemd-dev
             libtool
             libcap2-bin
