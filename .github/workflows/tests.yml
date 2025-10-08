@@ -213,18 +213,17 @@ jobs:
             configure-options: >-
               --with-crypto=openssl
 
-          # A build using libsoup3. After bookworm is released, this can
-          # be switched to Debian Stable.
-          - name: Debian Testing with libsoup3
-            image: debian:testing-slim
+          - name: Debian Stable with libsoup
+            image: debian:stable-slim
             container-options: --security-opt seccomp=unconfined
             pre-checkout-setup: |
               apt-get update
               apt-get install -y git
             extra-packages: >-
-              libsoup-3.0-dev
+              libsoup2.4-dev
             configure-options: >-
-              --with-soup3
+              --with-soup
+              --without-soup3
 
           # A build using static prepareorot
           - name: Debian stable + static-prepareroot
