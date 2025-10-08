@@ -4389,8 +4389,8 @@ ostree_sysroot_deployment_can_soft_reboot (OstreeSysroot *self, OstreeDeployment
 
   // Compare kargs without the ostree= entry, as that will vary per bootlink even for
   // the same boot checksum.
-  g_assert (ostree_kernel_args_delete (booted_kargs, "ostree", NULL));
-  g_assert (ostree_kernel_args_delete (target_kargs, "ostree", NULL));
+  g_assert (ostree_kernel_args_delete_if_present (booted_kargs, "ostree", NULL));
+  g_assert (ostree_kernel_args_delete_if_present (target_kargs, "ostree", NULL));
   return _ostree_kernel_args_equal (booted_kargs, target_kargs);
 }
 
