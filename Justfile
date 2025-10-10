@@ -1,16 +1,22 @@
 # Detect the os for a workaround below
 osid := `. /usr/lib/os-release && echo $ID`
 
+stream := env('STREAM', 'stream9')
+build_args := "--jobs=4 --build-arg=base=quay.io/centos-bootc/centos-bootc:"+stream
+
 # Build the container image from current sources
 build *ARGS:
-    podman build --jobs=4 -t localhost/ostree {{ARGS}} .
+    podman build {{build_args}} -t localhost/ostree {{ARGS}} .
 
 build-unittest *ARGS:
-    podman build --jobs=4 --target build -t localhost/ostree-buildroot {{ARGS}} .
+    podman build {{build_args}} --target build -t localhost/ostree-buildroot {{ARGS}} .
 
 # Do a build but don't regenerate the initramfs
 build-noinitramfs *ARGS:
-    podman build --jobs=4 --target rootfs -t localhost/ostree {{ARGS}} .
+    podman build {{build_args}} --target rootfs -t localhost/ostree {{ARGS}} .
+
+unitcontainer-build *ARGS:
+    podman build {{build_args}} --target bin-and-test -t localhost/ostree-bintest {{ARGS}} .
 
 # We need a filesystem that supports O_TMPFILE right now (i.e. not overlayfs)
 # or ostree hard crashes in the http code =/
@@ -33,8 +39,6 @@ unittest-shell: build-unittest
 # For some reason doing the bind mount isn't working on at least the GHA Ubuntu 24.04 runner
 # without --privileged. I think it may be apparmor?
 unitpriv := if osid == "ubuntu" { "--privileged" } else { "" }
-unitcontainer-build:
-    podman build --jobs=4 --target bin-and-test -t localhost/ostree-bintest .
 unitcontainer: unitcontainer-build 
     # need cap-add=all for mounting
     podman run --rm --net=none {{unitpriv}} {{unittest_args}} --cap-add=all --env=TEST_CONTAINER=1 localhost/ostree-bintest /tests/run.sh
