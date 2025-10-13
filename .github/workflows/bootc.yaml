@@ -32,11 +32,11 @@ jobs:
           sudo apt update
           sudo apt install -y crun/testing podman/testing skopeo/testing
       - name: build
-        run: sudo just build --build-arg=base=quay.io/centos-bootc/centos-bootc:${{ matrix.stream }}
+        run: sudo STREAM=${{ matrix.stream }} just build
       - name: unitcontainer
-        run: sudo just unitcontainer
+        run: sudo STREAM=${{ matrix.stream }} just unitcontainer
       - name: unittest
-        run: sudo just unittest
+        run: sudo STREAM=${{ matrix.stream }} just unittest
       - name: bootc install
         run: |
           set -xeuo pipefail
