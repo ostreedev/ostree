@@ -3406,11 +3406,16 @@ sysroot_finalize_selinux_policy (int deployment_dfd, GError **error)
   if (errno != 0)
     return TRUE;
 
+  /* Absolute path to handle cases of running from systems with merged /sbin and /bin (e.g. F42+)
+   * but targeting a non-merged root.
+   **/
+  static const char semodule[] = "/usr/sbin/semodule";
+
   /*
    * Skip the SELinux policy refresh if the --refresh
    * flag is not supported by semodule.
    */
-  static const gchar *const SEMODULE_HELP_ARGV[] = { "semodule", "--help", NULL };
+  static const gchar *const SEMODULE_HELP_ARGV[] = { semodule, "--help", NULL };
   if (!_ostree_sysroot_run_in_deployment (deployment_dfd, NULL, SEMODULE_HELP_ARGV, &exit_status,
                                           &stdout, error))
     return FALSE;
@@ -3422,7 +3427,7 @@ sysroot_finalize_selinux_policy (int deployment_dfd, GError **error)
       return TRUE;
     }
 
-  static const gchar *const SEMODULE_REBUILD_ARGV[] = { "semodule", "-N", "--refresh", NULL };
+  static const gchar *const SEMODULE_REBUILD_ARGV[] = { semodule, "-N", "--refresh", NULL };
 
   ot_journal_print (LOG_INFO, "Refreshing SELinux policy");
   guint64 start_msec = g_get_monotonic_time () / 1000;
