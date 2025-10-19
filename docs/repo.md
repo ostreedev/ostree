@@ -101,7 +101,7 @@ a plain file too.
 # Repository types and locations
 
 Also unlike git, an OSTree repository can be in one of five separate
-modes: `bare`, `bare-split-xattrs, ``bare-user`, `bare-user-only`, and
+modes: `bare`, `bare-split-xattrs`, `bare-user`, `bare-user-only`, and
 `archive`.
 
 A `bare` repository is one where content files are just stored as regular
