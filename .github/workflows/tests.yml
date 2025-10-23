@@ -95,6 +95,26 @@ jobs:
         with:
           name: inst.tar.zst
           path: inst.tar.zst
+  build-musl:
+    name: "Build (Alpine)"
+    runs-on: ubuntu-latest
+    container: docker.io/alpine:latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Install dependencies
+        run: |
+          apk update
+          apk add autoconf automake bison build-base curl-dev e2fsprogs-dev \
+            fuse-dev git glib-dev gpgme-dev libsoup-dev libtool pkgconfig xz-dev
+      # https://github.com/actions/checkout/issues/760
+      - name: Mark git checkout as safe
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Build
+        run: |
+          env NOCONFIGURE=1 ./autogen.sh &&
+          ./configure --with-curl --with-selinux --with-dracut=yesbutnoconf --without-selinux &&
+          make -j 4 && make install DESTDIR=$(pwd)/install && tar -c -C install --zstd -f inst.tar.zst .
   privtest:
     name: "Privileged testing"
     needs: [build-c, build-integration]
