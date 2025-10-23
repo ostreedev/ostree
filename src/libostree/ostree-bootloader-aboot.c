@@ -24,6 +24,7 @@
 #include "otutil.h"
 #include <sys/mount.h>
 
+#include <stdint.h>
 #include <string.h>
 
 /* This is specific to aboot and zipl today, but in the future we could also
