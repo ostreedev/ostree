@@ -121,7 +121,7 @@ machines, you will need to choose a solution for `/etc/passwd`.  The
 core problem is that if you add a user to the system for a daemon, the
 OSTree upgrade process for `/etc` will simply notice that because
 `/etc/passwd` differs from the previous default, it will keep the
-modified config file, and your new OS user will not be visible.  
+modified config file, and your new OS user will not be visible.
 
 First, consider using [systemd DynamicUser=yes](https://0pointer.net/blog/dynamic-users-with-systemd.html)
 where applicable.  This entirely avoids problems with static
@@ -201,4 +201,4 @@ Then to actually deploy this tree for the next boot:
 `ostree admin deploy $osname/$releasename/$description`
 
 This is essentially what [rpm-ostree](https://github.com/projectatomic/rpm-ostree/)
-does to support its [package layering model](https://rpm-ostree.readthedocs.io/en/latest/manual/administrator-handbook/#hybrid-imagepackaging-via-package-layering).
+does to support its [package layering model](https://coreos.github.io/rpm-ostree/administrator-handbook/#hybrid-imagepackaging-via-package-layering).
