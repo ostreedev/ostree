@@ -4948,7 +4948,7 @@ ostree_repo_pull_one_dir (OstreeRepo *self, const char *remote_name, const char 
 }
 
 /**
- * _formatted_time_remaining_from_seconds
+ * _formatted_time_remaining_from_seconds:
  * @seconds_remaining: Estimated number of seconds remaining.
  *
  * Returns a strings showing the number of days, hours, minutes

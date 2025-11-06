@@ -4508,7 +4508,7 @@ ostree_sysroot_clear_soft_reboot (OstreeSysroot *self, GCancellable *cancellable
 }
 
 /**
- * ostree_sysroot_deployment_kexec_load
+ * ostree_sysroot_deployment_kexec_load:
  * @self: Sysroot
  * @deployment: Deployment to prepare a kexec for
  * @cancellable: Cancellable

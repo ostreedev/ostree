@@ -363,7 +363,7 @@ ostree_kernel_args_new_replace (OstreeKernelArgs *kargs, const char *arg, GError
 }
 
 /**
- * ostree_kernel_args_delete_key_entry
+ * ostree_kernel_args_delete_key_entry:
  * @kargs: an OstreeKernelArgs instance
  * @key: the key to remove
  * @error: an GError instance
