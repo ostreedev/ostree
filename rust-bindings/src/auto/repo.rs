@@ -1212,16 +1212,6 @@ impl Repo {
         }
     }
 
-    #[doc(alias = "ostree_repo_write_config_and_reload")]
-    pub fn write_config_and_reload(&self, new_config: &glib::KeyFile) -> Result<(), glib::Error> {
-        unsafe {
-            let mut error = std::ptr::null_mut();
-            let is_ok = ffi::ostree_repo_write_config_and_reload(self.to_glib_none().0, new_config.to_glib_none().0, &mut error);
-            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
-        }
-    }
-
     #[doc(alias = "ostree_repo_write_content_trusted")]
     pub fn write_content_trusted(&self, checksum: &str, object_input: &impl IsA<gio::InputStream>, length: u64, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {

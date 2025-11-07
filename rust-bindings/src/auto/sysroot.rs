@@ -74,18 +74,6 @@ impl Sysroot {
     //    unsafe { TODO: call ffi:ostree_sysroot_cleanup_prune_repo() }
     //}
 
-    #[cfg(feature = "v2025_3")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_3")))]
-    #[doc(alias = "ostree_sysroot_clear_soft_reboot")]
-    pub fn clear_soft_reboot(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
-        unsafe {
-            let mut error = std::ptr::null_mut();
-            let is_ok = ffi::ostree_sysroot_clear_soft_reboot(self.to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
-            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
-        }
-    }
-
     #[cfg(feature = "v2018_5")]
     #[cfg_attr(docsrs, doc(cfg(feature = "v2018_5")))]
     #[doc(alias = "ostree_sysroot_deploy_tree")]
@@ -109,15 +97,6 @@ impl Sysroot {
             let is_ok = ffi::ostree_sysroot_deploy_tree_with_options(self.to_glib_none().0, osname.to_glib_none().0, revision.to_glib_none().0, origin.to_glib_none().0, provided_merge_deployment.to_glib_none().0, mut_override(opts.to_glib_none().0), &mut out_new_deployment, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(from_glib_full(out_new_deployment)) } else { Err(from_glib_full(error)) }
-        }
-    }
-
-    #[cfg(feature = "v2025_3")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_3")))]
-    #[doc(alias = "ostree_sysroot_deployment_can_soft_reboot")]
-    pub fn deployment_can_soft_reboot(&self, deployment: &Deployment) -> bool {
-        unsafe {
-            from_glib(ffi::ostree_sysroot_deployment_can_soft_reboot(self.to_glib_none().0, deployment.to_glib_none().0))
         }
     }
 
@@ -170,18 +149,6 @@ impl Sysroot {
         unsafe {
             let mut error = std::ptr::null_mut();
             let is_ok = ffi::ostree_sysroot_deployment_set_pinned(self.to_glib_none().0, deployment.to_glib_none().0, is_pinned.into_glib(), &mut error);
-            debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
-            if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
-        }
-    }
-
-    #[cfg(feature = "v2025_3")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_3")))]
-    #[doc(alias = "ostree_sysroot_deployment_set_soft_reboot")]
-    pub fn deployment_set_soft_reboot(&self, deployment: &Deployment, allow_kernel_skew: bool, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
-        unsafe {
-            let mut error = std::ptr::null_mut();
-            let is_ok = ffi::ostree_sysroot_deployment_set_soft_reboot(self.to_glib_none().0, deployment.to_glib_none().0, allow_kernel_skew.into_glib(), cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);
             debug_assert_eq!(is_ok == glib::ffi::GFALSE, !error.is_null());
             if error.is_null() { Ok(()) } else { Err(from_glib_full(error)) }
         }

@@ -3,10 +3,7 @@
 // DO NOT EDIT
 
 use crate::{ffi};
-use glib::{prelude::*};
-#[cfg(feature = "v2016_5")]
-#[cfg_attr(docsrs, doc(cfg(feature = "v2016_5")))]
-use glib::{translate::*};
+use glib::{prelude::*,translate::*};
 
 glib::wrapper! {
     #[doc(alias = "OstreeBlobReader")]
@@ -23,10 +20,8 @@ impl BlobReader {
 }
 
 pub trait BlobReaderExt: IsA<BlobReader> + 'static {
-    #[cfg(feature = "v2016_5")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "v2016_5")))]
     #[doc(alias = "ostree_blob_reader_read_blob")]
-    fn read_blob(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<Option<glib::Bytes>, glib::Error> {
+    fn read_blob(&self, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<glib::Bytes, glib::Error> {
         unsafe {
             let mut error = std::ptr::null_mut();
             let ret = ffi::ostree_blob_reader_read_blob(self.as_ref().to_glib_none().0, cancellable.map(|p| p.as_ref()).to_glib_none().0, &mut error);

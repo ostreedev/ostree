@@ -147,15 +147,6 @@ impl Deployment {
         }
     }
 
-    #[cfg(feature = "v2025_3")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_3")))]
-    #[doc(alias = "ostree_deployment_is_soft_reboot_target")]
-    pub fn is_soft_reboot_target(&self) -> bool {
-        unsafe {
-            from_glib(ffi::ostree_deployment_is_soft_reboot_target(self.to_glib_none().0))
-        }
-    }
-
     #[cfg(feature = "v2018_3")]
     #[cfg_attr(docsrs, doc(cfg(feature = "v2018_3")))]
     #[doc(alias = "ostree_deployment_is_staged")]

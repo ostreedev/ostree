@@ -47,24 +47,6 @@ impl BootconfigParser {
         }
     }
 
-    #[doc(alias = "ostree_bootconfig_parser_get_tries_done")]
-    #[doc(alias = "get_tries_done")]
-    pub fn tries_done(&self) -> u64 {
-        unsafe {
-            ffi::ostree_bootconfig_parser_get_tries_done(self.to_glib_none().0)
-        }
-    }
-
-    #[cfg(feature = "v2025_2")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "v2025_2")))]
-    #[doc(alias = "ostree_bootconfig_parser_get_tries_left")]
-    #[doc(alias = "get_tries_left")]
-    pub fn tries_left(&self) -> u64 {
-        unsafe {
-            ffi::ostree_bootconfig_parser_get_tries_left(self.to_glib_none().0)
-        }
-    }
-
     #[doc(alias = "ostree_bootconfig_parser_parse")]
     pub fn parse(&self, path: &impl IsA<gio::File>, cancellable: Option<&impl IsA<gio::Cancellable>>) -> Result<(), glib::Error> {
         unsafe {
