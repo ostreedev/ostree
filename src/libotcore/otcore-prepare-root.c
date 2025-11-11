@@ -419,7 +419,8 @@ validate_signature (GBytes *data, GVariant *signatures, GPtrArray *pubkeys, GErr
         }
     }
 
-  return glnx_throw (error, "No valid (of %" G_GSIZE_FORMAT ") signatures found", g_variant_n_children (signatures));
+  return glnx_throw (error, "No valid (of %" G_GSIZE_FORMAT ") signatures found",
+                     g_variant_n_children (signatures));
 }
 
 // Output a friendly message based on an errno for common cases
