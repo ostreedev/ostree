@@ -419,7 +419,8 @@ validate_signature (GBytes *data, GVariant *signatures, GPtrArray *pubkeys, GErr
         }
     }
 
-  return FALSE;
+  return glnx_throw (error, "No valid (of %" G_GSIZE_FORMAT ") signatures found",
+                     g_variant_n_children (signatures));
 }
 
 // Output a friendly message based on an errno for common cases
@@ -641,7 +642,7 @@ otcore_mount_rootfs (RootConfig *rootfs_config, GVariantBuilder *metadata_builde
 
       g_autoptr (GBytes) commit_data = g_variant_get_data_as_bytes (commit);
       if (!validate_signature (commit_data, signatures, rootfs_config->pubkeys, error))
-        return glnx_prefix_error (error, "No valid signatures found for public key");
+        return glnx_prefix_error (error, "Checking commit signature");
 
       ot_journal_print (LOG_INFO, "composefs+ostree: Validated commit signature using '%s'",
                         composefs_pubkey);

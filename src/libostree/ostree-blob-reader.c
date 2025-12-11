@@ -30,7 +30,7 @@ ostree_blob_reader_default_init (OstreeBlobReaderInterface *iface)
 }
 
 /**
- * ostree_blob_reader_read_blob
+ * ostree_blob_reader_read_blob:
  * @self: A OstreeBlobReader
  * @cancellable: a #GCancellable
  * @error: a #GError
