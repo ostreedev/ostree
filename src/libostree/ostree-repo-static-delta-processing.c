@@ -414,7 +414,25 @@ dispatch_bspatch (OstreeRepo *repo, StaticDeltaExecutionState *state, GCancellab
       if (!input_mfile)
         return FALSE;
 
-      g_autofree guchar *buf = g_malloc0 (state->content_size);
+      /* Instead of allocating the entire content_size in memory, use a tmpfile
+       * that can be paged to disk by the OS if needed. This prevents OOM on
+       * systems with limited RAM when processing large files.
+       * See: https://github.com/flatpak/flatpak/issues/6255
+       */
+      g_auto (GLnxTmpfile) tmpf = {
+        0,
+      };
+      if (!glnx_open_anonymous_tmpfile (O_RDWR | O_CLOEXEC, &tmpf, error))
+        return FALSE;
+
+      /* Resize tmpfile to content_size */
+      if (ftruncate (tmpf.fd, state->content_size) < 0)
+        return glnx_throw_errno_prefix (error, "ftruncate");
+
+      /* Memory-map the tmpfile for bspatch to write to */
+      void *buf = mmap (NULL, state->content_size, PROT_READ | PROT_WRITE, MAP_SHARED, tmpf.fd, 0);
+      if (buf == MAP_FAILED)
+        return glnx_throw_errno_prefix (error, "mmap");
 
       struct bzpatch_opaque_s opaque;
       opaque.state = state;
@@ -423,14 +441,45 @@ dispatch_bspatch (OstreeRepo *repo, StaticDeltaExecutionState *state, GCancellab
       struct bspatch_stream stream;
       stream.read = bspatch_read;
       stream.opaque = &opaque;
-      if (bspatch ((const guint8 *)g_mapped_file_get_contents (input_mfile),
-                   g_mapped_file_get_length (input_mfile), buf, state->content_size, &stream)
-          < 0)
+
+      int bspatch_result = bspatch ((const guint8 *)g_mapped_file_get_contents (input_mfile),
+                                    g_mapped_file_get_length (input_mfile), buf,
+                                    state->content_size, &stream);
+
+      /* Unmap before checking result */
+      if (munmap (buf, state->content_size) < 0)
+        return glnx_throw_errno_prefix (error, "munmap");
+
+      if (bspatch_result < 0)
         return glnx_throw (error, "bsdiff patch failed");
 
-      if (!_ostree_repo_bare_content_write (repo, &state->content_out, buf, state->content_size,
-                                            cancellable, error))
-        return FALSE;
+      /* Now read from tmpfile and write to repository */
+      if (lseek (tmpf.fd, 0, SEEK_SET) < 0)
+        return glnx_throw_errno_prefix (error, "lseek");
+
+      /* Read and write in chunks to avoid loading entire file into memory */
+      guint64 bytes_remaining = state->content_size;
+      while (bytes_remaining > 0)
+        {
+          guchar chunk_buf[8192];
+          gsize chunk_size = MIN (sizeof (chunk_buf), bytes_remaining);
+          gssize bytes_read;
+
+          do
+            bytes_read = read (tmpf.fd, chunk_buf, chunk_size);
+          while (G_UNLIKELY (bytes_read == -1 && errno == EINTR));
+
+          if (bytes_read < 0)
+            return glnx_throw_errno_prefix (error, "read");
+          if (bytes_read == 0)
+            return glnx_throw (error, "Unexpected EOF reading from tmpfile");
+
+          if (!_ostree_repo_bare_content_write (repo, &state->content_out, chunk_buf, bytes_read,
+                                                cancellable, error))
+            return FALSE;
+
+          bytes_remaining -= bytes_read;
+        }
     }
 
   return TRUE;
