@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include <string.h>
+#include <sys/mman.h>
 
 #include <gio/gfiledescriptorbased.h>
 #include <gio/gunixinputstream.h>
