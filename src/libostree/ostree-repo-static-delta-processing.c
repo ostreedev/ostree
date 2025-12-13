@@ -457,9 +457,9 @@ dispatch_bspatch (OstreeRepo *repo, StaticDeltaExecutionState *state, GCancellab
       stream.read = bspatch_read;
       stream.opaque = &opaque;
 
-      int bspatch_result = bspatch ((const guint8 *)g_mapped_file_get_contents (input_mfile),
-                                    g_mapped_file_get_length (input_mfile), buf,
-                                    state->content_size, &stream);
+      int bspatch_result
+          = bspatch ((const guint8 *)g_mapped_file_get_contents (input_mfile),
+                     g_mapped_file_get_length (input_mfile), buf, state->content_size, &stream);
 
       /* Unmap before checking result - only if we actually created a mapping */
       if (state->content_size > 0 && munmap (buf, state->content_size) < 0)
