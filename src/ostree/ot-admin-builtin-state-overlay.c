@@ -23,6 +23,7 @@
 #include <sched.h>
 #include <stdlib.h>
 #include <sys/mount.h>
+#include <sys/xattr.h>
 
 #include "glnx-errors.h"
 #include "glnx-fdio.h"
@@ -62,20 +63,68 @@ ensure_overlay_dirs (const char *overlay_dir, int *out_overlay_dfd, GCancellable
   return TRUE;
 }
 
-/* XXX: upstream to libglnx */
+/* Based on glnx_lgetxattrat() from libglnx, modified to treat ENODATA
+ * (xattr not set) as success with *out_bytes = NULL. We check errno
+ * immediately after the lgetxattr syscall, before any GLib calls can
+ * clobber it. This avoids depending on GLib's g_io_error_from_errno()
+ * mapping, which only maps ENODATA to G_IO_ERROR_NOT_FOUND since GLib 2.74.
+ *
+ * This implementation handles the TOCTOU race condition where the xattr size
+ * may change between the size query and the data read by retrying with ERANGE.
+ * It also handles the case where the xattr is deleted between calls (ENODATA
+ * on second call). Zero-length xattrs are handled without allocating a buffer.
+ *
+ * TODO: Upstream to libglnx. */
 static gboolean
-lgetxattrat_allow_noent (int dfd, const char *path, const char *attribute, GBytes **out_bytes,
-                         GError **error)
+lgetxattrat_allow_nodata (int dfd, const char *path, const char *attribute, GBytes **out_bytes,
+                          GError **error)
 {
-  g_autoptr (GError) local_error = NULL;
-  *out_bytes = glnx_lgetxattrat (dfd, path, attribute, &local_error);
-  if (!*out_bytes)
+  char pathbuf[PATH_MAX];
+  int n = snprintf (pathbuf, sizeof (pathbuf), "/proc/self/fd/%d/%s", dfd, path);
+  if (n < 0 || n >= sizeof (pathbuf))
+    return glnx_throw (error, "Path truncated for fd %d, path %s", dfd, path);
+
+  ssize_t bytes_read;
+  ssize_t real_size;
+  g_autofree guint8 *buf = NULL;
+
+again:
+  errno = 0;
+  bytes_read = TEMP_FAILURE_RETRY (lgetxattr (pathbuf, attribute, NULL, 0));
+  if (bytes_read < 0)
     {
-      if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA))
-        return TRUE;
-      g_propagate_error (error, g_steal_pointer (&local_error));
-      return FALSE;
+      if (errno == ENODATA)
+        {
+          *out_bytes = NULL;
+          return TRUE; /* xattr not set; that's fine */
+        }
+      return glnx_throw_errno_prefix (error, "lgetxattr(%s)", attribute);
     }
+
+  if (bytes_read == 0)
+    {
+      *out_bytes = g_bytes_new_static ("", 0);
+      return TRUE;
+    }
+
+  buf = g_malloc (bytes_read);
+  real_size = TEMP_FAILURE_RETRY (lgetxattr (pathbuf, attribute, buf, bytes_read));
+  if (real_size < 0)
+    {
+      if (errno == ERANGE)
+        {
+          g_clear_pointer (&buf, g_free);
+          goto again;
+        }
+      if (errno == ENODATA)
+        {
+          *out_bytes = NULL;
+          return TRUE; /* xattr was deleted between calls */
+        }
+      return glnx_throw_errno_prefix (error, "lgetxattr(%s)", attribute);
+    }
+
+  *out_bytes = g_bytes_new_take (g_steal_pointer (&buf), real_size);
   return TRUE;
 }
 
@@ -83,7 +132,7 @@ static gboolean
 is_opaque_dir (int dfd, const char *dname, gboolean *out_is_opaque, GError **error)
 {
   g_autoptr (GBytes) data = NULL;
-  if (!lgetxattrat_allow_noent (dfd, dname, OVERLAYFS_DIR_XATTR_OPAQUE, &data, error))
+  if (!lgetxattrat_allow_nodata (dfd, dname, OVERLAYFS_DIR_XATTR_OPAQUE, &data, error))
     return FALSE;
 
   if (!data)
@@ -203,8 +252,8 @@ get_overlay_deployment_checksum (int overlay_dfd, char **out_checksum, GCancella
                                  GError **error)
 {
   g_autoptr (GBytes) bytes = NULL;
-  if (!lgetxattrat_allow_noent (overlay_dfd, OSTREE_STATEOVERLAY_UPPER_DIR,
-                                OSTREE_STATEOVERLAY_XATTR_DEPLOYMENT_CSUM, &bytes, error))
+  if (!lgetxattrat_allow_nodata (overlay_dfd, OSTREE_STATEOVERLAY_UPPER_DIR,
+                                 OSTREE_STATEOVERLAY_XATTR_DEPLOYMENT_CSUM, &bytes, error))
     return FALSE;
   if (!bytes)
     return TRUE; /* probably newly created */
