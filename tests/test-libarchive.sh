@@ -23,7 +23,7 @@ set -euo pipefail
 
 skip_without_ostree_feature libarchive
 
-echo "1..18"
+echo "1..19"
 
 setup_test_repository "bare"
 
@@ -243,3 +243,36 @@ assert_file_has_content sizes.txt 'Compressed size (needed/total): 0[  ]bytes/1
 assert_file_has_content sizes.txt 'Unpacked size (needed/total): 0[  ]bytes/921[  ]bytes'
 assert_file_has_content sizes.txt 'Number of objects (needed/total): 0/14'
 echo "ok tar sizes metadata"
+
+# Test UTF-8 filenames work in POSIX/C locale (where libarchive's charset
+# conversion fails). This reproduces the issue from
+# https://github.com/ostreedev/ostree/issues/3431 where Python 3.14's
+# venv creates a symlink named "𝜋thon" (U+1D70B, Mathematical Italic Small Pi).
+cd ${test_tmpdir}
+rm -rf utf8-test
+mkdir utf8-test
+cd utf8-test
+mkdir -p usr/bin
+echo "#!/bin/sh" > usr/bin/python3
+chmod +x usr/bin/python3
+# Create symlink with non-ASCII UTF-8 name (𝜋 = 4-byte UTF-8: F0 9D 9C 8B)
+# and symlink target with non-ASCII UTF-8
+ln -s python3 'usr/bin/𝜋thon'
+ln -s '𝜋thon' 'usr/bin/𝜋-link'
+tar -c -f ../utf8.tar .
+cd ..
+
+# Import with POSIX locale - this previously failed with:
+# "Pathname can't be converted from UTF-8 to current locale"
+LC_ALL=C $OSTREE commit -s "from tar with utf8" -b test-tar-utf8 \
+  --tar-autocreate-parents \
+  --tree=tar=utf8.tar
+# Verify the files exist with correct names
+$OSTREE ls test-tar-utf8 /usr/bin/𝜋thon >/dev/null
+$OSTREE ls test-tar-utf8 /usr/bin/𝜋-link >/dev/null
+# Verify symlink targets are correct
+rm -rf utf8-checkout
+$OSTREE checkout test-tar-utf8 utf8-checkout
+test "$(readlink utf8-checkout/usr/bin/𝜋thon)" = "python3"
+test "$(readlink utf8-checkout/usr/bin/𝜋-link)" = "𝜋thon"
+echo "ok tar commit with utf8 filenames in POSIX locale"

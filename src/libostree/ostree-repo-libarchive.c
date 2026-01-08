@@ -44,6 +44,74 @@ propagate_libarchive_error (GError **error, struct archive *a)
   g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "%s", archive_error_string (a));
 }
 
+/*
+ * Get pathname from archive entry as UTF-8.
+ *
+ * libarchive attempts to convert filenames to the current locale's charset,
+ * which fails in POSIX/C locale for non-ASCII UTF-8 characters. This function
+ * uses archive_entry_pathname_utf8() to bypass locale conversion, falling back
+ * to archive_entry_pathname() with explicit UTF-8 validation.
+ *
+ * Returns NULL and sets error if the pathname is missing or not valid UTF-8.
+ */
+static const char *
+archive_entry_require_pathname_utf8 (struct archive_entry *entry, GError **error)
+{
+  /* Try the UTF-8 accessor first - this returns the UTF-8 form directly
+   * without locale conversion. */
+  const char *pathname = archive_entry_pathname_utf8 (entry);
+  if (pathname != NULL)
+    return pathname;
+
+  /* Fall back to regular accessor. When libarchive's charset conversion
+   * fails (e.g., in POSIX locale), it falls back to copying raw bytes,
+   * which for OCI/Docker tarballs should be valid UTF-8. */
+  pathname = archive_entry_pathname (entry);
+  if (pathname == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Archive entry has no pathname");
+      return NULL;
+    }
+
+  if (!g_utf8_validate (pathname, -1, NULL))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA,
+                   "Archive entry pathname is not valid UTF-8");
+      return NULL;
+    }
+
+  return pathname;
+}
+
+/*
+ * Get symlink target from archive entry, validating it is UTF-8.
+ * Returns NULL (without error) if entry is not a symlink.
+ * Returns NULL with error set if symlink target is not valid UTF-8.
+ */
+static const char *
+archive_entry_require_symlink_utf8 (struct archive_entry *entry, GError **error)
+{
+  /* Try the UTF-8 accessor first - this returns the UTF-8 form directly
+   * without locale conversion. */
+  const char *target = archive_entry_symlink_utf8 (entry);
+  if (target != NULL)
+    return target;
+
+  /* Fall back to regular accessor with explicit UTF-8 validation */
+  target = archive_entry_symlink (entry);
+  if (target == NULL)
+    return NULL;
+
+  if (!g_utf8_validate (target, -1, NULL))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA,
+                   "Archive entry symlink target is not valid UTF-8");
+      return NULL;
+    }
+
+  return target;
+}
+
 static const char *
 path_relative (const char *src, GError **error)
 {
@@ -131,20 +199,34 @@ read_archive_entry_stat (struct archive_entry *entry, struct stat *stbuf)
     stbuf->st_mode |= S_IFREG;
 }
 
-/* Create a GFileInfo from archive_entry_stat() */
+/* Create a GFileInfo from archive_entry_stat().
+ *
+ * For symlinks, validates that the target is valid UTF-8.
+ * Returns NULL with error set on failure.
+ */
 static GFileInfo *
-file_info_from_archive_entry (struct archive_entry *entry)
+file_info_from_archive_entry (struct archive_entry *entry, GError **error)
 {
   struct stat stbuf;
   read_archive_entry_stat (entry, &stbuf);
 
-  g_autoptr (GFileInfo) info = _ostree_stbuf_to_gfileinfo (&stbuf);
+  /* For symlinks, validate and get the UTF-8 target */
+  const char *symlink_target = NULL;
   if (S_ISLNK (stbuf.st_mode))
     {
-      const char *target = archive_entry_symlink (entry);
-      if (target != NULL)
-        g_file_info_set_attribute_byte_string (info, "standard::symlink-target", target);
+      symlink_target = archive_entry_require_symlink_utf8 (entry, error);
+      /* A symlink without a target is an error */
+      if (symlink_target == NULL)
+        {
+          if (error != NULL && *error == NULL)
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Symlink entry has no target");
+          return NULL;
+        }
     }
+
+  g_autoptr (GFileInfo) info = _ostree_stbuf_to_gfileinfo (&stbuf);
+  if (symlink_target != NULL)
+    g_file_info_set_attribute_byte_string (info, "standard::symlink-target", symlink_target);
 
   return g_steal_pointer (&info);
 }
@@ -222,6 +304,7 @@ typedef struct
   OstreeMutableTree *root;
   struct archive *archive;
   struct archive_entry *entry;
+  GFileInfo *file_info; /* Cached file info for current entry, set by aic_import_entry */
   GHashTable *deferred_hardlinks;
   OstreeRepoCommitModifier *modifier;
 } OstreeRepoArchiveImportContext;
@@ -255,7 +338,10 @@ aic_get_final_path (OstreeRepoArchiveImportContext *ctx, const char *path, GErro
 static inline char *
 aic_get_final_entry_pathname (OstreeRepoArchiveImportContext *ctx, GError **error)
 {
-  const char *pathname = archive_entry_pathname (ctx->entry);
+  const char *pathname = archive_entry_require_pathname_utf8 (ctx->entry, error);
+  if (pathname == NULL)
+    return NULL;
+
   g_autofree char *final = aic_get_final_path (ctx, pathname, error);
   if (final == NULL)
     return NULL;
@@ -288,12 +374,11 @@ static OstreeRepoCommitFilterResult
 aic_apply_modifier_filter (OstreeRepoArchiveImportContext *ctx, const char *relpath,
                            GFileInfo **out_file_info)
 {
-  g_autoptr (GFileInfo) file_info = NULL;
   g_autofree char *abspath = NULL;
   const char *cb_path = NULL;
 
   if (ctx->opts->callback_with_entry_pathname)
-    cb_path = archive_entry_pathname (ctx->entry);
+    cb_path = archive_entry_pathname_utf8 (ctx->entry);
   else
     {
       /* the user expects an abspath (where the dir to commit represents /) */
@@ -301,9 +386,11 @@ aic_apply_modifier_filter (OstreeRepoArchiveImportContext *ctx, const char *relp
       cb_path = abspath;
     }
 
-  file_info = file_info_from_archive_entry (ctx->entry);
+  /* Use the pre-validated file_info from ctx, computed by aic_import_entry
+   * which has proper error propagation for UTF-8 validation failures. */
+  g_assert (ctx->file_info != NULL);
 
-  return _ostree_repo_commit_modifier_apply (ctx->repo, ctx->modifier, cb_path, file_info,
+  return _ostree_repo_commit_modifier_apply (ctx->repo, ctx->modifier, cb_path, ctx->file_info,
                                              out_file_info);
 }
 
@@ -444,7 +531,7 @@ aic_get_xattrs (OstreeRepoArchiveImportContext *ctx, const char *path, GFileInfo
     }
 
   if (ctx->opts->callback_with_entry_pathname)
-    cb_path = archive_entry_pathname (ctx->entry);
+    cb_path = archive_entry_pathname_utf8 (ctx->entry);
 
   if (ctx->modifier && ctx->modifier->xattr_callback)
     {
@@ -625,8 +712,21 @@ aic_import_entry (OstreeRepoArchiveImportContext *ctx, GCancellable *cancellable
   if (path == NULL)
     return FALSE;
 
+  /* Compute file info early while we have error propagation. This validates
+   * symlink targets are UTF-8 and caches the result in ctx->file_info for
+   * use by aic_apply_modifier_filter which cannot propagate errors.
+   * The struct owns the reference until we clear it. */
+  g_assert (ctx->file_info == NULL);
+  ctx->file_info = file_info_from_archive_entry (ctx->entry, error);
+  if (ctx->file_info == NULL)
+    return FALSE;
+
   g_autoptr (GFileInfo) fi = NULL;
-  if (aic_apply_modifier_filter (ctx, path, &fi) == OSTREE_REPO_COMMIT_FILTER_SKIP)
+  OstreeRepoCommitFilterResult filter_result = aic_apply_modifier_filter (ctx, path, &fi);
+
+  g_clear_object (&ctx->file_info);
+
+  if (filter_result == OSTREE_REPO_COMMIT_FILTER_SKIP)
     return TRUE;
 
   g_autoptr (OstreeMutableTree) parent = NULL;
@@ -799,11 +899,17 @@ ostree_repo_import_archive_to_mtree (OstreeRepo *self, OstreeRepoImportArchiveOp
       int r = archive_read_next_header (a, &aictx.entry);
       if (r == ARCHIVE_EOF)
         break;
-      if (r != ARCHIVE_OK)
+      /* Accept ARCHIVE_WARN: libarchive returns this for "partial success"
+       * conditions like charset conversion failures (e.g., UTF-8 to ASCII
+       * in POSIX locale). The entry is still fully populated; we validate
+       * filenames as UTF-8 ourselves. Fail only on ARCHIVE_FATAL/FAILED. */
+      if (r != ARCHIVE_OK && r != ARCHIVE_WARN)
         {
           propagate_libarchive_error (error, a);
           goto out;
         }
+      if (r == ARCHIVE_WARN)
+        g_debug ("libarchive warning: %s", archive_error_string (a));
 
       if (g_cancellable_set_error_if_cancelled (cancellable, error))
         goto out;
