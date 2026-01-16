@@ -68,7 +68,6 @@ cosaPod(memory: "9Gi", cpu: "4") {
       # And override the on-host bits
       mv installed/rootfs/* overrides/rootfs/
       rm installed -rf
-      coreos-assembler fetch
       coreos-assembler build
       coreos-assembler osbuild qemu metal metal4k live
     """)
