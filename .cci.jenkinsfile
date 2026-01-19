@@ -49,11 +49,13 @@ stage("Build") {
 
 // Build FCOS and run kola tests.
 // There's some parallelization in testiso up to 8G, add 1G for overhead
-cosaPod(runAsUser: 0, memory: "9Gi", cpu: "4") {
+cosaPod(memory: "9Gi", cpu: "4") {
   stage("Build FCOS") {
     checkout scm
     unstash 'build'
     shwrap("""
+      # Make sure none of the files in the unstashed build are setgid
+      chmod -c -R g-s installed/
       # Move the bits into the cosa pod (but only if major versions match)
       buildroot_id=\$(cat installed/buildroot-id)
       osver=\$(. /usr/lib/os-release && echo \$VERSION_ID)
@@ -66,7 +68,6 @@ cosaPod(runAsUser: 0, memory: "9Gi", cpu: "4") {
       # And override the on-host bits
       mv installed/rootfs/* overrides/rootfs/
       rm installed -rf
-      coreos-assembler fetch
       coreos-assembler build
       coreos-assembler osbuild qemu metal metal4k live
     """)
