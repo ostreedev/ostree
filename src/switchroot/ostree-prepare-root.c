@@ -142,7 +142,6 @@ resolve_deploy_path (const char *kernel_cmdline, const char *root_mountpoint)
 int
 main (int argc, char *argv[])
 {
-  char srcpath[PATH_MAX];
   struct stat stbuf;
   g_autoptr (GError) error = NULL;
 
@@ -325,6 +324,37 @@ main (int argc, char *argv[])
         err (EXIT_FAILURE, "failed to bind mount (class:readonly) /usr");
     }
 
+#ifndef HAVE_SYSTEMD_AND_LIBMOUNT
+  /* When running under systemd, /var will be handled by a 'var.mount' unit outside of initramfs.
+   * Bind-mount `/var` in the deployment to the "stateroot", which is
+   * the shared persistent directory for a set of deployments.  More info:
+   * https://ostreedev.github.io/ostree/deployment/#stateroot-aka-osname-group-of-deployments-that-share-var
+   */
+  if (mount ("../../var", TMP_SYSROOT "/var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
+    err (EXIT_FAILURE, "failed to bind mount ../../var to var");
+  if (mount (NULL, TMP_SYSROOT "/var", NULL, MS_BIND | MS_REMOUNT | MS_SILENT, NULL) < 0)
+    err (EXIT_FAILURE, "failed to make /var bind-mount writable");
+
+  /* To avoid having submounts of /var propagate into $stateroot/var, the
+   * mount is made with slave+shared propagation. See the comment in
+   * ostree-impl-system-generator.c when /var isn't mounted in the
+   * initramfs for further explanation.
+   */
+  if (mount (NULL, TMP_SYSROOT "/var", NULL, MS_SLAVE | MS_SILENT, NULL) < 0)
+    err (EXIT_FAILURE, "failed to change /var to slave mount");
+  if (mount (NULL, TMP_SYSROOT "/var", NULL, MS_SHARED | MS_SILENT, NULL) < 0)
+    err (EXIT_FAILURE, "failed to change /var to slave+shared mount");
+#endif
+
+  /* This can be used by other things to signal ostree is in use */
+  {
+    g_autoptr (GVariant) metadata = g_variant_ref_sink (g_variant_builder_end (&metadata_builder));
+    const guint8 *buf = g_variant_get_data (metadata) ?: (guint8 *)"";
+    if (!glnx_file_replace_contents_at (AT_FDCWD, OTCORE_RUN_BOOTED, buf,
+                                        g_variant_get_size (metadata), 0, NULL, &error))
+      errx (EXIT_FAILURE, "Writing %s: %s", OTCORE_RUN_BOOTED, error->message);
+  }
+
   /* Prepare /sysroot.
    * The future / (currently at /sysroot.tmp) is an overlayfs or composefs that uses
    * the physical root (currently at /sysroot), and we want to mount the physical root
@@ -338,63 +368,6 @@ main (int argc, char *argv[])
 
   if (umount2 (root_mountpoint, MNT_DETACH) < 0)
     err (EXIT_FAILURE, "failed to MS_DETACH '%s'", root_mountpoint);
-
-  /* Resolve deploy path again so we can use paths relative to the physical root bind-mount */
-  g_autofree char *deploy_path2 = resolve_deploy_path (kernel_cmdline, TMP_SYSROOT "/sysroot");
-  if (chdir (deploy_path2) < 0)
-    err (EXIT_FAILURE, "failed to chdir to deploy_path2");
-
-  /* Prepare /var.
-   * When a read-only sysroot is configured, this adds a dedicated bind-mount (to itself)
-   * so that the stateroot location stays writable. */
-  if (sysroot_readonly)
-    {
-      /* Bind-mount /var (at stateroot path), and remount as writable. */
-      if (mount ("../../var", "../../var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to prepare /var bind-mount at %s", srcpath);
-      if (mount ("../../var", "../../var", NULL, MS_BIND | MS_REMOUNT | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to make writable /var bind-mount at %s", srcpath);
-    }
-
-    /* When running under systemd, /var will be handled by a 'var.mount' unit outside
-     * of initramfs.
-     * Systemd auto-detection can be overridden by a marker file under /run. */
-#ifdef HAVE_SYSTEMD_AND_LIBMOUNT
-  bool mount_var = false;
-#else
-  bool mount_var = true;
-#endif
-  if (lstat (INITRAMFS_MOUNT_VAR, &stbuf) == 0)
-    mount_var = true;
-
-  /* If required, bind-mount `/var` in the deployment to the "stateroot", which is
-   *  the shared persistent directory for a set of deployments.  More info:
-   *  https://ostreedev.github.io/ostree/deployment/#stateroot-aka-osname-group-of-deployments-that-share-var
-   */
-  if (mount_var)
-    {
-      if (mount ("../../var", TMP_SYSROOT "/var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to bind mount ../../var to var");
-
-      /* To avoid having submounts of /var propagate into $stateroot/var, the
-       * mount is made with slave+shared propagation. See the comment in
-       * ostree-impl-system-generator.c when /var isn't mounted in the
-       * initramfs for further explanation.
-       */
-      if (mount (NULL, TMP_SYSROOT "/var", NULL, MS_SLAVE | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to change /var to slave mount");
-      if (mount (NULL, TMP_SYSROOT "/var", NULL, MS_SHARED | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to change /var to slave+shared mount");
-    }
-
-  /* This can be used by other things to signal ostree is in use */
-  {
-    g_autoptr (GVariant) metadata = g_variant_ref_sink (g_variant_builder_end (&metadata_builder));
-    const guint8 *buf = g_variant_get_data (metadata) ?: (guint8 *)"";
-    if (!glnx_file_replace_contents_at (AT_FDCWD, OTCORE_RUN_BOOTED, buf,
-                                        g_variant_get_size (metadata), 0, NULL, &error))
-      errx (EXIT_FAILURE, "Writing %s: %s", OTCORE_RUN_BOOTED, error->message);
-  }
 
   /* Now we have our ready made-up deploy root at /sysroot.tmp,
    * we just need to move it to /sysroot (root_mountpoint).

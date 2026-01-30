@@ -36,6 +36,9 @@ EOF
 
   test '!' -w '/'
 
+  journalctl -u ostree-remount.service -o cat > /tmp/ostree-remount.logs
+  assert_not_file_has_content /tmp/ostree-remount.logs Remounted
+
   echo "ok root transient-ro"
   ;;
   *) 
