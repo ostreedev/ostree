@@ -13,6 +13,7 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
 
   # Test our generator
   test -f /run/systemd/generator/local-fs.target.requires/ostree-remount.service
+  test -f /run/systemd/generator/local-fs.target.requires/ostree-relabel-etc.service
 
   cat >/etc/systemd/system/sock-to-ignore.socket << 'EOF'
 [Socket]

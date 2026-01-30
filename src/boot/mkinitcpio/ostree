@@ -3,6 +3,7 @@
 build() {
     add_binary /usr/lib/ostree/ostree-prepare-root
     add_binary /usr/lib/ostree/ostree-remount
+    add_binary /usr/lib/ostree/ostree-relabel-etc
 
     add_file /usr/lib/systemd/system/ostree-prepare-root.service
     add_symlink /usr/lib/systemd/system/initrd-root-fs.target.wants/ostree-prepare-root.service \
