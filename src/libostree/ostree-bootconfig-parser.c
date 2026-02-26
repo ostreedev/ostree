@@ -339,6 +339,59 @@ ostree_bootconfig_parser_write (OstreeBootconfigParser *self, GFile *output,
                                             cancellable, error);
 }
 
+/* Allowlist of key prefixes that should be preserved across the staged
+ * deployment serialization roundtrip.  Only keys matching one of these
+ * prefixes are included in the "bootconfig-extra" GVariant.  To allow
+ * a new family of custom BLS keys, add its prefix here.
+ */
+static const char *const allowed_extra_key_prefixes[] = { "ostree-source-", NULL };
+
+static gboolean
+is_allowed_extra_key (const char *key)
+{
+  for (const char *const *p = allowed_extra_key_prefixes; *p != NULL; p++)
+    {
+      if (g_str_has_prefix (key, *p))
+        return TRUE;
+    }
+  return FALSE;
+}
+
+/**
+ * _ostree_bootconfig_parser_get_extra_keys_variant:
+ * @self: Parser
+ *
+ * Returns a GVariant of type "a{ss}" containing bootconfig keys whose
+ * prefix is in the allowed_extra_key_prefixes allowlist (currently
+ * "ostree-source-").  These are custom keys set by consumers like
+ * rpm-ostree (e.g. "ostree-source-tuned") that need to survive the
+ * staged deployment serialization roundtrip.
+ *
+ * Returns: (transfer full) (nullable): A new floating GVariant, or NULL if
+ *          there are no matching keys
+ */
+GVariant *
+_ostree_bootconfig_parser_get_extra_keys_variant (OstreeBootconfigParser *self)
+{
+  g_auto (GVariantBuilder) builder = OT_VARIANT_BUILDER_INITIALIZER;
+  gboolean has_entries = FALSE;
+
+  g_variant_builder_init (&builder, (GVariantType *)"a{ss}");
+
+  GLNX_HASH_TABLE_FOREACH_KV (self->options, const char *, k, const char *, v)
+    {
+      if (!is_allowed_extra_key (k))
+        continue;
+      g_variant_builder_add (&builder, "{ss}", k, v);
+      has_entries = TRUE;
+    }
+
+  if (!has_entries)
+    return NULL;
+
+  return g_variant_builder_end (&builder);
+}
+
 static void
 ostree_bootconfig_parser_finalize (GObject *object)
 {
