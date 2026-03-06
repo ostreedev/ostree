@@ -56,6 +56,13 @@ build-host-inst: build-host
     make -C target/c install DESTDIR=$(pwd)/target/inst
     tar --sort=name --numeric-owner --owner=0 --group=0 -C target/inst -czf target/inst.tar.gz .
 
+# Run all integration tests inside a bcvk ephemeral VM.
+# The test binary is baked into the container image, so bcvk boots
+# the image and runs the tests as root inside the VM.
+# Note: bcvk uses qemu:///session so must NOT run as root.
+integration-container *ARGS:
+    bcvk ephemeral run-ssh localhost/ostree:latest -- ostree-bootc-integration-tests {{ARGS}}
+
 sourcefiles := "git ls-files '**.c' '**.cxx' '**.h' '**.hpp'"
 # Reformat source files
 clang-format:

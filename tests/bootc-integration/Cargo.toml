@@ -1,0 +1,21 @@
+[package]
+name = "ostree-bootc-integration-tests"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Separate workspace from root; this is built inside the container
+[workspace]
+
+[[bin]]
+name = "ostree-bootc-integration-tests"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+libtest-mimic = "0.8"
+linkme = "0.3"
+paste = "1"
+rustix = { version = "1", default-features = false, features = ["process"] }
+tempfile = "3"
+xshell = "0.2"
