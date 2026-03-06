@@ -76,6 +76,11 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
   # Verify that soft-reboot state files are gone
   test '!' -f /run/ostree/nextroot-booted
   
+  # And verify there were no failures to unmount /etc or /sysroot
+  journalctl -b -1 -u sysroot.mount -u etc.mount >previous-journal.txt
+  assert_not_file_has_content previous-journal.txt Failed
+  rm -f previous-journal.txt
+
   echo "Soft reboot test completed successfully!"
 
   # Now soft reboot again into the rollback which is not staged,
