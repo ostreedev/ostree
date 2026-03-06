@@ -39,6 +39,21 @@ RUN rpm -e --nodeps ostree{,-libs}
 COPY --from=build /out/ /
 COPY --from=src /src/tests-unit-container /tests
 
+# Build integration test binary
+FROM $base as integration-build
+RUN dnf -y install cargo rust
+COPY tests/bootc-integration /build/tests/bootc-integration
+WORKDIR /build/tests/bootc-integration
+RUN --mount=type=cache,target=/root/.cargo/registry \
+    --mount=type=cache,target=/root/.cargo/git \
+    cargo fetch
+RUN --network=none \
+    --mount=type=cache,target=/root/.cargo/registry \
+    --mount=type=cache,target=/root/.cargo/git \
+    --mount=type=cache,target=/build/tests/bootc-integration/target \
+    cargo build --release && \
+    cp target/release/ostree-bootc-integration-tests /usr/bin/ostree-bootc-integration-tests
+
 # Override userspace
 FROM $base as rootfs
 # Remove the default binaries to ensure we're getting our overrides
@@ -48,6 +63,7 @@ COPY --from=build /out/ /
 # The default final container, with also a regenerated
 # initramfs in case ostree-prepare-root changed.
 FROM rootfs
+COPY --from=integration-build /usr/bin/ostree-bootc-integration-tests /usr/bin/ostree-bootc-integration-tests
 # https://docs.fedoraproject.org/en-US/bootc/initramfs/#_regenerating_the_initrd
 # since we have ostree-prepare-root there
 RUN set -x; kver=$(cd /usr/lib/modules && echo *); dracut -vf /usr/lib/modules/$kver/initramfs.img $kver
