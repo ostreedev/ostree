@@ -46,7 +46,7 @@ install() {
         inst_simple "/etc/ostree/initramfs-root-binding.key"
     fi
     inst_simple "${systemdsystemunitdir}/ostree-prepare-root.service"
-    mkdir -p "${initdir}${systemdsystemconfdir}/initrd-root-fs.target.wants"
+    mkdir -p "${initdir}${systemdsystemunitdir}/initrd-root-fs.target.wants"
     ln_r "${systemdsystemunitdir}/ostree-prepare-root.service" \
-        "${systemdsystemconfdir}/initrd-root-fs.target.wants/ostree-prepare-root.service"
+        "${systemdsystemunitdir}/initrd-root-fs.target.wants/ostree-prepare-root.service"
 }
