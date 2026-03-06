@@ -50,6 +50,11 @@ dist_systemdtmpfiles_DATA = src/boot/ostree-tmpfiles.conf
 AM_DISTCHECK_CONFIGURE_FLAGS += --with-systemdsystemunitdir='$${libdir}/systemd/system'
 endif
 
+if BUILDOPT_MOUNTHELPER
+mounthelperinstalldir = $(prefix)/sbin
+mounthelperinstall_SCRIPTS = src/boot/mount.ostreebindrw
+endif
+
 if !BUILDOPT_BUILTIN_GRUB2_MKCONFIG
 # We're using the system grub2-mkconfig generator
 pkglibexec_SCRIPTS += src/boot/grub2/grub2-15_ostree
@@ -66,6 +71,7 @@ endif
 EXTRA_DIST += src/boot/dracut/module-setup.sh \
 	src/boot/dracut/ostree.conf \
 	src/boot/mkinitcpio \
+	src/boot/mount.ostreebindrw \
 	src/boot/ostree-boot-complete.service \
 	src/boot/ostree-prepare-root.service \
 	src/boot/ostree-remount.service \
