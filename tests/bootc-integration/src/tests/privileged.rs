@@ -173,6 +173,150 @@ fn privileged_verify_ostree_cli() -> Result<()> {
 }
 integration_test!(privileged_verify_ostree_cli);
 
+fn privileged_verify_sysroot_readonly() -> Result<()> {
+    if require_privileged("privileged_verify_sysroot_readonly")?.is_some() {
+        return Ok(());
+    }
+    let sh = Shell::new()?;
+    let options = cmd!(sh, "findmnt -n -o OPTIONS /sysroot").read()?;
+    ensure!(
+        options.contains("ro"),
+        "/sysroot is not mounted read-only: {options}"
+    );
+    Ok(())
+}
+integration_test!(privileged_verify_sysroot_readonly);
+
+fn privileged_verify_ostree_run_metadata() -> Result<()> {
+    if require_privileged("privileged_verify_ostree_run_metadata")?.is_some() {
+        return Ok(());
+    }
+    let metadata = std::fs::metadata("/run/ostree")?;
+    let mode = std::os::unix::fs::PermissionsExt::mode(&metadata.permissions()) & 0o777;
+    ensure!(
+        mode == 0o755,
+        "/run/ostree has mode {mode:#o}, expected 0o755"
+    );
+    Ok(())
+}
+integration_test!(privileged_verify_ostree_run_metadata);
+
+fn privileged_verify_immutable_bit() -> Result<()> {
+    if require_privileged("privileged_verify_immutable_bit")?.is_some() {
+        return Ok(());
+    }
+    let sh = Shell::new()?;
+    // If composefs (overlay), the immutable bit doesn't apply
+    let fstype = cmd!(sh, "findmnt -n -o FSTYPE /").read()?;
+    if fstype.trim() == "overlay" {
+        return Ok(());
+    }
+    // https://bugzilla.redhat.com/show_bug.cgi?id=1867601
+    let lsattr_out = cmd!(sh, "lsattr -d /").read()?;
+    ensure!(
+        lsattr_out.contains("-i-"),
+        "immutable bit not set on /: {lsattr_out}"
+    );
+    Ok(())
+}
+integration_test!(privileged_verify_immutable_bit);
+
+fn privileged_verify_osinit_unshare() -> Result<()> {
+    if require_privileged("privileged_verify_osinit_unshare")?.is_some() {
+        return Ok(());
+    }
+    let sh = Shell::new()?;
+    // Create a test stateroot; this should not disturb /run/ostree permissions
+    cmd!(sh, "ostree admin os-init ostreetestsuite").run()?;
+    let metadata = std::fs::metadata("/run/ostree")?;
+    let mode = std::os::unix::fs::PermissionsExt::mode(&metadata.permissions()) & 0o777;
+    ensure!(
+        mode == 0o755,
+        "/run/ostree has mode {mode:#o} after os-init, expected 0o755"
+    );
+    Ok(())
+}
+integration_test!(privileged_verify_osinit_unshare);
+
+fn privileged_verify_nofifo() -> Result<()> {
+    if require_privileged("privileged_verify_nofifo")?.is_some() {
+        return Ok(());
+    }
+    let sh = Shell::new()?;
+    let tmp = tempfile::tempdir()?;
+    let tmpdir = tmp.path();
+    let _guard = sh.push_dir(tmpdir);
+    cmd!(sh, "ostree --repo=repo init --mode=archive").run()?;
+    cmd!(sh, "mkdir tmproot").run()?;
+    cmd!(sh, "mkfifo tmproot/afile").run()?;
+    let result = cmd!(
+        sh,
+        "ostree --repo=repo commit -b fifotest -s 'commit fifo' --tree=dir=./tmproot"
+    )
+    .ignore_status()
+    .output()?;
+    ensure!(
+        !result.status.success(),
+        "committing a FIFO should have failed"
+    );
+    let stderr = String::from_utf8_lossy(&result.stderr);
+    ensure!(
+        stderr.contains("Not a regular file or symlink"),
+        "expected 'Not a regular file or symlink' in stderr, got: {stderr}"
+    );
+    Ok(())
+}
+integration_test!(privileged_verify_nofifo);
+
+fn privileged_verify_mtime() -> Result<()> {
+    if require_privileged("privileged_verify_mtime")?.is_some() {
+        return Ok(());
+    }
+    let sh = Shell::new()?;
+    let tmp = tempfile::tempdir()?;
+    let tmpdir = tmp.path();
+    let _guard = sh.push_dir(tmpdir);
+    cmd!(sh, "ostree --repo=repo init --mode=archive").run()?;
+    cmd!(sh, "mkdir tmproot").run()?;
+    cmd!(sh, "bash -c 'echo afile > tmproot/afile'").run()?;
+    cmd!(sh, "ostree --repo=repo commit -b test --tree=dir=tmproot")
+        .ignore_stdout()
+        .run()?;
+    let ts_before = tmpdir.join("repo").metadata()?.modified()?;
+    std::thread::sleep(std::time::Duration::from_secs(1));
+    cmd!(
+        sh,
+        "ostree --repo=repo commit -b test -s 'bump mtime' --tree=dir=tmproot"
+    )
+    .ignore_stdout()
+    .run()?;
+    let ts_after = tmpdir.join("repo").metadata()?.modified()?;
+    ensure!(
+        ts_before != ts_after,
+        "repo mtime did not change after second commit"
+    );
+    Ok(())
+}
+integration_test!(privileged_verify_mtime);
+
+fn privileged_verify_extensions() -> Result<()> {
+    if require_privileged("privileged_verify_extensions")?.is_some() {
+        return Ok(());
+    }
+    let sh = Shell::new()?;
+    let tmp = tempfile::tempdir()?;
+    let tmpdir = tmp.path();
+    let _guard = sh.push_dir(tmpdir);
+    cmd!(sh, "ostree --repo=repo init --mode=bare").run()?;
+    let extensions = tmpdir.join("repo/extensions");
+    ensure!(
+        extensions.exists(),
+        "repo/extensions directory was not created by ostree init"
+    );
+    Ok(())
+}
+integration_test!(privileged_verify_extensions);
+
 fn privileged_verify_selinux_labels() -> Result<()> {
     if require_privileged("privileged_verify_selinux_labels")?.is_some() {
         return Ok(());

@@ -17,4 +17,5 @@ libtest-mimic = "0.8"
 linkme = "0.3"
 paste = "1"
 rustix = { version = "1", default-features = false, features = ["process"] }
+tempfile = "3"
 xshell = "0.2"
