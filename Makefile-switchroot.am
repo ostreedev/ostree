@@ -22,11 +22,11 @@ ostree_prepare_root_CPPFLAGS = $(AM_CPPFLAGS)
 ostree_prepare_root_LDADD =
 
 if BUILDOPT_SYSTEMD
-ostree_boot_PROGRAMS += ostree-remount
+ostree_boot_PROGRAMS += ostree-remount ostree-relabel-etc
 else
 # It is built anyway as a side-effect of having the symlink in tests/,
 # and if we declare it here, it gets cleaned up properly
-check_PROGRAMS += ostree-remount
+check_PROGRAMS += ostree-remount ostree-relabel-etc
 endif
 
 if BUILDOPT_USE_STATIC_COMPILER
@@ -63,9 +63,15 @@ ostree_remount_SOURCES = \
 ostree_remount_CPPFLAGS = $(AM_CPPFLAGS) $(OT_INTERNAL_GIO_UNIX_CFLAGS) -Isrc/switchroot -I$(srcdir)/src/libotcore -I$(srcdir)/src/libotutil -I$(srcdir)/libglnx
 ostree_remount_LDADD = $(AM_LDFLAGS) $(OT_INTERNAL_GIO_UNIX_LIBS) libotcore.la libotutil.la libglnx.la
 
+ostree_relabel_etc_SOURCES = \
+    src/switchroot/ostree-relabel-etc.c \
+    $(NULL)
+ostree_relabel_etc_CPPFLAGS = $(AM_CPPFLAGS) $(OT_INTERNAL_GIO_UNIX_CFLAGS) -Isrc/switchroot -I$(srcdir)/src/libotcore -I$(srcdir)/src/libotutil -I$(srcdir)/libglnx
+ostree_relabel_etc_LDADD = $(AM_LDFLAGS) $(OT_INTERNAL_GIO_UNIX_LIBS) libotcore.la libotutil.la libglnx.la
+
 if USE_SELINUX
-ostree_remount_CPPFLAGS += $(OT_DEP_SELINUX_CFLAGS)
-ostree_remount_LDADD += $(OT_DEP_SELINUX_LIBS)
+ostree_relabel_etc_CPPFLAGS += $(OT_DEP_SELINUX_CFLAGS)
+ostree_relabel_etc_LDADD += $(OT_DEP_SELINUX_LIBS)
 endif
 
 if USE_COMPOSEFS
