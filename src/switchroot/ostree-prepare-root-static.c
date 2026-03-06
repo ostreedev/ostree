@@ -121,8 +121,11 @@ resolve_deploy_path (const char *root_mountpoint)
     errx (EXIT_FAILURE, "Failed to read kernel cmdline");
   autofree char *ostree_cmdline = find_proc_cmdline_key (kernel_cmdline, "ostree");
 
-  if (snprintf (destpath, sizeof (destpath), "%s/%s", root_mountpoint, ostree_cmdline) < 0)
+  int ret = snprintf (destpath, sizeof (destpath), "%s/%s", root_mountpoint, ostree_cmdline);
+  if (ret < 0)
     err (EXIT_FAILURE, "failed to assemble ostree target path");
+  if (ret >= sizeof (destpath))
+    errx (EXIT_FAILURE, "path too long while assembling ostree target path");
   if (lstat (destpath, &stbuf) < 0)
     err (EXIT_FAILURE, "Couldn't find specified OSTree root '%s'", destpath);
   if (!S_ISLNK (stbuf.st_mode))
@@ -238,14 +241,22 @@ main (int argc, char *argv[])
   /* Prepare /boot.
    * If /boot is on the same partition, use a bind mount to make it visible
    * at /boot inside the deployment. */
-  if (snprintf (srcpath, sizeof (srcpath), "%s/boot/loader", root_mountpoint) < 0)
+  int ret = snprintf (srcpath, sizeof (srcpath), "%s/boot/loader", root_mountpoint);
+  if (ret < 0)
     err (EXIT_FAILURE, "failed to assemble /boot/loader path");
+  if (ret >= sizeof (srcpath))
+    errx (EXIT_FAILURE, "path too long while assembling /boot/loader path");
   if (lstat (srcpath, &stbuf) == 0 && S_ISLNK (stbuf.st_mode))
     {
       if (lstat ("boot", &stbuf) == 0 && S_ISDIR (stbuf.st_mode))
         {
-          if (snprintf (srcpath, sizeof (srcpath), "%s/boot", root_mountpoint) < 0)
+          ret = snprintf (srcpath, sizeof (srcpath), "%s/boot", root_mountpoint);
+          if (ret < 0)
             err (EXIT_FAILURE, "failed to assemble /boot path");
+          /*
+           * ret >= sizeof (srcpath) cannot happen here because then writing
+           * "${root_mountpoint}/boot/loader" above would have failed already.
+           */
           if (mount (srcpath, TMP_SYSROOT "/boot", NULL, MS_BIND | MS_SILENT, NULL) < 0)
             err (EXIT_FAILURE, "failed to bind mount %s to boot", srcpath);
         }
