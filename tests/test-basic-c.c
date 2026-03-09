@@ -525,8 +525,9 @@ test_read_xattrs (void)
   g_auto (GLnxTmpDir) tmpd = {
     0,
   };
-  // Use /var/tmp to hope we get xattr support
-  glnx_mkdtempat (AT_FDCWD, "/var/tmp/ostree-xattrs-test.XXXXXX", 0700, &tmpd, error);
+  // Use TEST_TMPDIR (or /var/tmp as fallback) to hope we get xattr support
+  g_autofree char *tmpd_tmpl = ot_test_tmpdir_template ("ostree-xattrs-test.XXXXXX");
+  glnx_mkdtempat (AT_FDCWD, tmpd_tmpl, 0700, &tmpd, error);
   g_assert_no_error (local_error);
 
   const char value[] = "foo";
@@ -539,8 +540,8 @@ test_read_xattrs (void)
 
     if (r != 0)
       {
-        g_autofree gchar *message = g_strdup_printf (
-            "Unable to set extended attributes in /var/tmp: %s", g_strerror (errno));
+        g_autofree gchar *message = g_strdup_printf ("Unable to set extended attributes in %s: %s",
+                                                     tmpd_tmpl, g_strerror (errno));
         g_test_skip (message);
         return;
       }

@@ -28,6 +28,8 @@ G_BEGIN_DECLS
 
 gboolean ot_test_run_libtest (const char *cmd, GError **error);
 
+char *ot_test_tmpdir_template (const char *basename_template);
+
 OstreeRepo *ot_test_setup_repo (GCancellable *cancellable, GError **error);
 
 gboolean ot_check_relabeling (gboolean *can_relabel, GError **error);
