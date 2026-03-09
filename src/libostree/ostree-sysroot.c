@@ -751,6 +751,28 @@ _ostree_sysroot_query_loader_is_dir (OstreeSysroot *self, gboolean *out_is_dir, 
   return TRUE;
 }
 
+/* Get the directory (relative to the boot directory) in which the new
+ * bootloader configuration for @bootversion is staged before it is swapped
+ * into place: loader.tmp in directory mode, loader.$bootversion otherwise.
+ */
+gboolean
+_ostree_sysroot_get_new_loader_dir (OstreeSysroot *self, int bootversion, char **out_loader_dir,
+                                    GError **error)
+{
+  if (!_ostree_sysroot_ensure_boot_fd (self, error))
+    return FALSE;
+
+  gboolean loader_is_dir;
+  if (!_ostree_sysroot_query_loader_is_dir (self, &loader_is_dir, error))
+    return FALSE;
+
+  if (loader_is_dir)
+    *out_loader_dir = g_strdup ("loader.tmp");
+  else
+    *out_loader_dir = g_strdup_printf ("loader.%d", bootversion);
+  return TRUE;
+}
+
 /* Read all the bootconfigs from `/boot/loader/`. */
 gboolean
 _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self, int bootversion,

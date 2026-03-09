@@ -24,7 +24,7 @@ set -e
 script=$(basename ${0})
 # Atomically safe location where to generete grub.cfg when executing system upgrade.
 new_grub2_cfg=${2}
-entries_path=$(dirname $new_grub2_cfg)/entries
+entries_path=$(dirname "${new_grub2_cfg}")/entries
 
 read_config()
 {
@@ -44,7 +44,8 @@ read_config()
                 title=${value}
                 ;;
             "initrd")
-                initrd=${value}
+                # There can be several of them
+                initrd="${initrd:+${initrd} }${value}"
                 ;;
             "linux")
                 linux=${value}
@@ -53,14 +54,44 @@ read_config()
                 devicetree=${value}
                 ;;
             "options")
-                options=${value}
+                # There can be several of them too
+                options="${options:+${options} }${value}"
                 ;;
         esac
-    done < ${config_file}
+    done < "${config_file}"
 
     if [ -z "${title}" ]; then
         title="(Untitled)"
     fi
+}
+
+# Print the GRUB menu entry for the BLS entry $1, if it is a Linux one
+print_menu_entry()
+{
+    # In directory mode, entries of other operating systems are preserved:
+    # they may e.g. be dangling symbolic links, or not Linux entries.
+    if [ ! -f "${1}" ]; then
+        return
+    fi
+    read_config "${1}"
+    if [ -z "${linux}" ]; then
+        return
+    fi
+    # Values are printed through fixed formats, and single quotes in the title
+    # are escaped for GRUB.
+    printf "menuentry '%s' {\n" "$(printf '%s' "${title}" | sed "s/'/'\\\\''/g")"
+    printf "\t linux %s%s %s\n" "${boot_prefix}" "${linux}" "${options}"
+    if [ -n "${initrd}" ] ; then
+        printf "\t initrd"
+        for i in ${initrd}; do
+            printf " %s%s" "${boot_prefix}" "${i}"
+        done
+        printf "\n"
+    fi
+    if [ -n "${devicetree}" ] ; then
+        printf "\t devicetree %s%s\n" "${boot_prefix}" "${devicetree}"
+    fi
+    printf "}\n\n"
 }
 
 populate_menu()
@@ -71,20 +102,19 @@ populate_menu()
     else
         boot_prefix="${OSTREE_BOOT_PARTITION}"
     fi
-    for config in $(ls -v -r $entries_path/*.conf); do
-        read_config ${config}
-        menu="${menu}menuentry '${title}' {\n"
-        menu="${menu}\t linux ${boot_prefix}${linux} ${options}\n"
-        if [ -n "${initrd}" ] ; then
-            menu="${menu}\t initrd ${boot_prefix}${initrd}\n"
-        fi
-        if [ -n "${devicetree}" ] ; then
-            menu="${menu}\t devicetree ${boot_prefix}${devicetree}\n"
-        fi
-        menu="${menu}}\n\n"
-    done
-    # The printf command seems to be more reliable across shells for special character (\n, \t) evaluation
-    printf "$menu" >> ${new_grub2_cfg}
+    {
+        # Our own entries first, so that the first (default) one is ours.
+        # Read the names line by line, as they may contain whitespace.
+        ls -v -r "${entries_path}"/ostree-*.conf 2>/dev/null | while IFS= read -r config; do
+            print_menu_entry "${config}"
+        done
+        ls -v -r "${entries_path}"/*.conf 2>/dev/null | while IFS= read -r config; do
+            case $(basename "${config}") in
+                ostree-*) continue ;;
+            esac
+            print_menu_entry "${config}"
+        done
+    } >> ${new_grub2_cfg}
 }
 
 populate_warning()

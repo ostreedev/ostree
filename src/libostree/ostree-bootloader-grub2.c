@@ -411,8 +411,20 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader *bootloader, int bootver
     }
   else
     {
-      new_config_path = ot_gfile_resolve_path_printf (self->sysroot->path,
-                                                      "boot/loader.%d/grub.cfg", bootversion);
+      /* GRUB finds the configuration through the grub2/grub.cfg symbolic link */
+      if (self->sysroot->boot_is_vfat)
+        return glnx_throw (error, "GRUB2 without EFI: not supported with a VFAT /boot");
+
+      g_autofree char *new_loader_dir = NULL;
+      if (!_ostree_sysroot_get_new_loader_dir (self->sysroot, bootversion, &new_loader_dir, error))
+        return FALSE;
+      new_config_path
+          = ot_gfile_resolve_path_printf (self->sysroot->path, "boot/%s/grub.cfg", new_loader_dir);
+      /* In directory mode, loader.tmp starts as a copy of the live loader
+       * directory, but the generator may append to its output file.
+       */
+      if (!ot_gfile_ensure_unlinked (new_config_path, cancellable, error))
+        return FALSE;
     }
 
   const char *grub_argv[4] = { NULL, "-o", NULL, NULL };

@@ -142,6 +142,9 @@ gboolean _ostree_sysroot_get_live_loader_dir (OstreeSysroot *self, const char **
 gboolean _ostree_sysroot_query_loader_is_dir (OstreeSysroot *self, gboolean *out_is_dir,
                                               GError **error);
 
+gboolean _ostree_sysroot_get_new_loader_dir (OstreeSysroot *self, int bootversion,
+                                             char **out_loader_dir, GError **error);
+
 gboolean _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self, int bootversion,
                                                    GPtrArray **out_loader_configs,
                                                    GCancellable *cancellable, GError **error);
