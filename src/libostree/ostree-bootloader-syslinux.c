@@ -111,7 +111,17 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader *bootloader, int boot
 {
   OstreeBootloaderSyslinux *self = OSTREE_BOOTLOADER_SYSLINUX (bootloader);
 
-  g_autofree char *new_config_path = g_strdup_printf ("boot/loader.%d/syslinux.cfg", bootversion);
+  /* In directory mode boot/loader is a real directory; staging happens in loader.tmp.
+   * In symlink mode staging happens in loader.N.
+   */
+  struct stat loader_stbuf;
+  if (!glnx_fstatat_allow_noent (self->sysroot->sysroot_fd, "boot/loader", &loader_stbuf,
+                                 AT_SYMLINK_NOFOLLOW, error))
+    return FALSE;
+  gboolean loader_is_dir = (errno == 0 && S_ISDIR (loader_stbuf.st_mode));
+  g_autofree char *new_config_path
+      = loader_is_dir ? g_strdup ("boot/loader.tmp/syslinux.cfg")
+                      : g_strdup_printf ("boot/loader.%d/syslinux.cfg", bootversion);
 
   /* This should follow the symbolic link to the current bootversion. */
   g_autofree char *config_contents = glnx_file_get_contents_utf8_at (
