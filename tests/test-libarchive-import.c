@@ -47,7 +47,8 @@ test_data_init (TestData *td)
   uid_t uid = getuid ();
   gid_t gid = getgid ();
 
-  td->tmpd = g_mkdtemp (g_strdup ("/var/tmp/test-libarchive-import-XXXXXX"));
+  const char *test_tmpdir = g_getenv ("TEST_TMPDIR") ?: "/var/tmp";
+  td->tmpd = g_mkdtemp (g_build_filename (test_tmpdir, "test-libarchive-import-XXXXXX", NULL));
   g_assert_cmpint (0, ==, chdir (td->tmpd));
 
   td->fd = openat (AT_FDCWD, "foo.tar.gz", O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC, 0644);
