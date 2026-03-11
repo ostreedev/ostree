@@ -23,22 +23,18 @@ jobs:
         stream: [stream9, stream10]
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/bootc-ubuntu-setup
+      - uses: bootc-dev/actions/bootc-ubuntu-setup@main
+        with:
+          libvirt: true
       - name: build
-        run: sudo STREAM=${{ matrix.stream }} just build
+        run: STREAM=${{ matrix.stream }} just build
       - name: unitcontainer
-        run: sudo STREAM=${{ matrix.stream }} just unitcontainer
+        run: STREAM=${{ matrix.stream }} just unitcontainer
       - name: unittest
-        run: sudo STREAM=${{ matrix.stream }} just unittest
-      - name: bootc install
-        run: |
-          set -xeuo pipefail
-          sudo podman run --env BOOTC_SKIP_SELINUX_HOST_CHECK=1 --rm -ti --privileged -v /:/target --pid=host --security-opt label=disable \
-            -v /dev:/dev -v /var/lib/containers:/var/lib/containers \
-            localhost/ostree:latest bootc install to-filesystem --skip-fetch-check \
-             --replace=alongside /target
-          # Verify labeling for /etc
-          sudo ls -dZ /ostree/deploy/default/deploy/*.0/etc |grep :etc_t:
+        run: STREAM=${{ matrix.stream }} just unittest
+      - name: integration tests (bcvk)
+        timeout-minutes: 15
+        run: STREAM=${{ matrix.stream }} just integration-container
       - name: Upload test logs
         if: failure()
         uses: actions/upload-artifact@v4
