@@ -24,6 +24,15 @@
 #include "libglnx.h"
 #include "libostreetest.h"
 
+/* Return a newly-allocated mkdtemp/g_mkdtemp template path under TEST_TMPDIR
+ * (falling back to /var/tmp), e.g. "ostree-xattrs-test.XXXXXX". */
+char *
+ot_test_tmpdir_template (const char *basename_template)
+{
+  const char *test_tmpdir = g_getenv ("TEST_TMPDIR") ?: "/var/tmp";
+  return g_build_filename (test_tmpdir, basename_template, NULL);
+}
+
 /* This function hovers in a quantum superposition of horrifying and
  * beautiful.  Future generations may interpret it as modern art.
  */
