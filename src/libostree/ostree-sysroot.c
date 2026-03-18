@@ -28,6 +28,7 @@
 #include <sys/vfs.h>
 #include <sys/wait.h>
 
+#include "ostree-bootconfig-parser-private.h"
 #include "ostree-bootloader-aboot.h"
 #include "ostree-bootloader-grub2.h"
 #include "ostree-bootloader-syslinux.h"
@@ -1224,6 +1225,25 @@ _ostree_sysroot_reload_staged (OstreeSysroot *self, GError **error)
             return FALSE;
 
           _ostree_deployment_set_overlay_initrds (staged, overlay_initrds);
+
+          /* Restore magic comments (e.g. "# x-ostree-options-source-tuned ...")
+           * that were serialized during staging. These are metadata comments
+           * set by consumers like rpm-ostree that survive the staging roundtrip.
+           * See allowed_comment_prefixes in ostree-bootconfig-parser.c.
+           */
+          {
+            g_autoptr (GVariant) bootconfig_comments = NULL;
+            if (g_variant_dict_lookup (staged_deployment_dict, "bootconfig-comments", "@a{ss}",
+                                       &bootconfig_comments))
+              {
+                OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (staged);
+                GVariantIter iter;
+                const char *key, *value;
+                g_variant_iter_init (&iter, bootconfig_comments);
+                while (g_variant_iter_next (&iter, "{&s&s}", &key, &value))
+                  ostree_bootconfig_parser_set_comment (bootconfig, key, value);
+              }
+          }
 
           self->staged_deployment = g_steal_pointer (&staged);
           self->staged_deployment_data = g_steal_pointer (&staged_deployment_data);

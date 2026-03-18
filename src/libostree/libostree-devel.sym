@@ -20,6 +20,12 @@
    - uncomment the include in Makefile-libostree.am
 */
 
+LIBOSTREE_2025.8 {
+global:
+  ostree_bootconfig_parser_get_comment;
+  ostree_bootconfig_parser_set_comment;
+} LIBOSTREE_2025.3;
+
 /* Stub section for the stable release *after* this development one; don't
  * edit this other than to update the year.  This is just a copy/paste
  * source.  Replace $LASTSTABLE with the last stable version, and $NEWVERSION
