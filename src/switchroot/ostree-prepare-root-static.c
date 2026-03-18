@@ -235,21 +235,9 @@ main (int argc, char *argv[])
       (void)close (fd);
     }
 
-  /* Prepare /boot.
-   * If /boot is on the same partition, use a bind mount to make it visible
-   * at /boot inside the deployment. */
-  if (snprintf (srcpath, sizeof (srcpath), "%s/boot/loader", root_mountpoint) < 0)
-    err (EXIT_FAILURE, "failed to assemble /boot/loader path");
-  if (lstat (srcpath, &stbuf) == 0 && S_ISLNK (stbuf.st_mode))
-    {
-      if (lstat ("boot", &stbuf) == 0 && S_ISDIR (stbuf.st_mode))
-        {
-          if (snprintf (srcpath, sizeof (srcpath), "%s/boot", root_mountpoint) < 0)
-            err (EXIT_FAILURE, "failed to assemble /boot path");
-          if (mount (srcpath, TMP_SYSROOT "/boot", NULL, MS_BIND | MS_SILENT, NULL) < 0)
-            err (EXIT_FAILURE, "failed to bind mount %s to boot", srcpath);
-        }
-    }
+  /* /boot is handled by ostree-system-generator which generates a boot.mount
+   * unit when /boot is on the same partition. This works for all boot scenarios
+   * including soft-reboot. See ostree-impl-system-generator.c */
 
   /* Prepare /etc.
    * No action required if sysroot is writable. Otherwise, a bind-mount for

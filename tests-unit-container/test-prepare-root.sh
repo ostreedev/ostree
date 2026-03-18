@@ -56,7 +56,7 @@ done
 # etc is not transient by default
 etc_options=$(findmnt -no OPTIONS /target-sysroot/etc)
 [[ ! $etc_options =~ "upperdir=/run/ostree/transient-etc" ]]
-# We don't have /boot as a bind mount by default here
+# /boot is handled by the generator, not prepare-root
 if mountpoint /target-sysroot/boot &>/dev/null; then
 	exit 1
 fi
@@ -102,16 +102,21 @@ cleanup
 
 echo "ok verified etc.transient"
 
-# Set up boot/loader via traditional ostree swapped symlink pattern
-# which will cause prepare-root to also make a bind mount.
+# Set up boot/loader via traditional ostree swapped symlink pattern.
+# /boot bind-mounting has been moved from ostree-prepare-root to
+# ostree-system-generator (boot.mount), so prepare-root should NOT
+# mount /boot anymore. See ostree-impl-system-generator.c.
 mkdir /target-sysroot/boot/loader.0
-ln -s /target-sysroot/boot/loader.0 /target-sysroot/boot/loader 
+ln -s /target-sysroot/boot/loader.0 /target-sysroot/boot/loader
 
 mount --bind /target-sysroot /target-sysroot
 /usr/lib/ostree/ostree-prepare-root /target-sysroot
 
-mountpoint /target-sysroot/boot
+if mountpoint /target-sysroot/boot &>/dev/null; then
+	echo "error: /boot should not be a mountpoint after prepare-root" >&2
+	exit 1
+fi
 
 cleanup
 
-echo "ok verified /boot"
+echo "ok verified /boot is not mounted by prepare-root"
