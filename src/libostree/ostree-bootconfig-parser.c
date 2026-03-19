@@ -34,6 +34,13 @@ struct _OstreeBootconfigParser
 
   /* Additional initrds; the primary initrd is in options. */
   char **overlay_initrds;
+
+  /* Magic comments preserved across parse/write roundtrips.
+   * Each entry is the comment body (without the leading "# "),
+   * e.g. "x-ostree-options-source-tuned nohz=full isolcpus=1-3".
+   * Only comments matching allowed_comment_prefixes are preserved.
+   */
+  GPtrArray *comments;
 };
 
 typedef GObjectClass OstreeBootconfigParserClass;
@@ -56,6 +63,13 @@ ostree_bootconfig_parser_clone (OstreeBootconfigParser *self)
 
   parser->filename = g_strdup (self->filename);
   parser->overlay_initrds = g_strdupv (self->overlay_initrds);
+
+  if (self->comments)
+    {
+      parser->comments = g_ptr_array_new_with_free_func (g_free);
+      for (guint i = 0; i < self->comments->len; i++)
+        g_ptr_array_add (parser->comments, g_strdup (g_ptr_array_index (self->comments, i)));
+    }
 
   return parser;
 }
@@ -136,6 +150,25 @@ _ostree_bootconfig_parser_filename (OstreeBootconfigParser *self)
   return self->filename;
 }
 
+/* Allowlist of comment prefixes that should be preserved across parse/write
+ * roundtrips and the staged deployment serialization.  Only BLS comment lines
+ * (starting with '#') whose body (after stripping "# ") matches one of these
+ * prefixes are stored in self->comments.  To allow a new family of magic
+ * comments, add its prefix here.
+ */
+static const char *const allowed_comment_prefixes[] = { "x-ostree-options-source-", NULL };
+
+static gboolean
+is_allowed_comment (const char *comment_body)
+{
+  for (const char *const *p = allowed_comment_prefixes; *p != NULL; p++)
+    {
+      if (g_str_has_prefix (comment_body, *p))
+        return TRUE;
+    }
+  return FALSE;
+}
+
 /**
  * ostree_bootconfig_parser_parse_at:
  * @self: Parser
@@ -186,6 +219,21 @@ ostree_bootconfig_parser_parse_at (OstreeBootconfigParser *self, int dfd, const 
           else
             {
               g_strfreev (items);
+            }
+        }
+      else if (*line == '#')
+        {
+          /* Check for magic comment lines that we preserve.
+           * Strip the leading '#' and any whitespace to get the body.
+           */
+          const char *body = line + 1;
+          while (*body == ' ' || *body == '\t')
+            body++;
+          if (is_allowed_comment (body))
+            {
+              if (!self->comments)
+                self->comments = g_ptr_array_new_with_free_func (g_free);
+              g_ptr_array_add (self->comments, g_strdup (body));
             }
         }
     }
@@ -324,6 +372,18 @@ ostree_bootconfig_parser_write_at (OstreeBootconfigParser *self, int dfd, const 
       write_key (self, buf, k, v);
     }
 
+  /* Write preserved magic comments */
+  if (self->comments)
+    {
+      for (guint i = 0; i < self->comments->len; i++)
+        {
+          const char *comment = g_ptr_array_index (self->comments, i);
+          g_string_append (buf, "# ");
+          g_string_append (buf, comment);
+          g_string_append_c (buf, '\n');
+        }
+    }
+
   if (!glnx_file_replace_contents_at (dfd, path, (guint8 *)buf->str, buf->len,
                                       GLNX_FILE_REPLACE_NODATASYNC, cancellable, error))
     return FALSE;
@@ -339,6 +399,135 @@ ostree_bootconfig_parser_write (OstreeBootconfigParser *self, GFile *output,
                                             cancellable, error);
 }
 
+/**
+ * ostree_bootconfig_parser_get_comment:
+ * @self: Parser
+ * @comment_key: The comment key to look up (e.g. "x-ostree-options-source-tuned")
+ *
+ * Searches the stored magic comments for one whose first space-delimited
+ * token matches @comment_key.  Returns the value portion (everything after
+ * the first space), or NULL if not found.
+ *
+ * Returns: (nullable): The value string, or NULL if no matching comment exists.
+ *          The returned string is owned by the parser; do not free.
+ *
+ * Since: 2025.8
+ */
+const char *
+ostree_bootconfig_parser_get_comment (OstreeBootconfigParser *self, const char *comment_key)
+{
+  if (!self->comments)
+    return NULL;
+
+  const gsize key_len = strlen (comment_key);
+  for (guint i = 0; i < self->comments->len; i++)
+    {
+      const char *entry = g_ptr_array_index (self->comments, i);
+      if (g_str_has_prefix (entry, comment_key))
+        {
+          char after = entry[key_len];
+          if (after == '\0')
+            return ""; /* Key exists with no value */
+          if (after == ' ' || after == '\t')
+            return entry + key_len + 1; /* Skip the separator */
+        }
+    }
+  return NULL;
+}
+
+/**
+ * ostree_bootconfig_parser_set_comment:
+ * @self: Parser
+ * @comment_key: The comment key (e.g. "x-ostree-options-source-tuned")
+ * @value: (nullable): The value string (e.g. "nohz=full isolcpus=1-3"),
+ *         or NULL/empty to set a key-only comment
+ *
+ * Sets or replaces a magic comment entry.  If a comment with the same key
+ * already exists, it is replaced.  Otherwise a new entry is appended.
+ * The comment must match an allowed prefix (see allowed_comment_prefixes).
+ *
+ * Since: 2025.8
+ */
+void
+ostree_bootconfig_parser_set_comment (OstreeBootconfigParser *self, const char *comment_key,
+                                      const char *value)
+{
+  g_assert (is_allowed_comment (comment_key));
+
+  g_autofree char *new_entry = NULL;
+  if (value && *value)
+    new_entry = g_strdup_printf ("%s %s", comment_key, value);
+  else
+    new_entry = g_strdup (comment_key);
+
+  if (!self->comments)
+    self->comments = g_ptr_array_new_with_free_func (g_free);
+
+  /* Replace existing entry if present */
+  const gsize key_len = strlen (comment_key);
+  for (guint i = 0; i < self->comments->len; i++)
+    {
+      const char *entry = g_ptr_array_index (self->comments, i);
+      if (g_str_has_prefix (entry, comment_key))
+        {
+          char after = entry[key_len];
+          if (after == '\0' || after == ' ' || after == '\t')
+            {
+              g_free (self->comments->pdata[i]);
+              self->comments->pdata[i] = g_steal_pointer (&new_entry);
+              return;
+            }
+        }
+    }
+
+  /* Not found — append new entry */
+  g_ptr_array_add (self->comments, g_steal_pointer (&new_entry));
+}
+
+/**
+ * _ostree_bootconfig_parser_get_comments_variant:
+ * @self: Parser
+ *
+ * Returns a GVariant of type "a{ss}" containing magic comment entries
+ * whose prefix is in the allowed_comment_prefixes allowlist (currently
+ * "x-ostree-options-source-").  Each entry is a comment key mapped to
+ * its value string.  These are metadata set by consumers like rpm-ostree
+ * (e.g. "x-ostree-options-source-tuned" -> "nohz=full isolcpus=1-3")
+ * that need to survive the staged deployment serialization roundtrip.
+ *
+ * Returns: (transfer full) (nullable): A new floating GVariant, or NULL if
+ *          there are no matching comments
+ */
+GVariant *
+_ostree_bootconfig_parser_get_comments_variant (OstreeBootconfigParser *self)
+{
+  if (!self->comments || self->comments->len == 0)
+    return NULL;
+
+  g_auto (GVariantBuilder) builder = OT_VARIANT_BUILDER_INITIALIZER;
+  g_variant_builder_init (&builder, (GVariantType *)"a{ss}");
+
+  for (guint i = 0; i < self->comments->len; i++)
+    {
+      const char *entry = g_ptr_array_index (self->comments, i);
+      /* Split into key and value on the first space/tab */
+      const char *sep = strpbrk (entry, " \t");
+      if (sep)
+        {
+          g_autofree char *key = g_strndup (entry, sep - entry);
+          const char *val = sep + 1;
+          g_variant_builder_add (&builder, "{ss}", key, val);
+        }
+      else
+        {
+          /* Key only, no value */
+          g_variant_builder_add (&builder, "{ss}", entry, "");
+        }
+    }
+
+  return g_variant_builder_end (&builder);
+}
+
 static void
 ostree_bootconfig_parser_finalize (GObject *object)
 {
@@ -347,6 +536,7 @@ ostree_bootconfig_parser_finalize (GObject *object)
   g_free (self->filename);
   g_strfreev (self->overlay_initrds);
   g_hash_table_unref (self->options);
+  g_clear_pointer (&self->comments, g_ptr_array_unref);
 
   G_OBJECT_CLASS (ostree_bootconfig_parser_parent_class)->finalize (object);
 }

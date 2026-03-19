@@ -73,4 +73,12 @@ guint64 ostree_bootconfig_parser_get_tries_left (OstreeBootconfigParser *self);
 _OSTREE_PUBLIC
 guint64 ostree_bootconfig_parser_get_tries_done (OstreeBootconfigParser *self);
 
+_OSTREE_PUBLIC
+const char *ostree_bootconfig_parser_get_comment (OstreeBootconfigParser *self,
+                                                  const char *comment_key);
+
+_OSTREE_PUBLIC
+void ostree_bootconfig_parser_set_comment (OstreeBootconfigParser *self, const char *comment_key,
+                                           const char *value);
+
 G_END_DECLS

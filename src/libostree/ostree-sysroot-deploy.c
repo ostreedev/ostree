@@ -3884,6 +3884,21 @@ ostree_sysroot_stage_tree_with_options (OstreeSysroot *self, const char *osname,
     g_variant_builder_add (builder, "{sv}", "overlay-initrds",
                            g_variant_new_strv ((const char *const *)opts->overlay_initrds, -1));
 
+  /* Serialize magic comments (e.g. "# x-ostree-options-source-tuned ...").
+   * These are metadata comments set by consumers that need to survive the
+   * staging roundtrip so they are preserved during finalization at shutdown.
+   * See allowed_comment_prefixes in ostree-bootconfig-parser.c.
+   */
+  {
+    OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
+    if (bootconfig)
+      {
+        GVariant *comments = _ostree_bootconfig_parser_get_comments_variant (bootconfig);
+        if (comments)
+          g_variant_builder_add (builder, "{sv}", "bootconfig-comments", comments);
+      }
+  }
+
   const char *parent = dirname (strdupa (_OSTREE_SYSROOT_RUNSTATE_STAGED));
   if (!glnx_shutil_mkdir_p_at (AT_FDCWD, parent, 0755, cancellable, error))
     return FALSE;
