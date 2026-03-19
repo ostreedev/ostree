@@ -56,6 +56,34 @@ build-host-inst: build-host
     make -C target/c install DESTDIR=$(pwd)/target/inst
     tar --sort=name --numeric-owner --owner=0 --group=0 -C target/inst -czf target/inst.tar.gz .
 
+# Run all integration tests inside a deployed libvirt VM.
+# This runs both "booted" tests (need full deployment) and "privileged"
+# tests (just need root). For faster iteration on privileged-only tests,
+# use `integration-ephemeral`.
+# JUnit XML results are written to target/integration-results.xml.
+integration-container *ARGS:
+    #!/bin/bash
+    set -euo pipefail
+    bcvk libvirt run --name ostree-integration-test --replace --detach --ssh-wait localhost/ostree:latest
+    rc=0
+    bcvk libvirt ssh ostree-integration-test -- env JUNIT_OUTPUT=/tmp/junit.xml \
+        ostree-bootc-integration-tests {{ARGS}} || rc=$?
+    mkdir -p target
+    bcvk libvirt ssh ostree-integration-test -- cat /tmp/junit.xml \
+        > target/integration-results.xml 2>/dev/null || true
+    bcvk libvirt rm --stop --force ostree-integration-test
+    exit $rc
+
+# Run only root-privileged tests via an ephemeral VM (faster — no disk install).
+# This skips tests that need a fully deployed/booted ostree system.
+# Not all tests will pass here; use `integration-container` for the full suite.
+integration-ephemeral *ARGS:
+    bcvk ephemeral run-ssh localhost/ostree:latest -- ostree-bootc-integration-tests {{ARGS}}
+
+# Remove any leftover integration test VMs
+integration-cleanup:
+    -bcvk libvirt rm --stop --force ostree-integration-test
+
 sourcefiles := "git ls-files '**.c' '**.cxx' '**.h' '**.hpp'"
 # Reformat source files
 clang-format:
