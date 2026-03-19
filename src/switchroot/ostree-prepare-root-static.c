@@ -298,18 +298,6 @@ main (int argc, char *argv[])
         err (EXIT_FAILURE, "failed to bind mount (class:readonly) /usr");
     }
 
-  /* Prepare /var.
-   * When a read-only sysroot is configured, this adds a dedicated bind-mount (to itself)
-   * so that the stateroot location stays writable. */
-  if (sysroot_readonly)
-    {
-      /* Bind-mount /var (at stateroot path), and remount as writable. */
-      if (mount ("../../var", "../../var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to prepare /var bind-mount at %s", srcpath);
-      if (mount ("../../var", "../../var", NULL, MS_BIND | MS_REMOUNT | MS_SILENT, NULL) < 0)
-        err (EXIT_FAILURE, "failed to make writable /var bind-mount at %s", srcpath);
-    }
-
   /* When running under systemd, /var will be handled by a 'var.mount' unit outside
    * of initramfs.
    * Systemd auto-detection can be overridden by a marker file under /run. */
@@ -323,6 +311,8 @@ main (int argc, char *argv[])
     {
       if (mount ("../../var", TMP_SYSROOT "/var", NULL, MS_BIND | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to bind mount ../../var to var");
+      if (mount (NULL, TMP_SYSROOT "/var", NULL, MS_BIND | MS_REMOUNT | MS_SILENT, NULL) < 0)
+        err (EXIT_FAILURE, "failed to make /var bind-mount writable");
     }
 
   if (chdir (TMP_SYSROOT) < 0)
