@@ -1,0 +1,51 @@
+---
+upstream_package_name: ostree
+downstream_package_name: ostree
+
+upstream_tag_template: v{version}
+
+actions:
+  # Download spec from Fedora dist-git early so Packit can find it
+  post-upstream-clone:
+    - bash -c "curl -LO https://src.fedoraproject.org/rpms/ostree/raw/rawhide/f/ostree.spec"
+  # Create source archive and patch the spec
+  create-archive:
+    - bash -c "ci/make-git-snapshot.sh"
+    - bash -c "ci/packit-fix-spec.sh ostree.spec"
+    - bash -c "ls -1 libostree-*.tar.xz"
+  fix-spec-file:
+    - bash -c "cat ostree.spec"
+    - bash -c "ls -al"
+
+specfile_path: ostree.spec
+
+jobs:
+  - job: copr_build
+    trigger: pull_request
+    targets:
+      - centos-stream-9-x86_64
+      - centos-stream-9-aarch64
+      - centos-stream-10-x86_64
+      - centos-stream-10-aarch64
+      - fedora-43-x86_64
+      - fedora-43-aarch64
+      - fedora-44-x86_64
+      - fedora-44-aarch64
+
+  - job: tests
+    trigger: pull_request
+    targets:
+      - centos-stream-9-x86_64
+      - centos-stream-9-aarch64
+      - centos-stream-10-x86_64
+      - centos-stream-10-aarch64
+      - fedora-43-x86_64
+      - fedora-43-aarch64
+      - fedora-44-x86_64
+      - fedora-44-aarch64
+    tmt_plan: /tmt/plans/integration
+    tf_extra_params:
+      environments:
+        - tmt:
+            context:
+              running_env: "packit"

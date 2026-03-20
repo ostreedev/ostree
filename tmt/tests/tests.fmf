@@ -1,0 +1,9 @@
+/test-booted-verification:
+  summary: Verify ostree system state on image-mode system
+  duration: 15m
+  test: ostree-bootc-integration-tests privileged_verify_ostree_booted privileged_verify_sysroot privileged_verify_composefs privileged_verify_ostree_cli privileged_verify_sysroot_readonly privileged_verify_ostree_run_metadata privileged_verify_immutable_bit privileged_verify_osinit_unshare privileged_verify_selinux_labels
+
+/test-ostree-privileged:
+  summary: Privileged ostree tests (nofifo, mtime, extensions)
+  duration: 10m
+  test: ostree-bootc-integration-tests privileged_verify_nofifo privileged_verify_mtime privileged_verify_extensions
