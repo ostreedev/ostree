@@ -1,0 +1,45 @@
+# Common settings for all plans
+provision:
+  how: virtual
+  image: centos-stream-9
+  memory: 4096
+  disk: 20
+prepare:
+  # Install packages needed for provisioning and testing
+  - how: install
+    order: 97
+    package:
+      - podman
+      - skopeo
+      - ostree
+      - bootc
+      - ansible-core
+    when: running_env == packit
+  # Build bootc image with Packit ostree RPMs and install to filesystem
+  - how: shell
+    order: 98
+    script:
+      - cd hack && ./provision-packit.sh
+    when: running_env == packit
+  # Reboot into image mode (tmt-reboot doesn't work in prepare)
+  - how: ansible
+    order: 99
+    playbook:
+      - https://github.com/bootc-dev/bootc/raw/refs/heads/main/hack/packit-reboot.yml
+    when: running_env == packit
+execute:
+  how: tmt
+
+/plan-booted-verification:
+  summary: Verify ostree system after bootc install + reboot
+  discover:
+    how: fmf
+    test:
+      - /tmt/tests/tests/test-booted-verification
+
+/plan-privileged:
+  summary: Privileged ostree tests (root only, no boot)
+  discover:
+    how: fmf
+    test:
+      - /tmt/tests/tests/test-ostree-privileged
