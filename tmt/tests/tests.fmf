@@ -1,0 +1,9 @@
+/test-booted-verification:
+  summary: Verify ostree system state on image-mode system
+  duration: 15m
+  test: bash booted/test-booted-verification.sh
+
+/test-ostree-privileged:
+  summary: Privileged ostree tests (nofifo, mtime, extensions)
+  duration: 10m
+  test: bash privileged/test-ostree-privileged.sh
