@@ -2,32 +2,23 @@
 //!
 //! Tests are split into two categories:
 //!
-//! * **Booted** (`booted_test!`) — need a fully deployed ostree system
-//!   (composefs, sysroot, boot markers). When not root these dispatch via
-//!   `bcvk libvirt run` which does a full `bootc install to-disk`.
+//! * **Booted** — need a fully deployed ostree system
+//!   (composefs, sysroot, boot markers).
 //!
-//! * **Privileged** (`privileged_test!`) — just need root and the ostree
-//!   binary installed. When not root these dispatch via the much faster
-//!   `bcvk ephemeral run-ssh` (no disk install).
+//! * **Privileged** — just need root and the ostree binary installed.
+//!
+//! VM deployment is handled externally by `just test-tmt` (bcvk + tmt)
+//! or `just integration-container` (bcvk direct). These tests always
+//! run as root inside the VM.
 
 use anyhow::{ensure, Result};
 use xshell::{cmd, Shell};
 
 use crate::integration_test;
 
-/// How a test should be dispatched when not running as root.
-/// See the module-level docs for details on each mode.
-enum RunMode {
-    Booted,
-    Privileged,
-}
-
 macro_rules! booted_test {
     ($fn_name:ident, $body:expr) => {
         fn $fn_name() -> Result<()> {
-            if require_root(stringify!($fn_name), RunMode::Booted)?.is_some() {
-                return Ok(());
-            }
             $body
         }
         integration_test!($fn_name);
@@ -37,73 +28,10 @@ macro_rules! booted_test {
 macro_rules! privileged_test {
     ($fn_name:ident, $body:expr) => {
         fn $fn_name() -> Result<()> {
-            if require_root(stringify!($fn_name), RunMode::Privileged)?.is_some() {
-                return Ok(());
-            }
             $body
         }
         integration_test!($fn_name);
     };
-}
-
-/// Returns `Ok(None)` if already root (test proceeds normally).
-/// Otherwise dispatches to a VM per `mode` and returns `Ok(Some(()))`.
-fn require_root(test_name: &str, mode: RunMode) -> Result<Option<()>> {
-    if rustix::process::getuid().is_root() {
-        return Ok(None);
-    }
-
-    // We're on the host without root — delegate to a VM.
-    if std::env::var_os("OSTREE_IN_VM").is_some() {
-        anyhow::bail!("OSTREE_IN_VM is set but we're not root — VM setup is broken");
-    }
-
-    let image = std::env::var("OSTREE_TEST_IMAGE").map_err(|_| {
-        anyhow::anyhow!(
-            "not root and OSTREE_TEST_IMAGE not set; \
-             run `just integration-container` to build and test"
-        )
-    })?;
-
-    let sh = Shell::new()?;
-    let bcvk = std::env::var("BCVK_PATH").unwrap_or_else(|_| "bcvk".into());
-
-    match mode {
-        RunMode::Booted => {
-            // Use a unique VM name per test to avoid collisions
-            let vm_name = format!("ostree-test-{}", test_name.replace('_', "-"));
-
-            // Deploy a full VM (bootc install to-disk + boot) and wait for SSH
-            cmd!(
-                sh,
-                "{bcvk} libvirt run --name {vm_name} --replace --detach --ssh-wait {image}"
-            )
-            .run()?;
-
-            // Run the test inside the deployed VM
-            let result = cmd!(
-                sh,
-                "{bcvk} libvirt ssh {vm_name} -- ostree-bootc-integration-tests --exact {test_name}"
-            )
-            .run();
-
-            // Always clean up the VM
-            let _ = cmd!(sh, "{bcvk} libvirt rm --stop --force {vm_name}").run();
-
-            // Propagate the test result
-            result?;
-        }
-        RunMode::Privileged => {
-            // Fast path: ephemeral container, no disk install needed
-            cmd!(
-                sh,
-                "{bcvk} ephemeral run-ssh {image} -- ostree-bootc-integration-tests --exact {test_name}"
-            )
-            .run()?;
-        }
-    }
-
-    Ok(Some(()))
 }
 
 booted_test!(privileged_verify_ostree_booted, {
