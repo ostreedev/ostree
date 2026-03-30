@@ -15,29 +15,53 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  e2e:
+  unit-tests:
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         stream: [stream9, stream10]
     steps:
-      - uses: actions/checkout@v4
-      - uses: bootc-dev/actions/bootc-ubuntu-setup@main
+      - uses: actions/checkout@v6
         with:
-          libvirt: true
-      - name: build
-        run: STREAM=${{ matrix.stream }} just build
+          fetch-depth: 0
+      - uses: bootc-dev/actions/bootc-ubuntu-setup@main
+
       - name: unitcontainer
         run: STREAM=${{ matrix.stream }} just unitcontainer
       - name: unittest
         run: STREAM=${{ matrix.stream }} just unittest
-      - name: integration tests (bcvk)
-        timeout-minutes: 15
-        run: STREAM=${{ matrix.stream }} just integration-container
-      - name: Upload test logs
+      - name: Upload unittest logs
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: test-suite-log-${{ matrix.stream }}
+          name: test-suite-log-PR-${{ github.event.number }}-${{ matrix.stream }}
           path: target/unittest
+
+  integration:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        stream: [stream9, stream10]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: bootc-dev/actions/bootc-ubuntu-setup@main
+        with:
+          libvirt: true
+      - name: Install tmt
+        run: pip install --user "tmt[provision-virtual]"
+
+      - name: build
+        run: STREAM=${{ matrix.stream }} just build
+      - name: TMT tests (bcvk)
+        timeout-minutes: 40
+        run: STREAM=${{ matrix.stream }} just test-tmt
+      - name: Archive TMT logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmt-log-PR-${{ github.event.number }}-${{ matrix.stream }}
+          path: /var/tmp/tmt

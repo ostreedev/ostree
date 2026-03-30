@@ -4,6 +4,24 @@ osid := `. /usr/lib/os-release && echo $ID`
 stream := env('STREAM', 'stream9')
 build_args := "--jobs=4 --build-arg=base=quay.io/centos-bootc/centos-bootc:"+stream
 
+# Build RPMs into target/packages/
+package:
+    #!/bin/bash
+    set -xeuo pipefail
+    packages=target/packages
+    if test -n "${OSTREE_SKIP_PACKAGE:-}"; then
+        if test '!' -d "${packages}"; then
+            echo "OSTREE_SKIP_PACKAGE is set, but missing ${packages}" 1>&2; exit 1
+        fi
+        exit 0
+    fi
+    podman build {{build_args}} -t localhost/ostree-pkg --target=rpmbuild .
+    mkdir -p "${packages}"
+    rm -vf "${packages}"/*.rpm
+    podman run --rm localhost/ostree-pkg tar -C /rpms/ -cf - . | tar -C "${packages}"/ -xvf -
+    chmod a+rx target "${packages}"
+    chmod a+r "${packages}"/*.rpm
+
 # Build the container image from current sources
 build *ARGS:
     podman build {{build_args}} -t localhost/ostree {{ARGS}} .
@@ -64,7 +82,20 @@ build-host-inst: build-host
 integration-container *ARGS:
     #!/bin/bash
     set -euo pipefail
-    bcvk libvirt run --name ostree-integration-test --replace --detach --ssh-wait localhost/ostree:latest
+    bcvk libvirt run --name ostree-integration-test --replace --detach localhost/ostree:latest
+    echo "Waiting for SSH..."
+    for i in $(seq 1 30); do
+        if bcvk libvirt ssh ostree-integration-test -- true 2>/dev/null; then
+            echo "SSH ready after ~$((i * 10))s"
+            break
+        fi
+        if [ "$i" = 30 ]; then
+            echo "Timeout waiting for SSH" >&2
+            bcvk libvirt rm --stop --force ostree-integration-test
+            exit 1
+        fi
+        sleep 10
+    done
     rc=0
     bcvk libvirt ssh ostree-integration-test -- env JUNIT_OUTPUT=/tmp/junit.xml \
         ostree-bootc-integration-tests {{ARGS}} || rc=$?
@@ -80,9 +111,19 @@ integration-container *ARGS:
 integration-ephemeral *ARGS:
     bcvk ephemeral run-ssh localhost/ostree:latest -- ostree-bootc-integration-tests {{ARGS}}
 
+# Run TMT tests inside bcvk-deployed VMs.
+# Each plan runs in its own VM for isolation, following the
+# bootc-dev/bootc cargo xtask run-tmt pattern.
+test-tmt *ARGS: build
+    cargo run --manifest-path tests/xtask/Cargo.toml -- run-tmt {{ARGS}}
+
 # Remove any leftover integration test VMs
 integration-cleanup:
-    -bcvk libvirt rm --stop --force ostree-integration-test
+    #!/bin/bash
+    bcvk libvirt rm --stop --force ostree-integration-test 2>/dev/null || true
+    bcvk libvirt list --format json 2>/dev/null | jq -r '.[].name' | grep '^ostree-tmt-' | while read vm; do
+        bcvk libvirt rm --stop --force "$vm" 2>/dev/null || true
+    done
 
 sourcefiles := "git ls-files '**.c' '**.cxx' '**.h' '**.hpp'"
 # Reformat source files

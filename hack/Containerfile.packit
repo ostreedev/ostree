@@ -1,0 +1,69 @@
+# Build a bootc image with Packit-built ostree RPMs layered in.
+#
+# Usage (from provision-packit.sh):
+#   podman build --from $BASE -t localhost/ostree -f Containerfile.packit .
+
+# The base bootc image is overridden via --from
+FROM quay.io/centos-bootc/centos-bootc:stream9
+
+WORKDIR /ostree-test
+
+# Save testing farm run files
+COPY ARTIFACTS /var/ARTIFACTS
+# Copy ostree repo
+COPY test-artifacts /var/share/test-artifacts
+
+RUN <<EORUN
+set -xeuo pipefail
+. /usr/lib/os-release
+if [[ $ID == "rhel" ]]; then
+    cp rhel.repo /etc/yum.repos.d/
+fi
+# OSCI uses /var/lib/tmt/scripts to save tmt-* commands
+# Fedora CI and Packit use /usr/local/bin
+if [[ -d scripts ]]; then
+    mkdir -p /var/lib/tmt
+    cp -r scripts /var/lib/tmt/
+else
+    cp -r bin /usr/local
+fi
+cp test-artifacts.repo /etc/yum.repos.d/
+
+# Update ostree packages from the COPR repo
+dnf -y update ostree ostree-libs
+
+# Build and install the integration test binary
+dnf -y install cargo rust
+EORUN
+
+COPY tests/bootc-integration /build/tests/bootc-integration
+WORKDIR /build/tests/bootc-integration
+RUN CARGO_HOME=/var/tmp/.cargo cargo build --release && \
+    cp target/release/ostree-bootc-integration-tests /usr/bin/ && \
+    rm -rf /build /var/tmp/.cargo
+
+WORKDIR /ostree-test
+
+RUN <<EORUN
+set -xeuo pipefail
+
+# Required by tmt avc checking after test
+dnf -y install audit
+
+# Rpovision booted vm
+./provision-derived.sh cloudinit
+
+# Remove ostree repo, ostree updated already
+rm -f /etc/yum.repos.d/test-artifacts.repo
+# Clean up dnf
+dnf -y clean all
+rm -rf /var/cache /var/lib/dnf
+
+# Regenerate initramfs since ostree-prepare-root may have changed
+kver=$(cd /usr/lib/modules && echo *)
+dracut -vf /usr/lib/modules/$kver/initramfs.img $kver
+EORUN
+
+# Standard bootc labels
+LABEL containers.bootc 1
+LABEL ostree.bootable 1
