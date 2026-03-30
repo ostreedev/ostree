@@ -38,9 +38,9 @@ EORUN
 
 COPY tests/bootc-integration /build/tests/bootc-integration
 WORKDIR /build/tests/bootc-integration
-RUN cargo build --release && \
+RUN CARGO_HOME=/var/tmp/.cargo cargo build --release && \
     cp target/release/ostree-bootc-integration-tests /usr/bin/ && \
-    rm -rf /build
+    rm -rf /build /var/tmp/.cargo
 
 WORKDIR /ostree-test
 
