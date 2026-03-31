@@ -24,7 +24,11 @@ jobs:
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@ce325b60658c1b38465c06cc965b79baf32c1e72
       - name: cargo fmt (check)
-        run: cargo fmt -p ostree -- --check -l
+        run: |
+          cargo fmt -p ostree -- --check -l
+          for d in tests/inst tests/bootc-integration tests/xtask; do
+            cargo fmt --manifest-path $d/Cargo.toml -- --check -l
+          done
       - name: Build
         run: cargo build --verbose --features=${{ env['CARGO_PROJECT_FEATURES'] }}
       - name: Run tests
