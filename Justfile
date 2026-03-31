@@ -135,6 +135,7 @@ clang-format-check:
     {{sourcefiles}} | xargs clang-format -i --Werror --dry-run
 
 clippy_config := "-A clippy::all -D clippy::correctness -D clippy::suspicious -Dunused_imports -Ddead_code"
+cargo_project_features := env('CARGO_PROJECT_FEATURES', 'v2022_6')
 
 # Run all Rust lint and format checks (mirrors CI)
 validate:
@@ -148,5 +149,5 @@ cargo-fmt-check:
 
 # Run cargo clippy across all crates
 cargo-clippy:
-    cargo clippy -p ostree --features=v2022_6 -- {{clippy_config}}
+    cargo clippy -p ostree --features={{cargo_project_features}} -- {{clippy_config}}
     for d in tests/inst tests/bootc-integration tests/xtask; do cargo clippy --manifest-path $d/Cargo.toml -- {{clippy_config}}; done
