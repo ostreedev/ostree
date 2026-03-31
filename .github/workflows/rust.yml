@@ -23,14 +23,18 @@ jobs:
       - uses: actions/checkout@v2
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@ce325b60658c1b38465c06cc965b79baf32c1e72
+      - name: Install just
+        run: dnf install -y just
       - name: cargo fmt (check)
-        run: cargo fmt -p ostree -- --check -l
+        run: just cargo-fmt-check
       - name: Build
         run: cargo build --verbose --features=${{ env['CARGO_PROJECT_FEATURES'] }}
       - name: Run tests
         run: cargo test --verbose --features=${{ env['CARGO_PROJECT_FEATURES'] }}
-      - name: cargo clippy (non-gating)
-        run: cargo clippy -p ostree --features=${{ env['CARGO_PROJECT_FEATURES'] }}
+      - name: cargo clippy
+        run: just cargo-clippy
+      - name: cargo doc
+        run: env RUSTDOCFLAGS='-D warnings' cargo doc --lib -p ostree --features=${{ env['CARGO_PROJECT_FEATURES'] }}
   build-no-features:
     runs-on: ubuntu-latest
     container: quay.io/coreos-assembler/fcos-buildroot:testing-devel

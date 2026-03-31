@@ -186,19 +186,6 @@ struct TransactionalTestInfo {
     cycle_time: time::Duration,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
-struct Kill9Stats {
-    interrupted: u32,
-    staged: u32,
-    success: u32,
-}
-
-#[derive(Serialize, Deserialize, Debug, Default)]
-struct RebootStats {
-    interrupted: u32,
-    success: u32,
-}
-
 fn upgrade_and_finalize() -> Result<()> {
     bash!(
         "rpm-ostree upgrade

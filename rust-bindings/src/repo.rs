@@ -68,7 +68,7 @@ unsafe fn from_glib_container_variant_map(
 
 /// An open transaction in the repository.
 ///
-/// This will automatically invoke [`ostree::Repo::abort_transaction`] when the value is dropped.
+/// This will automatically invoke [`Repo::abort_transaction`] when the value is dropped.
 pub struct TransactionGuard<'a> {
     /// Reference to the repository for this transaction.
     repo: Option<&'a Repo>,
@@ -115,7 +115,7 @@ impl Repo {
         crate::Repo::open_at(dir.as_raw_fd(), path, gio::Cancellable::NONE)
     }
 
-    /// A version of [`create_at`] which resolves the path relative to the provided directory file descriptor, and also returns the opened repo.
+    /// A version of [`Repo::create_at`] which resolves the path relative to the provided directory file descriptor, and also returns the opened repo.
     #[cfg(any(feature = "v2017_10", feature = "dox"))]
     pub fn create_at_dir(
         dir: BorrowedFd<'_>,
@@ -128,7 +128,7 @@ impl Repo {
         Repo::open_at_dir(dir, path)
     }
 
-    /// A wrapper for [`prepare_transaction`] which ensures the transaction will be aborted when the guard goes out of scope.
+    /// A wrapper for [`Repo::prepare_transaction`] which ensures the transaction will be aborted when the guard goes out of scope.
     pub fn auto_transaction<P: IsA<gio::Cancellable>>(
         &self,
         cancellable: Option<&P>,
@@ -307,7 +307,7 @@ impl Repo {
 
     /// Query metadata for a content object.
     ///
-    /// This is similar to [`load_file`], but is more efficient if reading the file content is not needed.
+    /// This is similar to [`Repo::load_file`], but is more efficient if reading the file content is not needed.
     pub fn query_file<P: IsA<gio::Cancellable>>(
         &self,
         checksum: &str,
