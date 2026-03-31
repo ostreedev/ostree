@@ -133,3 +133,20 @@ clang-format:
 # Check source files against clang-format defaults
 clang-format-check:
     {{sourcefiles}} | xargs clang-format -i --Werror --dry-run
+
+clippy_config := "-A clippy::all -D clippy::correctness -D clippy::suspicious -Dunused_imports -Ddead_code"
+
+# Run all Rust lint and format checks (mirrors CI)
+validate:
+    just cargo-fmt-check
+    just cargo-clippy
+
+# Check Rust formatting across all crates
+cargo-fmt-check:
+    cargo fmt -p ostree -- --check -l
+    for d in tests/inst tests/bootc-integration tests/xtask; do cargo fmt --manifest-path $d/Cargo.toml -- --check -l; done
+
+# Run cargo clippy across all crates
+cargo-clippy:
+    cargo clippy -p ostree --features=v2022_6 -- {{clippy_config}}
+    for d in tests/inst tests/bootc-integration tests/xtask; do cargo clippy --manifest-path $d/Cargo.toml -- {{clippy_config}}; done
