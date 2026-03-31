@@ -1,8 +1,8 @@
 use std::io::Write;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use clap::Parser;
-use xshell::{Shell, cmd};
+use xshell::{cmd, Shell};
 
 /// Maximum time to wait for SSH to become available (in seconds).
 const SSH_TIMEOUT_SECS: u64 = 300;
@@ -75,11 +75,7 @@ pub(crate) fn run_tmt(sh: &Shell, args: RunTmtArgs) -> Result<()> {
         eprintln!("All {} test plan(s) passed", plans.len());
         Ok(())
     } else {
-        eprintln!(
-            "{} of {} plan(s) failed:",
-            failures.len(),
-            plans.len()
-        );
+        eprintln!("{} of {} plan(s) failed:", failures.len(), plans.len());
         for (plan, err) in &failures {
             eprintln!("  {plan}: {err}");
         }
@@ -119,13 +115,7 @@ fn discover_plans(sh: &Shell, filters: &[String]) -> Result<Vec<String>> {
 }
 
 /// Run a single TMT plan in a dedicated bcvk VM.
-fn run_plan(
-    sh: &Shell,
-    args: &RunTmtArgs,
-    image: &str,
-    plan: &str,
-    vm_name: &str,
-) -> Result<()> {
+fn run_plan(sh: &Shell, args: &RunTmtArgs, image: &str, plan: &str, vm_name: &str) -> Result<()> {
     // Launch the VM
     cmd!(sh, "bcvk libvirt run --name {vm_name} --detach {image}")
         .run()
@@ -184,9 +174,7 @@ fn wait_for_ssh(sh: &Shell, vm_name: &str) -> Result<()> {
         std::thread::sleep(std::time::Duration::from_secs(SSH_POLL_INTERVAL_SECS));
     }
 
-    bail!(
-        "Timeout waiting for SSH on {vm_name} after {SSH_TIMEOUT_SECS}s"
-    );
+    bail!("Timeout waiting for SSH on {vm_name} after {SSH_TIMEOUT_SECS}s");
 }
 
 /// Clean up a bcvk VM, ignoring errors.
