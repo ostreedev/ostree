@@ -33,8 +33,15 @@ jobs:
         run: cargo build --verbose --features=${{ env['CARGO_PROJECT_FEATURES'] }}
       - name: Run tests
         run: cargo test --verbose --features=${{ env['CARGO_PROJECT_FEATURES'] }}
-      - name: cargo clippy (non-gating)
-        run: cargo clippy -p ostree --features=${{ env['CARGO_PROJECT_FEATURES'] }}
+      - name: cargo clippy
+        run: |
+          CLIPPY_CONFIG="-A clippy::all -D clippy::correctness -D clippy::suspicious -Dunused_imports -Ddead_code"
+          cargo clippy -p ostree --features=${{ env['CARGO_PROJECT_FEATURES'] }} -- $CLIPPY_CONFIG
+          for d in tests/inst tests/bootc-integration tests/xtask; do
+            cargo clippy --manifest-path $d/Cargo.toml -- $CLIPPY_CONFIG
+          done
+      - name: cargo doc
+        run: env RUSTDOCFLAGS='-D warnings' cargo doc --lib -p ostree --features=${{ env['CARGO_PROJECT_FEATURES'] }}
   build-no-features:
     runs-on: ubuntu-latest
     container: quay.io/coreos-assembler/fcos-buildroot:testing-devel
