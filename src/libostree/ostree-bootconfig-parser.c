@@ -339,6 +339,60 @@ ostree_bootconfig_parser_write (OstreeBootconfigParser *self, GFile *output,
                                             cancellable, error);
 }
 
+/* Standard BLS keys that are managed by ostree's own deployment code.
+ * These are rebuilt from scratch during staged deployment finalization
+ * (title, version, linux, initrd from the deployment; options from the
+ * serialized kargs), so they must NOT be duplicated into bootconfig-extra.
+ */
+static const char *const standard_bls_keys[]
+    = { "title", "version", "options", "linux", "initrd", "devicetree", NULL };
+
+static gboolean
+is_standard_bls_key (const char *key)
+{
+  for (const char *const *p = standard_bls_keys; *p != NULL; p++)
+    {
+      if (strcmp (key, *p) == 0)
+        return TRUE;
+    }
+  return FALSE;
+}
+
+/**
+ * _ostree_bootconfig_parser_get_extra_keys_variant:
+ * @self: Parser
+ *
+ * Returns a GVariant of type "a{ss}" containing all bootconfig keys
+ * that are not part of the standard BLS set managed by ostree.  These
+ * are extension keys set by consumers like bootc (e.g.
+ * "x-options-source-tuned") that need to survive the staged deployment
+ * serialization roundtrip.
+ *
+ * Returns: (transfer full) (nullable): A new floating GVariant, or NULL if
+ *          there are no extra keys
+ */
+GVariant *
+_ostree_bootconfig_parser_get_extra_keys_variant (OstreeBootconfigParser *self)
+{
+  g_auto (GVariantBuilder) builder = OT_VARIANT_BUILDER_INITIALIZER;
+  gboolean has_entries = FALSE;
+
+  g_variant_builder_init (&builder, (GVariantType *)"a{ss}");
+
+  GLNX_HASH_TABLE_FOREACH_KV (self->options, const char *, k, const char *, v)
+    {
+      if (is_standard_bls_key (k))
+        continue;
+      g_variant_builder_add (&builder, "{ss}", k, v);
+      has_entries = TRUE;
+    }
+
+  if (!has_entries)
+    return NULL;
+
+  return g_variant_builder_end (&builder);
+}
+
 static void
 ostree_bootconfig_parser_finalize (GObject *object)
 {
