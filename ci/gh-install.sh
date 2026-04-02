@@ -80,7 +80,6 @@ case "$ID" in
             e2fslibs-dev
             elfutils
             fsverity
-            fuse
             gnupg
             gobject-introspection
             gtk-doc-tools
@@ -89,7 +88,6 @@ case "$ID" in
             libavahi-client-dev
             libavahi-glib-dev
             libcap-dev
-            libfuse-dev
             libgirepository1.0-dev
             libglib2.0-dev
             libglib2.0-doc
@@ -141,6 +139,14 @@ case "$ID" in
                 ;;
             (*)
                 PACKAGES+=(bsdextrautils)
+                ;;
+        esac
+
+        # libfuse-dev (FUSE 2) has been removed from Debian Testing.
+        # Only install it on older versions that still provide it.
+        case "${VERSION_CODENAME:-}" in
+            (buster|bullseye|bookworm|focal|jammy|bionic)
+                PACKAGES+=(fuse libfuse-dev)
                 ;;
         esac
 
