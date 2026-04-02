@@ -164,7 +164,7 @@ jobs:
             container-options: --security-opt seccomp=unconfined
             pre-checkout-setup: |
               apt-get update
-              apt-get install -y git
+              apt-get install -y git ca-certificates
             extra-packages: >-
               libssl-dev
             configure-options: >-
