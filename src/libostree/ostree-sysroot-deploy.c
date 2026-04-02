@@ -3884,6 +3884,33 @@ ostree_sysroot_stage_tree_with_options (OstreeSysroot *self, const char *osname,
     g_variant_builder_add (builder, "{sv}", "overlay-initrds",
                            g_variant_new_strv ((const char *const *)opts->overlay_initrds, -1));
 
+  /* Serialize any extension BLS keys (e.g. x-options-source-tuned).
+   * These are custom keys set by consumers like bootc and need to survive
+   * the staging roundtrip so they are preserved during finalization at shutdown.
+   *
+   * First check the new deployment's bootconfig (in case the caller set keys
+   * on it directly).  If none found, fall back to the merge deployment's
+   * bootconfig, which carries the keys from the currently deployed BLS entry.
+   * This ensures that x-prefixed keys are inherited across staged deployments
+   * even though _ostree_deployment_set_bootconfig_from_kargs() creates a fresh
+   * bootconfig containing only the "options" key.
+   */
+  {
+    GVariant *extra = NULL;
+    OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
+    if (bootconfig)
+      extra = _ostree_bootconfig_parser_get_extra_keys_variant (bootconfig);
+    if (!extra && merge_deployment)
+      {
+        OstreeBootconfigParser *merge_bootconfig
+            = ostree_deployment_get_bootconfig (merge_deployment);
+        if (merge_bootconfig)
+          extra = _ostree_bootconfig_parser_get_extra_keys_variant (merge_bootconfig);
+      }
+    if (extra)
+      g_variant_builder_add (builder, "{sv}", "bootconfig-extra", extra);
+  }
+
   const char *parent = dirname (strdupa (_OSTREE_SYSROOT_RUNSTATE_STAGED));
   if (!glnx_shutil_mkdir_p_at (AT_FDCWD, parent, 0755, cancellable, error))
     return FALSE;

@@ -1225,6 +1225,24 @@ _ostree_sysroot_reload_staged (OstreeSysroot *self, GError **error)
 
           _ostree_deployment_set_overlay_initrds (staged, overlay_initrds);
 
+          /* Restore any extension BLS keys (e.g. x-options-source-tuned)
+           * that were serialized during staging. This preserves custom keys
+           * set by consumers like bootc through the staging roundtrip.
+           */
+          {
+            g_autoptr (GVariant) bootconfig_extra = NULL;
+            if (g_variant_dict_lookup (staged_deployment_dict, "bootconfig-extra", "@a{ss}",
+                                       &bootconfig_extra))
+              {
+                OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (staged);
+                GVariantIter iter;
+                const char *key, *value;
+                g_variant_iter_init (&iter, bootconfig_extra);
+                while (g_variant_iter_next (&iter, "{&s&s}", &key, &value))
+                  ostree_bootconfig_parser_set (bootconfig, key, value);
+              }
+          }
+
           self->staged_deployment = g_steal_pointer (&staged);
           self->staged_deployment_data = g_steal_pointer (&staged_deployment_data);
           /* We set this flag for ostree_deployment_is_staged() because that API
