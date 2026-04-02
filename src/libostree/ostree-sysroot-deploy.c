@@ -2399,6 +2399,8 @@ write_deployments_bootswap (OstreeSysroot *self, GPtrArray *new_deployments,
                             OstreeSysrootWriteDeploymentsOpts *opts, OstreeBootloader *bootloader,
                             char **out_subbootdir, GCancellable *cancellable, GError **error)
 {
+  gboolean bootplugin_exists;
+  int estatus;
   const int new_bootversion = self->bootversion ? 0 : 1;
 
   g_autofree char *new_loader_entries_dir
@@ -2450,11 +2452,41 @@ write_deployments_bootswap (OstreeSysroot *self, GPtrArray *new_deployments,
   if (!prepare_new_bootloader_link (self, self->bootversion, new_bootversion, cancellable, error))
     return FALSE;
 
+  const char *const bootplugin_deploy_argv[]
+      = { "/usr/lib/ostree/bootloader-plugin", "deploy", NULL };
+  bootplugin_exists = g_file_test (bootplugin_deploy_argv[0], G_FILE_TEST_EXISTS);
+  if (bootplugin_exists)
+    {
+      if (!g_spawn_sync (NULL, (char **)bootplugin_deploy_argv, NULL, G_SPAWN_CHILD_INHERITS_STDERR,
+                         NULL, NULL, NULL, NULL, &estatus, error))
+        {
+          return glnx_prefix_error (error, "bootloader-plugin deploy exec failed");
+        }
+      if (!g_spawn_check_exit_status (estatus, error))
+        {
+          return glnx_prefix_error (error, "bootloader-plugin deploy failed");
+        }
+    }
+
   if (!full_system_sync (self, cancellable, error))
     return FALSE;
 
   if (!swap_bootloader (self, bootloader, self->bootversion, new_bootversion, cancellable, error))
     return FALSE;
+
+  const char *const bootplugin_swap_argv[] = { bootplugin_deploy_argv[0], "swap", NULL };
+  if (bootplugin_exists)
+    {
+      if (!g_spawn_sync (NULL, (char **)bootplugin_swap_argv, NULL, G_SPAWN_CHILD_INHERITS_STDERR,
+                         NULL, NULL, NULL, NULL, &estatus, error))
+        {
+          return glnx_prefix_error (error, "bootloader-plugin swap exec failed");
+        }
+      if (!g_spawn_check_exit_status (estatus, error))
+        {
+          return glnx_prefix_error (error, "bootloader-plugin swap failed");
+        }
+    }
 
   if (out_subbootdir)
     *out_subbootdir = g_steal_pointer (&new_subbootdir);
