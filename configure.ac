@@ -664,6 +664,29 @@ AM_COND_IF(BUILDOPT_SYSTEMD_AND_LIBMOUNT,
   AC_DEFINE([BUILDOPT_LIBSYSTEMD_AND_LIBMOUNT], 1, [Define if systemd and libmount]))
 if test x$with_libsystemd = xyes; then OSTREE_FEATURES="$OSTREE_FEATURES systemd"; fi
 
+AC_ARG_WITH(mounthelper,
+            AS_HELP_STRING([--with-mounthelper],
+                           [Install mount.ostreebindrw helper]),,
+              [with_mounthelper=maybe])
+
+OLDLIBMOUNT_DEPENDENCY="mount < 2.39.0"
+dnl Mount helper is only needed with ostree-system-generator and an old mount version
+AS_IF([ test x$with_mounthelper != no && test x$with_libsystemd = xyes && test x$with_libmount = xyes ], [
+  AC_MSG_CHECKING([for $OLDLIBMOUNT_DEPENDENCY])
+  PKG_CHECK_EXISTS($OLDLIBMOUNT_DEPENDENCY, have_oldlibmount=yes, have_oldlibmount=no)
+  AC_MSG_RESULT([$have_oldlibmount])
+  AS_IF([ test x$have_oldlibmount = xyes], [
+    with_mounthelper=yes
+  ], [
+	  with_mounthelper=no
+  ])
+], [ with_mounthelper=no ])
+AM_CONDITIONAL(BUILDOPT_MOUNTHELPER, test x$with_mounthelper = xyes)
+AM_COND_IF([BUILDOPT_MOUNTHELPER], [
+  AC_DEFINE([BUILDOPT_MOUNTHELPER], 1, [Define if we build for/install the mount helper])
+  OSTREE_FEATURES="$OSTREE_FEATURES mounthelper"
+])
+
 AC_ARG_WITH(modern-grub,
 	    AS_HELP_STRING([--with-modern-grub],
                            [Omit grub linux and initrd suffixes for EFI/BIOS booting on GRUB >2.02 (default: no)]),,
@@ -746,6 +769,7 @@ echo "
     cryptographic checksums:                      $with_crypto
     systemd:                                      $with_libsystemd
     libmount:                                     $with_libmount
+    mounthelper:                                  $with_mounthelper
     libsodium (ed25519 signatures):               $with_ed25519_libsodium
     openssl (ed25519 and spki signatures):        $with_openssl
     libarchive (parse tar files directly):        $with_libarchive
