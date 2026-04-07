@@ -237,7 +237,12 @@ main (int argc, char *argv[])
 
   /* Prepare /boot.
    * If /boot is on the same partition, use a bind mount to make it visible
-   * at /boot inside the deployment. */
+   * at /boot inside the deployment.
+   *
+   * Note: The composefs/systemd path (ostree-prepare-root.c) no longer does this -
+   * it's handled by ostree-system-generator's boot.mount unit instead, which
+   * supports soft-reboot. But this static path is used without systemd, so the
+   * generator doesn't run and we must still do it here. */
   if (snprintf (srcpath, sizeof (srcpath), "%s/boot/loader", root_mountpoint) < 0)
     err (EXIT_FAILURE, "failed to assemble /boot/loader path");
   if (lstat (srcpath, &stbuf) == 0 && S_ISLNK (stbuf.st_mode))
