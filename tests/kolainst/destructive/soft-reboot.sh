@@ -1,7 +1,8 @@
 #!/bin/bash
+# shellcheck disable=SC2154 # host_commit is defined in libinsttest.sh
 set -xeuo pipefail
 
-. ${KOLA_EXT_DATA}/libinsttest.sh
+. "${KOLA_EXT_DATA}"/libinsttest.sh
 
 prepare_tmpdir
 
@@ -18,7 +19,7 @@ assert_jq findmnt.json '.filesystems[0].options | contains("ro")'
 require_writable_sysroot
 
 assert_soft_reboot_count() {
-  assert_streq $(systemctl show -P SoftRebootsCount) $1
+  assert_streq "$(systemctl show -P SoftRebootsCount)" "$1"
 }
 
 case "${AUTOPKGTEST_REBOOT_MARK:-}" in
@@ -27,14 +28,46 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
   systemctl mask --now zincati
 
   assert_soft_reboot_count 0
+
+  # First, test a bare systemctl soft-reboot (without ostree's prepare-soft-reboot).
+  # This tests the fix for https://issues.redhat.com/browse/RHEL-154075 where
+  # a bare soft-reboot would cause /var to fail to mount due to the generated
+  # var.mount unit getting stuck waiting on device units.
+  echo "Testing bare systemctl soft-reboot (no /run/nextroot)..."
+  # Verify /run/nextroot is not set up
+  test '!' -d /run/nextroot || ! mountpoint -q /run/nextroot
+  /tmp/autopkgtest-soft-reboot-prepare "bare-soft-reboot"
+  systemctl soft-reboot
+  ;;
+  "bare-soft-reboot")
+  # After bare soft-reboot, verify we're still running the same deployment
+  # and critically, that /var is mounted and the system is healthy.
+  echo "Verifying post-bare-soft-reboot state..."
+  assert_soft_reboot_count 1
+
+  # The key assertion: /var must be mounted for the system to be functional
+  mountpoint /var
+  # Verify /var is actually usable (we can write to it)
+  touch /var/tmp/soft-reboot-test-marker
+  rm /var/tmp/soft-reboot-test-marker
+
+  # /boot must also be mounted (handled by generator's boot.mount)
+  mountpoint /boot
+
+  # We should still be on the same deployment (no ostree-level change)
+  assert_status_jq '.deployments[0].booted'
+
+  echo "ok bare soft-reboot"
+
+  # Now continue with the rest of the soft-reboot tests
   assert_status_jq '.deployments[0].pending | not' '.deployments[0].["soft-reboot-target"] | not'
 
   # Create a synthetic commit for upgrade
   cd /ostree/repo/tmp
-  ostree checkout -H ${host_commit} t
+  ostree checkout -H "${host_commit}" t
   unshare -m /bin/sh -c 'mount -o remount,rw /sysroot && cd /ostree/repo/tmp/t && touch usr/etc/new-file-for-soft-reboot usr/share/test-file-for-soft-reboot'
   ostree commit --no-bindings --parent="${host_commit}" -b soft-reboot-test -I --consume t
-  newcommit=$(ostree rev-parse soft-reboot-test)
+  ostree rev-parse soft-reboot-test >/dev/null
   # Deploy the new commit normally first
   ostree admin deploy --stage soft-reboot-test
 
@@ -59,12 +92,12 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
   "2")
   # After soft reboot, verify we're running the new deployment
   echo "Verifying post-soft-reboot state..."
-  assert_soft_reboot_count 1
+  assert_soft_reboot_count 2
   
   expected_commit=$(ostree rev-parse soft-reboot-test)
   
   if [ "${host_commit}" != "${expected_commit}" ]; then
-    echo "ERROR: Expected commit ${host_commit}, but got ${current_commit}"
+    echo "ERROR: Expected commit ${expected_commit}, but got ${host_commit}"
     exit 1
   fi
 
@@ -85,7 +118,7 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
   ostree admin prepare-soft-reboot --reboot 1
   ;;
   "3")
-  assert_soft_reboot_count 2
+  assert_soft_reboot_count 3
 
   # Only from the first updated target
   test '!' -f /etc/new-file-for-soft-reboot
@@ -112,10 +145,10 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
   # Now, test the intersection of staged deployments and soft rebooting
   # Create another synthetic commit
   cd /ostree/repo/tmp
-  ostree checkout -H ${host_commit} t
+  ostree checkout -H "${host_commit}" t
   unshare -m /bin/sh -c 'mount -o remount,rw /sysroot && cd /ostree/repo/tmp/t && touch usr/share/test-staged-2-for-soft-reboot'
   ostree commit --no-bindings --parent="${host_commit}" -b soft-reboot-test-staged-2 -I --consume t
-  newcommit=$(ostree rev-parse soft-reboot-test-staged-2)
+  ostree rev-parse soft-reboot-test-staged-2 >/dev/null
   ostree admin deploy --stage soft-reboot-test-staged-2
 
   assert_status_jq '.deployments[0].staged' '.deployments[0].["soft-reboot-target"] | not' \
@@ -134,7 +167,7 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
   systemctl reboot
   ;;
   "4")
-  assert_soft_reboot_count 3
+  assert_soft_reboot_count 4
   # Completion of soft reboot into non-staged
   assert_status_jq '.deployments[0].booted' '.deployments[0].["soft-reboot-target"] | not' \
                    '.deployments[1].booted | not' '.deployments[1].["soft-reboot-target"] | not'

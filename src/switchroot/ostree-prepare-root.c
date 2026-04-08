@@ -280,8 +280,9 @@ main (int argc, char *argv[])
   g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_SYSROOT_RO,
                          g_variant_new_boolean (sysroot_readonly));
 
-  if (!otcore_mount_boot (root_mountpoint, TMP_SYSROOT, &error))
-    errx (EXIT_FAILURE, "%s", error->message);
+  /* /boot is handled by ostree-system-generator which generates a boot.mount
+   * unit when /boot is on the same partition. This works for all boot scenarios
+   * including soft-reboot. See ostree-impl-system-generator.c */
 
   /* Prepare /etc.
    * No action required if sysroot is writable. Otherwise, a bind-mount for
