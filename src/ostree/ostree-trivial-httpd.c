@@ -281,7 +281,7 @@ do_get (OtTrivialHttpd *self, SoupServer *server, SoupServerMessage *msg, const 
 do_get (OtTrivialHttpd *self, SoupServer *server, SoupServerMessage *msg, const char *path)
 #endif
 {
-  char *slash;
+  const char *slash;
   int ret;
   struct stat stbuf;
 
