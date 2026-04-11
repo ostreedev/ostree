@@ -398,9 +398,13 @@ static gboolean
 _ostree_secure_execution_call_zipl (GError **error)
 {
   int status = 0;
-  const char *const zipl_argv[] = {
-    "zipl", "-V", "-t", SECURE_EXECUTION_MOUNTPOINT, "-i", SECURE_EXECUTION_BOOT_IMAGE, NULL
-  };
+  const char *const zipl_argv[] = { "/usr/sbin/zipl",
+                                    "-V",
+                                    "-t",
+                                    SECURE_EXECUTION_MOUNTPOINT,
+                                    "-i",
+                                    SECURE_EXECUTION_BOOT_IMAGE,
+                                    NULL };
   if (!g_spawn_sync (NULL, (char **)zipl_argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, NULL,
                      &status, error))
     return glnx_prefix_error (error, "s390x SE: spawning zipl");
@@ -483,7 +487,7 @@ _ostree_bootloader_zipl_post_bls_sync (OstreeBootloader *bootloader, int bootver
   if (!_ostree_secure_boot_is_enabled (&sb_enabled, cancellable, error))
     return FALSE;
   const char *const zipl_argv[]
-      = { "zipl", "--secure", (sb_enabled == TRUE) ? "1" : "auto", "-V", NULL };
+      = { "/usr/sbin/zipl", "--secure", (sb_enabled == TRUE) ? "1" : "auto", "-V", NULL };
   int estatus;
   if (target_deployment != NULL)
     {
