@@ -278,6 +278,55 @@ test_kargs_append (void)
   g_assert_cmpint (7, ==, g_strv_length (kargs_list));
 }
 
+/* Regression test: parsing a /proc/cmdline-style string containing quoted
+ * kernel args with spaces must not crash.  Commit abc7d5b9 added a
+ * quote-aware splitter (split_kernel_args) but ostree_kernel_args_append_proc_cmdline
+ * still used a naive g_strsplit(" ") that broke quoted tokens apart, causing a
+ * g_assert_false(quoted) abort.
+ *
+ * Bootloaders may reformat quotes -- e.g. GRUB turns testparam="value with spaces"
+ * into "testparam=value with spaces" in /proc/cmdline.  Both forms must be handled.
+ */
+static void
+test_kargs_quoted_cmdline (void)
+{
+  /* Test 1: Standard quoted value (as stored by rpm-ostree) */
+  {
+    __attribute__ ((cleanup (ostree_kernel_args_cleanup))) OstreeKernelArgs *karg
+        = ostree_kernel_args_new ();
+    ostree_kernel_args_parse_append (karg,
+                                     "root=UUID=abc quiet testparam=\"value with spaces\" rw");
+    g_assert (check_string_existance (karg, "root=UUID=abc"));
+    g_assert (check_string_existance (karg, "quiet"));
+    g_assert (check_string_existance (karg, "testparam=\"value with spaces\""));
+    g_assert (check_string_existance (karg, "rw"));
+  }
+
+  /* Test 2: GRUB-reformatted quoting (quotes wrapping entire token)
+   * /proc/cmdline may show: "testparam=value with spaces" */
+  {
+    __attribute__ ((cleanup (ostree_kernel_args_cleanup))) OstreeKernelArgs *karg
+        = ostree_kernel_args_new ();
+    ostree_kernel_args_parse_append (karg,
+                                     "root=UUID=abc quiet \"testparam=value with spaces\" rw");
+    g_assert (check_string_existance (karg, "root=UUID=abc"));
+    g_assert (check_string_existance (karg, "quiet"));
+    g_assert (check_string_existance (karg, "\"testparam=value with spaces\""));
+    g_assert (check_string_existance (karg, "rw"));
+  }
+
+  /* Test 3: Multiple quoted args */
+  {
+    __attribute__ ((cleanup (ostree_kernel_args_cleanup))) OstreeKernelArgs *karg
+        = ostree_kernel_args_new ();
+    ostree_kernel_args_parse_append (karg, "foo=\"1 2\" bar=\"3 4\"");
+    g_assert (check_string_existance (karg, "foo=\"1 2\""));
+    g_assert (check_string_existance (karg, "bar=\"3 4\""));
+    g_auto (GStrv) kargs_list = ostree_kernel_args_to_strv (karg);
+    g_assert_cmpint (2, ==, g_strv_length (kargs_list));
+  }
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -286,5 +335,6 @@ main (int argc, char *argv[])
   g_test_add_func ("/kargs/kargs_append", test_kargs_append);
   g_test_add_func ("/kargs/kargs_delete", test_kargs_delete);
   g_test_add_func ("/kargs/kargs_replace", test_kargs_replace);
+  g_test_add_func ("/kargs/kargs_quoted_cmdline", test_kargs_quoted_cmdline);
   return g_test_run ();
 }
