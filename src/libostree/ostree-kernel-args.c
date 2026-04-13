@@ -188,13 +188,14 @@ split_kernel_args (const char *str)
         }
     }
 
-  // Add the last slice
-  if (!quoted)
-    g_ptr_array_add (strv, g_strndup (start, str + len - start));
-  else
+  // Add the last slice if non-empty. If there's an unterminated quote
+  // (e.g. from bootloader-reformatted /proc/cmdline), treat the
+  // remainder as a single token rather than aborting.
+  if (str + len > start)
     {
-      g_debug ("Missing terminating quote in '%s'.\n", str);
-      g_assert_false (quoted);
+      if (quoted)
+        g_debug ("Missing terminating quote in '%s', treating remainder as single token.\n", str);
+      g_ptr_array_add (strv, g_strndup (start, str + len - start));
     }
 
   g_ptr_array_add (strv, NULL);
@@ -681,7 +682,7 @@ ostree_kernel_args_append_proc_cmdline (OstreeKernelArgs *kargs, GCancellable *c
 
   g_strchomp (proc_cmdline);
 
-  proc_cmdline_args = g_strsplit (proc_cmdline, " ", -1);
+  proc_cmdline_args = split_kernel_args (proc_cmdline);
   ostree_kernel_args_append_argv_filtered (kargs, proc_cmdline_args, filtered_prefixes);
 
   return TRUE;
