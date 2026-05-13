@@ -1654,6 +1654,7 @@ _ostree_static_delta_generate() {
         --max-chunk-size
         --min-fallback-size
         --swap-endianness
+        --threads -j
     "
 
     local options_with_args="

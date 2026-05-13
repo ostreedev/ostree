@@ -58,7 +58,21 @@ typedef struct
   GPtrArray *xattrs;
   GLnxTmpfile part_tmpf;
   GVariant *header;
+  guint number; /* zero-based index into builder->parts; captured at allocate time */
 } OstreeStaticDeltaPartBuilder;
+
+/* Parallel-work state. Lives on the stack of ostree_repo_static_delta_generate();
+ * a pointer is stashed in OstreeStaticDeltaBuilder so workers can reach it.
+ * pool == NULL means serial mode (legacy behavior). */
+typedef struct
+{
+  GThreadPool *pool;
+  GMutex mutex;
+  GCond cond;
+  guint inflight;
+  guint max_inflight;
+  GError *first_error; /* protected by mutex; set by first failing worker */
+} OstreeDeltaWorkerPool;
 
 typedef struct
 {
@@ -75,7 +89,65 @@ typedef struct
   gboolean swap_endian;
   int parts_dfd;
   DeltaOpts delta_opts;
+  OstreeDeltaWorkerPool *compress_pool; /* nullable; NULL = serial */
 } OstreeStaticDeltaBuilder;
+
+/* Set up @pool with @n_workers threads running @threadfn. Publishes @pool to
+ * *@publish_to BEFORE g_thread_pool_new() so worker reads happen-after via
+ * pthread_create's release semantics. On failure clears *@publish_to. */
+static gboolean
+worker_pool_init (OstreeDeltaWorkerPool *pool, OstreeDeltaWorkerPool **publish_to,
+                  GFunc threadfn, gpointer user_data, gint n_workers, GError **error)
+{
+  g_mutex_init (&pool->mutex);
+  g_cond_init (&pool->cond);
+  /* +1 lets the producer prepare the next task while workers finish */
+  pool->max_inflight = n_workers + 1;
+  *publish_to = pool;
+  GError *pool_error = NULL;
+  pool->pool = g_thread_pool_new (threadfn, user_data, n_workers, TRUE /* exclusive */,
+                                  &pool_error);
+  if (pool->pool == NULL)
+    {
+      *publish_to = NULL;
+      g_mutex_clear (&pool->mutex);
+      g_cond_clear (&pool->cond);
+      g_propagate_error (error, pool_error);
+      return FALSE;
+    }
+  return TRUE;
+}
+
+/* Tear down @pool. No-op if it was never initialized. @immediate=TRUE drops
+ * any tasks still queued (used on error paths); workers in progress always
+ * run to completion via wait=TRUE in g_thread_pool_free(). */
+static void
+worker_pool_clear (OstreeDeltaWorkerPool *pool, OstreeDeltaWorkerPool **publish_to,
+                   gboolean immediate)
+{
+  if (pool->pool == NULL)
+    return;
+  g_thread_pool_free (pool->pool, immediate, TRUE /* wait */);
+  pool->pool = NULL;
+  g_mutex_clear (&pool->mutex);
+  g_cond_clear (&pool->cond);
+  g_clear_error (&pool->first_error);
+  *publish_to = NULL;
+}
+
+/* Wait until @pool has no in-flight tasks. Does not propagate first_error;
+ * callers that care should read it under the mutex themselves. No-op if
+ * @pool is NULL or was never initialized. */
+static void
+worker_pool_drain (OstreeDeltaWorkerPool *pool)
+{
+  if (pool == NULL || pool->pool == NULL)
+    return;
+  g_mutex_lock (&pool->mutex);
+  while (pool->inflight > 0)
+    g_cond_wait (&pool->cond, &pool->mutex);
+  g_mutex_unlock (&pool->mutex);
+}
 
 /* Get an input stream for a GVariant */
 static GInputStream *
@@ -209,10 +281,15 @@ xattr_chunk_equals (const void *one, const void *two)
   return memcmp (g_variant_get_data (v1), g_variant_get_data (v2), l1) == 0;
 }
 
+/* Compress one part's payload, write it to a tmpfile, and populate its header.
+ * Safe to call from worker threads: it only mutates fields of @part_builder
+ * (which the caller guarantees no other thread is touching) plus opens an
+ * O_TMPFILE under builder->parts_dfd (kernel-side thread-safe).
+ */
 static gboolean
-finish_part (OstreeStaticDeltaBuilder *builder, GError **error)
+finish_part_compress (OstreeStaticDeltaBuilder *builder,
+                      OstreeStaticDeltaPartBuilder *part_builder, GError **error)
 {
-  OstreeStaticDeltaPartBuilder *part_builder = builder->parts->pdata[builder->parts->len - 1];
   g_autofree guchar *part_checksum = NULL;
   g_autoptr (GBytes) objtype_checksum_array = NULL;
   g_autoptr (GBytes) checksum_bytes = NULL;
@@ -302,10 +379,142 @@ finish_part (OstreeStaticDeltaBuilder *builder, GError **error)
     {
       g_printerr ("part %u n:%u compressed:%" G_GUINT64_FORMAT " uncompressed:%" G_GUINT64_FORMAT
                   "\n",
-                  builder->parts->len, part_builder->objects->len, part_builder->compressed_size,
+                  part_builder->number, part_builder->objects->len, part_builder->compressed_size,
                   part_builder->uncompressed_size);
     }
 
+  return TRUE;
+}
+
+/* Worker entry point for the compression thread pool. Errors are stashed in
+ * builder->compress_pool->first_error and bubble up via drain_compress_pool().
+ */
+static void
+finish_part_threadfn (gpointer data, gpointer user_data)
+{
+  OstreeStaticDeltaPartBuilder *part_builder = data;
+  OstreeStaticDeltaBuilder *builder = user_data;
+  OstreeDeltaWorkerPool *cp = builder->compress_pool;
+
+  g_mutex_lock (&cp->mutex);
+  gboolean already_failed = (cp->first_error != NULL);
+  g_mutex_unlock (&cp->mutex);
+
+  if (!already_failed)
+    {
+      g_autoptr (GError) local_error = NULL;
+      if (!finish_part_compress (builder, part_builder, &local_error))
+        {
+          g_mutex_lock (&cp->mutex);
+          if (cp->first_error == NULL)
+            cp->first_error = g_steal_pointer (&local_error);
+          g_mutex_unlock (&cp->mutex);
+        }
+    }
+
+  g_mutex_lock (&cp->mutex);
+  g_assert (cp->inflight > 0);
+  cp->inflight--;
+  /* At most one waiter exists at any time (producer in submit_finish_part or
+   * in drain_compress_pool, never both), so signal is enough. */
+  g_cond_signal (&cp->cond);
+  g_mutex_unlock (&cp->mutex);
+}
+
+/* Hand a part off to be compressed. In serial mode (no pool) this runs
+ * inline; in parallel mode it blocks until queue room exists, then enqueues.
+ */
+static gboolean
+submit_finish_part (OstreeStaticDeltaBuilder *builder,
+                    OstreeStaticDeltaPartBuilder *part_builder, GError **error)
+{
+  OstreeDeltaWorkerPool *cp = builder->compress_pool;
+
+  if (cp == NULL)
+    return finish_part_compress (builder, part_builder, error);
+
+  g_mutex_lock (&cp->mutex);
+  while (cp->inflight >= cp->max_inflight && cp->first_error == NULL)
+    g_cond_wait (&cp->cond, &cp->mutex);
+  if (cp->first_error != NULL)
+    {
+      g_propagate_error (error, g_steal_pointer (&cp->first_error));
+      g_mutex_unlock (&cp->mutex);
+      return FALSE;
+    }
+  cp->inflight++;
+  g_mutex_unlock (&cp->mutex);
+
+  GError *push_error = NULL;
+  if (!g_thread_pool_push (cp->pool, part_builder, &push_error))
+    {
+      g_mutex_lock (&cp->mutex);
+      g_assert (cp->inflight > 0);
+      cp->inflight--;
+      g_cond_signal (&cp->cond);
+      g_mutex_unlock (&cp->mutex);
+      g_propagate_error (error, push_error);
+      return FALSE;
+    }
+  return TRUE;
+}
+
+/* Wait until every in-flight part has been compressed. Surfaces the first
+ * worker error (if any) and clears it so it isn't reported twice. Safe to
+ * call when no pool was ever set up. */
+static gboolean
+drain_compress_pool (OstreeStaticDeltaBuilder *builder, GError **error)
+{
+  OstreeDeltaWorkerPool *cp = builder->compress_pool;
+  worker_pool_drain (cp);
+  if (cp == NULL)
+    return TRUE;
+  g_mutex_lock (&cp->mutex);
+  gboolean ok = (cp->first_error == NULL);
+  if (!ok)
+    g_propagate_error (error, g_steal_pointer (&cp->first_error));
+  g_mutex_unlock (&cp->mutex);
+  return ok;
+}
+
+/* Parse the compress-threads option (CLI / GVariant param / env var).
+ * Returns the worker count via @out_threads: 0 means serial (the default),
+ * 1 also runs serially (no worker thread is spawned for a single part), and
+ * values >1 enable parallel compression with that many workers.
+ *
+ * Accepts: NULL → 0; empty / "true" / "yes" / "on" / "auto" → all CPUs;
+ * "false" / "no" / "off" → 0; integer in [0, 256] → that integer.
+ * Anything else is an error.
+ */
+static gboolean
+parse_compress_threads (const char *value, gint *out_threads, GError **error)
+{
+  if (value == NULL)
+    {
+      *out_threads = 0;
+      return TRUE;
+    }
+  if (*value == '\0' || g_ascii_strcasecmp (value, "true") == 0
+      || g_ascii_strcasecmp (value, "yes") == 0 || g_ascii_strcasecmp (value, "on") == 0
+      || g_ascii_strcasecmp (value, "auto") == 0)
+    {
+      *out_threads = (gint)g_get_num_processors ();
+      return TRUE;
+    }
+  if (g_ascii_strcasecmp (value, "false") == 0 || g_ascii_strcasecmp (value, "no") == 0
+      || g_ascii_strcasecmp (value, "off") == 0)
+    {
+      *out_threads = 0;
+      return TRUE;
+    }
+  gchar *endptr = NULL;
+  gint64 v = g_ascii_strtoll (value, &endptr, 10);
+  if (endptr == value || *endptr != '\0' || v < 0 || v > 256)
+    return glnx_throw (error,
+                       "Invalid compress-threads value '%s' "
+                       "(expected integer 0..256, or true/false/yes/no/on/off/auto)",
+                       value);
+  *out_threads = (gint)v;
   return TRUE;
 }
 
@@ -314,7 +523,8 @@ allocate_part (OstreeStaticDeltaBuilder *builder, GError **error)
 {
   if (builder->parts->len > 0)
     {
-      if (!finish_part (builder, error))
+      OstreeStaticDeltaPartBuilder *prev = builder->parts->pdata[builder->parts->len - 1];
+      if (!submit_finish_part (builder, prev, error))
         return NULL;
     }
 
@@ -329,6 +539,7 @@ allocate_part (OstreeStaticDeltaBuilder *builder, GError **error)
   part->xattr_set = g_hash_table_new_full (xattr_chunk_hash, xattr_chunk_equals,
                                            (GDestroyNotify)g_variant_unref, NULL);
   part->xattrs = g_ptr_array_new ();
+  part->number = builder->parts->len;
   g_ptr_array_add (builder->parts, part);
   return part;
 }
@@ -1162,7 +1373,17 @@ generate_delta_lowlatency (OstreeRepo *repo, const char *from, const char *to, D
         return FALSE;
     }
 
-  if (!finish_part (builder, error))
+  /* Submit the last part. In serial mode this compresses inline; in parallel
+   * mode the drain below guarantees all parts (including this one) are done
+   * before we return — every part_builder->header is then safe to read. */
+  if (builder->parts->len > 0)
+    {
+      OstreeStaticDeltaPartBuilder *last = builder->parts->pdata[builder->parts->len - 1];
+      if (!submit_finish_part (builder, last, error))
+        return FALSE;
+    }
+
+  if (!drain_compress_pool (builder, error))
     return FALSE;
 
   return TRUE;
@@ -1250,6 +1471,11 @@ get_fallback_headers (OstreeRepo *self, OstreeStaticDeltaBuilder *builder, GVari
  * directory.  Default saves to repository.
  *   - sign-name: ^ay: Signature type to use (bytestring).
  *   - sign-key-ids: ^as: NULL-terminated array of keys used to sign delta superblock.
+ *   - compress-threads: s: Parallel LZMA compression. Integer in 0..256
+ *     (values > 1 enable parallel compression with that many workers;
+ *     0 and 1 are serial) or a keyword: true/yes/on/auto = all CPUs;
+ *     false/no/off = serial. If unset, the OSTREE_DELTA_COMPRESS_THREADS
+ *     env var is consulted.
  */
 gboolean
 ostree_repo_static_delta_generate (OstreeRepo *self, OstreeStaticDeltaGenerateOpt opt,
@@ -1367,8 +1593,42 @@ ostree_repo_static_delta_generate (OstreeRepo *self, OstreeStaticDeltaGenerateOp
     }
   builder.parts_dfd = descriptor_dfd;
 
+  /* Optional parallel LZMA compression of parts. Selected by (in precedence
+   * order) the "compress-threads" GVariant param or the
+   * OSTREE_DELTA_COMPRESS_THREADS env var. A value > 1 enables parallel
+   * compression; 0 or 1 keeps the serial code path. See
+   * parse_compress_threads() for the full grammar. Memory cost in parallel
+   * mode is dominated by the LZMA-8 encoder state (~94 MiB per worker) plus
+   * a few in-flight part payloads of up to max-chunk-size each.
+   */
+  OstreeDeltaWorkerPool compress_pool = {
+    0,
+  };
+  const char *thread_str = NULL;
+  if (!g_variant_lookup (params, "compress-threads", "&s", &thread_str))
+    thread_str = g_getenv ("OSTREE_DELTA_COMPRESS_THREADS");
+  gint compress_threads = 0;
+  if (!parse_compress_threads (thread_str, &compress_threads, error))
+    return FALSE;
+  if (compress_threads > 1)
+    {
+      if (!worker_pool_init (&compress_pool, &builder.compress_pool, finish_part_threadfn,
+                             &builder, compress_threads, error))
+        return FALSE;
+      if (delta_opts & DELTAOPT_FLAG_VERBOSE)
+        g_printerr ("parallel compression: %d threads\n", compress_threads);
+    }
+
   /* Ignore optimization flags */
-  if (!generate_delta_lowlatency (self, from, to, delta_opts, &builder, cancellable, error))
+  gboolean lowlatency_ok
+      = generate_delta_lowlatency (self, from, to, delta_opts, &builder, cancellable, error);
+
+  /* Tear down the pool unconditionally so any in-flight work is reaped. On
+   * success, drain_compress_pool() inside generate_delta_lowlatency() already
+   * surfaced worker errors; here we just release resources. */
+  worker_pool_clear (&compress_pool, &builder.compress_pool, !lowlatency_ok);
+
+  if (!lowlatency_ok)
     return FALSE;
 
   if (!glnx_open_tmpfile_linkable_at (descriptor_dfd, ".", O_RDWR | O_CLOEXEC, &descriptor_tmpf,
