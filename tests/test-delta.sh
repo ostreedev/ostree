@@ -26,7 +26,7 @@ skip_without_user_xattrs
 bindatafiles="bash true ostree"
 morebindatafiles="false ls"
 
-echo '1..18'
+echo '1..20'
 
 mkdir repo
 ostree_repo_init repo --mode=archive
@@ -396,3 +396,33 @@ assert_file_has_content err.txt "compress-threads"
 rm -rf delta-val
 
 echo 'ok parallel compression value parsing'
+
+# Parallel-bsdiff: between the two committed trees there are modified files,
+# so --from=origrev --to=newrev exercises the bsdiff path. Compare serial vs
+# --threads=4 output and round-trip the parallel one through apply-offline.
+mkdir bsdiff-serial bsdiff-par
+${CMD_PREFIX} ostree --repo=repo static-delta generate --from=${origrev} --to=${newrev} \
+    --max-chunk-size=1 --filename=bsdiff-serial/superblock
+${CMD_PREFIX} ostree --repo=repo static-delta generate --from=${origrev} --to=${newrev} \
+    --max-chunk-size=1 --threads=4 --filename=bsdiff-par/superblock
+
+# Every part file must be byte-identical between serial and parallel bsdiff.
+ls bsdiff-serial | grep -E '^[0-9]+$' | sort > bsdiff-serial-parts.txt
+ls bsdiff-par    | grep -E '^[0-9]+$' | sort > bsdiff-par-parts.txt
+assert_streq "$(cat bsdiff-serial-parts.txt)" "$(cat bsdiff-par-parts.txt)"
+for p in $(cat bsdiff-serial-parts.txt); do
+    cmp bsdiff-serial/$p bsdiff-par/$p || \
+        assert_not_reached "bsdiff part $p differs between serial and parallel runs"
+done
+
+echo 'ok parallel bsdiff byte-identical parts'
+
+# Apply the parallel-generated from-A-to-B delta on top of A, expect B.
+ostree_repo_init repo-bsdiff-apply --mode=bare-user
+${CMD_PREFIX} ostree --repo=repo-bsdiff-apply pull-local repo ${origrev}
+${CMD_PREFIX} ostree --repo=repo-bsdiff-apply static-delta apply-offline bsdiff-par
+${CMD_PREFIX} ostree --repo=repo-bsdiff-apply fsck
+${CMD_PREFIX} ostree --repo=repo-bsdiff-apply ls ${newrev} >/dev/null
+rm -rf repo-bsdiff-apply
+
+echo 'ok parallel bsdiff apply-offline'

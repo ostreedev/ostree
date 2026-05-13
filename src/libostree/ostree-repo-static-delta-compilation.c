@@ -61,9 +61,10 @@ typedef struct
   guint number; /* zero-based index into builder->parts; captured at allocate time */
 } OstreeStaticDeltaPartBuilder;
 
-/* Parallel-work state. Lives on the stack of ostree_repo_static_delta_generate();
- * a pointer is stashed in OstreeStaticDeltaBuilder so workers can reach it.
- * pool == NULL means serial mode (legacy behavior). */
+/* Parallel-work state shared by the compress and bsdiff pools. Lives on the
+ * stack of ostree_repo_static_delta_generate(); a pointer is stashed in
+ * OstreeStaticDeltaBuilder so the per-task helpers can reach it. pool == NULL
+ * means serial mode (legacy behavior). */
 typedef struct
 {
   GThreadPool *pool;
@@ -90,6 +91,7 @@ typedef struct
   int parts_dfd;
   DeltaOpts delta_opts;
   OstreeDeltaWorkerPool *compress_pool; /* nullable; NULL = serial */
+  OstreeDeltaWorkerPool *bsdiff_pool;   /* nullable; NULL = serial */
 } OstreeStaticDeltaBuilder;
 
 /* Set up @pool with @n_workers threads running @threadfn. Publishes @pool to
@@ -972,10 +974,96 @@ process_one_rollsum (OstreeRepo *repo, OstreeStaticDeltaBuilder *builder,
   return TRUE;
 }
 
+/* One unit of bsdiff work. Inputs (repo, to_checksum, bsdiff_content,
+ * cancellable) are borrowed and must outlive the task. Outputs are filled by
+ * compute_bsdiff_for_task() and freed via bsdiff_task_free(). The producer
+ * fills the inputs, hands the task to a worker (or runs the compute inline),
+ * and later calls pack_bsdiff_task() to splice the results into a part.
+ */
+typedef struct
+{
+  /* Inputs (borrowed) */
+  OstreeRepo *repo;
+  const char *to_checksum;
+  ContentBsdiff *bsdiff_content;
+  GCancellable *cancellable;
+
+  /* Outputs (filled by worker) */
+  GFileInfo *content_finfo;
+  GVariant *content_xattrs;
+  GBytes *patch;
+
+  /* Coordination (touched only under bsdiff_pool->mutex) */
+  gboolean done;
+  GError *error;
+} BsdiffTask;
+
+static void
+bsdiff_task_free (BsdiffTask *task)
+{
+  g_clear_object (&task->content_finfo);
+  g_clear_pointer (&task->content_xattrs, g_variant_unref);
+  g_clear_pointer (&task->patch, g_bytes_unref);
+  g_clear_error (&task->error);
+  g_free (task);
+}
+
+/* Pure-compute portion of the old process_one_bsdiff: loads source/target
+ * content, fetches file info+xattrs, and runs bsdiff() into a memory buffer.
+ * Safe to call from a worker thread. tmp_from/tmp_to are scope-local and
+ * released as soon as the patch is produced; only the (much smaller) patch
+ * survives in the task.
+ */
 static gboolean
-process_one_bsdiff (OstreeRepo *repo, OstreeStaticDeltaBuilder *builder,
-                    OstreeStaticDeltaPartBuilder **current_part_val, const char *to_checksum,
-                    ContentBsdiff *bsdiff_content, GCancellable *cancellable, GError **error)
+compute_bsdiff_for_task (BsdiffTask *task, GError **error)
+{
+  g_autoptr (GBytes) tmp_from = NULL;
+  if (!get_unpacked_unlinked_content (task->repo, task->bsdiff_content->from_checksum, &tmp_from,
+                                      task->cancellable, error))
+    return FALSE;
+  g_autoptr (GBytes) tmp_to = NULL;
+  if (!get_unpacked_unlinked_content (task->repo, task->to_checksum, &tmp_to, task->cancellable,
+                                      error))
+    return FALSE;
+
+  if (!ostree_repo_load_file (task->repo, task->to_checksum, NULL, &task->content_finfo,
+                              &task->content_xattrs, task->cancellable, error))
+    return FALSE;
+
+  gsize tmp_from_len;
+  const guint8 *tmp_from_buf = g_bytes_get_data (tmp_from, &tmp_from_len);
+  gsize tmp_to_len;
+  const guint8 *tmp_to_buf = g_bytes_get_data (tmp_to, &tmp_to_len);
+  g_assert_cmpint (tmp_to_len, ==, g_file_info_get_size (task->content_finfo));
+
+  struct bsdiff_stream stream;
+  struct bzdiff_opaque_s op;
+  g_autoptr (GOutputStream) out = g_memory_output_stream_new_resizable ();
+  stream.malloc = malloc;
+  stream.free = free;
+  stream.write = bzdiff_write;
+  op.out = out;
+  op.cancellable = task->cancellable;
+  op.error = error;
+  stream.opaque = &op;
+  if (bsdiff (tmp_from_buf, tmp_from_len, tmp_to_buf, tmp_to_len, &stream) < 0)
+    return glnx_throw (error, "bsdiff generation failed");
+
+  /* steal_as_bytes requires the stream to be closed first, otherwise the
+   * returned GBytes may include unwritten capacity beyond the actual data. */
+  if (!g_output_stream_close (out, task->cancellable, error))
+    return FALSE;
+  task->patch = g_memory_output_stream_steal_as_bytes (G_MEMORY_OUTPUT_STREAM (out));
+  return TRUE;
+}
+
+/* Splice a completed BsdiffTask into the current part. Mutates part-builder
+ * state and may roll over to a new part, so must run on the producer thread.
+ */
+static gboolean
+pack_bsdiff_task (OstreeRepo *repo, OstreeStaticDeltaBuilder *builder,
+                  OstreeStaticDeltaPartBuilder **current_part_val, BsdiffTask *task,
+                  GError **error)
 {
   OstreeStaticDeltaPartBuilder *current_part = *current_part_val;
 
@@ -988,96 +1076,209 @@ process_one_bsdiff (OstreeRepo *repo, OstreeStaticDeltaBuilder *builder,
       *current_part_val = current_part;
     }
 
-  g_autoptr (GBytes) tmp_from = NULL;
-  if (!get_unpacked_unlinked_content (repo, bsdiff_content->from_checksum, &tmp_from, cancellable,
-                                      error))
-    return FALSE;
-  g_autoptr (GBytes) tmp_to = NULL;
-  if (!get_unpacked_unlinked_content (repo, to_checksum, &tmp_to, cancellable, error))
-    return FALSE;
-
-  gsize tmp_to_len;
-  const guint8 *tmp_to_buf = g_bytes_get_data (tmp_to, &tmp_to_len);
-  gsize tmp_from_len;
-  const guint8 *tmp_from_buf = g_bytes_get_data (tmp_from, &tmp_from_len);
-
-  g_autoptr (GFileInfo) content_finfo = NULL;
-  g_autoptr (GVariant) content_xattrs = NULL;
-  if (!ostree_repo_load_file (repo, to_checksum, NULL, &content_finfo, &content_xattrs, cancellable,
-                              error))
-    return FALSE;
-  const guint64 content_size = g_file_info_get_size (content_finfo);
-  g_assert_cmpint (tmp_to_len, ==, content_size);
-
+  const guint64 content_size = g_file_info_get_size (task->content_finfo);
   current_part->uncompressed_size += content_size;
 
   g_ptr_array_add (current_part->objects,
-                   ostree_object_name_serialize (to_checksum, OSTREE_OBJECT_TYPE_FILE));
+                   ostree_object_name_serialize (task->to_checksum, OSTREE_OBJECT_TYPE_FILE));
 
-  {
-    gsize mode_offset, xattr_offset;
-    guchar source_csum[OSTREE_SHA256_DIGEST_LEN];
+  gsize mode_offset, xattr_offset;
+  guchar source_csum[OSTREE_SHA256_DIGEST_LEN];
 
-    write_content_mode_xattrs (repo, current_part, content_finfo, content_xattrs, &mode_offset,
-                               &xattr_offset);
+  write_content_mode_xattrs (repo, current_part, task->content_finfo, task->content_xattrs,
+                             &mode_offset, &xattr_offset);
 
-    /* Write the origin checksum */
-    ostree_checksum_inplace_to_bytes (bsdiff_content->from_checksum, source_csum);
+  /* Write the origin checksum */
+  ostree_checksum_inplace_to_bytes (task->bsdiff_content->from_checksum, source_csum);
 
-    g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_SET_READ_SOURCE);
-    _ostree_write_varuint64 (current_part->operations, current_part->payload->len);
-    g_string_append_len (current_part->payload, (char *)source_csum, sizeof (source_csum));
+  g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_SET_READ_SOURCE);
+  _ostree_write_varuint64 (current_part->operations, current_part->payload->len);
+  g_string_append_len (current_part->payload, (char *)source_csum, sizeof (source_csum));
 
-    g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_OPEN);
-    _ostree_write_varuint64 (current_part->operations, mode_offset);
-    _ostree_write_varuint64 (current_part->operations, xattr_offset);
-    _ostree_write_varuint64 (current_part->operations, content_size);
+  g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_OPEN);
+  _ostree_write_varuint64 (current_part->operations, mode_offset);
+  _ostree_write_varuint64 (current_part->operations, xattr_offset);
+  _ostree_write_varuint64 (current_part->operations, content_size);
 
-    {
-      struct bsdiff_stream stream;
-      struct bzdiff_opaque_s op;
-      const gchar *payload;
-      gssize payload_size;
-      g_autoptr (GOutputStream) out = g_memory_output_stream_new_resizable ();
-      stream.malloc = malloc;
-      stream.free = free;
-      stream.write = bzdiff_write;
-      op.out = out;
-      op.cancellable = cancellable;
-      op.error = error;
-      stream.opaque = &op;
-      if (bsdiff (tmp_from_buf, tmp_from_len, tmp_to_buf, tmp_to_len, &stream) < 0)
-        return glnx_throw (error, "bsdiff generation failed");
+  gsize patch_size;
+  const guint8 *patch_buf = g_bytes_get_data (task->patch, &patch_size);
 
-      payload = g_memory_output_stream_get_data (G_MEMORY_OUTPUT_STREAM (out));
-      payload_size = g_memory_output_stream_get_data_size (G_MEMORY_OUTPUT_STREAM (out));
+  g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_BSPATCH);
+  _ostree_write_varuint64 (current_part->operations, current_part->payload->len);
+  _ostree_write_varuint64 (current_part->operations, patch_size);
 
-      g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_BSPATCH);
-      _ostree_write_varuint64 (current_part->operations, current_part->payload->len);
-      _ostree_write_varuint64 (current_part->operations, payload_size);
+  g_string_append_len (current_part->payload, (const char *)patch_buf, patch_size);
 
-      /* A bit too verbose to print by default...but leaving this #if 0'd out to
-       * use later. One approach I've been thinking about is to optionally
-       * output e.g. a JSON file as we build the deltas. Alternatively, we could
-       * try to reverse engineer things more in the "show" path, but that gets
-       * hard/messy as it's quite optimized for execution now.
-       */
-#if 0
-      g_printerr ("bspatch %s [%llu] → %s [%llu] bsdiff:%llu (%f)\n",
-                  bsdiff_content->from_checksum, (unsigned long long)tmp_from_len,
-                  to_checksum, (unsigned long long)tmp_to_len,
-                  (unsigned long long)payload_size,
-                  ((double)payload_size)/tmp_to_len);
-#endif
-
-      g_string_append_len (current_part->payload, payload, payload_size);
-    }
-    g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_CLOSE);
-  }
-
+  g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_CLOSE);
   g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_UNSET_READ_SOURCE);
 
   return TRUE;
+}
+
+/* Worker entry point for the bsdiff pool. Computes the patch into @task and
+ * signals the producer; the first worker error is also stashed on the pool
+ * so subsequent submissions short-circuit.
+ */
+static void
+bsdiff_task_threadfn (gpointer data, gpointer user_data)
+{
+  BsdiffTask *task = data;
+  OstreeStaticDeltaBuilder *builder = user_data;
+  OstreeDeltaWorkerPool *bp = builder->bsdiff_pool;
+
+  g_mutex_lock (&bp->mutex);
+  gboolean already_failed = (bp->first_error != NULL);
+  g_mutex_unlock (&bp->mutex);
+
+  GError *local_error = NULL;
+  if (!already_failed)
+    {
+      if (!compute_bsdiff_for_task (task, &local_error))
+        g_assert (local_error != NULL);
+    }
+  else
+    {
+      local_error = g_error_new_literal (G_IO_ERROR, G_IO_ERROR_CANCELLED,
+                                         "bsdiff skipped after earlier error");
+    }
+
+  g_mutex_lock (&bp->mutex);
+  task->error = local_error; /* transfer ownership; may be NULL on success */
+  task->done = TRUE;
+  if (local_error != NULL && bp->first_error == NULL)
+    bp->first_error = g_error_copy (local_error);
+  g_assert (bp->inflight > 0);
+  bp->inflight--;
+  /* At most one waiter exists at any time (the producer in
+   * wait_for_bsdiff_task), so signal is enough. */
+  g_cond_signal (&bp->cond);
+  g_mutex_unlock (&bp->mutex);
+}
+
+/* Enqueue a task for parallel compute. In serial mode (no pool) compute
+ * synchronously so wait_for_bsdiff_task() is a no-op. */
+static gboolean
+submit_bsdiff_task (OstreeStaticDeltaBuilder *builder, BsdiffTask *task, GError **error)
+{
+  OstreeDeltaWorkerPool *bp = builder->bsdiff_pool;
+  if (bp == NULL)
+    {
+      task->done = TRUE;
+      if (!compute_bsdiff_for_task (task, error))
+        return FALSE;
+      return TRUE;
+    }
+
+  g_mutex_lock (&bp->mutex);
+  bp->inflight++;
+  g_mutex_unlock (&bp->mutex);
+
+  GError *push_error = NULL;
+  if (!g_thread_pool_push (bp->pool, task, &push_error))
+    {
+      g_mutex_lock (&bp->mutex);
+      g_assert (bp->inflight > 0);
+      bp->inflight--;
+      g_cond_signal (&bp->cond);
+      g_mutex_unlock (&bp->mutex);
+      g_propagate_error (error, push_error);
+      return FALSE;
+    }
+  return TRUE;
+}
+
+/* Block until @task->done is set by a worker, then propagate any error.
+ * In serial mode submit_bsdiff_task() has already done the compute. */
+static gboolean
+wait_for_bsdiff_task (OstreeStaticDeltaBuilder *builder, BsdiffTask *task, GError **error)
+{
+  OstreeDeltaWorkerPool *bp = builder->bsdiff_pool;
+  if (bp == NULL)
+    return TRUE;
+
+  g_mutex_lock (&bp->mutex);
+  while (!task->done)
+    g_cond_wait (&bp->cond, &bp->mutex);
+  gboolean ok = (task->error == NULL);
+  if (!ok)
+    g_propagate_error (error, g_steal_pointer (&task->error));
+  g_mutex_unlock (&bp->mutex);
+  return ok;
+}
+
+/* Wait for every in-flight bsdiff task to finish so workers don't outlive
+ * the BsdiffTask array. Must be called before that array is freed on any
+ * exit path from process_bsdiff_tasks(). No-op when no pool was set up. */
+static void
+drain_bsdiff_pool (OstreeStaticDeltaBuilder *builder)
+{
+  worker_pool_drain (builder->bsdiff_pool);
+}
+
+/* Drive the bsdiff queue: prefetch up to max_inflight tasks, then for each
+ * task in submission order wait for its completion, pack it, free its
+ * outputs, and replenish the queue. Preserves byte-identical output to the
+ * serial path because packing is sequential and in the same order. On any
+ * failure path the in-flight pool is drained before returning so workers
+ * don't continue writing to BsdiffTasks the caller is about to free.
+ */
+static gboolean
+process_bsdiff_tasks (OstreeRepo *repo, OstreeStaticDeltaBuilder *builder,
+                      OstreeStaticDeltaPartBuilder **current_part_val, GPtrArray *bsdiff_tasks,
+                      DeltaOpts opts, GError **error)
+{
+  const guint n_tasks = bsdiff_tasks->len;
+  if (n_tasks == 0)
+    return TRUE;
+
+  OstreeDeltaWorkerPool *bp = builder->bsdiff_pool;
+  const guint prefetch = (bp != NULL) ? bp->max_inflight : 1;
+  const guint mod = n_tasks / 10;
+
+  gboolean ret = FALSE;
+  guint next_submit = 0;
+
+  while (next_submit < n_tasks && next_submit < prefetch)
+    {
+      if (!submit_bsdiff_task (builder, bsdiff_tasks->pdata[next_submit], error))
+        goto out;
+      next_submit++;
+    }
+
+  for (guint i = 0; i < n_tasks; i++)
+    {
+      BsdiffTask *t = bsdiff_tasks->pdata[i];
+
+      if (opts & DELTAOPT_FLAG_VERBOSE && (mod == 0 || i % mod == 0))
+        g_printerr ("processing bsdiff: [%u/%u]\n", i, n_tasks);
+
+      if (!wait_for_bsdiff_task (builder, t, error))
+        goto out;
+      if (!pack_bsdiff_task (repo, builder, current_part_val, t, error))
+        goto out;
+
+      /* Free the patch + content_finfo/xattrs now to bound memory; the task
+       * struct itself is freed by the GPtrArray's free_func at scope exit. */
+      g_clear_pointer (&t->patch, g_bytes_unref);
+      g_clear_object (&t->content_finfo);
+      g_clear_pointer (&t->content_xattrs, g_variant_unref);
+
+      builder->n_bsdiff++;
+
+      if (next_submit < n_tasks)
+        {
+          if (!submit_bsdiff_task (builder, bsdiff_tasks->pdata[next_submit], error))
+            goto out;
+          next_submit++;
+        }
+    }
+
+  ret = TRUE;
+out:
+  /* Ensure no worker is still writing into any BsdiffTask we are about to
+   * hand back to the caller's autoptr cleanup. */
+  drain_bsdiff_pool (builder);
+  return ret;
 }
 
 static gboolean
@@ -1287,27 +1488,26 @@ generate_delta_lowlatency (OstreeRepo *repo, const char *from, const char *to, D
       builder->n_rollsum++;
     }
 
-  /* Now do bsdiff'ed objects */
-
-  const guint n_bsdiff = g_hash_table_size (bsdiff_optimized_content_objects);
-  if (n_bsdiff > 0)
+  /* Now do bsdiff'ed objects. Collect tasks in hash-table iteration order
+   * (deterministic for identical input), then run compute in parallel while
+   * the producer packs results into parts in that same order. */
+  if (g_hash_table_size (bsdiff_optimized_content_objects) > 0)
     {
-      const guint mod = n_bsdiff / 10;
+      g_autoptr (GPtrArray) bsdiff_tasks
+          = g_ptr_array_new_with_free_func ((GDestroyNotify)bsdiff_task_free);
       g_hash_table_iter_init (&hashiter, bsdiff_optimized_content_objects);
       while (g_hash_table_iter_next (&hashiter, &key, &value))
         {
-          const char *checksum = key;
-          ContentBsdiff *bsdiff = value;
-
-          if (opts & DELTAOPT_FLAG_VERBOSE && (mod == 0 || builder->n_bsdiff % mod == 0))
-            g_printerr ("processing bsdiff: [%u/%u]\n", builder->n_bsdiff, n_bsdiff);
-
-          if (!process_one_bsdiff (repo, builder, &current_part, checksum, bsdiff, cancellable,
-                                   error))
-            return FALSE;
-
-          builder->n_bsdiff++;
+          BsdiffTask *t = g_new0 (BsdiffTask, 1);
+          t->repo = repo;
+          t->to_checksum = key;
+          t->bsdiff_content = value;
+          t->cancellable = cancellable;
+          g_ptr_array_add (bsdiff_tasks, t);
         }
+
+      if (!process_bsdiff_tasks (repo, builder, &current_part, bsdiff_tasks, opts, error))
+        return FALSE;
     }
 
   /* Scan for large objects, so we can fall back to plain HTTP-based
@@ -1471,11 +1671,11 @@ get_fallback_headers (OstreeRepo *self, OstreeStaticDeltaBuilder *builder, GVari
  * directory.  Default saves to repository.
  *   - sign-name: ^ay: Signature type to use (bytestring).
  *   - sign-key-ids: ^as: NULL-terminated array of keys used to sign delta superblock.
- *   - compress-threads: s: Parallel LZMA compression. Integer in 0..256
- *     (values > 1 enable parallel compression with that many workers;
- *     0 and 1 are serial) or a keyword: true/yes/on/auto = all CPUs;
- *     false/no/off = serial. If unset, the OSTREE_DELTA_COMPRESS_THREADS
- *     env var is consulted.
+ *   - compress-threads: s: Parallelism for bsdiff and LZMA part compression.
+ *     Integer in 0..256 (values > 1 enable parallel processing with that many
+ *     workers per stage; 0 and 1 are serial) or a keyword: true/yes/on/auto =
+ *     all CPUs; false/no/off = serial. If unset, the
+ *     OSTREE_DELTA_COMPRESS_THREADS env var is consulted.
  */
 gboolean
 ostree_repo_static_delta_generate (OstreeRepo *self, OstreeStaticDeltaGenerateOpt opt,
@@ -1593,15 +1793,19 @@ ostree_repo_static_delta_generate (OstreeRepo *self, OstreeStaticDeltaGenerateOp
     }
   builder.parts_dfd = descriptor_dfd;
 
-  /* Optional parallel LZMA compression of parts. Selected by (in precedence
-   * order) the "compress-threads" GVariant param or the
-   * OSTREE_DELTA_COMPRESS_THREADS env var. A value > 1 enables parallel
+  /* Optional parallelism. Selected by (in precedence order) the
+   * "compress-threads" GVariant param or the OSTREE_DELTA_COMPRESS_THREADS
+   * env var. A value > 1 enables parallel bsdiff and parallel LZMA part
    * compression; 0 or 1 keeps the serial code path. See
    * parse_compress_threads() for the full grammar. Memory cost in parallel
    * mode is dominated by the LZMA-8 encoder state (~94 MiB per worker) plus
-   * a few in-flight part payloads of up to max-chunk-size each.
+   * a few in-flight part payloads (up to max-chunk-size each) and a few
+   * in-flight bsdiff source/target buffers (up to max-bsdiff-size each).
    */
   OstreeDeltaWorkerPool compress_pool = {
+    0,
+  };
+  OstreeDeltaWorkerPool bsdiff_pool = {
     0,
   };
   const char *thread_str = NULL;
@@ -1615,17 +1819,25 @@ ostree_repo_static_delta_generate (OstreeRepo *self, OstreeStaticDeltaGenerateOp
       if (!worker_pool_init (&compress_pool, &builder.compress_pool, finish_part_threadfn,
                              &builder, compress_threads, error))
         return FALSE;
+      if (!worker_pool_init (&bsdiff_pool, &builder.bsdiff_pool, bsdiff_task_threadfn, &builder,
+                             compress_threads, error))
+        {
+          worker_pool_clear (&compress_pool, &builder.compress_pool, TRUE /* immediate */);
+          return FALSE;
+        }
       if (delta_opts & DELTAOPT_FLAG_VERBOSE)
-        g_printerr ("parallel compression: %d threads\n", compress_threads);
+        g_printerr ("parallel bsdiff + compression: %d threads each\n", compress_threads);
     }
 
   /* Ignore optimization flags */
   gboolean lowlatency_ok
       = generate_delta_lowlatency (self, from, to, delta_opts, &builder, cancellable, error);
 
-  /* Tear down the pool unconditionally so any in-flight work is reaped. On
-   * success, drain_compress_pool() inside generate_delta_lowlatency() already
-   * surfaced worker errors; here we just release resources. */
+  /* Tear down both pools unconditionally so any in-flight work is reaped.
+   * On success, the in-loop drains inside generate_delta_lowlatency() have
+   * already surfaced worker errors; here we just release resources.
+   * immediate=TRUE on the error path discards any tasks still queued. */
+  worker_pool_clear (&bsdiff_pool, &builder.bsdiff_pool, !lowlatency_ok);
   worker_pool_clear (&compress_pool, &builder.compress_pool, !lowlatency_ok);
 
   if (!lowlatency_ok)
