@@ -53,6 +53,12 @@ CC_CHECK_FLAGS_APPEND([WARN_CFLAGS], [CFLAGS], [\
   -Wstrict-aliasing=2 \
   -Werror=unused-result \
 ])])
+
+AS_CASE([$CC], [*clang*], [
+  CC_CHECK_FLAGS_APPEND([WARN_CFLAGS], [CFLAGS],
+                        [-Wno-typedef-redefinition])
+])
+
 AC_SUBST(WARN_CFLAGS)
 
 AC_ARG_ENABLE(sanitizers,
