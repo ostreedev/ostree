@@ -817,7 +817,6 @@ _ostree_delta_get_endianness (GVariant *superblock, gboolean *out_was_heuristic)
     *out_was_heuristic = TRUE;
 
   guint64 total_size = 0;
-  guint64 total_usize = 0;
   guint total_objects = 0;
   {
     g_autoptr (GVariant) meta_entries = NULL;
@@ -837,8 +836,6 @@ _ostree_delta_get_endianness (GVariant *superblock, gboolean *out_was_heuristic)
 
         total_objects += n_objects;
         total_size += size;
-        total_usize += usize;
-
         if (size > usize)
           {
             double ratio = ((double)size) / ((double)usize);
