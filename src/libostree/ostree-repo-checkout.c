@@ -1031,15 +1031,19 @@ checkout_tree_at_recurse (OstreeRepo *self, OstreeRepoCheckoutAtOptions *options
       g_autoptr (GVariant) dir_file_contents = g_variant_get_child_value (dirtree, 0);
       GVariantIter viter;
       const char *fname;
-      g_autoptr (GVariant) contents_csum_v = NULL;
       g_variant_iter_init (&viter, dir_file_contents);
-      while (g_variant_iter_loop (&viter, "(&s@ay)", &fname, &contents_csum_v))
+      /* We only need the name; pass NULL to skip extracting the checksum.
+       * Note that breaking out of a g_variant_iter_loop() without freeing
+       * extracted values would leak them - and a leaked child variant pins
+       * the whole (possibly mmap'd) dirtree object in memory, which kept
+       * the filesystem busy across the final unmount in `bootc install`.
+       */
+      while (g_variant_iter_loop (&viter, "(&s@ay)", &fname, NULL))
         {
           is_opaque_whiteout = (g_str_equal (fname, OPAQUE_WHITEOUT_NAME));
           if (is_opaque_whiteout)
             break;
         }
-      contents_csum_v = NULL; /* iter_loop freed it */
     }
 
   /* First, make the directory.  Push a new scope in case we end up using
