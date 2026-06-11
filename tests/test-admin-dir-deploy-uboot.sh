@@ -28,7 +28,7 @@ modulesdir="usr/lib/modules/${kver}"
 setup_os_repository "archive" "uboot" ${modulesdir}
 
 extra_admin_tests=2
-folders_instead_symlinks_in_boot=0
+folders_instead_symlinks_in_boot=1
 
 . $(dirname $0)/admin-test.sh
 
