@@ -37,7 +37,7 @@ strum = "0.18.0"
 strum_macros = "0.18.0"
 # See discussion in https://github.com/coreos/rpm-ostree/pull/2569#issuecomment-780569188
 rpmostree-client = { git = "https://github.com/coreos/rpm-ostree", tag = "v2021.3" }
-xshell = "0.2.3"
+xshell = "0.2.7"
 
 # This one I might publish to crates.io, not sure yet
 with-procspawn-tempdir = { git = "https://github.com/cgwalters/with-procspawn-tempdir" }
