@@ -83,7 +83,7 @@ their distribution using ostree.
 [Torizon OS](https://developer.toradex.com/torizon/torizoncore/torizoncore-technical-overview/)
 is a Linux distribution for embedded systems that updates via OSTree images
 delivered via [Uptane](https://uptane.github.io/) and
-[aktualizr](https://github.com/uptane/aktualizr/).
+[aktualizr](https://gitlab.com/toradex/rd/torizon-core/aktualizr).
 
 ## Distribution build tools
 
