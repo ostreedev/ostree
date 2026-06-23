@@ -262,9 +262,18 @@ ostree_builtin_pull (int argc, char **argv, OstreeCommandInvocation *invocation,
                 {
                   guint j;
                   const char *override_commit_id = at + 1;
+                  g_autofree char *ref_name = g_strndup (argv[i], at - argv[i]);
 
                   if (!ostree_validate_checksum_string (override_commit_id, error))
                     goto out;
+
+                  /* Validate ref name is valid UTF-8 */
+                  if (!g_utf8_validate (ref_name, -1, NULL))
+                    {
+                      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                                   "Invalid ref name: not valid UTF-8");
+                      goto out;
+                    }
 
                   if (!override_commit_ids)
                     {
@@ -276,10 +285,18 @@ ostree_builtin_pull (int argc, char **argv, OstreeCommandInvocation *invocation,
                     }
 
                   g_ptr_array_add (override_commit_ids, g_strdup (override_commit_id));
-                  g_ptr_array_add (refs_to_fetch, g_strndup (argv[i], at - argv[i]));
+                  g_ptr_array_add (refs_to_fetch, g_steal_pointer (&ref_name));
                 }
               else
                 {
+                  /* Validate ref name is valid UTF-8 */
+                  if (!g_utf8_validate (argv[i], -1, NULL))
+                    {
+                      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                                   "Invalid ref name: not valid UTF-8");
+                      goto out;
+                    }
+
                   g_ptr_array_add (refs_to_fetch, g_strdup (argv[i]));
                   if (override_commit_ids)
                     g_ptr_array_add (override_commit_ids, g_strdup (""));

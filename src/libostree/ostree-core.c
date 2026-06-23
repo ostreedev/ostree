@@ -226,6 +226,12 @@ ostree_validate_rev (const char *rev, GError **error)
 {
   g_autoptr (GMatchInfo) match = NULL;
 
+  g_return_val_if_fail (rev != NULL, FALSE);
+
+  /* Validate the string is valid UTF-8 */
+  if (!g_utf8_validate (rev, -1, NULL))
+    return glnx_throw (error, "Invalid ref name: not valid UTF-8");
+
   static gsize regex_initialized;
   static GRegex *regex;
   if (g_once_init_enter (&regex_initialized))
