@@ -77,7 +77,7 @@ RUN --network=none \
 FROM $base as rootfs
 COPY --from=rpmbuild /rpms/*.rpm /tmp/rpms/
 RUN ls /tmp/rpms/ && \
-    rpm -Uvh --oldpackage $(ls /tmp/rpms/ostree-*.rpm | grep -v -e devel -e debug) && \
+    dnf -y install --allowerasing $(ls /tmp/rpms/ostree-*.rpm | grep -v -e devel -e debug) && \
     rm -rf /tmp/rpms
 
 # The default final container, with also a regenerated
