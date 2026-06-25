@@ -338,7 +338,7 @@ _ostree_secure_execution_generate_sdboot (gchar *vmlinuz, gchar *initramfs, gcha
 
   pid_t self = getpid ();
 
-  // Store kernel options to temp file, so `genprotimg` can later embed it
+  // Store kernel options to temp file, so `pvimg` can later embed it
   g_auto (GLnxTmpfile) cmdline = {
     0,
   };
@@ -356,19 +356,15 @@ _ostree_secure_execution_generate_sdboot (gchar *vmlinuz, gchar *initramfs, gcha
     return FALSE;
   g_autofree gchar *ramdisk_filename = g_strdup_printf ("/proc/%d/fd/%d", self, ramdisk.fd);
 
-  // Since s390-tools commit f4cf4ae6ebb1 (Remove genprotimg-C and switch to genprotimg-Rust
-  // implementation) 'genprotimg' is just a symlink to 'pvimg create', which by default doesn't
-  // overwrite the output image, but introduces the '--overwrite' flag for this. Let's silently
-  // remove the file to support both tools
-  (void)unlink (SECURE_EXECUTION_BOOT_IMAGE);
-
   g_autoptr (GPtrArray) argv = g_ptr_array_new ();
-  g_ptr_array_add (argv, "genprotimg");
-  g_ptr_array_add (argv, "-i");
+  g_ptr_array_add (argv, "pvimg");
+  g_ptr_array_add (argv, "create");
+  g_ptr_array_add (argv, "--verbose");
+  g_ptr_array_add (argv, "--kernel");
   g_ptr_array_add (argv, vmlinuz);
-  g_ptr_array_add (argv, "-r");
+  g_ptr_array_add (argv, "--ramdisk");
   g_ptr_array_add (argv, ramdisk_filename);
-  g_ptr_array_add (argv, "-p");
+  g_ptr_array_add (argv, "--parmfile");
   g_ptr_array_add (argv, cmdline_filename);
   for (guint i = 0; i < keys->len; ++i)
     {
@@ -378,17 +374,18 @@ _ostree_secure_execution_generate_sdboot (gchar *vmlinuz, gchar *initramfs, gcha
       ot_journal_print (LOG_INFO, "s390x SE: key[%d]: %s", i + 1, key);
     }
   g_ptr_array_add (argv, "--no-verify");
-  g_ptr_array_add (argv, "-o");
+  g_ptr_array_add (argv, "--overwrite");
+  g_ptr_array_add (argv, "--output");
   g_ptr_array_add (argv, SECURE_EXECUTION_BOOT_IMAGE);
   g_ptr_array_add (argv, NULL);
 
   gint status = 0;
   if (!g_spawn_sync (NULL, (char **)argv->pdata, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, NULL,
                      &status, error))
-    return glnx_prefix_error (error, "s390x SE: spawning genprotimg");
+    return glnx_prefix_error (error, "s390x SE: spawning pvimg");
 
   if (!g_spawn_check_exit_status (status, error))
-    return glnx_prefix_error (error, "s390x SE: `genprotimg` failed");
+    return glnx_prefix_error (error, "s390x SE: `pvimg` failed");
 
   ot_journal_print (LOG_INFO, "s390x SE: `%s` generated", SECURE_EXECUTION_BOOT_IMAGE);
   return TRUE;
