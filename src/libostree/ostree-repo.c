@@ -3176,6 +3176,14 @@ reload_core_config (OstreeRepo *self, GCancellable *cancellable, GError **error)
                                                 NULL, &min_free_space_percent_str, error))
           return FALSE;
 
+        /* Validate that the string contains only digits */
+        for (const char *p = min_free_space_percent_str; *p; p++)
+          {
+            if (!g_ascii_isdigit (*p))
+              return glnx_throw (error, "Invalid min-free-space-percent '%s': must be a number",
+                                 min_free_space_percent_str);
+          }
+
         self->min_free_space_percent = g_ascii_strtoull (min_free_space_percent_str, NULL, 10);
         if (self->min_free_space_percent > 99)
           return glnx_throw (error, "Invalid min-free-space-percent '%s'",
