@@ -164,6 +164,14 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeCommandInvocation *invoc
         {
           const char *ref = argv[i];
 
+          /* Validate ref name is valid UTF-8 */
+          if (!g_utf8_validate (ref, -1, NULL))
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                           "Invalid ref name: not valid UTF-8");
+              goto out;
+            }
+
           g_ptr_array_add (refs_to_fetch, (char *)ref);
         }
       g_ptr_array_add (refs_to_fetch, NULL);
