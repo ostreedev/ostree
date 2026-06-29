@@ -42,9 +42,17 @@ test_valid_utf8_refs (void)
   g_assert_true (ostree_validate_rev ("my.branch_name", &error));
   g_assert_no_error (error);
 
-  /* Valid ref with remote */
-  g_assert_true (ostree_validate_rev ("remote:branch", &error));
-  g_assert_no_error (error);
+  /* Valid refspec with remote: "remote:branch" is a refspec, not a bare ref.
+   * ostree_validate_rev() only validates bare ref names; use
+   * ostree_parse_refspec() for the "remote:ref" form. */
+  {
+    g_autofree char *remote = NULL;
+    g_autofree char *ref = NULL;
+    g_assert_true (ostree_parse_refspec ("remote:branch", &remote, &ref, &error));
+    g_assert_no_error (error);
+    g_assert_cmpstr (remote, ==, "remote");
+    g_assert_cmpstr (ref, ==, "branch");
+  }
 
   /* Valid ref with slashes */
   g_assert_true (ostree_validate_rev ("path/to/branch", &error));
