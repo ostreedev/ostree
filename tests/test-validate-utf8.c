@@ -82,11 +82,10 @@ test_invalid_utf8_refs (void)
   g_clear_error (&error);
 
   /* Invalid UTF-8: 0x333 as mentioned in issue #2959 */
-  const char invalid_333[] = { 's', 'o', 'm', 'e', '-', 'b', 'r', 'a', 'n', 'c',
-                               'h', '-', 'n', 'a', 'm', 'e', '-', 'w', 'i', 't',
-                               'h', '-', 'i', 'n', 'v', 'a', 'l', 'i', 'd', '-',
-                               'u', 't', 'f', '-', 's', 'y', 'm', 'b', 'o', 'l',
-                               '-', '\xdb', '\0' };
+  const char invalid_333[]
+      = { 's', 'o', 'm', 'e', '-', 'b', 'r', 'a', 'n', 'c', 'h', '-',    'n', 'a', 'm',
+          'e', '-', 'w', 'i', 't', 'h', '-', 'i', 'n', 'v', 'a', 'l',    'i', 'd', '-',
+          'u', 't', 'f', '-', 's', 'y', 'm', 'b', 'o', 'l', '-', '\xdb', '\0' };
   g_assert_false (ostree_validate_rev (invalid_333, &error));
   g_assert_nonnull (error);
   g_clear_error (&error);
