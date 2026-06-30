@@ -3,10 +3,7 @@
 
 set -xeuo pipefail
 
-# This is used by our OpenShift Prow job; we use the
-# cosa buildroot container
-# https://github.com/coreos/coreos-assembler/pull/730
-# And using `yum` at all means we can flake on fetching rpm metadata
+# Skip if explicitly requested or if not running as root
 if [ -n "${SKIP_INSTALLDEPS:-}" ] || test "$(id -u)" != 0; then
     exit 0
 fi
