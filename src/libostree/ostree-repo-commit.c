@@ -1801,9 +1801,33 @@ rename_pending_loose_objects (OstreeRepo *self, GCancellable *cancellable, GErro
                                                     cancellable, error))
             return FALSE;
 
-          if (!glnx_renameat (child_dfd_iter.fd, loose_objpath + 3, self->objects_dir_fd,
-                              loose_objpath, error))
-            return FALSE;
+          /* For content-addressed objects, use RENAME_NOREPLACE so that an
+           * existing object keeps its inode.  If the destination already
+           * exists (EEXIST) the content is identical by definition, so just
+           * drop the staging copy.
+           *
+           * Exception: .commitmeta objects are keyed by commit checksum, not
+           * by their own content, so they can be updated in place (e.g. when
+           * GPG signatures are added or deleted).  Always overwrite those.
+           */
+          if (g_str_has_suffix (child_dent->d_name, ".commitmeta"))
+            {
+              if (!glnx_renameat (child_dfd_iter.fd, loose_objpath + 3,
+                                  self->objects_dir_fd, loose_objpath, error))
+                return FALSE;
+            }
+          else if (glnx_renameat2_noreplace (child_dfd_iter.fd, loose_objpath + 3,
+                                             self->objects_dir_fd, loose_objpath) < 0)
+            {
+              if (errno == EEXIST)
+                {
+                  /* Object already present with same content; drop staging copy */
+                  if (!glnx_unlinkat (child_dfd_iter.fd, loose_objpath + 3, 0, error))
+                    return FALSE;
+                }
+              else
+                return glnx_throw_errno_prefix (error, "renameat2(noreplace, %s)", loose_objpath);
+            }
         }
     }
 
