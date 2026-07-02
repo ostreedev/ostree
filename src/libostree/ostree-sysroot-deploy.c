@@ -399,8 +399,9 @@ again:
   if (!glnx_opendirat (new_etc_fd, path, TRUE, &target_dfd, error))
     return FALSE;
 
-  if (!dirfd_copy_attributes_and_xattrs (modified_etc_fd, path, src_dfd, target_dfd, flags,
-                                         cancellable, error))
+  if (!dirfd_copy_attributes_and_xattrs (modified_etc_fd, path, src_dfd, target_dfd,
+                                         sysroot_flags_to_copy_flags (0, flags), cancellable,
+                                         error))
     return FALSE;
 
   if (out_dfd)
