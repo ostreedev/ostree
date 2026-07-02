@@ -58,9 +58,8 @@ ot_admin_instutil_builtin_set_kargs (int argc, char **argv, OstreeCommandInvocat
   context = g_option_context_new ("ARGS");
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER
-                                              | OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
-                                          invocation, &sysroot, cancellable, error))
+                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER, invocation, &sysroot,
+                                          cancellable, error))
     goto out;
 
   deployments = ostree_sysroot_get_deployments (sysroot);
