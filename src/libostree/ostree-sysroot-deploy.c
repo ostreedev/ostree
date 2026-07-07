@@ -3795,18 +3795,6 @@ _ostree_sysroot_ensure_finalize_staged_service (GError **error)
   return TRUE;
 }
 
-/* Merge all entries from an a{ss} GVariant into a string→string hash table.
- * Used to accumulate bootconfig-extra keys from multiple sources during staging. */
-static void
-merge_extra_variant_into_table (GVariant *extra, GHashTable *table)
-{
-  GVariantIter iter;
-  const char *k, *v;
-  g_variant_iter_init (&iter, extra);
-  while (g_variant_iter_next (&iter, "{&s&s}", &k, &v))
-    g_hash_table_insert (table, g_strdup (k), g_strdup (v));
-}
-
 /**
  * ostree_sysroot_stage_tree_with_options:
  * @self: Sysroot
@@ -3899,72 +3887,53 @@ ostree_sysroot_stage_tree_with_options (OstreeSysroot *self, const char *osname,
    * These are custom keys set by consumers like bootc and need to survive
    * the staging roundtrip so they are preserved during finalization at shutdown.
    *
-   * Extension keys can come from three sources, merged in increasing
-   * priority order (higher-priority sources override lower ones for
-   * the same key):
+   * Extension keys are taken from the new deployment's bootconfig first,
+   * falling back to the merge deployment's bootconfig (which the caller
+   * may have updated in-memory).  If neither has any extension keys, we
+   * fall back to the previously staged deployment's bootconfig-extra.
+   * This last fallback handles the cross-consumer case: e.g. rpm-ostree
+   * re-staging after bootc on the same boot, where bootc's keys exist
+   * only in the staged GVariant (not yet on disk).
    *
-   *   1. The merge deployment's bootconfig (on-disk BLS from the
-   *      currently booted or pending deployment) — lowest priority
-   *   2. The previously staged deployment's bootconfig-extra (a prior
-   *      consumer like bootc may have staged keys that would be lost
-   *      when this new staging replaces the old staged GVariant)
-   *   3. The new deployment's bootconfig (caller set keys directly)
-   *      — highest priority
-   *
-   * This merge ensures that e.g. `bootc loader-entries set-options-for-source`
-   * followed by `rpm-ostree kargs --append` on the same boot preserves the
-   * source keys that bootc wrote into the first staged deployment.
+   * The fallback is all-or-nothing: if either the new or merge
+   * deployment has any extension keys, those are the complete
+   * authoritative set and previously-staged data is ignored.  This
+   * prevents stale keys from overriding the caller's updates when the
+   * same consumer stages multiple times (e.g. bootc replacing or
+   * deleting source-tracked kargs).
    */
   {
-    g_autoptr (GHashTable) merged_extra
-        = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-
-    /* Priority 1 (lowest): merge deployment's bootconfig */
-    if (merge_deployment)
+    g_autoptr (GVariant) extra = NULL;
+    OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
+    if (bootconfig)
+      {
+        GVariant *v = _ostree_bootconfig_parser_get_extra_keys_variant (bootconfig);
+        if (v)
+          extra = g_variant_ref_sink (v);
+      }
+    if (!extra && merge_deployment)
       {
         OstreeBootconfigParser *merge_bootconfig
             = ostree_deployment_get_bootconfig (merge_deployment);
         if (merge_bootconfig)
           {
-            g_autoptr (GVariant) merge_extra
-                = _ostree_bootconfig_parser_get_extra_keys_variant (merge_bootconfig);
-            if (merge_extra)
-              merge_extra_variant_into_table (merge_extra, merged_extra);
+            GVariant *v = _ostree_bootconfig_parser_get_extra_keys_variant (merge_bootconfig);
+            if (v)
+              extra = g_variant_ref_sink (v);
           }
       }
-
-    /* Priority 2: previously staged deployment's bootconfig-extra.
-     * The staged deployment data is already loaded and cached in the
-     * OstreeSysroot during ostree_sysroot_load(). */
-    if (self->staged_deployment_data)
+    /* Last resort: inherit from a previously staged deployment.  This
+     * handles the case where a different consumer (e.g. rpm-ostree)
+     * re-stages without knowledge of the extension keys that a prior
+     * consumer (e.g. bootc) wrote into the first staged deployment. */
+    if (!extra && self->staged_deployment_data)
       {
-        g_autoptr (GVariant) prev_extra = g_variant_lookup_value (
-            self->staged_deployment_data, "bootconfig-extra", (GVariantType *)"a{ss}");
-        if (prev_extra)
-          merge_extra_variant_into_table (prev_extra, merged_extra);
+        extra = g_variant_lookup_value (self->staged_deployment_data, "bootconfig-extra",
+                                        (GVariantType *)"a{ss}");
       }
 
-    /* Priority 3 (highest): new deployment's bootconfig */
-    {
-      OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
-      if (bootconfig)
-        {
-          g_autoptr (GVariant) new_extra
-              = _ostree_bootconfig_parser_get_extra_keys_variant (bootconfig);
-          if (new_extra)
-            merge_extra_variant_into_table (new_extra, merged_extra);
-        }
-    }
-
-    if (g_hash_table_size (merged_extra) > 0)
-      {
-        g_auto (GVariantBuilder) extra_builder = OT_VARIANT_BUILDER_INITIALIZER;
-        g_variant_builder_init (&extra_builder, (GVariantType *)"a{ss}");
-        GLNX_HASH_TABLE_FOREACH_KV (merged_extra, const char *, k, const char *, v)
-          g_variant_builder_add (&extra_builder, "{ss}", k, v);
-        g_variant_builder_add (builder, "{sv}", "bootconfig-extra",
-                               g_variant_builder_end (&extra_builder));
-      }
+    if (extra)
+      g_variant_builder_add (builder, "{sv}", "bootconfig-extra", extra);
   }
 
   const char *parent = dirname (strdupa (_OSTREE_SYSROOT_RUNSTATE_STAGED));
