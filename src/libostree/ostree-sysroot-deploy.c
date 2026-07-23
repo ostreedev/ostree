@@ -2025,7 +2025,9 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
 
   g_autoptr (GHashTable) osrelease_values = parse_os_release (contents, "\n");
   /* title */
-  const char *val = g_hash_table_lookup (osrelease_values, "PRETTY_NAME");
+  const char *val = g_hash_table_lookup (osrelease_values, "BOOTLOADER_NAME");
+  if (val == NULL)
+    val = g_hash_table_lookup (osrelease_values, "PRETTY_NAME");
   if (val == NULL)
     val = g_hash_table_lookup (osrelease_values, "ID");
   if (val == NULL)
