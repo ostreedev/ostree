@@ -952,8 +952,8 @@ content_fetch_on_complete (GObject *object, GAsyncResult *result, gpointer user_
   if (pull_data->trusted_http_direct)
     {
       g_assert (!verifying_bareuseronly);
-      if (!_ostree_repo_commit_tmpf_final (pull_data->repo, checksum, objtype, &tmpf, cancellable,
-                                           error))
+      if (!_ostree_repo_commit_tmpf_final (pull_data->repo, checksum, objtype, &tmpf, NULL,
+                                           cancellable, error))
         goto out;
       pull_data->n_fetched_content++;
     }

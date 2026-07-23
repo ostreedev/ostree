@@ -181,7 +181,8 @@ ot_security_smack_reset_fd (int fd)
 /* Given an O_TMPFILE regular file, link it into place. */
 gboolean
 _ostree_repo_commit_tmpf_final (OstreeRepo *self, const char *checksum, OstreeObjectType objtype,
-                                GLnxTmpfile *tmpf, GCancellable *cancellable, GError **error)
+                                GLnxTmpfile *tmpf, gboolean *out_existed, GCancellable *cancellable,
+                                GError **error)
 {
   char tmpbuf[_OSTREE_LOOSE_PATH_MAX];
   _ostree_loose_path (tmpbuf, checksum, objtype, self->mode);
@@ -193,10 +194,19 @@ _ostree_repo_commit_tmpf_final (OstreeRepo *self, const char *checksum, OstreeOb
   if (!_ostree_tmpf_fsverity (self, tmpf, NULL, error))
     return FALSE;
 
-  if (!glnx_link_tmpfile_at (tmpf, GLNX_LINK_TMPFILE_NOREPLACE_IGNORE_EXIST, dest_dfd, tmpbuf,
-                             error))
-    return FALSE;
-  /* We're done with the fd */
+  gboolean existed = FALSE;
+  g_autoptr (GError) local_error = NULL;
+  if (!glnx_link_tmpfile_at (tmpf, GLNX_LINK_TMPFILE_NOREPLACE, dest_dfd, tmpbuf, &local_error))
+    {
+      if (!g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_EXISTS))
+        {
+          g_propagate_error (error, g_steal_pointer (&local_error));
+          return FALSE;
+        }
+      existed = TRUE;
+    }
+  if (out_existed)
+    *out_existed = existed;
   glnx_tmpfile_clear (tmpf);
   return TRUE;
 }
@@ -237,8 +247,8 @@ commit_path_final (OstreeRepo *self, const char *checksum, OstreeObjectType objt
  */
 static gboolean
 commit_loose_regfile_object (OstreeRepo *self, const char *checksum, GLnxTmpfile *tmpf, guint32 uid,
-                             guint32 gid, guint32 mode, GVariant *xattrs, GCancellable *cancellable,
-                             GError **error)
+                             guint32 gid, guint32 mode, GVariant *xattrs, gboolean *out_existed,
+                             GCancellable *cancellable, GError **error)
 {
   if (self->mode == OSTREE_REPO_MODE_BARE)
     {
@@ -308,8 +318,8 @@ commit_loose_regfile_object (OstreeRepo *self, const char *checksum, GLnxTmpfile
         return glnx_throw_errno_prefix (error, "fsync");
     }
 
-  if (!_ostree_repo_commit_tmpf_final (self, checksum, OSTREE_OBJECT_TYPE_FILE, tmpf, cancellable,
-                                       error))
+  if (!_ostree_repo_commit_tmpf_final (self, checksum, OSTREE_OBJECT_TYPE_FILE, tmpf, out_existed,
+                                       cancellable, error))
     return FALSE;
 
   return TRUE;
@@ -569,7 +579,7 @@ _ostree_repo_bare_content_commit (OstreeRepo *self, OstreeRepoBareContent *barew
     return FALSE;
 
   if (!commit_loose_regfile_object (self, checksum_buf, &real->tmpf, real->uid, real->gid,
-                                    real->mode, real->xattrs, cancellable, error))
+                                    real->mode, real->xattrs, NULL, cancellable, error))
     return FALSE;
 
   /* Let's have a guarantee that after commit the object is cleaned up */
@@ -1168,7 +1178,7 @@ write_content_object (OstreeRepo *self, const char *expected_checksum, GInputStr
         return FALSE;
 
       /* This path is for regular files */
-      if (!commit_loose_regfile_object (self, actual_checksum, &tmpf, uid, gid, mode, xattrs,
+      if (!commit_loose_regfile_object (self, actual_checksum, &tmpf, uid, gid, mode, xattrs, NULL,
                                         cancellable, error))
         return FALSE;
 
@@ -1389,7 +1399,8 @@ write_metadata_object (OstreeRepo *self, OstreeObjectType objtype, const char *e
     return FALSE;
 
   /* And commit it into place */
-  if (!_ostree_repo_commit_tmpf_final (self, actual_checksum, objtype, &tmpf, cancellable, error))
+  if (!_ostree_repo_commit_tmpf_final (self, actual_checksum, objtype, &tmpf, NULL, cancellable,
+                                       error))
     return FALSE;
 
   if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
@@ -4466,8 +4477,8 @@ import_one_object_direct (OstreeRepo *dest_repo, OstreeRepo *src_repo, const cha
           (void)futimens (tmp_dest.fd, ts);
         }
 
-      if (!_ostree_repo_commit_tmpf_final (dest_repo, checksum, objtype, &tmp_dest, cancellable,
-                                           error))
+      if (!_ostree_repo_commit_tmpf_final (dest_repo, checksum, objtype, &tmp_dest, NULL,
+                                           cancellable, error))
         return FALSE;
     }
 
