@@ -550,6 +550,7 @@ _ostree_repo_bare_content_commit (OstreeRepo *self, OstreeRepoBareContent *barew
   OstreeRealRepoBareContent *real = (OstreeRealRepoBareContent *)barewrite;
   g_assert (real->initialized);
 
+  fsblkcnt_t object_blocks_reserved = 0;
   if ((self->min_free_space_percent > 0 || self->min_free_space_mb > 0) && self->in_transaction)
     {
       struct stat st_buf;
@@ -559,15 +560,15 @@ _ostree_repo_bare_content_commit (OstreeRepo *self, OstreeRepoBareContent *barew
       g_mutex_lock (&self->txn_lock);
       g_assert_cmpint (self->txn.blocksize, >, 0);
 
-      const fsblkcnt_t object_blocks = (st_buf.st_size / self->txn.blocksize) + 1;
-      if (object_blocks > self->txn.max_blocks)
+      object_blocks_reserved = (st_buf.st_size / self->txn.blocksize) + 1;
+      if (object_blocks_reserved > self->txn.max_blocks)
         {
           self->cleanup_stagedir = TRUE;
           g_mutex_unlock (&self->txn_lock);
           return throw_min_free_space_error (self, st_buf.st_size, error);
         }
       /* This is the main bit that needs mutex protection */
-      self->txn.max_blocks -= object_blocks;
+      self->txn.max_blocks -= object_blocks_reserved;
       g_mutex_unlock (&self->txn_lock);
     }
 
@@ -578,9 +579,19 @@ _ostree_repo_bare_content_commit (OstreeRepo *self, OstreeRepoBareContent *barew
                                            checksum_buf, error))
     return FALSE;
 
+  gboolean obj_existed;
   if (!commit_loose_regfile_object (self, checksum_buf, &real->tmpf, real->uid, real->gid,
-                                    real->mode, real->xattrs, NULL, cancellable, error))
+                                    real->mode, real->xattrs, &obj_existed, cancellable, error))
     return FALSE;
+  /* If the object already existed, credit back the space reservation we
+   * made above — no new disk space was consumed.
+   */
+  if (obj_existed)
+    {
+      g_mutex_lock (&self->txn_lock);
+      self->txn.max_blocks += object_blocks_reserved;
+      g_mutex_unlock (&self->txn_lock);
+    }
 
   /* Let's have a guarantee that after commit the object is cleaned up */
   _ostree_repo_bare_content_cleanup (barewrite);
@@ -969,21 +980,28 @@ write_content_object (OstreeRepo *self, const char *expected_checksum, GInputStr
 
   (void)file_input_owned; // Conditionally owned
 
-  /* Free space check; only applies during transactions */
+  /* Free space check; only applies during transactions.
+   *
+   * We optimistically reserve space here before we know the object's
+   * checksum.  If we later discover the object already exists in the repo
+   * (i.e. it is a duplicate), we credit the reservation back — see the
+   * have_obj block below.
+   */
+  fsblkcnt_t object_blocks_reserved = 0;
   if ((self->min_free_space_percent > 0 || self->min_free_space_mb > 0) && self->in_transaction)
     {
       g_mutex_lock (&self->txn_lock);
       g_assert_cmpint (self->txn.blocksize, >, 0);
-      const fsblkcnt_t object_blocks = (size / self->txn.blocksize) + 1;
-      if (object_blocks > self->txn.max_blocks)
+      object_blocks_reserved = (size / self->txn.blocksize) + 1;
+      if (object_blocks_reserved > self->txn.max_blocks)
         {
-          guint64 bytes_required = (guint64)object_blocks * self->txn.blocksize;
+          guint64 bytes_required = (guint64)object_blocks_reserved * self->txn.blocksize;
           self->cleanup_stagedir = TRUE;
           g_mutex_unlock (&self->txn_lock);
           return throw_min_free_space_error (self, bytes_required, error);
         }
       /* This is the main bit that needs mutex protection */
-      self->txn.max_blocks -= object_blocks;
+      self->txn.max_blocks -= object_blocks_reserved;
       g_mutex_unlock (&self->txn_lock);
     }
 
@@ -1110,11 +1128,14 @@ write_content_object (OstreeRepo *self, const char *expected_checksum, GInputStr
   if (!_ostree_repo_has_loose_object (self, actual_checksum, OSTREE_OBJECT_TYPE_FILE, &have_obj,
                                       cancellable, error))
     return FALSE;
-  /* If we already have it, just update the stats. */
+  /* If we already have it, just update the stats.  Also credit back the
+   * free-space reservation we made above — no new disk space was consumed.
+   */
   if (have_obj)
     {
       g_mutex_lock (&self->txn_lock);
       self->txn.stats.content_objects_total++;
+      self->txn.max_blocks += object_blocks_reserved;
       g_mutex_unlock (&self->txn_lock);
 
       if (!_create_payload_link (self, actual_checksum, actual_payload_checksum, file_info,
