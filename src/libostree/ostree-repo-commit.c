@@ -181,7 +181,8 @@ ot_security_smack_reset_fd (int fd)
 /* Given an O_TMPFILE regular file, link it into place. */
 gboolean
 _ostree_repo_commit_tmpf_final (OstreeRepo *self, const char *checksum, OstreeObjectType objtype,
-                                GLnxTmpfile *tmpf, GCancellable *cancellable, GError **error)
+                                GLnxTmpfile *tmpf, gboolean *out_existed, GCancellable *cancellable,
+                                GError **error)
 {
   char tmpbuf[_OSTREE_LOOSE_PATH_MAX];
   _ostree_loose_path (tmpbuf, checksum, objtype, self->mode);
@@ -193,10 +194,19 @@ _ostree_repo_commit_tmpf_final (OstreeRepo *self, const char *checksum, OstreeOb
   if (!_ostree_tmpf_fsverity (self, tmpf, NULL, error))
     return FALSE;
 
-  if (!glnx_link_tmpfile_at (tmpf, GLNX_LINK_TMPFILE_NOREPLACE_IGNORE_EXIST, dest_dfd, tmpbuf,
-                             error))
-    return FALSE;
-  /* We're done with the fd */
+  gboolean existed = FALSE;
+  g_autoptr (GError) local_error = NULL;
+  if (!glnx_link_tmpfile_at (tmpf, GLNX_LINK_TMPFILE_NOREPLACE, dest_dfd, tmpbuf, &local_error))
+    {
+      if (!g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_EXISTS))
+        {
+          g_propagate_error (error, g_steal_pointer (&local_error));
+          return FALSE;
+        }
+      existed = TRUE;
+    }
+  if (out_existed)
+    *out_existed = existed;
   glnx_tmpfile_clear (tmpf);
   return TRUE;
 }
@@ -237,8 +247,8 @@ commit_path_final (OstreeRepo *self, const char *checksum, OstreeObjectType objt
  */
 static gboolean
 commit_loose_regfile_object (OstreeRepo *self, const char *checksum, GLnxTmpfile *tmpf, guint32 uid,
-                             guint32 gid, guint32 mode, GVariant *xattrs, GCancellable *cancellable,
-                             GError **error)
+                             guint32 gid, guint32 mode, GVariant *xattrs, gboolean *out_existed,
+                             GCancellable *cancellable, GError **error)
 {
   if (self->mode == OSTREE_REPO_MODE_BARE)
     {
@@ -308,8 +318,8 @@ commit_loose_regfile_object (OstreeRepo *self, const char *checksum, GLnxTmpfile
         return glnx_throw_errno_prefix (error, "fsync");
     }
 
-  if (!_ostree_repo_commit_tmpf_final (self, checksum, OSTREE_OBJECT_TYPE_FILE, tmpf, cancellable,
-                                       error))
+  if (!_ostree_repo_commit_tmpf_final (self, checksum, OSTREE_OBJECT_TYPE_FILE, tmpf, out_existed,
+                                       cancellable, error))
     return FALSE;
 
   return TRUE;
@@ -540,6 +550,7 @@ _ostree_repo_bare_content_commit (OstreeRepo *self, OstreeRepoBareContent *barew
   OstreeRealRepoBareContent *real = (OstreeRealRepoBareContent *)barewrite;
   g_assert (real->initialized);
 
+  fsblkcnt_t object_blocks_reserved = 0;
   if ((self->min_free_space_percent > 0 || self->min_free_space_mb > 0) && self->in_transaction)
     {
       struct stat st_buf;
@@ -549,15 +560,15 @@ _ostree_repo_bare_content_commit (OstreeRepo *self, OstreeRepoBareContent *barew
       g_mutex_lock (&self->txn_lock);
       g_assert_cmpint (self->txn.blocksize, >, 0);
 
-      const fsblkcnt_t object_blocks = (st_buf.st_size / self->txn.blocksize) + 1;
-      if (object_blocks > self->txn.max_blocks)
+      object_blocks_reserved = (st_buf.st_size / self->txn.blocksize) + 1;
+      if (object_blocks_reserved > self->txn.max_blocks)
         {
           self->cleanup_stagedir = TRUE;
           g_mutex_unlock (&self->txn_lock);
           return throw_min_free_space_error (self, st_buf.st_size, error);
         }
       /* This is the main bit that needs mutex protection */
-      self->txn.max_blocks -= object_blocks;
+      self->txn.max_blocks -= object_blocks_reserved;
       g_mutex_unlock (&self->txn_lock);
     }
 
@@ -568,9 +579,19 @@ _ostree_repo_bare_content_commit (OstreeRepo *self, OstreeRepoBareContent *barew
                                            checksum_buf, error))
     return FALSE;
 
+  gboolean obj_existed;
   if (!commit_loose_regfile_object (self, checksum_buf, &real->tmpf, real->uid, real->gid,
-                                    real->mode, real->xattrs, cancellable, error))
+                                    real->mode, real->xattrs, &obj_existed, cancellable, error))
     return FALSE;
+  /* If the object already existed, credit back the space reservation we
+   * made above — no new disk space was consumed.
+   */
+  if (obj_existed)
+    {
+      g_mutex_lock (&self->txn_lock);
+      self->txn.max_blocks += object_blocks_reserved;
+      g_mutex_unlock (&self->txn_lock);
+    }
 
   /* Let's have a guarantee that after commit the object is cleaned up */
   _ostree_repo_bare_content_cleanup (barewrite);
@@ -959,21 +980,28 @@ write_content_object (OstreeRepo *self, const char *expected_checksum, GInputStr
 
   (void)file_input_owned; // Conditionally owned
 
-  /* Free space check; only applies during transactions */
+  /* Free space check; only applies during transactions.
+   *
+   * We optimistically reserve space here before we know the object's
+   * checksum.  If we later discover the object already exists in the repo
+   * (i.e. it is a duplicate), we credit the reservation back — see the
+   * have_obj block below.
+   */
+  fsblkcnt_t object_blocks_reserved = 0;
   if ((self->min_free_space_percent > 0 || self->min_free_space_mb > 0) && self->in_transaction)
     {
       g_mutex_lock (&self->txn_lock);
       g_assert_cmpint (self->txn.blocksize, >, 0);
-      const fsblkcnt_t object_blocks = (size / self->txn.blocksize) + 1;
-      if (object_blocks > self->txn.max_blocks)
+      object_blocks_reserved = (size / self->txn.blocksize) + 1;
+      if (object_blocks_reserved > self->txn.max_blocks)
         {
-          guint64 bytes_required = (guint64)object_blocks * self->txn.blocksize;
+          guint64 bytes_required = (guint64)object_blocks_reserved * self->txn.blocksize;
           self->cleanup_stagedir = TRUE;
           g_mutex_unlock (&self->txn_lock);
           return throw_min_free_space_error (self, bytes_required, error);
         }
       /* This is the main bit that needs mutex protection */
-      self->txn.max_blocks -= object_blocks;
+      self->txn.max_blocks -= object_blocks_reserved;
       g_mutex_unlock (&self->txn_lock);
     }
 
@@ -1100,11 +1128,14 @@ write_content_object (OstreeRepo *self, const char *expected_checksum, GInputStr
   if (!_ostree_repo_has_loose_object (self, actual_checksum, OSTREE_OBJECT_TYPE_FILE, &have_obj,
                                       cancellable, error))
     return FALSE;
-  /* If we already have it, just update the stats. */
+  /* If we already have it, just update the stats.  Also credit back the
+   * free-space reservation we made above — no new disk space was consumed.
+   */
   if (have_obj)
     {
       g_mutex_lock (&self->txn_lock);
       self->txn.stats.content_objects_total++;
+      self->txn.max_blocks += object_blocks_reserved;
       g_mutex_unlock (&self->txn_lock);
 
       if (!_create_payload_link (self, actual_checksum, actual_payload_checksum, file_info,
@@ -1168,7 +1199,7 @@ write_content_object (OstreeRepo *self, const char *expected_checksum, GInputStr
         return FALSE;
 
       /* This path is for regular files */
-      if (!commit_loose_regfile_object (self, actual_checksum, &tmpf, uid, gid, mode, xattrs,
+      if (!commit_loose_regfile_object (self, actual_checksum, &tmpf, uid, gid, mode, xattrs, NULL,
                                         cancellable, error))
         return FALSE;
 
@@ -1389,7 +1420,8 @@ write_metadata_object (OstreeRepo *self, OstreeObjectType objtype, const char *e
     return FALSE;
 
   /* And commit it into place */
-  if (!_ostree_repo_commit_tmpf_final (self, actual_checksum, objtype, &tmpf, cancellable, error))
+  if (!_ostree_repo_commit_tmpf_final (self, actual_checksum, objtype, &tmpf, NULL, cancellable,
+                                       error))
     return FALSE;
 
   if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
@@ -4466,8 +4498,8 @@ import_one_object_direct (OstreeRepo *dest_repo, OstreeRepo *src_repo, const cha
           (void)futimens (tmp_dest.fd, ts);
         }
 
-      if (!_ostree_repo_commit_tmpf_final (dest_repo, checksum, objtype, &tmp_dest, cancellable,
-                                           error))
+      if (!_ostree_repo_commit_tmpf_final (dest_repo, checksum, objtype, &tmp_dest, NULL,
+                                           cancellable, error))
         return FALSE;
     }
 

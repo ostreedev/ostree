@@ -27,8 +27,10 @@
 #include <glib.h>
 #include <libglnx.h>
 #include <locale.h>
+#include <sys/statvfs.h>
 
 #include "ostree-autocleanups.h"
+#include "ostree-repo-private.h"
 #include "ostree-types.h"
 
 /* Test fixture. Creates a temporary directory. */
@@ -541,6 +543,70 @@ test_repo_lock_multi_thread (Fixture *fixture, gconstpointer test_data)
   g_thread_join (thread2);
 }
 
+/* Test that writing duplicate content objects within a single transaction does
+ * not spuriously trigger the min-free-space check.
+ */
+static void
+test_min_free_space_dup_content (Fixture *fixture, gconstpointer test_data)
+{
+  g_autoptr (GError) error = NULL;
+
+  g_autoptr (OstreeRepo) repo = ostree_repo_create_at (
+      fixture->tmpdir.fd, ".", OSTREE_REPO_MODE_BARE_USER_ONLY, NULL, NULL, &error);
+  g_assert_no_error (error);
+
+  const guint n_files = 64;
+  const guint file_size = 4096;
+  const guint dup_rounds = 10;
+
+  ostree_repo_prepare_transaction (repo, NULL, NULL, &error);
+  g_assert_no_error (error);
+
+  /* Directly set the free-space budget via the private txn.max_blocks field. Budget for 2x the
+   * blocks that one round of unique writes will reserve. With the bug, 11 rounds would be charged
+   * (1 unique + 10 duplicate), easily exceeding 2x.  With the fix, only the unique round is
+   * charged.
+   */
+  fsblkcnt_t blocks_per_file = (file_size / repo->txn.blocksize) + 1;
+  repo->txn.max_blocks = n_files * blocks_per_file * 2;
+  /* Enable space check by setting a nonzero min_free_space_percent. */
+  repo->min_free_space_percent = 1;
+
+  g_autofree guint8 *buf = g_malloc0 (file_size);
+
+  /* Round 1: write unique objects.  Track checksums to verify each file
+   * produces a distinct content object.
+   */
+  g_autoptr (GHashTable) seen = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  for (guint i = 0; i < n_files; i++)
+    {
+      memcpy (buf, &i, sizeof (i));
+      g_autofree char *checksum = ostree_repo_write_regfile_inline (
+          repo, NULL, 0, 0, S_IFREG | 0644, NULL, buf, file_size, NULL, &error);
+      g_assert_no_error (error);
+      g_assert_nonnull (checksum);
+      g_assert_false (g_hash_table_contains (seen, checksum));
+      g_hash_table_add (seen, g_steal_pointer (&checksum));
+    }
+  g_assert_cmpuint (g_hash_table_size (seen), ==, n_files);
+
+  /* Duplicate rounds: rewrite the exact same objects many times. */
+  for (guint round = 0; round < dup_rounds; round++)
+    {
+      for (guint i = 0; i < n_files; i++)
+        {
+          memcpy (buf, &i, sizeof (i));
+          g_autofree char *checksum = ostree_repo_write_regfile_inline (
+              repo, NULL, 0, 0, S_IFREG | 0644, NULL, buf, file_size, NULL, &error);
+          g_assert_no_error (error);
+          g_assert_nonnull (checksum);
+        }
+    }
+
+  ostree_repo_commit_transaction (repo, NULL, NULL, &error);
+  g_assert_no_error (error);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -553,6 +619,8 @@ main (int argc, char **argv)
   g_test_add ("/repo/get_min_free_space", Fixture, NULL, setup, test_repo_get_min_free_space,
               teardown);
   g_test_add ("/repo/write_regfile_api", Fixture, NULL, setup, test_write_regfile_api, teardown);
+  g_test_add ("/repo/min_free_space_dup_content", Fixture, NULL, setup,
+              test_min_free_space_dup_content, teardown);
   g_test_add ("/repo/autolock", Fixture, NULL, setup, test_repo_autolock, teardown);
   g_test_add ("/repo/lock/single", Fixture, NULL, lock_setup, test_repo_lock_single, teardown);
   g_test_add ("/repo/lock/unlock-never-locked", Fixture, NULL, lock_setup,
