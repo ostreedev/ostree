@@ -31,7 +31,7 @@ name = "integration"
 path = "rust-bindings/tests/tests.rs"
 
 [workspace]
-members = [".", "rust-bindings/sys"]
+members = [".", "src/sysroot-rs", "rust-bindings/sys"]
 
 [dependencies]
 base64 = "0.20.0"
