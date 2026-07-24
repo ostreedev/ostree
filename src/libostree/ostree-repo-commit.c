@@ -617,8 +617,8 @@ _ostree_repo_bare_content_cleanup (OstreeRepoBareContent *regwrite)
 static gboolean
 create_regular_tmpfile_linkable_with_content (OstreeRepo *self, guint64 length,
                                               GInputStream *original_input, GInputStream *input,
-                                              GLnxTmpfile *out_tmpf, GCancellable *cancellable,
-                                              GError **error)
+                                              GLnxTmpfile *out_tmpf, gboolean *out_was_reflinked,
+                                              GCancellable *cancellable, GError **error)
 {
   g_auto (GLnxTmpfile) tmpf = {
     0,
@@ -670,6 +670,8 @@ create_regular_tmpfile_linkable_with_content (OstreeRepo *self, guint64 length,
   if (!glnx_fchmod (tmpf.fd, 0644, error))
     return FALSE;
 
+  if (out_was_reflinked)
+    *out_was_reflinked = did_clone;
   *out_tmpf = tmpf;
   tmpf.initialized = FALSE;
   return TRUE;
@@ -1032,9 +1034,23 @@ write_content_object (OstreeRepo *self, const char *expected_checksum, GInputStr
     }
   else if (repo_mode != OSTREE_REPO_MODE_ARCHIVE)
     {
+      gboolean was_reflinked = FALSE;
       if (!create_regular_tmpfile_linkable_with_content (self, size, input, file_input, &tmpf,
-                                                         cancellable, error))
+                                                         &was_reflinked, cancellable, error))
         return FALSE;
+      /* We got a reflink, so we're not actually paying for data here. Credit back max_block
+       * reservation. In theory, we're still paying for inode metadata, but that's a variable cost
+       * depending on the actual filesystem. E.g. xfs allocates from a separate pool, not from data
+       * blocks, so it truly doesn't consume f_bavail. btrfs OTOH would but it wouldn't even cost a
+       * whole block. Trying to get this exactly right is probably not worth it since the actual
+       * amount is still trivial.
+       */
+      if (was_reflinked && object_blocks_reserved > 0)
+        {
+          g_mutex_lock (&self->txn_lock);
+          self->txn.max_blocks += object_blocks_reserved;
+          g_mutex_unlock (&self->txn_lock);
+        }
     }
   else
     {
