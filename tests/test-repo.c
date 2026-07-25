@@ -26,7 +26,9 @@
 #include <glib-object.h>
 #include <glib.h>
 #include <libglnx.h>
+#include <linux/fs.h>
 #include <locale.h>
+#include <sys/ioctl.h>
 #include <sys/statvfs.h>
 
 #include "ostree-autocleanups.h"
@@ -607,6 +609,124 @@ test_min_free_space_dup_content (Fixture *fixture, gconstpointer test_data)
   g_assert_no_error (error);
 }
 
+static GVariant *
+test_xattr_cb (OstreeRepo *repo, const char *path, GFileInfo *file_info, gpointer data)
+{
+  return g_variant_ref ((GVariant *)data);
+}
+
+/* Test that writing content objects that get reflinked does not spuriously trigger the
+ * min-free-space check. This simulates the bootc install-to-filesystem flow where a merged commit
+ * re-writes content with SELinux labels applied.
+ */
+static void
+test_min_free_space_reflinked_content (Fixture *fixture, gconstpointer test_data)
+{
+  g_autoptr (GError) error = NULL;
+
+  /* Check if the filesystem supports reflinks; skip if not. */
+  {
+    g_auto (GLnxTmpfile) tmpf1 = {
+      0,
+    };
+    g_auto (GLnxTmpfile) tmpf2 = {
+      0,
+    };
+    if (!glnx_open_tmpfile_linkable_at (fixture->tmpdir.fd, ".", O_RDWR | O_CLOEXEC, &tmpf1,
+                                        &error))
+      g_assert_no_error (error);
+    (void)glnx_loop_write (tmpf1.fd, "x", 1);
+    if (!glnx_open_tmpfile_linkable_at (fixture->tmpdir.fd, ".", O_RDWR | O_CLOEXEC, &tmpf2,
+                                        &error))
+      g_assert_no_error (error);
+    if (ioctl (tmpf2.fd, FICLONE, tmpf1.fd) < 0)
+      {
+        g_test_skip ("filesystem does not support reflinks");
+        return;
+      }
+  }
+
+  /* Use BARE_USER_ONLY so checkout produces hardlinks to repo objects,
+   * which is what triggers FICLONE in write_content_object. */
+  g_assert_cmpint (mkdirat (fixture->tmpdir.fd, "repo", 0755), ==, 0);
+  glnx_autofd int repo_dfd = -1;
+  if (!glnx_opendirat (fixture->tmpdir.fd, "repo", TRUE, &repo_dfd, &error))
+    g_assert_no_error (error);
+  g_autoptr (OstreeRepo) repo
+      = ostree_repo_create_at (repo_dfd, ".", OSTREE_REPO_MODE_BARE_USER_ONLY, NULL, NULL, &error);
+  g_assert_no_error (error);
+
+  const guint n_files = 64;
+  const guint file_size = 4096;
+
+  /* Round 1: create files on disk and commit them into the repo. */
+  g_assert_cmpint (mkdirat (fixture->tmpdir.fd, "content", 0755), ==, 0);
+  g_autofree guint8 *buf = g_malloc0 (file_size);
+  for (guint i = 0; i < n_files; i++)
+    {
+      memcpy (buf, &i, sizeof (i));
+      g_autofree char *name = g_strdup_printf ("content/file%u", i);
+      glnx_file_replace_contents_at (fixture->tmpdir.fd, name, buf, file_size, 0, NULL, &error);
+      g_assert_no_error (error);
+    }
+
+  ostree_repo_prepare_transaction (repo, NULL, NULL, &error);
+  g_assert_no_error (error);
+  g_autoptr (OstreeMutableTree) mtree = ostree_mutable_tree_new ();
+  ostree_repo_write_dfd_to_mtree (repo, fixture->tmpdir.fd, "content", mtree, NULL, NULL, &error);
+  g_assert_no_error (error);
+  g_autoptr (GFile) root = NULL;
+  ostree_repo_write_mtree (repo, mtree, &root, NULL, &error);
+  g_assert_no_error (error);
+  g_autofree char *commit = NULL;
+  ostree_repo_write_commit (repo, NULL, NULL, NULL, NULL, OSTREE_REPO_FILE (root), &commit, NULL,
+                            &error);
+  g_assert_no_error (error);
+  ostree_repo_transaction_set_ref (repo, NULL, "testref", commit);
+  ostree_repo_commit_transaction (repo, NULL, NULL, &error);
+  g_assert_no_error (error);
+
+  /* Checkout the commit. */
+  OstreeRepoCheckoutAtOptions co_opts = {
+    0,
+  };
+  co_opts.mode = OSTREE_REPO_CHECKOUT_MODE_USER;
+  ostree_repo_checkout_at (repo, &co_opts, fixture->tmpdir.fd, "checkout", commit, NULL, &error);
+  g_assert_no_error (error);
+
+  /* Round 2: re-import the checkout with a modifier that adds an xattr, simulating SELinux
+   * relabeling. The content is identical so FICLONE will share data blocks, but the xattr change
+   * produces new checksums. */
+  ostree_repo_prepare_transaction (repo, NULL, NULL, &error);
+  g_assert_no_error (error);
+
+  /* Set max_blocks budget to half what one round of writes would charge. Without the reflink
+   * credit-back, this would exhaust the budget halfway through. */
+  fsblkcnt_t blocks_per_file = (file_size / repo->txn.blocksize) + 1;
+  repo->txn.max_blocks = n_files * blocks_per_file / 2;
+  repo->min_free_space_percent = 1;
+
+  g_autoptr (OstreeRepoCommitModifier) modifier
+      = ostree_repo_commit_modifier_new (0, NULL, NULL, NULL);
+  GVariantBuilder xattr_builder;
+  g_variant_builder_init (&xattr_builder, G_VARIANT_TYPE ("a(ayay)"));
+  /* Add a fake security.selinux xattr */
+  const char *label = "system_u:object_r:usr_t:s0";
+  g_variant_builder_add (
+      &xattr_builder, "(@ay@ay)", g_variant_new_bytestring ("security.selinux"),
+      g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, label, strlen (label) + 1, 1));
+  g_autoptr (GVariant) xattrs = g_variant_ref_sink (g_variant_builder_end (&xattr_builder));
+  ostree_repo_commit_modifier_set_xattr_callback (modifier, test_xattr_cb, NULL, xattrs);
+
+  g_autoptr (OstreeMutableTree) mtree2 = ostree_mutable_tree_new ();
+  ostree_repo_write_dfd_to_mtree (repo, fixture->tmpdir.fd, "checkout", mtree2, modifier, NULL,
+                                  &error);
+  g_assert_no_error (error);
+
+  ostree_repo_commit_transaction (repo, NULL, NULL, &error);
+  g_assert_no_error (error);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -621,6 +741,8 @@ main (int argc, char **argv)
   g_test_add ("/repo/write_regfile_api", Fixture, NULL, setup, test_write_regfile_api, teardown);
   g_test_add ("/repo/min_free_space_dup_content", Fixture, NULL, setup,
               test_min_free_space_dup_content, teardown);
+  g_test_add ("/repo/min_free_space_reflinked_content", Fixture, NULL, setup,
+              test_min_free_space_reflinked_content, teardown);
   g_test_add ("/repo/autolock", Fixture, NULL, setup, test_repo_autolock, teardown);
   g_test_add ("/repo/lock/single", Fixture, NULL, lock_setup, test_repo_lock_single, teardown);
   g_test_add ("/repo/lock/unlock-never-locked", Fixture, NULL, lock_setup,
