@@ -251,6 +251,21 @@ finish_part (OstreeStaticDeltaBuilder *builder, GError **error)
     g_variant_ref_sink (delta_part_content);
   }
 
+  /* Reject parts whose uncompressed payload exceeds the hard limit that
+   * consumers enforce (OSTREE_STATIC_DELTA_PART_MAX_USIZE_BYTES).  Without
+   * this check, a large --max-chunk-size would produce deltas that every
+   * client rejects at apply time (CVE / RHEL-189208).
+   */
+  {
+    gsize payload_size = g_variant_get_size (delta_part_content);
+    if (payload_size > OSTREE_STATIC_DELTA_PART_MAX_USIZE_BYTES)
+      return glnx_throw (error,
+                         "Delta part %u uncompressed payload size %" G_GSIZE_FORMAT
+                         " bytes exceeds maximum %" G_GUINT64_FORMAT "; reduce --max-chunk-size",
+                         builder->parts->len, payload_size,
+                         (guint64)OSTREE_STATIC_DELTA_PART_MAX_USIZE_BYTES);
+  }
+
   /* Hardcode xz for now */
   compressor = (GConverter *)_ostree_lzma_compressor_new (NULL);
   compression_type_char = 'x';
@@ -1237,7 +1252,7 @@ get_fallback_headers (OstreeRepo *self, OstreeStaticDeltaBuilder *builder, GVari
  * are known:
  *   - min-fallback-size: u: Minimum uncompressed size in megabytes to use fallback, 0 to disable
  * fallbacks
- *   - max-chunk-size: u: Maximum size in megabytes of a delta part
+ *   - max-chunk-size: u: Maximum size in megabytes of a delta part (hard cap: 512 MiB)
  *   - max-bsdiff-size: u: Maximum size in megabytes to consider bsdiff compression
  *   for input files
  *   - compression: y: Compression type: 0=none, x=lzma, g=gzip
