@@ -677,7 +677,7 @@ _ostree_static_delta_part_open (GInputStream *part_in, GBytes *inline_part_bytes
         {
           int part_fd = g_file_descriptor_based_get_fd ((GFileDescriptorBased *)part_in);
 
-          /* No compression, no checksums - a fast path */
+          /* No compression - a fast path */
           if (!ot_variant_read_fd (part_fd, 1,
                                    G_VARIANT_TYPE (OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT_V0),
                                    trusted, &ret_part, error))
@@ -692,6 +692,16 @@ _ostree_static_delta_part_open (GInputStream *part_in, GBytes *inline_part_bytes
           g_variant_ref_sink (ret_part);
         }
 
+      /* Enforce the same size limit as for compressed parts so that an
+       * attacker cannot bypass the decompression-bomb defence simply by
+       * setting compression type to 0 (CVE / RHEL-189208).
+       */
+      if (g_variant_get_size (ret_part) > OSTREE_STATIC_DELTA_PART_MAX_USIZE_BYTES)
+        return glnx_throw (
+            error,
+            "Uncompressed delta part size %" G_GSIZE_FORMAT " exceeds maximum %" G_GUINT64_FORMAT,
+            g_variant_get_size (ret_part), (guint64)OSTREE_STATIC_DELTA_PART_MAX_USIZE_BYTES);
+
       if (!skip_checksum)
         g_checksum_update (checksum, g_variant_get_data (ret_part), g_variant_get_size (ret_part));
 
@@ -700,7 +710,8 @@ _ostree_static_delta_part_open (GInputStream *part_in, GBytes *inline_part_bytes
       {
         g_autoptr (GConverter) decomp = (GConverter *)_ostree_lzma_decompressor_new ();
         g_autoptr (GInputStream) convin = g_converter_input_stream_new (source_in, decomp);
-        g_autoptr (GBytes) buf = ot_map_anonymous_tmpfile_from_content (convin, cancellable, error);
+        g_autoptr (GBytes) buf = ot_map_anonymous_tmpfile_from_content_with_limit (
+            convin, OSTREE_STATIC_DELTA_PART_MAX_USIZE_BYTES, cancellable, error);
         if (!buf)
           return FALSE;
 

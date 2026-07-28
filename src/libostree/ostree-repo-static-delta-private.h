@@ -23,8 +23,17 @@
 
 G_BEGIN_DECLS
 
-/* Arbitrarily chosen */
-#define OSTREE_STATIC_DELTA_PART_MAX_SIZE_BYTES (16 * 1024 * 1024)
+/* Maximum uncompressed size for a single static delta part (512 MiB).
+ * Enforced on both generation and consumption sides to prevent
+ * decompression bombs from exhausting memory/disk (CVE / RHEL-189208).
+ *
+ * The delta compiler splits parts at max-chunk-size (default 32 MB), so
+ * legitimate parts are typically well under 32 MB uncompressed.  512 MiB
+ * provides ~16x headroom over the default, which is generous enough to
+ * accommodate large custom --max-chunk-size values while still rejecting
+ * decompression bombs that would expand to gigabytes.
+ */
+#define OSTREE_STATIC_DELTA_PART_MAX_USIZE_BYTES (512ULL * 1024ULL * 1024ULL)
 /* 1 byte for object type, 32 bytes for checksum */
 #define OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN 33
 
