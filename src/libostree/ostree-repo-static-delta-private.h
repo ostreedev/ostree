@@ -152,8 +152,9 @@ typedef enum
 
 gboolean _ostree_static_delta_part_open (GInputStream *part_in, GBytes *inline_part_bytes,
                                          OstreeStaticDeltaOpenFlags flags,
-                                         const char *expected_checksum, GVariant **out_part,
-                                         GCancellable *cancellable, GError **error);
+                                         const char *expected_checksum, guint64 expected_usize,
+                                         GVariant **out_part, GCancellable *cancellable,
+                                         GError **error);
 
 typedef struct
 {
