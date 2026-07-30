@@ -91,6 +91,7 @@ typedef struct
   char *to_revision;
   guint i;
   guint64 size;
+  guint64 usize;
   guint n_retries_remaining;
 } FetchStaticDeltaData;
 
@@ -1270,8 +1271,8 @@ static_deltapart_fetch_on_complete (GObject *object, GAsyncResult *result, gpoin
   in = g_unix_input_stream_new (g_steal_fd (&tmpf.fd), TRUE);
 
   /* TODO - make async */
-  if (!_ostree_static_delta_part_open (in, NULL, 0, fetch_data->expected_checksum, &part,
-                                       pull_data->cancellable, error))
+  if (!_ostree_static_delta_part_open (in, NULL, 0, fetch_data->expected_checksum,
+                                       fetch_data->usize, &part, pull_data->cancellable, error))
     goto out;
 
   _ostree_static_delta_part_execute_async (pull_data->repo, fetch_data->objects, part,
@@ -2201,6 +2202,7 @@ process_one_static_delta (OtPullData *pull_data, const char *from_revision, cons
       fetch_data->objects = g_variant_ref (objects);
       fetch_data->expected_checksum = ostree_checksum_from_bytes_v (csum_v);
       fetch_data->size = size;
+      fetch_data->usize = usize;
       fetch_data->i = i;
       fetch_data->n_retries_remaining = pull_data->n_network_retries;
 
@@ -2212,7 +2214,7 @@ process_one_static_delta (OtPullData *pull_data, const char *from_revision, cons
           /* For inline parts we are relying on per-commit GPG, so don't bother checksumming. */
           if (!_ostree_static_delta_part_open (memin, inline_part_bytes,
                                                OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM, NULL,
-                                               &inline_delta_part, cancellable, error))
+                                               usize, &inline_delta_part, cancellable, error))
             {
               fetch_static_delta_data_free (fetch_data);
               return FALSE;

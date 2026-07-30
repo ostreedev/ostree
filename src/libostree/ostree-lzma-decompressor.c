@@ -26,6 +26,16 @@
 #include <lzma.h>
 #include <string.h>
 
+/* Cap the LZMA decoder memory limit to 100 MiB to prevent decompression bombs
+ * from exhausting system memory via crafted static delta content (CVE / RHEL-189208).
+ *
+ * ostree's compressor uses preset 8 which implies a 32 MiB dictionary, so
+ * legitimate streams need ~33-35 MiB.  100 MiB gives ~3x headroom and matches
+ * the default used by RPM (rpmio/rpmio.cc, `100<<20`).  Even preset 9 (64 MiB
+ * dictionary) fits comfortably within this limit.
+ */
+#define OSTREE_LZMA_DECODER_MEMLIMIT (100ULL * 1024ULL * 1024ULL)
+
 enum
 {
   PROP_0,
@@ -115,7 +125,7 @@ _ostree_lzma_decompressor_convert (GConverter *converter, const void *inbuf, gsi
 
   if (!self->initialized)
     {
-      res = lzma_stream_decoder (&self->lstream, G_MAXUINT64, 0);
+      res = lzma_stream_decoder (&self->lstream, OSTREE_LZMA_DECODER_MEMLIMIT, 0);
       if (res != LZMA_OK)
         goto out;
       self->initialized = TRUE;

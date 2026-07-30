@@ -70,6 +70,10 @@ gboolean ot_dfd_iter_init_allow_noent (int dfd, const char *path, GLnxDirFdItera
 GBytes *ot_map_anonymous_tmpfile_from_content (GInputStream *instream, GCancellable *cancellable,
                                                GError **error);
 
+GBytes *ot_map_anonymous_tmpfile_from_content_with_limit (GInputStream *instream, guint64 max_bytes,
+                                                          GCancellable *cancellable,
+                                                          GError **error);
+
 GBytes *ot_fd_readall_or_mmap (int fd, goffset offset, GError **error);
 
 gboolean ot_parse_file_by_line (const char *path, gboolean (*cb) (const char *, void *, GError **),

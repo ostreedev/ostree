@@ -96,7 +96,7 @@ static GOptionEntry generate_options[] = {
   { "max-bsdiff-size", 0, 0, G_OPTION_ARG_STRING, &opt_max_bsdiff_size,
     "Maximum size in megabytes to consider bsdiff compression for input files", NULL },
   { "max-chunk-size", 0, 0, G_OPTION_ARG_STRING, &opt_max_chunk_size,
-    "Maximum size of delta chunks in megabytes", NULL },
+    "Maximum size of delta chunks in megabytes (hard cap: 512 MiB)", NULL },
   { "filename", 0, 0, G_OPTION_ARG_FILENAME, &opt_filename,
     "Write the delta content to PATH (a directory).  If not specified, the OSTree repository is "
     "used",

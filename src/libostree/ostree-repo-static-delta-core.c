@@ -586,7 +586,7 @@ ostree_repo_static_delta_execute_offline_with_signature (OstreeRepo *self, GFile
           delta_open_flags |= OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM;
 
           if (!_ostree_static_delta_part_open (part_in, inline_part_bytes, delta_open_flags, NULL,
-                                               &part, cancellable, error))
+                                               usize, &part, cancellable, error))
             return FALSE;
         }
       else
@@ -598,8 +598,8 @@ ostree_repo_static_delta_execute_offline_with_signature (OstreeRepo *self, GFile
 
           part_in = g_unix_input_stream_new (part_fd, FALSE);
 
-          if (!_ostree_static_delta_part_open (part_in, NULL, delta_open_flags, checksum, &part,
-                                               cancellable, error))
+          if (!_ostree_static_delta_part_open (part_in, NULL, delta_open_flags, checksum, usize,
+                                               &part, cancellable, error))
             return FALSE;
         }
 
@@ -636,10 +636,19 @@ ostree_repo_static_delta_execute_offline (OstreeRepo *self, GFile *dir_or_file,
 gboolean
 _ostree_static_delta_part_open (GInputStream *part_in, GBytes *inline_part_bytes,
                                 OstreeStaticDeltaOpenFlags flags, const char *expected_checksum,
-                                GVariant **out_part, GCancellable *cancellable, GError **error)
+                                guint64 expected_usize, GVariant **out_part,
+                                GCancellable *cancellable, GError **error)
 {
   const gboolean trusted = (flags & OSTREE_STATIC_DELTA_OPEN_FLAGS_VARIANT_TRUSTED) > 0;
   const gboolean skip_checksum = (flags & OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM) > 0;
+
+  /* Use the declared usize from the delta header as the decompression limit
+   * when available, capped to the hard maximum.  If the caller passes 0
+   * (e.g. the show/dump path) fall back to the hard cap alone.
+   */
+  guint64 max_part_usize = OSTREE_STATIC_DELTA_PART_MAX_USIZE_BYTES;
+  if (expected_usize > 0 && expected_usize < max_part_usize)
+    max_part_usize = expected_usize;
 
   /* We either take a fd or a GBytes reference */
   g_return_val_if_fail (G_IS_FILE_DESCRIPTOR_BASED (part_in) || inline_part_bytes != NULL, FALSE);
@@ -677,7 +686,7 @@ _ostree_static_delta_part_open (GInputStream *part_in, GBytes *inline_part_bytes
         {
           int part_fd = g_file_descriptor_based_get_fd ((GFileDescriptorBased *)part_in);
 
-          /* No compression, no checksums - a fast path */
+          /* No compression - a fast path */
           if (!ot_variant_read_fd (part_fd, 1,
                                    G_VARIANT_TYPE (OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT_V0),
                                    trusted, &ret_part, error))
@@ -692,6 +701,15 @@ _ostree_static_delta_part_open (GInputStream *part_in, GBytes *inline_part_bytes
           g_variant_ref_sink (ret_part);
         }
 
+      /* Enforce the size limit so that an attacker cannot bypass the
+       * decompression-bomb defence by setting compression type to 0.
+       */
+      if (g_variant_get_size (ret_part) > max_part_usize)
+        return glnx_throw (error,
+                           "Uncompressed delta part size %" G_GSIZE_FORMAT
+                           " exceeds maximum %" G_GUINT64_FORMAT,
+                           g_variant_get_size (ret_part), max_part_usize);
+
       if (!skip_checksum)
         g_checksum_update (checksum, g_variant_get_data (ret_part), g_variant_get_size (ret_part));
 
@@ -700,7 +718,8 @@ _ostree_static_delta_part_open (GInputStream *part_in, GBytes *inline_part_bytes
       {
         g_autoptr (GConverter) decomp = (GConverter *)_ostree_lzma_decompressor_new ();
         g_autoptr (GInputStream) convin = g_converter_input_stream_new (source_in, decomp);
-        g_autoptr (GBytes) buf = ot_map_anonymous_tmpfile_from_content (convin, cancellable, error);
+        g_autoptr (GBytes) buf = ot_map_anonymous_tmpfile_from_content_with_limit (
+            convin, max_part_usize, cancellable, error);
         if (!buf)
           return FALSE;
 
@@ -755,7 +774,7 @@ show_one_part (OstreeRepo *self, gboolean swap_endian, const char *from, const c
 
   g_autoptr (GVariant) part = NULL;
   if (!_ostree_static_delta_part_open (part_in, NULL, OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM,
-                                       NULL, &part, cancellable, error))
+                                       NULL, 0, &part, cancellable, error))
     return FALSE;
 
   {

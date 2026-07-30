@@ -178,12 +178,16 @@ ot_fd_readall_or_mmap (int fd, goffset start, GError **error)
   return glnx_fd_readall_bytes (fd, NULL, error);
 }
 
-/* Given an input stream, splice it to an anonymous file (O_TMPFILE).
- * Useful for potentially large but transient files.
+/* Given an input stream, splice it to an anonymous file (O_TMPFILE)
+ * with an optional upper bound on the number of bytes written.
+ * If @max_bytes is non-zero and the stream produces more than that
+ * many bytes, an error is returned.  This prevents decompression-bomb
+ * style attacks where a small compressed payload expands to exhaust
+ * memory or disk (CVE / RHEL-189208).
  */
 GBytes *
-ot_map_anonymous_tmpfile_from_content (GInputStream *instream, GCancellable *cancellable,
-                                       GError **error)
+ot_map_anonymous_tmpfile_from_content_with_limit (GInputStream *instream, guint64 max_bytes,
+                                                   GCancellable *cancellable, GError **error)
 {
   g_auto (GLnxTmpfile) tmpf = {
     0,
@@ -192,16 +196,50 @@ ot_map_anonymous_tmpfile_from_content (GInputStream *instream, GCancellable *can
     return NULL;
 
   g_autoptr (GOutputStream) out = g_unix_output_stream_new (tmpf.fd, FALSE);
-  gssize n_bytes_written = g_output_stream_splice (
-      out, instream, G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE | G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
-      cancellable, error);
-  if (n_bytes_written < 0)
+
+  guint64 total = 0;
+  while (TRUE)
+    {
+      guchar buf[65536];
+      gssize n_read
+          = g_input_stream_read (instream, buf, sizeof (buf), cancellable, error);
+      if (n_read < 0)
+        return NULL;
+      if (n_read == 0)
+        break;
+
+      total += (guint64)n_read;
+      if (max_bytes > 0 && total > max_bytes)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NO_SPACE,
+                       "Decompressed delta part exceeds configured limit of %" G_GUINT64_FORMAT
+                       " bytes",
+                       max_bytes);
+          return NULL;
+        }
+
+      gsize n_written;
+      if (!g_output_stream_write_all (out, buf, (gsize)n_read, &n_written, cancellable, error))
+        return NULL;
+    }
+
+  if (!g_output_stream_close (out, cancellable, error))
     return NULL;
 
   g_autoptr (GMappedFile) mfile = g_mapped_file_new_from_fd (tmpf.fd, FALSE, error);
   if (!mfile)
     return NULL;
   return g_mapped_file_get_bytes (mfile);
+}
+
+/* Given an input stream, splice it to an anonymous file (O_TMPFILE).
+ * Useful for potentially large but transient files.
+ */
+GBytes *
+ot_map_anonymous_tmpfile_from_content (GInputStream *instream, GCancellable *cancellable,
+                                       GError **error)
+{
+  return ot_map_anonymous_tmpfile_from_content_with_limit (instream, 0, cancellable, error);
 }
 
 gboolean
