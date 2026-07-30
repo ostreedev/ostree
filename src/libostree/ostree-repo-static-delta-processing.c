@@ -414,7 +414,27 @@ dispatch_bspatch (OstreeRepo *repo, StaticDeltaExecutionState *state, GCancellab
       if (!input_mfile)
         return FALSE;
 
-      g_autofree guchar *buf = g_malloc0 (state->content_size);
+      /* Guard against integer truncation on 32-bit systems: g_malloc0() takes
+       * gsize which is 32-bit on those platforms, but bspatch() uses the full
+       * int64_t newsize.  Without this check a crafted content_size > G_MAXSIZE
+       * would allocate a truncated (small) buffer while bspatch() writes using
+       * the full 64-bit value, causing a heap buffer overflow.
+       * (CVE / RHEL-189207, CWE-680, CWE-122)
+       */
+      if (G_UNLIKELY (state->content_size > G_MAXSIZE
+                      || state->content_size > (guint64)G_MAXINT64))
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                       "Invalid content size %" G_GUINT64_FORMAT
+                       " in static delta bspatch operation",
+                       state->content_size);
+          return FALSE;
+        }
+
+      const gsize alloc_size = (gsize)state->content_size;
+      const int64_t newsize = (int64_t)state->content_size;
+
+      g_autofree guchar *buf = g_malloc0 (alloc_size);
 
       struct bzpatch_opaque_s opaque;
       opaque.state = state;
@@ -424,7 +444,7 @@ dispatch_bspatch (OstreeRepo *repo, StaticDeltaExecutionState *state, GCancellab
       stream.read = bspatch_read;
       stream.opaque = &opaque;
       if (bspatch ((const guint8 *)g_mapped_file_get_contents (input_mfile),
-                   g_mapped_file_get_length (input_mfile), buf, state->content_size, &stream)
+                   g_mapped_file_get_length (input_mfile), buf, newsize, &stream)
           < 0)
         return glnx_throw (error, "bsdiff patch failed");
 

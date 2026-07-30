@@ -92,10 +92,81 @@ test_bsdiff (void)
   g_assert_cmpint (memcmp (new, new_generated, NEW_SIZE), ==, 0);
 }
 
+/* Verify the guard condition used in dispatch_bspatch() to prevent integer
+ * truncation on 32-bit systems (RHEL-189207).  The actual guard is:
+ *   if (content_size > G_MAXSIZE || content_size > (guint64)G_MAXINT64)
+ *
+ * On 32-bit: G_MAXSIZE == 0xFFFFFFFF, so any content_size >= 4 GiB triggers.
+ * On 64-bit: G_MAXSIZE == G_MAXUINT64, so only content_size > G_MAXINT64
+ *            (i.e. bit 63 set) triggers.
+ *
+ * This test validates the boundary conditions portably.
+ */
+static void
+test_bspatch_content_size_guard (void)
+{
+  /* Values that must be rejected by the guard */
+  const guint64 reject_values[] = {
+    (guint64)G_MAXINT64 + 1ULL, /* bit 63 set — always rejected */
+    G_MAXUINT64,                /* maximum uint64 — always rejected */
+  };
+
+  for (gsize i = 0; i < G_N_ELEMENTS (reject_values); i++)
+    {
+      guint64 content_size = reject_values[i];
+      gboolean would_reject
+          = (content_size > G_MAXSIZE || content_size > (guint64)G_MAXINT64);
+      g_assert_true (would_reject);
+    }
+
+  /* On 32-bit systems, values above 4 GiB must also be rejected.
+   * This check is meaningful on 32-bit; on 64-bit it's a tautology
+   * (the cast fits) but still valid to run.
+   */
+  if (sizeof (gsize) == 4)
+    {
+      const guint64 reject_32bit[] = {
+        (guint64)G_MAXUINT32 + 1ULL, /* 4 GiB — overflows gsize on 32-bit */
+        0x100001000ULL,               /* 4 GiB + 4 KiB — the PoC value */
+      };
+      for (gsize i = 0; i < G_N_ELEMENTS (reject_32bit); i++)
+        {
+          guint64 content_size = reject_32bit[i];
+          gboolean would_reject
+              = (content_size > G_MAXSIZE || content_size > (guint64)G_MAXINT64);
+          g_assert_true (would_reject);
+        }
+    }
+
+  /* Values that must be accepted by the guard */
+  const guint64 accept_values[] = {
+    0,
+    1,
+    4096,
+    (guint64)1024 * 1024 * 1024, /* 1 GiB */
+  };
+
+  for (gsize i = 0; i < G_N_ELEMENTS (accept_values); i++)
+    {
+      guint64 content_size = accept_values[i];
+      gboolean would_reject
+          = (content_size > G_MAXSIZE || content_size > (guint64)G_MAXINT64);
+      g_assert_false (would_reject);
+
+      /* Also verify that the casts produce correct values when accepted */
+      gsize alloc_size = (gsize)content_size;
+      int64_t newsize = (int64_t)content_size;
+      g_assert_cmpuint (alloc_size, ==, content_size);
+      g_assert_cmpint (newsize, >=, 0);
+      g_assert_cmpuint ((guint64)newsize, ==, content_size);
+    }
+}
+
 int
 main (int argc, char **argv)
 {
   g_test_init (&argc, &argv, NULL);
   g_test_add_func ("/bsdiff", test_bsdiff);
+  g_test_add_func ("/bsdiff/content-size-guard", test_bspatch_content_size_guard);
   return g_test_run ();
 }
