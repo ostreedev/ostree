@@ -17,7 +17,7 @@ ideas introduced from many different projects such as
 [Chromium Autoupdate](http://dev.chromium.org/chromium-os/chromiumos-design-docs/filesystem-autoupdate),
 the much older
 [Fedora/Red Hat Stateless Project](https://fedoraproject.org/wiki/StatelessLinux),
-[Linux VServer](http://linux-vserver.org/index.php?title=util-vserver:Vhashify&oldid=2285)
+[Linux VServer](http://linux-vserver.at/util-vserver:Vhashify)
 and many more.
 
 As mentioned elsewhere, OSTree is strongly influenced by package
