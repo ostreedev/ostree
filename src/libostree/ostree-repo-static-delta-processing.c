@@ -421,8 +421,7 @@ dispatch_bspatch (OstreeRepo *repo, StaticDeltaExecutionState *state, GCancellab
        * the full 64-bit value, causing a heap buffer overflow.
        * (CVE / RHEL-189207, CWE-680, CWE-122)
        */
-      if (G_UNLIKELY (state->content_size > G_MAXSIZE
-                      || state->content_size > (guint64)G_MAXINT64))
+      if (G_UNLIKELY (state->content_size > G_MAXSIZE || state->content_size > (guint64)G_MAXINT64))
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
                        "Invalid content size %" G_GUINT64_FORMAT
