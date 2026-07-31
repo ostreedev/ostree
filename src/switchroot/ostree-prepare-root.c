@@ -57,6 +57,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <libglnx.h>
+#include <linux/btrfs.h>
+#include <linux/magic.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -67,7 +69,9 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
+#include <sys/sysmacros.h>
 #include <sys/types.h>
+#include <sys/vfs.h>
 #include <unistd.h>
 
 #include <ostree-core.h>
@@ -137,6 +141,89 @@ resolve_deploy_path (const char *kernel_cmdline, const char *root_mountpoint)
                    resolved_path, "DEPLOYMENT_DEVICE=%" PRIu64, (uint64_t)stbuf.st_dev,
                    "DEPLOYMENT_INODE=%" PRIu64, (uint64_t)stbuf.st_ino, NULL);
   return deploy_path;
+}
+
+/* Resolve the block device backing a mounted btrfs filesystem, mirroring
+ * systemd's btrfs_get_block_device_fd(): btrfs mounts expose an anonymous
+ * st_dev, so the backing device has to be queried via ioctl. Multi-device
+ * filesystems are rejected (as systemd does) since no single backing device
+ * can be determined for them. Returns 0 if no device was found. */
+static dev_t
+get_btrfs_block_device (const char *path)
+{
+  glnx_autofd int fd = open (path, O_RDONLY | O_CLOEXEC | O_NONBLOCK | O_NOCTTY);
+  if (fd < 0)
+    return 0;
+
+  struct statfs sfs;
+  if (fstatfs (fd, &sfs) < 0 || sfs.f_type != BTRFS_SUPER_MAGIC)
+    return 0;
+
+  struct btrfs_ioctl_fs_info_args fsi = { 0 };
+  if (ioctl (fd, BTRFS_IOC_FS_INFO, &fsi) < 0)
+    return 0;
+
+  if (fsi.num_devices != 1)
+    return 0;
+
+  for (uint64_t id = 1; id <= fsi.max_id; id++)
+    {
+      struct btrfs_ioctl_dev_info_args di = { .devid = id };
+      struct stat st;
+
+      if (ioctl (fd, BTRFS_IOC_DEV_INFO, &di) < 0)
+        {
+          if (errno == ENODEV)
+            continue;
+          return 0;
+        }
+
+      if (stat ((char *)di.path, &st) < 0)
+        return 0;
+      if (!S_ISBLK (st.st_mode) || major (st.st_rdev) == 0)
+        return 0;
+
+      return st.st_rdev;
+    }
+
+  return 0;
+}
+
+/* systemd resolves the block device backing an overlay root via the
+ * /run/systemd/volatile-root symlink (see blockdev_get_root()). With
+ * composefs both / and /usr are overlays with an anonymous st_dev, so tools
+ * like systemd-gpt-auto-generator would otherwise be unable to find the
+ * backing disk (breaking e.g. ESP automounting). Point it at the physical
+ * root device. The symlink target must use the /dev/block/MAJ:MIN form, as
+ * systemd never stats the path.
+ *
+ * Prefer /dev/gpt-auto-root when it exists: on systemd-based initrds udev
+ * has already resolved the root partition for us. Otherwise (e.g. initrds
+ * without systemd) fall back to the device backing the root mountpoint,
+ * where btrfs needs special handling due to its anonymous st_dev. */
+static void
+create_volatile_root_symlink (const char *root_mountpoint)
+{
+  dev_t dev = 0;
+  struct stat st;
+
+  if (stat ("/dev/gpt-auto-root", &st) == 0 && S_ISBLK (st.st_mode))
+    dev = st.st_rdev;
+  else if (stat (root_mountpoint, &st) == 0)
+    {
+      if (major (st.st_dev) > 0)
+        dev = st.st_dev;
+      else
+        dev = get_btrfs_block_device (root_mountpoint);
+    }
+
+  if (dev == 0)
+    return;
+
+  g_autofree char *devpath = g_strdup_printf ("/dev/block/%u:%u", major (dev), minor (dev));
+  (void)mkdir ("/run/systemd", 0755);
+  if (symlink (devpath, "/run/systemd/volatile-root") < 0 && errno != EEXIST)
+    g_printerr ("failed to create /run/systemd/volatile-root: %s\n", strerror (errno));
 }
 
 int
@@ -275,6 +362,8 @@ main (int argc, char *argv[])
       if (mount (deploy_path, TMP_SYSROOT, NULL, MS_BIND | MS_SILENT, NULL) < 0)
         err (EXIT_FAILURE, "failed to make initial bind mount %s", deploy_path);
     }
+  else
+    create_volatile_root_symlink (root_mountpoint);
 
   /* Pass on the state for use by ostree-prepare-root */
   g_variant_builder_add (&metadata_builder, "{sv}", OTCORE_RUN_BOOTED_KEY_SYSROOT_RO,
