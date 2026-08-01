@@ -585,8 +585,10 @@ ostree_repo_static_delta_execute_offline_with_signature (OstreeRepo *self, GFile
            */
           delta_open_flags |= OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM;
 
+          guint32 n_objects
+              = (guint32)(g_variant_get_size (objects) / OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN);
           if (!_ostree_static_delta_part_open (part_in, inline_part_bytes, delta_open_flags, NULL,
-                                               usize, &part, cancellable, error))
+                                               usize, n_objects, &part, cancellable, error))
             return FALSE;
         }
       else
@@ -598,8 +600,10 @@ ostree_repo_static_delta_execute_offline_with_signature (OstreeRepo *self, GFile
 
           part_in = g_unix_input_stream_new (part_fd, FALSE);
 
+          guint32 n_objects
+              = (guint32)(g_variant_get_size (objects) / OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN);
           if (!_ostree_static_delta_part_open (part_in, NULL, delta_open_flags, checksum, usize,
-                                               &part, cancellable, error))
+                                               n_objects, &part, cancellable, error))
             return FALSE;
         }
 
@@ -633,11 +637,38 @@ ostree_repo_static_delta_execute_offline (OstreeRepo *self, GFile *dir_or_file,
       self, dir_or_file, NULL, skip_validation, cancellable, error);
 }
 
+/* Compute how much larger than the declared usize a part's decompressed
+ * payload is allowed to be.  See the constants in
+ * ostree-repo-static-delta-private.h for the derivation of each term;
+ * all arithmetic saturates to G_MAXUINT64 on overflow rather than
+ * wrapping, since expected_usize comes from the (not yet fully
+ * validated) delta part header.
+ */
+static guint64
+_ostree_static_delta_compute_part_margin (guint64 expected_usize, guint32 expected_n_objects)
+{
+  guint64 margin = OSTREE_STATIC_DELTA_PART_FIXED_OVERHEAD_BYTES;
+
+  guint64 per_object_overhead;
+  if (!g_uint64_checked_mul (&per_object_overhead, (guint64)expected_n_objects,
+                             OSTREE_STATIC_DELTA_PART_OP_OVERHEAD_PER_OBJECT_BYTES
+                                 + OSTREE_STATIC_DELTA_PART_XATTR_ALLOWANCE_PER_OBJECT_BYTES)
+      || !g_uint64_checked_add (&margin, margin, per_object_overhead))
+    return G_MAXUINT64;
+
+  const guint64 rollsum_overhead
+      = expected_usize / OSTREE_STATIC_DELTA_PART_ROLLSUM_OVERHEAD_DIVISOR;
+  if (!g_uint64_checked_add (&margin, margin, rollsum_overhead))
+    return G_MAXUINT64;
+
+  return margin;
+}
+
 gboolean
 _ostree_static_delta_part_open (GInputStream *part_in, GBytes *inline_part_bytes,
                                 OstreeStaticDeltaOpenFlags flags, const char *expected_checksum,
-                                guint64 expected_usize, GVariant **out_part,
-                                GCancellable *cancellable, GError **error)
+                                guint64 expected_usize, guint32 expected_n_objects,
+                                GVariant **out_part, GCancellable *cancellable, GError **error)
 {
   const gboolean trusted = (flags & OSTREE_STATIC_DELTA_OPEN_FLAGS_VARIANT_TRUSTED) > 0;
   const gboolean skip_checksum = (flags & OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM) > 0;
@@ -645,10 +676,25 @@ _ostree_static_delta_part_open (GInputStream *part_in, GBytes *inline_part_bytes
   /* Use the declared usize from the delta header as the decompression limit
    * when available, capped to the hard maximum.  If the caller passes 0
    * (e.g. the show/dump path) fall back to the hard cap alone.
+   *
+   * The declared usize only covers the final on-disk size of the objects
+   * a part produces, not the part payload itself (which additionally
+   * contains the mode/xattr tables and operations bytecode).  Add a
+   * margin on top of usize, derived from the number of objects in the
+   * part, so legitimate parts aren't rejected; see
+   * _ostree_static_delta_compute_part_margin().
    */
   guint64 max_part_usize = OSTREE_STATIC_DELTA_PART_MAX_USIZE_BYTES;
-  if (expected_usize > 0 && expected_usize < max_part_usize)
-    max_part_usize = expected_usize;
+  if (expected_usize > 0)
+    {
+      const guint64 margin
+          = _ostree_static_delta_compute_part_margin (expected_usize, expected_n_objects);
+      guint64 bounded_usize;
+      if (!g_uint64_checked_add (&bounded_usize, expected_usize, margin))
+        bounded_usize = G_MAXUINT64;
+      if (bounded_usize < max_part_usize)
+        max_part_usize = bounded_usize;
+    }
 
   /* We either take a fd or a GBytes reference */
   g_return_val_if_fail (G_IS_FILE_DESCRIPTOR_BASED (part_in) || inline_part_bytes != NULL, FALSE);
@@ -774,7 +820,7 @@ show_one_part (OstreeRepo *self, gboolean swap_endian, const char *from, const c
 
   g_autoptr (GVariant) part = NULL;
   if (!_ostree_static_delta_part_open (part_in, NULL, OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM,
-                                       NULL, 0, &part, cancellable, error))
+                                       NULL, 0, 0, &part, cancellable, error))
     return FALSE;
 
   {

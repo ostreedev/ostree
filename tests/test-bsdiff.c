@@ -114,8 +114,7 @@ test_bspatch_content_size_guard (void)
   for (gsize i = 0; i < G_N_ELEMENTS (reject_values); i++)
     {
       guint64 content_size = reject_values[i];
-      gboolean would_reject
-          = (content_size > G_MAXSIZE || content_size > (guint64)G_MAXINT64);
+      gboolean would_reject = (content_size > G_MAXSIZE || content_size > (guint64)G_MAXINT64);
       g_assert_true (would_reject);
     }
 
@@ -127,13 +126,12 @@ test_bspatch_content_size_guard (void)
     {
       const guint64 reject_32bit[] = {
         (guint64)G_MAXUINT32 + 1ULL, /* 4 GiB — overflows gsize on 32-bit */
-        0x100001000ULL,               /* 4 GiB + 4 KiB — the PoC value */
+        0x100001000ULL,              /* 4 GiB + 4 KiB — the PoC value */
       };
       for (gsize i = 0; i < G_N_ELEMENTS (reject_32bit); i++)
         {
           guint64 content_size = reject_32bit[i];
-          gboolean would_reject
-              = (content_size > G_MAXSIZE || content_size > (guint64)G_MAXINT64);
+          gboolean would_reject = (content_size > G_MAXSIZE || content_size > (guint64)G_MAXINT64);
           g_assert_true (would_reject);
         }
     }
@@ -149,8 +147,7 @@ test_bspatch_content_size_guard (void)
   for (gsize i = 0; i < G_N_ELEMENTS (accept_values); i++)
     {
       guint64 content_size = accept_values[i];
-      gboolean would_reject
-          = (content_size > G_MAXSIZE || content_size > (guint64)G_MAXINT64);
+      gboolean would_reject = (content_size > G_MAXSIZE || content_size > (guint64)G_MAXINT64);
       g_assert_false (would_reject);
 
       /* Also verify that the casts produce correct values when accepted */

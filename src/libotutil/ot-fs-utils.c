@@ -187,7 +187,7 @@ ot_fd_readall_or_mmap (int fd, goffset start, GError **error)
  */
 GBytes *
 ot_map_anonymous_tmpfile_from_content_with_limit (GInputStream *instream, guint64 max_bytes,
-                                                   GCancellable *cancellable, GError **error)
+                                                  GCancellable *cancellable, GError **error)
 {
   g_auto (GLnxTmpfile) tmpf = {
     0,
@@ -201,8 +201,7 @@ ot_map_anonymous_tmpfile_from_content_with_limit (GInputStream *instream, guint6
   while (TRUE)
     {
       guchar buf[65536];
-      gssize n_read
-          = g_input_stream_read (instream, buf, sizeof (buf), cancellable, error);
+      gssize n_read = g_input_stream_read (instream, buf, sizeof (buf), cancellable, error);
       if (n_read < 0)
         return NULL;
       if (n_read == 0)

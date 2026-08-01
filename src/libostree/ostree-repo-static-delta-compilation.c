@@ -56,6 +56,14 @@ typedef struct
   GPtrArray *modes;
   GHashTable *xattr_set; /* GVariant(ayay) -> offset */
   GPtrArray *xattrs;
+  /* Running total of the serialized size of the unique entries in modes/
+   * xattrs above.  payload->len and operations->len track their own
+   * GStrings directly, but the mode/xattr tables are separate GVariant
+   * arrays only assembled into their final form in finish_part(), so this
+   * is tracked incrementally as entries are added; see
+   * write_unique_variant_chunk() and current_part_size_estimate().
+   */
+  guint64 tables_size;
   GLnxTmpfile part_tmpf;
   GVariant *header;
 } OstreeStaticDeltaPartBuilder;
@@ -383,8 +391,23 @@ write_unique_variant_chunk (OstreeStaticDeltaPartBuilder *current_part, GHashTab
   target_offsetp = GUINT_TO_POINTER (offset);
   g_hash_table_insert (hash, g_variant_ref (key), target_offsetp);
   g_ptr_array_add (ordered, key);
+  current_part->tables_size += g_variant_get_size (key);
 
   return offset;
+}
+
+/* Estimate the eventual serialized size of current_part's payload GVariant
+ * (see finish_part()), so callers deciding whether to start a new part can
+ * account for the mode/xattr tables and operations bytecode, not just the
+ * raw content bytes in ->payload.  This doesn't need to be exact -- it's a
+ * lower bound (GVariant framing adds a little more) used only to decide
+ * when to proactively split a part; finish_part() enforces the real hard
+ * limit against the actual serialized size once a part is complete.
+ */
+static gsize
+current_part_size_estimate (OstreeStaticDeltaPartBuilder *part)
+{
+  return part->payload->len + part->operations->len + part->tables_size;
 }
 
 static gboolean
@@ -454,7 +477,7 @@ process_one_object (OstreeRepo *repo, OstreeStaticDeltaBuilder *builder,
 
   /* Check to see if this delta is maximum size */
   if (current_part->objects->len > 0
-      && current_part->payload->len + content_size > builder->max_chunk_size_bytes)
+      && current_part_size_estimate (current_part) + content_size > builder->max_chunk_size_bytes)
     {
       current_part = allocate_part (builder, error);
       if (current_part == NULL)
@@ -668,7 +691,8 @@ process_one_rollsum (OstreeRepo *repo, OstreeStaticDeltaBuilder *builder,
   OstreeStaticDeltaPartBuilder *current_part = *current_part_val;
 
   /* Check to see if this delta has gone over maximum size */
-  if (current_part->objects->len > 0 && current_part->payload->len > builder->max_chunk_size_bytes)
+  if (current_part->objects->len > 0
+      && current_part_size_estimate (current_part) > builder->max_chunk_size_bytes)
     {
       current_part = allocate_part (builder, error);
       if (current_part == NULL)
@@ -784,7 +808,8 @@ process_one_bsdiff (OstreeRepo *repo, OstreeStaticDeltaBuilder *builder,
   OstreeStaticDeltaPartBuilder *current_part = *current_part_val;
 
   /* Check to see if this delta has gone over maximum size */
-  if (current_part->objects->len > 0 && current_part->payload->len > builder->max_chunk_size_bytes)
+  if (current_part->objects->len > 0
+      && current_part_size_estimate (current_part) > builder->max_chunk_size_bytes)
     {
       current_part = allocate_part (builder, error);
       if (current_part == NULL)
