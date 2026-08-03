@@ -492,6 +492,8 @@ static gboolean
 _load_pk_from_stream (OstreeSign *self, GInputStream *key_stream_in, gboolean trusted,
                       GError **error)
 {
+  g_autoptr (GError) first_error = NULL;
+
   if (key_stream_in == NULL)
     return glnx_throw (error, "ed25519: unable to read from NULL key-data input stream");
 
@@ -514,16 +516,17 @@ _load_pk_from_stream (OstreeSign *self, GInputStream *key_stream_in, gboolean tr
           return FALSE;
         }
 
+      /* No more blobs? */
       if (blob == NULL)
-        return ret;
+        break;
 
       /* Read the key itself */
       pk = g_variant_new_from_bytes (G_VARIANT_TYPE_BYTESTRING, blob, FALSE);
 
       if (trusted)
-        added = ostree_sign_ed25519_add_pk (self, pk, error);
+        added = ostree_sign_ed25519_add_pk (self, pk, (first_error == NULL) ? &first_error : NULL);
       else
-        added = _ed25519_add_revoked (self, pk, error);
+        added = _ed25519_add_revoked (self, pk, (first_error == NULL) ? &first_error : NULL);
 
       g_autofree gchar *pk_printable = g_variant_print (pk, FALSE);
       g_debug ("%s %s key: %s", added ? "Added" : "Invalid", trusted ? "public" : "revoked",
@@ -533,6 +536,10 @@ _load_pk_from_stream (OstreeSign *self, GInputStream *key_stream_in, gboolean tr
       if (added)
         ret = TRUE;
     }
+
+  if (!ret)
+    g_propagate_prefixed_error (error, g_steal_pointer (&first_error),
+                                "ed25519: unable to read from NULL key-data input stream: ");
 
   return ret;
 }
