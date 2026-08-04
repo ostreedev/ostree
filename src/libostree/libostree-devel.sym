@@ -29,3 +29,8 @@ global:
   someostree_symbol_deleteme;
 } LIBOSTREE_$YEAR.$LASTSTABLE;
 */
+
+LIBOSTREE_2026.3 {
+global:
+  ostree_repo_verify_local_summary;
+} LIBOSTREE_2025.2;

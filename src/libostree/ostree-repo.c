@@ -5822,6 +5822,52 @@ ostree_repo_verify_summary (OstreeRepo *self, const char *remote_name, GBytes *s
 #endif /* OSTREE_DISABLE_GPGME */
 }
 
+/**
+ * ostree_repo_verify_local_summary:
+ * @self: Repo
+ * @summary: Summary data as a #GBytes
+ * @signatures: Summary signatures as a #GBytes
+ * @keyringdir: (nullable): Path to directory GPG keyrings; overrides built-in default if given
+ * @extra_keyring: (nullable): Path to additional keyring file (not a directory)
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Verify @signatures for @summary data using GPG keys in the given keyring (GPG
+ * homedir), and return an #OstreeGpgVerifyResult.
+ *
+ * This is intended to be used on a server repository, for verifying the
+ * signatures on the summary file it exports. Use ostree_repo_verify_summary()
+ * to verify the summary file from a configured remote in a repository.
+ *
+ * Returns: (transfer full): an #OstreeGpgVerifyResult, or %NULL on error
+ */
+OstreeGpgVerifyResult *
+ostree_repo_verify_local_summary (OstreeRepo *self, GBytes *summary, GBytes *signatures,
+                                  GFile *keyringdir, GFile *extra_keyring,
+                                  GCancellable *cancellable, GError **error)
+{
+  g_autoptr (GVariant) signatures_variant = NULL;
+
+  g_return_val_if_fail (OSTREE_IS_REPO (self), NULL);
+  g_return_val_if_fail (summary != NULL, NULL);
+  g_return_val_if_fail (signatures != NULL, NULL);
+  g_return_val_if_fail (keyringdir == NULL || G_IS_FILE (keyringdir), NULL);
+  g_return_val_if_fail (extra_keyring == NULL || G_IS_FILE (extra_keyring), NULL);
+  g_return_val_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable), NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
+
+  signatures_variant
+      = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT, signatures, FALSE);
+
+#ifndef OSTREE_DISABLE_GPGME
+  return _ostree_repo_gpg_verify_with_metadata (self, summary, signatures_variant, NULL, keyringdir,
+                                                extra_keyring, cancellable, error);
+#else
+  glnx_throw (error, "GPG has been disabled at build time");
+  return NULL;
+#endif /* OSTREE_DISABLE_GPGME */
+}
+
 /* Add an entry for a @ref ↦ @checksum mapping to an `a(s(t@ay@a{sv}))`
  * @refs_builder to go into a `summary` file. This includes building the
  * standard additional metadata keys for the ref. */
