@@ -118,6 +118,10 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
 
                 <listitem><para>
                     GPG Key ID to sign the summary with.
+                </para>
+
+                <para>
+                    To use a specific subkey, pass the subkey’s fingerprint followed by <literal>!</literal>.
                 </para></listitem>
             </varlistentry>
 
