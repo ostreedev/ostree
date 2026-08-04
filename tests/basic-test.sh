@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((91 + ${extra_basic_tests:-0}))"
+echo "1..$((92 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -584,6 +584,19 @@ else
 fi
 assert_file_has_mode checkout-test2-override/a/readable-only 600
 echo "ok commit statoverride"
+
+# Test octal mode notation in statoverride files
+cd ${test_tmpdir}
+cat > test-statoverride-octal.txt <<EOF
+=0600 /a/readable-only
+EOF
+cd ${test_tmpdir}/checkout-test2-4
+chmod 664 a/readable-only
+$OSTREE commit ${COMMIT_ARGS} -b test2-override-octal -s "octal statoverride" --statoverride=../test-statoverride-octal.txt
+cd ${test_tmpdir}
+$OSTREE checkout test2-override-octal checkout-test2-override-octal
+assert_file_has_mode checkout-test2-override-octal/a/readable-only 600
+echo "ok commit statoverride octal"
 
 cd ${test_tmpdir}
 rm test2-checkout -rf

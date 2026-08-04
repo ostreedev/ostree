@@ -230,9 +230,12 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><option>--statoverride</option>="PATH"</term>
 
                 <listitem><para>
-                    File containing list of modifications to make permissions (file mode in
-                    decimal, followed by space, followed by file path).  The specified mode
-                    is ORed with the file's original mode unless preceded by "=".
+                    File containing list of modifications to make permissions (file mode
+                    followed by space, followed by file path).  The mode may be specified
+                    in decimal, or in octal by using a leading <literal>0</literal> (e.g.
+                    <literal>0700</literal>), or in hexadecimal with a leading
+                    <literal>0x</literal>.  The specified mode is ORed with the file's
+                    original mode unless preceded by "=".
                 </para></listitem>
             </varlistentry>
 

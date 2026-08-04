@@ -198,13 +198,13 @@ handle_statoverride_line (const char *line, void *data, GError **error)
 
   if (g_str_has_prefix (line, "="))
     {
-      guint mode_override = (guint32)(gint32)g_ascii_strtod (line + 1, NULL);
+      guint mode_override = (guint32)(gint32)g_ascii_strtoull (line + 1, NULL, 0);
       g_hash_table_insert (cf->mode_overrides, g_strdup (fn),
                            GUINT_TO_POINTER ((gint32)mode_override));
     }
   else
     {
-      guint mode_add = (guint32)(gint32)g_ascii_strtod (line, NULL);
+      guint mode_add = (guint32)(gint32)g_ascii_strtoull (line, NULL, 0);
       g_hash_table_insert (cf->mode_adds, g_strdup (fn), GUINT_TO_POINTER ((gint32)mode_add));
     }
   return TRUE;
