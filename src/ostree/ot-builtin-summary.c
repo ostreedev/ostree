@@ -93,10 +93,14 @@ build_additional_metadata (const char *const *args, GError **error)
   return g_variant_ref_sink (g_variant_builder_end (builder));
 }
 
+/* @out_summary_data is guaranteed to return non-NULL, but @out_summary_sig_data
+ * may return NULL (with no error) if the summary is unsigned. */
 static gboolean
-get_summary_data (OstreeRepo *repo, GBytes **out_summary_data, GError **error)
+get_summary_data (OstreeRepo *repo, GBytes **out_summary_data, GBytes **out_summary_sig_data,
+                  GError **error)
 {
   g_assert (out_summary_data != NULL);
+  g_assert (out_summary_sig_data != NULL);
 
   g_autoptr (GBytes) summary_data = NULL;
   glnx_autofd int fd = -1;
@@ -106,7 +110,19 @@ get_summary_data (OstreeRepo *repo, GBytes **out_summary_data, GError **error)
   if (!summary_data)
     return FALSE;
 
+  g_autoptr (GBytes) summary_sig_data = NULL;
+  glnx_autofd int sig_fd = -1;
+  if (!ot_openat_ignore_enoent (repo->repo_dir_fd, "summary.sig", &sig_fd, error))
+    return FALSE;
+  if (sig_fd >= 0)
+    {
+      summary_sig_data = ot_fd_readall_or_mmap (sig_fd, 0, error);
+      if (!summary_sig_data)
+        return FALSE;
+    }
+
   *out_summary_data = g_steal_pointer (&summary_data);
+  *out_summary_sig_data = g_steal_pointer (&summary_sig_data);
 
   return TRUE;
 }
@@ -119,6 +135,9 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
   g_autoptr (OstreeRepo) repo = NULL;
   g_autoptr (OstreeSign) sign = NULL;
   OstreeDumpFlags flags = OSTREE_DUMP_NONE;
+  g_autoptr (GBytes) summary_data = NULL;
+  g_autoptr (GBytes) summary_sig_data = NULL;
+  gboolean show_signatures = FALSE;
 
   context = g_option_context_new ("");
 
@@ -188,34 +207,32 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
     }
   else if (opt_view || opt_raw)
     {
-      g_autoptr (GBytes) summary_data = NULL;
-
       if (opt_raw)
         flags |= OSTREE_DUMP_RAW;
 
-      if (!get_summary_data (repo, &summary_data, error))
+      if (!get_summary_data (repo, &summary_data, &summary_sig_data, error))
         return FALSE;
 
       ot_dump_summary_bytes (summary_data, flags);
+      show_signatures = !opt_raw;
     }
   else if (opt_list_metadata_keys)
     {
-      g_autoptr (GBytes) summary_data = NULL;
-
-      if (!get_summary_data (repo, &summary_data, error))
+      if (!get_summary_data (repo, &summary_data, &summary_sig_data, error))
         return FALSE;
 
       ot_dump_summary_metadata_keys (summary_data);
+      show_signatures = FALSE;
     }
   else if (opt_print_metadata_key)
     {
-      g_autoptr (GBytes) summary_data = NULL;
-
-      if (!get_summary_data (repo, &summary_data, error))
+      if (!get_summary_data (repo, &summary_data, &summary_sig_data, error))
         return FALSE;
 
       if (!ot_dump_summary_metadata_key (summary_data, opt_print_metadata_key, error))
         return FALSE;
+
+      show_signatures = FALSE;
     }
   else
     {
@@ -223,6 +240,50 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
                    "No option specified; use -u to update summary");
       return FALSE;
     }
+
+#ifndef OSTREE_DISABLE_GPGME
+  if (show_signatures && summary_sig_data == NULL)
+    {
+      g_print ("Summary is unsigned\n");
+    }
+  else if (show_signatures)
+    {
+      g_autoptr (OstreeGpgVerifyResult) result = NULL;
+      g_autoptr (GFile) gpg_homedir
+          = opt_gpg_homedir ? g_file_new_for_path (opt_gpg_homedir) : NULL;
+      g_autoptr (GError) local_error = NULL;
+
+      g_assert (summary_data != NULL && summary_sig_data != NULL);
+
+      result = ostree_repo_verify_local_summary (repo, summary_data, summary_sig_data, gpg_homedir,
+                                                 NULL, cancellable, &local_error);
+
+      if (g_error_matches (local_error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_NO_SIGNATURE))
+        {
+          /* Ignore */
+        }
+      else if (local_error != NULL)
+        {
+          g_propagate_error (error, g_steal_pointer (&local_error));
+          return FALSE;
+        }
+      else
+        {
+          unsigned int n_sigs = ostree_gpg_verify_result_count_all (result);
+          g_print ("\nFound %u signature%s on the summary:\n", n_sigs, n_sigs == 1 ? "" : "s");
+
+          g_autoptr (GString) buffer = g_string_sized_new (256);
+          for (unsigned int ii = 0; ii < n_sigs; ii++)
+            {
+              g_string_append_c (buffer, '\n');
+              ostree_gpg_verify_result_describe (result, ii, buffer, "  ",
+                                                 OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT);
+            }
+
+          g_print ("%s", buffer->str);
+        }
+    }
+#endif /* OSTREE_DISABLE_GPGME */
 
   return TRUE;
 }
