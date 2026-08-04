@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((91 + ${extra_basic_tests:-0}))"
+echo "1..$((92 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -584,6 +584,21 @@ else
 fi
 assert_file_has_mode checkout-test2-override/a/readable-only 600
 echo "ok commit statoverride"
+
+# Test mode stripping with '-' prefix
+cd ${test_tmpdir}
+mkdir -p strip-test
+echo strip-test > strip-test/file
+chmod 755 strip-test/file
+cat > test-statoverride-strip.txt <<EOF
+-73 strip-test/file
+EOF
+$OSTREE commit ${COMMIT_ARGS} -b test2-strip -s "strip statoverride" --statoverride=test-statoverride-strip.txt --tree=dir=strip-test
+cd ${test_tmpdir}
+$OSTREE checkout test2-strip checkout-test2-strip
+# 755 minus 0111 (73 decimal, all execute bits) = 644
+assert_file_has_mode checkout-test2-strip/file 644
+echo "ok commit statoverride strip"
 
 cd ${test_tmpdir}
 rm test2-checkout -rf

@@ -184,6 +184,7 @@ struct CommitFilterData
 {
   GHashTable *mode_adds;
   GHashTable *mode_overrides;
+  GHashTable *mode_removes;
   GHashTable *skip_list;
 };
 
@@ -201,6 +202,11 @@ handle_statoverride_line (const char *line, void *data, GError **error)
       guint mode_override = (guint32)(gint32)g_ascii_strtod (line + 1, NULL);
       g_hash_table_insert (cf->mode_overrides, g_strdup (fn),
                            GUINT_TO_POINTER ((gint32)mode_override));
+    }
+  else if (g_str_has_prefix (line, "-"))
+    {
+      guint mode_remove = (guint32)(gint32)g_ascii_strtod (line + 1, NULL);
+      g_hash_table_insert (cf->mode_removes, g_strdup (fn), GUINT_TO_POINTER ((gint32)mode_remove));
     }
   else
     {
@@ -224,6 +230,7 @@ commit_filter (OstreeRepo *self, const char *path, GFileInfo *file_info, gpointe
   struct CommitFilterData *data = user_data;
   GHashTable *mode_adds = data->mode_adds;
   GHashTable *mode_overrides = data->mode_overrides;
+  GHashTable *mode_removes = data->mode_removes;
   GHashTable *skip_list = data->skip_list;
   gpointer value;
 
@@ -251,6 +258,13 @@ commit_filter (OstreeRepo *self, const char *path, GFileInfo *file_info, gpointe
       guint mode_override = GPOINTER_TO_UINT (value);
       g_file_info_set_attribute_uint32 (file_info, "unix::mode", current_fmt | mode_override);
       g_hash_table_remove (mode_adds, path);
+    }
+  else if (mode_removes && g_hash_table_lookup_extended (mode_removes, path, NULL, &value))
+    {
+      guint mode_remove = GPOINTER_TO_UINT (value);
+      guint current_mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
+      g_file_info_set_attribute_uint32 (file_info, "unix::mode", current_mode & ~mode_remove);
+      g_hash_table_remove (mode_removes, path);
     }
 
   if (skip_list && g_hash_table_contains (skip_list, path))
@@ -447,6 +461,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
   g_autofree char *tree_type = NULL;
   g_autoptr (GHashTable) mode_adds = NULL;
   g_autoptr (GHashTable) mode_overrides = NULL;
+  g_autoptr (GHashTable) mode_removes = NULL;
   g_autoptr (GHashTable) skip_list = NULL;
   OstreeRepoCommitModifierFlags flags = 0;
   g_autoptr (OstreeSePolicy) policy = NULL;
@@ -473,11 +488,14 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
           = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
       filter_data.mode_overrides = mode_overrides
           = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+      filter_data.mode_removes = mode_removes
+          = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
       if (!ot_parse_file_by_line (opt_statoverride_file, handle_statoverride_line, &filter_data,
                                   cancellable, error))
         goto out;
     }
   (void)mode_overrides; // This takes care of cleanup
+  (void)mode_removes;   // This takes care of cleanup
 
   if (opt_skiplist_file)
     {
@@ -629,6 +647,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
       || opt_selinux_policy_from_base)
     {
       filter_data.mode_adds = mode_adds;
+      filter_data.mode_removes = mode_removes;
       filter_data.skip_list = skip_list;
       modifier = ostree_repo_commit_modifier_new (flags, commit_filter, &filter_data, NULL);
 
@@ -839,6 +858,21 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
       gpointer key, value;
 
       g_hash_table_iter_init (&hash_iter, mode_adds);
+
+      while (g_hash_table_iter_next (&hash_iter, &key, &value))
+        {
+          g_printerr ("Unmatched statoverride path: %s\n", (char *)key);
+        }
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Unmatched statoverride paths");
+      goto out;
+    }
+
+  if (mode_removes && g_hash_table_size (mode_removes) > 0)
+    {
+      GHashTableIter hash_iter;
+      gpointer key, value;
+
+      g_hash_table_iter_init (&hash_iter, mode_removes);
 
       while (g_hash_table_iter_next (&hash_iter, &key, &value))
         {
