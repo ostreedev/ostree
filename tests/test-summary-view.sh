@@ -24,7 +24,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..2"
+echo "1..4"
 
 COMMIT_SIGN=""
 SUMMARY_HOMEDIR=""
@@ -72,3 +72,18 @@ assert_file_has_content_literal raw-summary.txt "'ostree.summary.last-modified':
 assert_not_file_has_content raw-summary.txt "Found [0-9]+ signature"
 assert_not_file_has_content raw-summary.txt "Summary is unsigned"
 echo "ok view summary raw"
+
+# Listing keys.
+${OSTREE} summary ${SUMMARY_HOMEDIR} --list-metadata-keys > keys-summary.txt
+assert_file_has_content_literal keys-summary.txt "ostree.summary.mode"
+assert_file_has_content_literal keys-summary.txt "ostree.summary.indexed-deltas"
+assert_not_file_has_content keys-summary.txt "Found [0-9]+ signature"
+assert_not_file_has_content keys-summary.txt "Summary is unsigned"
+echo "ok list summary keys"
+
+# Printing a particular key.
+${OSTREE} summary ${SUMMARY_HOMEDIR} --print-metadata-key ostree.summary.mode > key-summary.txt
+assert_file_has_content_literal key-summary.txt "'archive-z2'"
+assert_not_file_has_content key-summary.txt "Found [0-9]+ signature"
+assert_not_file_has_content key-summary.txt "Summary is unsigned"
+echo "ok print a summary key"
