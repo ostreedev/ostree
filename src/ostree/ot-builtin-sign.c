@@ -48,7 +48,7 @@ static GOptionEntry options[]
         { "sign-type", 's', 0, G_OPTION_ARG_STRING, &opt_sign_name,
           "Signature type to use (defaults to 'ed25519')", "NAME" },
 #if defined(HAVE_ED25519)
-        { "keys-file", 0, 0, G_OPTION_ARG_STRING, &opt_filename, "Read key(s) from file", "NAME" },
+        { "keys-file", 0, 0, G_OPTION_ARG_STRING, &opt_filename, "Read keys from file", "NAME" },
         { "keys-dir", 0, 0, G_OPTION_ARG_STRING, &opt_keysdir,
           "Redefine system-wide directories with public and revoked keys for verification",
           "NAME" },

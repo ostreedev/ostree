@@ -123,13 +123,13 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
            <varlistentry>
                 <term><option>--keys-file</option></term>
                 <listitem><para>
-                    Read key(s) from file <filename>filename</filename>.
+                    Read keys from file <filename>filename</filename>.
                 </para></listitem>
 
                 <listitem><para>
                     Valid for <literal>ed25519</literal> and <literal>spki</literal> signature types.
-                    This file must contain <literal>base64</literal>-encoded
-                    secret key(s) (for signing) or public key(s) (for verifying) per line.
+                    This file must contain one <literal>base64</literal>-encoded key per line.
+                    Each key may be a secret key (for signing) or a public key (for verifying).
                 </para></listitem>
             </varlistentry>
             <varlistentry>

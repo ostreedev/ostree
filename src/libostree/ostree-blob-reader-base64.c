@@ -71,9 +71,16 @@ ostree_blob_reader_base64_read_blob (OstreeBlobReader *self, GCancellable *cance
 
   if (line == NULL)
     return NULL;
+  else if (len == 0)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA,
+                           "Invalid base64 blob format");
+      return NULL;
+    }
 
   gsize n_elements;
   g_base64_decode_inplace (line, &n_elements);
+  g_assert (n_elements <= len);
   explicit_bzero (line + n_elements, len - n_elements);
 
   return g_bytes_new_take (g_steal_pointer (&line), n_elements);
