@@ -264,7 +264,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><option>--gpg-sign</option>="KEY-ID"</term>
 
                 <listitem><para>
-                    GPG Key ID with which to sign the commit (if have GPGME - GNU Privacy Guard Made Easy).
+                    GPG Key ID with which to sign the commit (if built with GPGME - GNU Privacy Guard Made Easy).
                 </para></listitem>
             </varlistentry>
 
@@ -272,7 +272,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><option>--gpg-homedir</option>="HOMEDIR"</term>
 
                 <listitem><para>
-                    GPG home directory to use when looking for keyrings (if have GPGME - GNU Privacy Guard Made Easy).
+                    GPG home directory to use when looking for keyrings (if built with GPGME - GNU Privacy Guard Made Easy).
                 </para></listitem>
             </varlistentry>
 
