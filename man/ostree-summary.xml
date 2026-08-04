@@ -41,7 +41,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree summary</command> <arg choice="opt">--gpg-sign=KEYID</arg> <arg choice="opt">--gpg-homedir=HOMEDIR</arg> <arg choice="opt">--sign=KEYID</arg> <arg choice="opt">--sign-type=ENGINE</arg> <arg choice="req">--update</arg> <arg choice="opt" rep="repeat">--add-metadata=<replaceable>KEY</replaceable>=<replaceable>VALUE</replaceable></arg>
+                <command>ostree summary</command> <arg choice="opt">--gpg-sign=KEY-ID</arg> <arg choice="opt">--gpg-homedir=HOMEDIR</arg> <arg choice="opt">--sign=KEYID</arg> <arg choice="opt">--sign-type=ENGINE</arg> <arg choice="req">--update</arg> <arg choice="opt" rep="repeat">--add-metadata=<replaceable>KEY</replaceable>=<replaceable>VALUE</replaceable></arg>
             </cmdsynopsis>
 
             <cmdsynopsis>
@@ -114,10 +114,14 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
             </varlistentry>
 
             <varlistentry>
-                <term><option>--gpg-sign</option>=KEYID</term>
+                <term><option>--gpg-sign</option>=KEY-ID</term>
 
                 <listitem><para>
                     GPG Key ID to sign the summary with.
+                </para>
+
+                <para>
+                    To use a specific subkey, pass the subkey’s fingerprint followed by <literal>!</literal>.
                 </para></listitem>
             </varlistentry>
 
