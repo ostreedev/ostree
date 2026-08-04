@@ -2417,7 +2417,7 @@ out:
 
   return ret;
 #else  /* OSTREE_DISABLE_GPGME */
-  return glnx_throw (error, "GPG feature is disabled in a build time");
+  return glnx_throw (error, "GPG has been disabled at build time");
 #endif /* OSTREE_DISABLE_GPGME */
 }
 
@@ -2535,7 +2535,7 @@ ostree_repo_remote_get_gpg_keys (OstreeRepo *self, const char *name, const char 
 
   return TRUE;
 #else  /* OSTREE_DISABLE_GPGME */
-  return glnx_throw (error, "GPG feature is disabled in a build time");
+  return glnx_throw (error, "GPG has been disabled at build time");
 #endif /* OSTREE_DISABLE_GPGME */
 }
 
@@ -5158,7 +5158,7 @@ ostree_repo_append_gpg_signature (OstreeRepo *self, const gchar *commit_checksum
 
   return TRUE;
 #else
-  return glnx_throw (error, "GPG feature is disabled in a build time");
+  return glnx_throw (error, "GPG has been disabled at build time");
 #endif /* OSTREE_DISABLE_GPGME */
 }
 
@@ -5295,7 +5295,7 @@ ostree_repo_sign_commit (OstreeRepo *self, const gchar *commit_checksum, const g
   return TRUE;
 #else
   /* FIXME: Return false until refactoring */
-  return glnx_throw (error, "GPG feature is disabled in a build time");
+  return glnx_throw (error, "GPG has been disabled at build time");
 #endif /* OSTREE_DISABLE_GPGME */
 }
 
@@ -5365,7 +5365,7 @@ _ostree_repo_add_gpg_signature_summary_at (OstreeRepo *self, int dir_fd, const g
 
   return TRUE;
 #else
-  return glnx_throw (error, "GPG feature is disabled at build time");
+  return glnx_throw (error, "GPG has been disabled at build time");
 #endif /* OSTREE_DISABLE_GPGME */
 }
 
@@ -5387,7 +5387,7 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo *self, const gchar **key_id, c
   return _ostree_repo_add_gpg_signature_summary_at (self, self->repo_dir_fd, key_id, homedir,
                                                     cancellable, error);
 #else
-  return glnx_throw (error, "GPG feature is disabled in a build time");
+  return glnx_throw (error, "GPG has been disabled at build time");
 #endif /* OSTREE_DISABLE_GPGME */
 }
 
@@ -5440,7 +5440,7 @@ ostree_repo_gpg_sign_data (OstreeRepo *self, GBytes *data, GBytes *old_signature
   *out_signatures = g_variant_get_data_as_bytes (res);
   return TRUE;
 #else
-  return glnx_throw (error, "GPG feature is disabled in a build time");
+  return glnx_throw (error, "GPG has been disabled at build time");
 #endif /* OSTREE_DISABLE_GPGME */
 }
 
@@ -5684,7 +5684,7 @@ ostree_repo_verify_commit (OstreeRepo *self, const gchar *commit_checksum, GFile
   return TRUE;
 #else
   /* FIXME: Return false until refactoring */
-  return glnx_throw (error, "GPG feature is disabled in a build time");
+  return glnx_throw (error, "GPG has been disabled at build time");
 #endif /* OSTREE_DISABLE_GPGME */
 }
 
@@ -5710,7 +5710,7 @@ ostree_repo_verify_commit_ext (OstreeRepo *self, const gchar *commit_checksum, G
   return _ostree_repo_verify_commit_internal (self, commit_checksum, NULL, keyringdir,
                                               extra_keyring, cancellable, error);
 #else
-  glnx_throw (error, "GPG feature is disabled in a build time");
+  glnx_throw (error, "GPG has been disabled at build time");
   return NULL;
 #endif /* OSTREE_DISABLE_GPGME */
 }
@@ -5740,7 +5740,7 @@ ostree_repo_verify_commit_for_remote (OstreeRepo *self, const gchar *commit_chec
   return _ostree_repo_verify_commit_internal (self, commit_checksum, remote_name, NULL, NULL,
                                               cancellable, error);
 #else
-  glnx_throw (error, "GPG feature is disabled in a build time");
+  glnx_throw (error, "GPG has been disabled at build time");
   return NULL;
 #endif /* OSTREE_DISABLE_GPGME */
 }
@@ -5780,7 +5780,7 @@ ostree_repo_gpg_verify_data (OstreeRepo *self, const gchar *remote_name, GBytes 
       self, (remote_name != NULL) ? remote_name : OSTREE_ALL_REMOTES, data, signatures, keyringdir,
       extra_keyring, cancellable, error);
 #else
-  glnx_throw (error, "GPG feature is disabled in a build time");
+  glnx_throw (error, "GPG has been disabled at build time");
   return NULL;
 #endif /* OSTREE_DISABLE_GPGME */
 }
@@ -5817,7 +5817,7 @@ ostree_repo_verify_summary (OstreeRepo *self, const char *remote_name, GBytes *s
   return _ostree_repo_gpg_verify_with_metadata (self, summary, signatures_variant, remote_name,
                                                 NULL, NULL, cancellable, error);
 #else
-  glnx_throw (error, "GPG feature is disabled in a build time");
+  glnx_throw (error, "GPG has been disabled at build time");
   return NULL;
 #endif /* OSTREE_DISABLE_GPGME */
 }
