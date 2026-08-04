@@ -565,8 +565,11 @@ echo "ok commit combined ref trees"
 # NB: The + is optional, but we need to make sure we support it
 cd ${test_tmpdir}
 cat > test-statoverride.txt <<EOF
+# This is a comment
 +1048 /a/nested/2
 2048 /a/nested/3
+
+# blank line above is fine too
 =384 /a/readable-only
 EOF
 cd ${test_tmpdir}/checkout-test2-4

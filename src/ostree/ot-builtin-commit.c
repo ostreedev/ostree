@@ -191,6 +191,11 @@ static gboolean
 handle_statoverride_line (const char *line, void *data, GError **error)
 {
   struct CommitFilterData *cf = data;
+  /* Skip comments and blank lines (blank lines are already skipped by
+   * ot_parse_file_by_line, but be defensive). */
+  if (*line == '#' || *line == '\0')
+    return TRUE;
+
   const char *spc = strchr (line, ' ');
   if (spc == NULL)
     return glnx_throw (error, "Malformed statoverride file (no space found)");
