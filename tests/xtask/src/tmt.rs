@@ -19,6 +19,10 @@ pub(crate) struct RunTmtArgs {
     #[clap(long)]
     filter: Vec<String>,
 
+    /// Skip plans whose name contains one of these strings.
+    #[clap(long)]
+    exclude: Vec<String>,
+
     /// Extra arguments to pass to `tmt run`.
     #[clap(last = true)]
     tmt_args: Vec<String>,
@@ -35,7 +39,7 @@ pub(crate) fn run_tmt(sh: &Shell, args: RunTmtArgs) -> Result<()> {
     check_dependencies(sh)?;
 
     let image = &args.image;
-    let plans = discover_plans(sh, &args.filter)?;
+    let plans = discover_plans(sh, &args.filter, &args.exclude)?;
     if plans.is_empty() {
         eprintln!("No test plans found");
         return Ok(());
@@ -96,21 +100,14 @@ fn check_dependencies(sh: &Shell) -> Result<()> {
 }
 
 /// Discover TMT plans and optionally filter them.
-fn discover_plans(sh: &Shell, filters: &[String]) -> Result<Vec<String>> {
+fn discover_plans(sh: &Shell, filters: &[String], excludes: &[String]) -> Result<Vec<String>> {
     let output = cmd!(sh, "tmt plan ls").read()?;
-    let plans: Vec<String> = output
+    Ok(output
         .lines()
         .map(|l| l.trim().to_owned())
         .filter(|l| l.starts_with('/'))
-        .collect();
-
-    if filters.is_empty() {
-        return Ok(plans);
-    }
-
-    Ok(plans
-        .into_iter()
-        .filter(|p| filters.iter().any(|f| p.contains(f)))
+        .filter(|p| filters.is_empty() || filters.iter().any(|f| p.contains(f)))
+        .filter(|p| !excludes.iter().any(|e| p.contains(e)))
         .collect())
 }
 
