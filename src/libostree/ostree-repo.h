@@ -1279,6 +1279,12 @@ OstreeGpgVerifyResult *ostree_repo_verify_summary (OstreeRepo *self, const char 
                                                    GBytes *summary, GBytes *signatures,
                                                    GCancellable *cancellable, GError **error);
 
+_OSTREE_PUBLIC
+OstreeGpgVerifyResult *ostree_repo_verify_local_summary (OstreeRepo *self, GBytes *summary,
+                                                         GBytes *signatures, GFile *keyfiledir,
+                                                         GFile *extra_keyring,
+                                                         GCancellable *cancellable, GError **error);
+
 /**
  * OstreeRepoVerifyFlags:
  * @OSTREE_REPO_VERIFY_FLAGS_NONE: No flags
