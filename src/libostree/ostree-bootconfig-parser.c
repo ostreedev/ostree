@@ -34,6 +34,13 @@ struct _OstreeBootconfigParser
 
   /* Additional initrds; the primary initrd is in options. */
   char **overlay_initrds;
+
+  /* TRUE if a non-standard (extension) key was set via
+   * ostree_bootconfig_parser_set() since this object was last loaded
+   * from persistent state (a BLS file or the staged deployment data).
+   * See _ostree_bootconfig_parser_select_staged_extra_keys().
+   */
+  gboolean extra_keys_modified;
 };
 
 typedef GObjectClass OstreeBootconfigParserClass;
@@ -56,6 +63,7 @@ ostree_bootconfig_parser_clone (OstreeBootconfigParser *self)
 
   parser->filename = g_strdup (self->filename);
   parser->overlay_initrds = g_strdupv (self->overlay_initrds);
+  parser->extra_keys_modified = self->extra_keys_modified;
 
   return parser;
 }
@@ -211,6 +219,27 @@ ostree_bootconfig_parser_parse (OstreeBootconfigParser *self, GFile *path,
                                             cancellable, error);
 }
 
+/* Standard BLS keys that are managed by ostree's own deployment code.
+ * These are rebuilt from scratch during staged deployment finalization
+ * (title, version, linux, initrd, devicetree/fdtdir, aboot/abootcfg from
+ * the deployment's kernel layout; options from the serialized kargs), so
+ * they must NOT be duplicated into bootconfig-extra.
+ */
+static const char *const standard_bls_keys[]
+    = { "title",      "version", "options",  "linux", "initrd",
+        "devicetree", "fdtdir",  "abootcfg", "aboot", NULL };
+
+static gboolean
+is_standard_bls_key (const char *key)
+{
+  for (const char *const *p = standard_bls_keys; *p != NULL; p++)
+    {
+      if (strcmp (key, *p) == 0)
+        return TRUE;
+    }
+  return FALSE;
+}
+
 /**
  * ostree_bootconfig_parser_set:
  * @self: Parser
@@ -223,6 +252,8 @@ void
 ostree_bootconfig_parser_set (OstreeBootconfigParser *self, const char *key, const char *value)
 {
   g_hash_table_replace (self->options, g_strdup (key), g_strdup (value));
+  if (!is_standard_bls_key (key))
+    self->extra_keys_modified = TRUE;
 }
 
 /**
@@ -339,25 +370,6 @@ ostree_bootconfig_parser_write (OstreeBootconfigParser *self, GFile *output,
                                             cancellable, error);
 }
 
-/* Standard BLS keys that are managed by ostree's own deployment code.
- * These are rebuilt from scratch during staged deployment finalization
- * (title, version, linux, initrd from the deployment; options from the
- * serialized kargs), so they must NOT be duplicated into bootconfig-extra.
- */
-static const char *const standard_bls_keys[]
-    = { "title", "version", "options", "linux", "initrd", "devicetree", NULL };
-
-static gboolean
-is_standard_bls_key (const char *key)
-{
-  for (const char *const *p = standard_bls_keys; *p != NULL; p++)
-    {
-      if (strcmp (key, *p) == 0)
-        return TRUE;
-    }
-  return FALSE;
-}
-
 /**
  * _ostree_bootconfig_parser_get_extra_keys_variant:
  * @self: Parser
@@ -391,6 +403,87 @@ _ostree_bootconfig_parser_get_extra_keys_variant (OstreeBootconfigParser *self)
     return NULL;
 
   return g_variant_builder_end (&builder);
+}
+
+/**
+ * _ostree_bootconfig_parser_get_extra_keys_modified:
+ * @self: Parser
+ *
+ * Returns: %TRUE if an extension (non-standard) key was set on @self via
+ * ostree_bootconfig_parser_set() since it was last loaded from persistent
+ * state.  Used to tell an "aware" consumer (one that manages extension
+ * keys itself, e.g. bootc) apart from an "unaware" one (e.g. rpm-ostree)
+ * during staging.
+ */
+gboolean
+_ostree_bootconfig_parser_get_extra_keys_modified (OstreeBootconfigParser *self)
+{
+  return self->extra_keys_modified;
+}
+
+/**
+ * _ostree_bootconfig_parser_clear_extra_keys_modified:
+ * @self: Parser
+ *
+ * Reset the modified flag.  Called after ostree itself populates extension
+ * keys from persistent state (e.g. restoring "bootconfig-extra" from the
+ * staged deployment data) so that only consumer writes count as
+ * modifications.
+ */
+void
+_ostree_bootconfig_parser_clear_extra_keys_modified (OstreeBootconfigParser *self)
+{
+  self->extra_keys_modified = FALSE;
+}
+
+/**
+ * _ostree_bootconfig_parser_select_staged_extra_keys:
+ * @merge_bootconfig: (nullable): Bootconfig of the merge deployment
+ * @previously_staged: (nullable): "bootconfig-extra" (a{ss}) from a deployment
+ *    that was already staged during this boot, if any
+ *
+ * Decide which set of extension BLS keys (e.g. x-options-source-tuned) a
+ * newly staged deployment should carry.  The result is all-or-nothing;
+ * sets are never merged key-by-key, because a consumer that manages
+ * extension keys always writes its complete desired set.
+ *
+ * 1. If the caller modified extension keys on @merge_bootconfig in memory,
+ *    that set is authoritative -- even if it is empty.  This is the path
+ *    taken by aware consumers such as bootc, and it must win over
+ *    previously staged data or a stale tombstone from an earlier staging
+ *    in the same boot would override the caller's update.
+ *
+ * 2. Otherwise the caller is unaware of extension keys (e.g. rpm-ostree
+ *    re-staging after bootc on the same boot).  Prefer @previously_staged,
+ *    which is strictly newer than what is on disk, so that keys which only
+ *    exist in the staged deployment data are not lost.
+ *
+ * 3. Otherwise inherit whatever extension keys the merge deployment's
+ *    on-disk BLS entry has.
+ *
+ * Returns: (transfer full) (nullable): A non-floating a{ss} variant, or
+ *    %NULL if there are no extension keys to serialize
+ */
+GVariant *
+_ostree_bootconfig_parser_select_staged_extra_keys (OstreeBootconfigParser *merge_bootconfig,
+                                                    GVariant *previously_staged)
+{
+  if (merge_bootconfig && merge_bootconfig->extra_keys_modified)
+    {
+      GVariant *v = _ostree_bootconfig_parser_get_extra_keys_variant (merge_bootconfig);
+      return v ? g_variant_ref_sink (v) : NULL;
+    }
+
+  if (previously_staged)
+    return g_variant_ref (previously_staged);
+
+  if (merge_bootconfig)
+    {
+      GVariant *v = _ostree_bootconfig_parser_get_extra_keys_variant (merge_bootconfig);
+      return v ? g_variant_ref_sink (v) : NULL;
+    }
+
+  return NULL;
 }
 
 static void
