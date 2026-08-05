@@ -339,7 +339,8 @@ ostree_repo_finder_mount_resolve_async (OstreeRepoFinder *finder,
 
 #if GLIB_CHECK_VERSION(2, 55, 0)
       G_GNUC_BEGIN_IGNORE_DEPRECATIONS /* remove once GLIB_VERSION_MAX_ALLOWED ≥ 2.56 */
-          g_autoptr (GUnixMountEntry) mount_entry = g_unix_mount_at (mount_root_path, NULL);
+          g_autoptr (GUnixMountEntry) mount_entry
+          = g_unix_mount_at (mount_root_path, NULL);
 
       if (mount_entry != NULL
           && (g_unix_is_system_fs_type (g_unix_mount_get_fs_type (mount_entry))
