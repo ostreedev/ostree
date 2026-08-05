@@ -30,7 +30,4 @@ global:
 } LIBOSTREE_$YEAR.$LASTSTABLE;
 */
 
-LIBOSTREE_2026.3 {
-global:
-  ostree_repo_verify_local_summary;
-} LIBOSTREE_2025.2;
+/* No new symbols yet for next development version */
