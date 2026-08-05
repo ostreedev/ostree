@@ -44,7 +44,7 @@ struct _OstreeLzmaDecompressorClass
 };
 
 GLIB_AVAILABLE_IN_ALL
-GType _ostree_lzma_decompressor_get_type (void) G_GNUC_CONST;
+GType _ostree_lzma_decompressor_get_type (void);
 
 GLIB_AVAILABLE_IN_ALL
 OstreeLzmaDecompressor *_ostree_lzma_decompressor_new (void);

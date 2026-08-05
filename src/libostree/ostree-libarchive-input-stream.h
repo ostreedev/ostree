@@ -66,7 +66,7 @@ struct _OstreeLibarchiveInputStreamClass
   void (*_g_reserved5) (void);
 };
 
-GType _ostree_libarchive_input_stream_get_type (void) G_GNUC_CONST;
+GType _ostree_libarchive_input_stream_get_type (void);
 
 GInputStream *_ostree_libarchive_input_stream_new (struct archive *a);
 

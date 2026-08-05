@@ -83,7 +83,7 @@ char *_ostree_fetcher_uri_to_string (OstreeFetcherURI *uri);
 
 gboolean _ostree_fetcher_uri_validate (OstreeFetcherURI *uri, GError **error);
 
-GType _ostree_fetcher_get_type (void) G_GNUC_CONST;
+GType _ostree_fetcher_get_type (void);
 
 OstreeFetcher *_ostree_fetcher_new (int tmpdir_dfd, const char *remote_name,
                                     OstreeFetcherConfigFlags flags);

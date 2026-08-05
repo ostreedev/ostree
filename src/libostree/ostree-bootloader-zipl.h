@@ -29,7 +29,7 @@ G_BEGIN_DECLS
 
 typedef struct _OstreeBootloaderZipl OstreeBootloaderZipl;
 
-GType _ostree_bootloader_zipl_get_type (void) G_GNUC_CONST;
+GType _ostree_bootloader_zipl_get_type (void);
 
 OstreeBootloaderZipl *_ostree_bootloader_zipl_new (OstreeSysroot *sysroot);
 G_END_DECLS

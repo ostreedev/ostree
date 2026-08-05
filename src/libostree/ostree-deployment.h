@@ -41,7 +41,7 @@ G_BEGIN_DECLS
 typedef struct _OstreeDeployment OstreeDeployment;
 
 _OSTREE_PUBLIC
-GType ostree_deployment_get_type (void) G_GNUC_CONST;
+GType ostree_deployment_get_type (void);
 
 _OSTREE_PUBLIC
 guint ostree_deployment_hash (gconstpointer v);

@@ -33,7 +33,7 @@ G_BEGIN_DECLS
 
 typedef struct _OstreeBootloaderUboot OstreeBootloaderUboot;
 
-GType _ostree_bootloader_uboot_get_type (void) G_GNUC_CONST;
+GType _ostree_bootloader_uboot_get_type (void);
 
 OstreeBootloaderUboot *_ostree_bootloader_uboot_new (OstreeSysroot *sysroot);
 

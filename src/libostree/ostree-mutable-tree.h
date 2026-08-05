@@ -49,7 +49,7 @@ struct OstreeMutableTreeClass
 };
 
 _OSTREE_PUBLIC
-GType ostree_mutable_tree_get_type (void) G_GNUC_CONST;
+GType ostree_mutable_tree_get_type (void);
 
 _OSTREE_PUBLIC
 OstreeMutableTree *ostree_mutable_tree_new (void);

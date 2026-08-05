@@ -29,7 +29,7 @@ G_BEGIN_DECLS
 
 typedef struct _OstreeBootloaderAboot OstreeBootloaderAboot;
 
-GType _ostree_bootloader_aboot_get_type (void) G_GNUC_CONST;
+GType _ostree_bootloader_aboot_get_type (void);
 
 OstreeBootloaderAboot *_ostree_bootloader_aboot_new (OstreeSysroot *sysroot);
 G_END_DECLS

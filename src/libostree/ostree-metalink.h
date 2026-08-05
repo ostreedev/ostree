@@ -43,7 +43,7 @@ struct OstreeMetalinkClass
 };
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeMetalink, g_object_unref)
 
-GType _ostree_metalink_get_type (void) G_GNUC_CONST;
+GType _ostree_metalink_get_type (void);
 
 OstreeMetalink *_ostree_metalink_new (OstreeFetcher *fetcher, const char *requested_file,
                                       guint64 max_size, OstreeFetcherURI *uri,

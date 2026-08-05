@@ -49,7 +49,7 @@ struct _OstreeBootloaderInterface
 };
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeBootloader, g_object_unref)
 
-GType _ostree_bootloader_get_type (void) G_GNUC_CONST;
+GType _ostree_bootloader_get_type (void);
 
 gboolean _ostree_bootloader_query (OstreeBootloader *bootloader, gboolean *out_is_active,
                                    GCancellable *cancellable, GError **error);

@@ -45,7 +45,7 @@ struct OstreeAsyncProgressClass
 };
 
 _OSTREE_PUBLIC
-GType ostree_async_progress_get_type (void) G_GNUC_CONST;
+GType ostree_async_progress_get_type (void);
 
 _OSTREE_PUBLIC
 OstreeAsyncProgress *ostree_async_progress_new (void);
