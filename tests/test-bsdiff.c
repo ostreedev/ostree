@@ -137,12 +137,7 @@ test_bspatch_content_size_guard (void)
     }
 
   /* Values that must be accepted by the guard */
-  const guint64 accept_values[] = {
-    0,
-    1,
-    4096,
-    (guint64)1024 * 1024 * 1024, /* 1 GiB */
-  };
+  const guint64 accept_values[] = { 0, 1, 4096, (guint64)1024 * 1024 * 1024 /* 1 GiB */ };
 
   for (gsize i = 0; i < G_N_ELEMENTS (accept_values); i++)
     {
