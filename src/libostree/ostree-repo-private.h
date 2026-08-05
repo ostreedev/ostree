@@ -468,7 +468,7 @@ OstreeRepoAutoTransaction *_ostree_repo_auto_transaction_new (OstreeRepo *repo);
 
 typedef struct OstreeComposefsTarget OstreeComposefsTarget;
 
-GType ostree_composefs_target_get_type (void) G_GNUC_CONST;
+GType ostree_composefs_target_get_type (void);
 OstreeComposefsTarget *ostree_composefs_target_new (void);
 OstreeComposefsTarget *ostree_composefs_target_ref (OstreeComposefsTarget *target);
 void ostree_composefs_target_unref (OstreeComposefsTarget *target);

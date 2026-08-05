@@ -40,7 +40,7 @@ typedef struct _OstreeTlsCertInteraction OstreeTlsCertInteraction;
 typedef struct _OstreeTlsCertInteractionClass OstreeTlsCertInteractionClass;
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeTlsCertInteraction, g_object_unref)
 
-GType _ostree_tls_cert_interaction_get_type (void) G_GNUC_CONST;
+GType _ostree_tls_cert_interaction_get_type (void);
 
 OstreeTlsCertInteraction *_ostree_tls_cert_interaction_new (const char *cert_path,
                                                             const char *key_path);

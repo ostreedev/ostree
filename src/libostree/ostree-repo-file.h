@@ -43,7 +43,7 @@ struct _OstreeRepoFileClass
 };
 
 _OSTREE_PUBLIC
-GType ostree_repo_file_get_type (void) G_GNUC_CONST;
+GType ostree_repo_file_get_type (void);
 
 _OSTREE_PUBLIC
 gboolean ostree_repo_file_ensure_resolved (OstreeRepoFile *self, GError **error);

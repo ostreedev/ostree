@@ -44,7 +44,7 @@ G_BEGIN_DECLS
  */
 
 _OSTREE_PUBLIC
-GType ostree_remote_get_type (void) G_GNUC_CONST;
+GType ostree_remote_get_type (void);
 _OSTREE_PUBLIC
 OstreeRemote *ostree_remote_ref (OstreeRemote *remote);
 _OSTREE_PUBLIC

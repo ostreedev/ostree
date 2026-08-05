@@ -64,7 +64,7 @@ struct _OstreeChainInputStreamClass
 };
 
 _OSTREE_PUBLIC
-GType ostree_chain_input_stream_get_type (void) G_GNUC_CONST;
+GType ostree_chain_input_stream_get_type (void);
 
 _OSTREE_PUBLIC
 OstreeChainInputStream *ostree_chain_input_stream_new (GPtrArray *streams);

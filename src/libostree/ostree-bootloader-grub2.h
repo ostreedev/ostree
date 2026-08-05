@@ -29,7 +29,7 @@ G_BEGIN_DECLS
 
 typedef struct _OstreeBootloaderGrub2 OstreeBootloaderGrub2;
 
-GType _ostree_bootloader_grub2_get_type (void) G_GNUC_CONST;
+GType _ostree_bootloader_grub2_get_type (void);
 
 OstreeBootloaderGrub2 *_ostree_bootloader_grub2_new (OstreeSysroot *sysroot);
 

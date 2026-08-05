@@ -52,7 +52,7 @@ struct _OtChecksumInstreamClass
   GFilterInputStreamClass parent_class;
 };
 
-GType ot_checksum_instream_get_type (void) G_GNUC_CONST;
+GType ot_checksum_instream_get_type (void);
 
 OtChecksumInstream *ot_checksum_instream_new (GInputStream *stream, GChecksumType checksum);
 OtChecksumInstream *ot_checksum_instream_new_with_start (GInputStream *stream,

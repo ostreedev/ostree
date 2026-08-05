@@ -30,7 +30,7 @@ G_BEGIN_DECLS
 typedef struct _OstreeBootconfigParser OstreeBootconfigParser;
 
 _OSTREE_PUBLIC
-GType ostree_bootconfig_parser_get_type (void) G_GNUC_CONST;
+GType ostree_bootconfig_parser_get_type (void);
 
 _OSTREE_PUBLIC
 OstreeBootconfigParser *ostree_bootconfig_parser_new (void);

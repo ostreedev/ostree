@@ -42,7 +42,7 @@ struct _OstreeLzmaCompressorClass
   GObjectClass parent_class;
 };
 
-GType _ostree_lzma_compressor_get_type (void) G_GNUC_CONST;
+GType _ostree_lzma_compressor_get_type (void);
 
 OstreeLzmaCompressor *_ostree_lzma_compressor_new (GVariant *params);
 
