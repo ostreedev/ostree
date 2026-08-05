@@ -190,9 +190,6 @@ ostree_builtin_find_remotes (int argc, char **argv, OstreeCommandInvocation *inv
                                     error))
     return FALSE;
 
-  if (!ostree_ensure_repo_writable (repo, error))
-    return FALSE;
-
   if (argc < 3)
     {
       ot_util_usage_error (context, "At least one COLLECTION-ID REF pair must be specified", error);
@@ -362,6 +359,10 @@ ostree_builtin_find_remotes (int argc, char **argv, OstreeCommandInvocation *inv
   /* Does the user want us to pull the updates? */
   if (!opt_pull)
     return TRUE;
+
+  /* Pulling requires write access to the repository. */
+  if (!ostree_ensure_repo_writable (repo, error))
+    return FALSE;
 
   {
     GVariantBuilder builder;
