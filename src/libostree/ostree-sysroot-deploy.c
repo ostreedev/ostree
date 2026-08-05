@@ -3799,11 +3799,10 @@ _ostree_sysroot_ensure_finalize_staged_service (GError **error)
 /**
  * ostree_sysroot_stage_tree_with_options:
  * @self: Sysroot
- * @osname: (allow-none): osname to use for merge deployment
+ * @osname: osname to use for merge deployment
  * @revision: Checksum to add
  * @origin: (allow-none): Origin to use for upgrades
- * @merge_deployment: (allow-none): Use this deployment for merge path
- * @opts: Options
+ * @opts: (nullable): Options
  * @out_new_deployment: (out): The new deployment path
  * @cancellable: Cancellable
  * @error: Error
@@ -3889,25 +3888,49 @@ ostree_sysroot_stage_tree_with_options (OstreeSysroot *self, const char *osname,
    * These are custom keys set by consumers like bootc and need to survive
    * the staging roundtrip so they are preserved during finalization at shutdown.
    *
-   * First check the new deployment's bootconfig (in case the caller set keys
-   * on it directly).  If none found, fall back to the merge deployment's
-   * bootconfig, which carries the keys from the currently deployed BLS entry.
-   * This ensures that x-prefixed keys are inherited across staged deployments
-   * even though _ostree_deployment_set_bootconfig_from_kargs() creates a fresh
-   * bootconfig containing only the "options" key.
+   * The fallback chain is all-or-nothing with two tiers:
+   *
+   * 1. Merge deployment's bootconfig (which the caller may have updated
+   *    in-memory).  This is the normal path for aware consumers like bootc
+   *    that set extension keys on merge_deployment before calling us.
+   *
+   * 2. Previously staged deployment's bootconfig-extra.  This handles
+   *    the cross-consumer case: e.g. rpm-ostree re-staging after bootc
+   *    on the same boot, where bootc's keys exist only in the staged
+   *    GVariant (not yet on disk) and rpm-ostree is unaware of them.
+   *
+   * If tier 1 finds any extension keys, those are the complete
+   * authoritative set and previously-staged data is ignored.  This
+   * prevents stale keys from overriding the caller's updates when the
+   * same consumer stages multiple times (e.g. bootc replacing or
+   * deleting source-tracked kargs).
+   *
+   * Limitation: the getter returns NULL for zero entries, so we cannot
+   * distinguish "never set" from "explicitly cleared to zero".  A caller
+   * that clears all extension keys within one boot will silently inherit
+   * stale previously-staged keys.  bootc avoids this by tombstoning with
+   * empty-string values rather than truly deleting keys.
    */
   {
-    GVariant *extra = NULL;
-    OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
-    if (bootconfig)
-      extra = _ostree_bootconfig_parser_get_extra_keys_variant (bootconfig);
-    if (!extra && merge_deployment)
+    g_autoptr (GVariant) extra = NULL;
+    if (merge_deployment)
       {
         OstreeBootconfigParser *merge_bootconfig
             = ostree_deployment_get_bootconfig (merge_deployment);
         if (merge_bootconfig)
-          extra = _ostree_bootconfig_parser_get_extra_keys_variant (merge_bootconfig);
+          {
+            GVariant *v = _ostree_bootconfig_parser_get_extra_keys_variant (merge_bootconfig);
+            if (v)
+              extra = g_variant_ref_sink (v);
+          }
       }
+    /* Last resort: inherit from a previously staged deployment. */
+    if (!extra && self->staged_deployment_data)
+      {
+        extra = g_variant_lookup_value (self->staged_deployment_data, "bootconfig-extra",
+                                        G_VARIANT_TYPE ("a{ss}"));
+      }
+
     if (extra)
       g_variant_builder_add (builder, "{sv}", "bootconfig-extra", extra);
   }
