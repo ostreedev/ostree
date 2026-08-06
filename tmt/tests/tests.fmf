@@ -15,3 +15,14 @@
     for t in privileged_verify_nofifo privileged_verify_mtime privileged_verify_extensions; do
         ostree-bootc-integration-tests --exact "$t"
     done
+
+/test-bootconfig-extra-staging:
+  summary: Cross-consumer bootconfig-extra staging survives re-staging
+  description: |
+    Tests that x-options-source-* keys set by bootc survive when
+    rpm-ostree re-stages on the same boot.  Exercises the
+    "previously-staged fallback" path in ostree_sysroot_stage_tree_with_options().
+    See https://github.com/ostreedev/ostree/pull/3611
+  duration: 45m
+  path: /
+  test: bash tmt/tests/booted/test-bootconfig-extra-staging.sh
