@@ -34,7 +34,9 @@ case "${AUTOPKGTEST_REBOOT_MARK:-}" in
   ostree admin instutil set-kargs --import-proc-cmdline
   echo "ok import-proc-cmdline with quoted kargs"
 
-  host_commit=$(ostree admin status | sed -n 's/^.* \(.*\)\.0$/\1/p' | head -1)
+  # Use $host_commit from libinsttest.sh (set via rpm-ostree status --json).
+  # Don't parse "ostree admin status" text output -- status annotations like
+  # "(pending)" after the serial break naive regexes.
   ostree admin deploy --karg-proc-cmdline "${host_commit}"
   echo "ok deploy --karg-proc-cmdline with quoted kargs"
   ;;
