@@ -24,6 +24,12 @@ set -euo pipefail
 skip_without_fuse
 skip_without_user_xattrs
 
+user=$(env | grep USER | cut -d "=" -f 2)
+if [ "$user" != "root" ]
+then
+	skip "user:$user does not support running the test case"
+fi
+
 setup_test_repository "bare"
 
 echo "1..13"
