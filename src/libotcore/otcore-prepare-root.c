@@ -455,9 +455,10 @@ otcore_mount_boot (const char *physical_root, const char *deployment, GError **e
   struct stat stbuf;
 
   /* If /boot is on the same partition, use a bind mount to make it visible
-   * at /boot inside the deployment.
+   * at /boot inside the deployment. Supports both symlink and directory for
+   * boot/loader (the latter is needed for e.g. vfat ESP partitions).
    */
-  if (!(lstat (boot_loader, &stbuf) == 0 && S_ISLNK (stbuf.st_mode)))
+  if (!(lstat (boot_loader, &stbuf) == 0 && (S_ISLNK (stbuf.st_mode) || S_ISDIR (stbuf.st_mode))))
     return TRUE;
 
   g_autofree char *target_boot = g_build_filename (deployment, "boot", NULL);
