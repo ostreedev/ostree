@@ -47,6 +47,12 @@
 // The variant type
 #define OSTREE_SIGN_METADATA_SPKI_TYPE "aay"
 
+// This key is stored inside commit metadata for OpenPGP (Sequoia) signatures.
+// Distinct from the legacy "ostree.gpgsigs" used by the GPGME code path.
+#define OSTREE_SIGN_METADATA_PGP_KEY "ostree.sign.pgp"
+// The variant type
+#define OSTREE_SIGN_METADATA_PGP_TYPE "aay"
+
 // Maximum size of metadata in bytes, in sync with OSTREE_MAX_METADATA_SIZE
 #define OSTREE_SIGN_MAX_METADATA_SIZE (128 * 1024 * 1024)
 
