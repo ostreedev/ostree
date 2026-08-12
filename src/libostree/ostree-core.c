@@ -2351,7 +2351,6 @@ _ostree_validate_structureof_xattrs (GVariant *xattrs, GError **error)
                                previous, name, i);
         }
       previous = name;
-      i++;
     }
   return TRUE;
 }
