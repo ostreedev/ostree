@@ -661,6 +661,15 @@ _ostree_static_delta_compute_part_margin (guint64 expected_usize, guint32 expect
   if (!g_uint64_checked_add (&margin, margin, rollsum_overhead))
     return G_MAXUINT64;
 
+  /* Add a multiplier-based safety margin for deltas generated before the
+   * usize overhead accounting fix (PR #3618).  This accounts for metadata
+   * overhead (mode/xattr tables, operations bytecode, bsdiff patches) that
+   * was not included in the declared usize by older delta generators.
+   */
+  const guint64 mult_margin = expected_usize * OSTREE_STATIC_DELTA_PART_USIZE_MULTIPLIER;
+  if (!g_uint64_checked_add (&margin, margin, mult_margin))
+    return G_MAXUINT64;
+
   return margin;
 }
 

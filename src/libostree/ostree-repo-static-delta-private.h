@@ -99,6 +99,25 @@ G_BEGIN_DECLS
  */
 #define OSTREE_STATIC_DELTA_PART_ROLLSUM_OVERHEAD_DIVISOR 32ULL
 
+/* Multiplier-based safety margin applied on top of the other margin terms.
+ * This accounts for the gap between the declared usize and the actual
+ * decompressed payload size for deltas generated before the overhead
+ * accounting fix (PR #3618).  Older delta generators didn't include
+ * mode/xattr tables or operations bytecode in the usize declaration, so
+ * the difference can exceed the formulaic per-object estimates in
+ * OSTREE_STATIC_DELTA_PART_OP_OVERHEAD_PER_OBJECT_BYTES and
+ * OSTREE_STATIC_DELTA_PART_XATTR_ALLOWANCE_PER_OBJECT_BYTES.
+ *
+ * The effective decompression limit is at least
+ * expected_usize * OSTREE_STATIC_DELTA_PART_USIZE_MULTIPLIER plus
+ * the other margin terms, still bounded by
+ * OSTREE_STATIC_DELTA_PART_MAX_USIZE_BYTES (512 MiB). A multiplier of 1
+ * doubles the effective limit (expected_usize + expected_usize = 2x), which
+ * is sufficient for all known legitimate deltas while remaining well
+ * below the hard cap.
+ */
+#define OSTREE_STATIC_DELTA_PART_USIZE_MULTIPLIER 1ULL
+
 /* 1 byte for object type, 32 bytes for checksum */
 #define OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN 33
 
