@@ -8,3 +8,10 @@ build() {
     add_symlink /usr/lib/systemd/system/initrd-root-fs.target.wants/ostree-prepare-root.service \
         /usr/lib/systemd/system/ostree-prepare-root.service
 }
+
+help() {
+    cat <<HELPEOF
+Sets up the ostree prepare-root and remount services in the initramfs
+so the system can boot from an ostree deployment.
+HELPEOF
+}
