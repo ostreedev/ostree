@@ -32,72 +32,20 @@ G_BEGIN_DECLS
  * provides ~16x headroom over the default, which is generous enough to
  * accommodate large custom --max-chunk-size values while still rejecting
  * decompression bombs that would expand to gigabytes.
+ *
+ * This is also the sole bound applied to deltas that don't carry the
+ * exact-payload-size metadata (see
+ * OSTREE_STATIC_DELTA_PART_PAYLOAD_SIZES_KEY below): the declared "usize"
+ * in a delta part header only accounts for the final on-disk size of the
+ * objects the part will produce, not the mode/xattr tables, opcode
+ * bytecode, or raw payload data (including, for bsdiff'd objects, the
+ * entire patch stream) that also make up the part's decompressed
+ * payload.  There is no way to derive a tight, correct bound from usize
+ * alone -- a part with a single large bsdiff'd object can have a
+ * decompressed payload many times its usize -- so deltas lacking the
+ * exact size just fall back to this flat cap.
  */
 #define OSTREE_STATIC_DELTA_PART_MAX_USIZE_BYTES (512ULL * 1024ULL * 1024ULL)
-
-/* The declared "usize" in a delta part header only accounts for the final
- * on-disk size of the objects the part will produce; the part payload
- * that actually gets decompressed is larger.  The constants below bound
- * that difference so a decompression limit can be derived from usize
- * without either false-positiving on legitimate parts or degenerating
- * into a check that never rejects anything (see
- * _ostree_static_delta_compute_part_margin() in
- * ostree-repo-static-delta-core.c for how they're combined).  Each term
- * is sized from the actual on-disk formats in
- * ostree-repo-static-delta-compilation.c and ostree-varint.c rather than
- * from a single round guess, so the resulting margin stays proportionate
- * as the number of objects in a part grows.
- */
-
-/* Flat per-part overhead: GVariant framing for the part's outer tuple and
- * the operations/payload byte arrays.  A few KiB is generous here; this
- * doesn't scale with content.
- */
-#define OSTREE_STATIC_DELTA_PART_FIXED_OVERHEAD_BYTES (4ULL * 1024ULL)
-
-/* Per-object operations overhead: each object contributes a mode table
- * entry ("(uuu)", 12 bytes, deduplicated but bounded per-object in the
- * worst case) plus opcode bytecode.  _ostree_write_varuint64() emits at
- * most 10 bytes, and the largest per-object opcode sequence is the
- * bsdiff path (SET_READ_SOURCE, OPEN, BSPATCH, CLOSE, UNSET_READ_SOURCE:
- * 5 opcodes + 6 varints = 65 bytes) plus its embedded 32-byte source
- * checksum, which isn't counted in usize at all.  109 bytes worst case;
- * round up generously.
- */
-#define OSTREE_STATIC_DELTA_PART_OP_OVERHEAD_PER_OBJECT_BYTES 256ULL
-
-/* Per-object xattr allowance: xattrs are written into the payload in full
- * and aren't reflected in usize either.  There's no way to derive a true
- * worst-case bound for this from filesystem limits: ext4 caps total
- * attribute bytes per inode at ~4 KiB (one external block plus a little
- * in-inode space), but that bound doesn't hold in general -- XFS and
- * Btrfs impose no total per-inode limit, and even ext4 with the
- * (non-default) ea_inode feature can push individual values up to
- * XATTR_SIZE_MAX (64 KiB) each across its ~100-250 max entries.  A file
- * could in principle carry many such values on some filesystem; fully
- * covering that here would require a per-object allowance in the tens of
- * MiB, which for parts with more than a handful of objects would swamp
- * this margin and degenerate the check back into "always equal to the
- * hard cap" -- the exact failure mode we moved away from a flat
- * 1 MiB/object margin to avoid.  So use a single XATTR_SIZE_MAX (64 KiB)
- * as a generous but pragmatic allowance: real xattr sets (SELinux label,
- * capabilities, ACLs, IMA/EVM signatures) total well under 2 KiB in
- * practice, so this covers legitimate content with 30x+ headroom to
- * spare.  Pathological xattr counts beyond that are left to
- * OSTREE_STATIC_DELTA_PART_MAX_USIZE_BYTES, the same hard-cap backstop
- * that bounds this whole margin.
- */
-#define OSTREE_STATIC_DELTA_PART_XATTR_ALLOWANCE_PER_OBJECT_BYTES (64ULL * 1024ULL)
-
-/* Rollsum overhead divisor: rollsum (bsdiff-like binary delta against a
- * similar file) emits a WRITE op per matched/unmatched chunk, and chunk
- * boundaries come from bupsplit's content-defined chunking, which
- * averages BUP_BLOBSIZE (8 KiB) per chunk.  At up to ~64 bytes of opcode
- * overhead per chunk, that's an expected overhead of roughly usize/128;
- * dividing by 32 instead bakes in a further 4x safety margin for content
- * that chunks more finely than average.
- */
-#define OSTREE_STATIC_DELTA_PART_ROLLSUM_OVERHEAD_DIVISOR 32ULL
 
 /* 1 byte for object type, 32 bytes for checksum */
 #define OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN 33
@@ -217,8 +165,7 @@ typedef enum
 
 gboolean _ostree_static_delta_part_open (GInputStream *part_in, GBytes *inline_part_bytes,
                                          OstreeStaticDeltaOpenFlags flags,
-                                         const char *expected_checksum, guint64 expected_usize,
-                                         guint32 expected_n_objects, GVariant **out_part,
+                                         const char *expected_checksum, GVariant **out_part,
                                          GCancellable *cancellable, GError **error);
 
 typedef struct
