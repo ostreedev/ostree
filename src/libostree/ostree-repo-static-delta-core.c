@@ -641,12 +641,6 @@ _ostree_static_delta_part_open (GInputStream *part_in, GBytes *inline_part_bytes
   const gboolean trusted = (flags & OSTREE_STATIC_DELTA_OPEN_FLAGS_VARIANT_TRUSTED) > 0;
   const gboolean skip_checksum = (flags & OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM) > 0;
 
-  /* Decompression-bomb defense: the flat hard cap.  A tighter,
-   * exact-size-derived limit may be layered on top of this by callers
-   * that have that information; see OSTREE_STATIC_DELTA_PART_MAX_USIZE_BYTES.
-   */
-  guint64 max_part_usize = OSTREE_STATIC_DELTA_PART_MAX_USIZE_BYTES;
-
   /* We either take a fd or a GBytes reference */
   g_return_val_if_fail (G_IS_FILE_DESCRIPTOR_BASED (part_in) || inline_part_bytes != NULL, FALSE);
   g_return_val_if_fail (skip_checksum || expected_checksum != NULL, FALSE);
@@ -698,15 +692,6 @@ _ostree_static_delta_part_open (GInputStream *part_in, GBytes *inline_part_bytes
           g_variant_ref_sink (ret_part);
         }
 
-      /* Enforce the size limit so that an attacker cannot bypass the
-       * decompression-bomb defence by setting compression type to 0.
-       */
-      if (g_variant_get_size (ret_part) > max_part_usize)
-        return glnx_throw (error,
-                           "Uncompressed delta part size %" G_GSIZE_FORMAT
-                           " exceeds maximum %" G_GUINT64_FORMAT,
-                           g_variant_get_size (ret_part), max_part_usize);
-
       if (!skip_checksum)
         g_checksum_update (checksum, g_variant_get_data (ret_part), g_variant_get_size (ret_part));
 
@@ -715,8 +700,7 @@ _ostree_static_delta_part_open (GInputStream *part_in, GBytes *inline_part_bytes
       {
         g_autoptr (GConverter) decomp = (GConverter *)_ostree_lzma_decompressor_new ();
         g_autoptr (GInputStream) convin = g_converter_input_stream_new (source_in, decomp);
-        g_autoptr (GBytes) buf = ot_map_anonymous_tmpfile_from_content_with_limit (
-            convin, max_part_usize, cancellable, error);
+        g_autoptr (GBytes) buf = ot_map_anonymous_tmpfile_from_content (convin, cancellable, error);
         if (!buf)
           return FALSE;
 
