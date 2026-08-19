@@ -403,6 +403,8 @@ dispatch_bspatch (OstreeRepo *repo, StaticDeltaExecutionState *state, GCancellab
     return FALSE;
   if (!read_varuint64 (state, &length, error))
     return FALSE;
+  if (!validate_ofs (state, offset, length, error))
+    return FALSE;
 
   if (state->stats_only)
     return TRUE; /* Early return */
