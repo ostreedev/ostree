@@ -602,8 +602,8 @@ test_dirmeta_xattrs (void)
                          g_variant_new_bytestring (data));
   g_variant_builder_add (dup_builder, "(@ay@ay)", g_variant_new_bytestring ("user.a"),
                          g_variant_new_bytestring (data));
-  g_autoptr (GVariant) dup_dirmeta = g_variant_new ("(uuu@a(ayay))", uidgid, uidgid, mode,
-                                                    g_variant_builder_end (dup_builder));
+  g_autoptr (GVariant) dup_dirmeta
+      = g_variant_new ("(uuu@a(ayay))", uidgid, uidgid, mode, g_variant_builder_end (dup_builder));
   g_assert (!ostree_validate_structureof_dirmeta (dup_dirmeta, error));
   g_assert_error (local_error, G_IO_ERROR, G_IO_ERROR_FAILED);
 }

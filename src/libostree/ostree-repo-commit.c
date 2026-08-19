@@ -472,7 +472,7 @@ throw_min_free_space_error (OstreeRepo *self, guint64 bytes_required, GError **e
     err_msg = "would be exceeded";
   (void)err_msg_owned; // Conditional ownership
 
-  if (self->min_free_space_mb > 0)
+  if (!self->min_free_space_use_percent)
     return glnx_throw (error, "min-free-space-size %" G_GUINT64_FORMAT "MB %s",
                        self->min_free_space_mb, err_msg);
   else
