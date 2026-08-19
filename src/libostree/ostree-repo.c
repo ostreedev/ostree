@@ -2967,6 +2967,9 @@ min_free_space_calculate_reserved_bytes (OstreeRepo *self, guint64 *bytes, GErro
   if (TEMP_FAILURE_RETRY (fstatvfs (self->repo_dir_fd, &stvfsbuf)) < 0)
     return glnx_throw_errno_prefix (error, "fstatvfs");
 
+  guint64 reserved_from_mb = 0;
+  guint64 reserved_from_pct = 0;
+
   if (self->min_free_space_mb > 0)
     {
       if (self->min_free_space_mb > (G_MAXUINT64 >> 20))
@@ -2976,9 +2979,10 @@ min_free_space_calculate_reserved_bytes (OstreeRepo *self, guint64 *bytes, GErro
             " bytes",
             (G_MAXUINT64 >> 20));
 
-      reserved_bytes = self->min_free_space_mb << 20;
+      reserved_from_mb = self->min_free_space_mb << 20;
     }
-  else if (self->min_free_space_percent > 0)
+
+  if (self->min_free_space_percent > 0)
     {
       if (stvfsbuf.f_frsize > (G_MAXUINT64 / stvfsbuf.f_blocks))
         return glnx_throw (
@@ -2988,7 +2992,34 @@ min_free_space_calculate_reserved_bytes (OstreeRepo *self, guint64 *bytes, GErro
             (G_MAXUINT64 / stvfsbuf.f_blocks));
 
       guint64 total_bytes = (stvfsbuf.f_frsize * stvfsbuf.f_blocks);
-      reserved_bytes = ((double)total_bytes) * (self->min_free_space_percent / 100.0);
+      reserved_from_pct = ((double)total_bytes) * (self->min_free_space_percent / 100.0);
+    }
+
+  /* When both percentage and absolute limits are set, use the smaller of the two,
+   * and keep track of which one supplied the limit so that the error path can
+   * report the limit that was actually enforced. */
+  if (reserved_from_mb > 0 && reserved_from_pct > 0)
+    {
+      if (reserved_from_mb <= reserved_from_pct)
+        {
+          reserved_bytes = reserved_from_mb;
+          self->min_free_space_use_percent = FALSE;
+        }
+      else
+        {
+          reserved_bytes = reserved_from_pct;
+          self->min_free_space_use_percent = TRUE;
+        }
+    }
+  else if (reserved_from_mb > 0)
+    {
+      reserved_bytes = reserved_from_mb;
+      self->min_free_space_use_percent = FALSE;
+    }
+  else
+    {
+      reserved_bytes = reserved_from_pct;
+      self->min_free_space_use_percent = TRUE;
     }
 
   *bytes = reserved_bytes;
@@ -3150,10 +3181,14 @@ reload_core_config (OstreeRepo *self, GCancellable *cancellable, GError **error)
   }
 
   {
-    /* Try to parse both min-free-space-* config options first. If both are absent, fallback on 3%
-     * free space. If both are present and are non-zero, use min-free-space-size unconditionally
-     * and display a warning.
+    /* Parse both min-free-space-* config options. Reset the cached values first so
+     * that a config reload doesn't retain stale limits from a previous load. If both
+     * options are absent, fall back to min(3%, 1GB). When both are set and non-zero,
+     * the smaller of the two limits is enforced (see
+     * min_free_space_calculate_reserved_bytes()).
      */
+    self->min_free_space_percent = 0;
+    self->min_free_space_mb = 0;
     if (g_key_file_has_key (self->config, "core", "min-free-space-size", NULL))
       {
         g_autofree char *min_free_space_size_str = NULL;
@@ -3191,17 +3226,17 @@ reload_core_config (OstreeRepo *self, GCancellable *cancellable, GError **error)
       }
     else if (!g_key_file_has_key (self->config, "core", "min-free-space-size", NULL))
       {
-        /* Default fallback of 3% free space. If changing this, be sure to change the man page too
+        /* Default fallback of min(3%, 1GB) free space.
+         * If changing this, be sure to change the man page too.
          */
         self->min_free_space_percent = 3;
-        self->min_free_space_mb = 0;
+        self->min_free_space_mb = 1024;
       }
 
     if (self->min_free_space_percent != 0 && self->min_free_space_mb != 0)
       {
-        self->min_free_space_percent = 0;
-        g_debug ("Both min-free-space-percent and -size are mentioned in config. Enforcing "
-                 "min-free-space-size check only.");
+        g_debug ("Both min-free-space-percent and -size are mentioned in config. "
+                 "Using the minimum of the two for free space checks.");
       }
   }
 

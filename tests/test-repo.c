@@ -548,6 +548,95 @@ test_repo_lock_multi_thread (Fixture *fixture, gconstpointer test_data)
 /* Test that writing duplicate content objects within a single transaction does
  * not spuriously trigger the min-free-space check.
  */
+static guint64
+expected_min_free_space_bytes (OstreeRepo *repo)
+{
+  struct statvfs stvfsbuf;
+  if (TEMP_FAILURE_RETRY (fstatvfs (repo->repo_dir_fd, &stvfsbuf)) < 0)
+    g_assert_not_reached ();
+
+  /* Mirrors min_free_space_calculate_reserved_bytes(): the smaller of the two
+   * configured limits is enforced. */
+  guint64 total_bytes = (guint64)stvfsbuf.f_frsize * stvfsbuf.f_blocks;
+  guint64 from_mb = repo->min_free_space_mb > 0 ? (guint64)repo->min_free_space_mb << 20 : 0;
+  guint64 from_pct = repo->min_free_space_percent > 0
+                         ? (guint64)((double)total_bytes * (repo->min_free_space_percent / 100.0))
+                         : 0;
+
+  if (from_mb > 0 && from_pct > 0)
+    return MIN (from_mb, from_pct);
+  else if (from_mb > 0)
+    return from_mb;
+  else
+    return from_pct;
+}
+
+static void
+reload_config_with (OstreeRepo *repo, GKeyFile *config, const char *size, const char *percent)
+{
+  g_autoptr (GError) error = NULL;
+  g_key_file_remove_key (config, "core", "min-free-space-size", NULL);
+  g_key_file_remove_key (config, "core", "min-free-space-percent", NULL);
+  if (size != NULL)
+    g_key_file_set_string (config, "core", "min-free-space-size", size);
+  if (percent != NULL)
+    g_key_file_set_string (config, "core", "min-free-space-percent", percent);
+  g_assert_true (ostree_repo_write_config_and_reload (repo, config, &error));
+  g_assert_no_error (error);
+}
+
+static void
+test_repo_get_min_free_space_limits (Fixture *fixture, gconstpointer test_data)
+{
+  g_autoptr (GError) error = NULL;
+  g_autoptr (OstreeRepo) repo = ostree_repo_create_at (
+      fixture->tmpdir.fd, ".", OSTREE_REPO_MODE_ARCHIVE, NULL, NULL, &error);
+  g_assert_no_error (error);
+  g_autoptr (GKeyFile) config = ostree_repo_copy_config (repo);
+  guint64 bytes = 0;
+
+  /* Only min-free-space-size is set; the reserved bytes are exact. */
+  reload_config_with (repo, config, "500MB", NULL);
+  g_assert_cmpuint (repo->min_free_space_percent, ==, 0);
+  g_assert_cmpuint (repo->min_free_space_mb, ==, 500);
+  g_assert_true (ostree_repo_get_min_free_space_bytes (repo, &bytes, &error));
+  g_assert_no_error (error);
+  g_assert_cmpuint (bytes, ==, (guint64)500 << 20);
+
+  /* Only min-free-space-percent is set; match the percentage. */
+  reload_config_with (repo, config, NULL, "97");
+  g_assert_cmpuint (repo->min_free_space_percent, ==, 97);
+  g_assert_cmpuint (repo->min_free_space_mb, ==, 0);
+  g_assert_true (ostree_repo_get_min_free_space_bytes (repo, &bytes, &error));
+  g_assert_no_error (error);
+  g_assert_cmpuint (bytes, ==, expected_min_free_space_bytes (repo));
+
+  /* Both are set; the smaller of the two limits is enforced. */
+  reload_config_with (repo, config, "500MB", "97");
+  g_assert_cmpuint (repo->min_free_space_percent, ==, 97);
+  g_assert_cmpuint (repo->min_free_space_mb, ==, 500);
+  g_assert_true (ostree_repo_get_min_free_space_bytes (repo, &bytes, &error));
+  g_assert_no_error (error);
+  g_assert_cmpuint (bytes, ==, expected_min_free_space_bytes (repo));
+
+  /* Neither is set; the default of min(3%, 1GB) applies. */
+  reload_config_with (repo, config, NULL, NULL);
+  g_assert_cmpuint (repo->min_free_space_percent, ==, 3);
+  g_assert_cmpuint (repo->min_free_space_mb, ==, 1024);
+  g_assert_true (ostree_repo_get_min_free_space_bytes (repo, &bytes, &error));
+  g_assert_no_error (error);
+  g_assert_cmpuint (bytes, ==, expected_min_free_space_bytes (repo));
+
+  /* Reloading only a size after the default must clear the stale percent value,
+   * and setting the size to zero disables the check entirely. */
+  reload_config_with (repo, config, "1MB", NULL);
+  g_assert_cmpuint (repo->min_free_space_percent, ==, 0);
+  g_assert_cmpuint (repo->min_free_space_mb, ==, 1);
+  reload_config_with (repo, config, "0MB", NULL);
+  g_assert_cmpuint (repo->min_free_space_percent, ==, 0);
+  g_assert_cmpuint (repo->min_free_space_mb, ==, 0);
+}
+
 static void
 test_min_free_space_dup_content (Fixture *fixture, gconstpointer test_data)
 {
@@ -738,6 +827,8 @@ main (int argc, char **argv)
   g_test_add ("/repo/equal", Fixture, NULL, setup, test_repo_equal, teardown);
   g_test_add ("/repo/get_min_free_space", Fixture, NULL, setup, test_repo_get_min_free_space,
               teardown);
+  g_test_add ("/repo/get_min_free_space_limits", Fixture, NULL, setup,
+              test_repo_get_min_free_space_limits, teardown);
   g_test_add ("/repo/write_regfile_api", Fixture, NULL, setup, test_write_regfile_api, teardown);
   g_test_add ("/repo/min_free_space_dup_content", Fixture, NULL, setup,
               test_min_free_space_dup_content, teardown);
