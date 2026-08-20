@@ -1281,7 +1281,7 @@ OstreeGpgVerifyResult *ostree_repo_verify_summary (OstreeRepo *self, const char 
 
 _OSTREE_PUBLIC
 OstreeGpgVerifyResult *ostree_repo_verify_local_summary (OstreeRepo *self, GBytes *summary,
-                                                         GBytes *signatures, GFile *keyfiledir,
+                                                         GBytes *signatures, GFile *keyringdir,
                                                          GFile *extra_keyring,
                                                          GCancellable *cancellable, GError **error);
 
