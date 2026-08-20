@@ -594,19 +594,27 @@ write_cb (void *ptr, size_t size, size_t nmemb, void *data)
 
   if (req->max_size > 0)
     {
+      // Check if the current chunk size or cumulative size exceeds the maximum allowed size
       if (realsize > req->max_size || (realsize + req->current_size) > req->max_size)
         {
-          const char *eff_url;
-          rc = curl_easy_getinfo (req->easy, CURLINFO_EFFECTIVE_URL, &eff_url);
+          long response;
+          rc = curl_easy_getinfo (req->easy, CURLINFO_RESPONSE_CODE, &response);
           g_assert_cmpint (rc, ==, CURLM_OK);
-          req->caught_write_error
-              = g_error_new (G_IO_ERROR, G_IO_ERROR_FAILED,
-                             "URI %s exceeded maximum size of %" G_GUINT64_FORMAT " bytes", eff_url,
-                             req->max_size);
-          return -1;
+
+          // Only report size exceeded error for successful HTTP responses (2xx status codes)
+          if (response >= 200 && response < 300)
+            {
+              const char *eff_url;
+              rc = curl_easy_getinfo (req->easy, CURLINFO_EFFECTIVE_URL, &eff_url);
+              g_assert_cmpint (rc, ==, CURLM_OK);
+              req->caught_write_error
+                  = g_error_new (G_IO_ERROR, G_IO_ERROR_FAILED,
+                                 "URI %s exceeded maximum size of %" G_GUINT64_FORMAT " bytes",
+                                 eff_url, req->max_size);
+              return -1;
+            }
         }
     }
-
   if (req->is_membuf)
     g_string_append_len (req->output_buf, ptr, realsize);
   else
@@ -812,6 +820,21 @@ initiate_next_curl_request (FetcherRequest *req, GTask *task)
 {
   CURLcode rc;
   OstreeFetcher *self = req->fetcher;
+
+  /* Reset request state for a new transfer:
+   * - Clear any previous write errors
+   * - Reset current transfer size counter
+   * - If in memory buffer mode, clear the output buffer
+   * - If in temporary file mode, truncate file and reset file pointer to beginning */
+  g_clear_error (&req->caught_write_error);
+  req->current_size = 0;
+  if (req->is_membuf && req->output_buf)
+    g_string_truncate (req->output_buf, 0);
+  else if (req->tmpf.initialized)
+    {
+      if (ftruncate (req->tmpf.fd, 0) != 0 || lseek (req->tmpf.fd, 0, SEEK_SET) < 0)
+        glnx_set_error_from_errno (&req->caught_write_error);
+    }
 
   if (req->easy)
     curl_easy_cleanup (req->easy);
