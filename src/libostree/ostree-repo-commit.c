@@ -30,6 +30,7 @@
 #include <glib/gprintf.h>
 #include <stdbool.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <sys/statvfs.h>
 #include <sys/xattr.h>
 
@@ -488,6 +489,9 @@ typedef struct
   OtChecksum checksum;
   guint64 content_len;
   guint64 bytes_written;
+  gpointer mapped;
+  gsize mapped_len;
+  gboolean mapped_active;
   guint uid;
   guint gid;
   guint mode;
@@ -509,7 +513,7 @@ _ostree_repo_bare_content_open (OstreeRepo *self, const char *expected_checksum,
   g_assert (!real->initialized);
   real->initialized = TRUE;
   g_assert (S_ISREG (mode));
-  if (!glnx_open_tmpfile_linkable_at (commit_tmp_dfd (self), ".", O_WRONLY | O_CLOEXEC, &real->tmpf,
+  if (!glnx_open_tmpfile_linkable_at (commit_tmp_dfd (self), ".", O_RDWR | O_CLOEXEC, &real->tmpf,
                                       error))
     return FALSE;
   ot_checksum_init (&real->checksum);
@@ -536,9 +540,81 @@ _ostree_repo_bare_content_write (OstreeRepo *repo, OstreeRepoBareContent *barewr
 {
   OstreeRealRepoBareContent *real = (OstreeRealRepoBareContent *)barewrite;
   g_assert (real->initialized);
+  g_assert (!real->mapped_active);
   ot_checksum_update (&real->checksum, buf, len);
   if (glnx_loop_write (real->tmpf.fd, buf, len) < 0)
     return glnx_throw_errno_prefix (error, "write");
+  real->bytes_written += len;
+  return TRUE;
+}
+
+gboolean
+_ostree_repo_bare_content_map (OstreeRepoBareContent *barewrite, guint8 **out_buf, GError **error)
+{
+  OstreeRealRepoBareContent *real = (OstreeRealRepoBareContent *)barewrite;
+  g_assert (real->initialized);
+  g_assert (!real->mapped_active);
+
+  if (G_UNLIKELY (real->bytes_written != 0))
+    return glnx_throw (error, "Cannot map bare content after writing");
+
+  if (G_UNLIKELY (real->content_len > G_MAXSIZE))
+    return glnx_throw (error, "Content size is too large to map");
+
+  if (!glnx_try_fallocate (real->tmpf.fd, 0, real->content_len, error))
+    return FALSE;
+  if (ftruncate (real->tmpf.fd, real->content_len) < 0)
+    return glnx_throw_errno_prefix (error, "ftruncate");
+
+  real->mapped_len = (gsize)real->content_len;
+  if (real->mapped_len > 0)
+    {
+      real->mapped
+          = mmap (NULL, real->mapped_len, PROT_READ | PROT_WRITE, MAP_SHARED, real->tmpf.fd, 0);
+      if (real->mapped == MAP_FAILED)
+        {
+          real->mapped = NULL;
+          real->mapped_len = 0;
+          return glnx_throw_errno_prefix (error, "mmap");
+        }
+      *out_buf = real->mapped;
+    }
+  else
+    {
+      static guint8 zero_size_dummy;
+      *out_buf = &zero_size_dummy;
+    }
+
+  real->mapped_active = TRUE;
+  return TRUE;
+}
+
+gboolean
+_ostree_repo_bare_content_finish_mapped (OstreeRepoBareContent *barewrite,
+                                         GCancellable *cancellable, GError **error)
+{
+  OstreeRealRepoBareContent *real = (OstreeRealRepoBareContent *)barewrite;
+  g_assert (real->initialized);
+  g_assert (real->mapped_active);
+
+  if (real->mapped_len > 0)
+    {
+      for (gsize offset = 0; offset < real->mapped_len;)
+        {
+          if (g_cancellable_set_error_if_cancelled (cancellable, error))
+            return FALSE;
+          const gsize len = MIN (real->mapped_len - offset, 1024 * 1024);
+          ot_checksum_update (&real->checksum, (guint8 *)real->mapped + offset, len);
+          offset += len;
+        }
+      if (munmap (real->mapped, real->mapped_len) < 0)
+        return glnx_throw_errno_prefix (error, "munmap");
+    }
+
+  real->mapped = NULL;
+  real->mapped_len = 0;
+  real->mapped_active = FALSE;
+  real->bytes_written = real->content_len;
   return TRUE;
 }
 
@@ -549,6 +625,7 @@ _ostree_repo_bare_content_commit (OstreeRepo *self, OstreeRepoBareContent *barew
 {
   OstreeRealRepoBareContent *real = (OstreeRealRepoBareContent *)barewrite;
   g_assert (real->initialized);
+  g_assert (!real->mapped_active);
 
   fsblkcnt_t object_blocks_reserved = 0;
   if ((self->min_free_space_percent > 0 || self->min_free_space_mb > 0) && self->in_transaction)
@@ -604,6 +681,11 @@ _ostree_repo_bare_content_cleanup (OstreeRepoBareContent *regwrite)
   OstreeRealRepoBareContent *real = (OstreeRealRepoBareContent *)regwrite;
   if (!real->initialized)
     return;
+  if (real->mapped_active && real->mapped_len > 0)
+    (void)munmap (real->mapped, real->mapped_len);
+  real->mapped = NULL;
+  real->mapped_len = 0;
+  real->mapped_active = FALSE;
   glnx_tmpfile_clear (&real->tmpf);
   ot_checksum_clear (&real->checksum);
   g_clear_pointer (&real->expected_checksum, g_free);

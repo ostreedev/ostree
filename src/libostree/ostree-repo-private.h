@@ -366,8 +366,9 @@ gboolean _ostree_repo_commit_tmpf_final (OstreeRepo *self, const char *checksum,
 typedef struct
 {
   gboolean initialized;
-  gpointer opaque0[10];
+  gpointer opaque0[12];
   guint opaque1[10];
+  guint64 opaque2;
 } OstreeRepoBareContent;
 void _ostree_repo_bare_content_cleanup (OstreeRepoBareContent *regwrite);
 G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC (OstreeRepoBareContent, _ostree_repo_bare_content_cleanup)
@@ -380,6 +381,12 @@ gboolean _ostree_repo_bare_content_open (OstreeRepo *self, const char *checksum,
 gboolean _ostree_repo_bare_content_write (OstreeRepo *repo, OstreeRepoBareContent *barewrite,
                                           const guint8 *buf, size_t len, GCancellable *cancellable,
                                           GError **error);
+
+gboolean _ostree_repo_bare_content_map (OstreeRepoBareContent *barewrite, guint8 **out_buf,
+                                        GError **error);
+
+gboolean _ostree_repo_bare_content_finish_mapped (OstreeRepoBareContent *barewrite,
+                                                  GCancellable *cancellable, GError **error);
 
 gboolean _ostree_repo_bare_content_commit (OstreeRepo *self, OstreeRepoBareContent *barewrite,
                                            char *checksum_buf, size_t buflen,
