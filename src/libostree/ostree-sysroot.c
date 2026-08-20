@@ -348,8 +348,6 @@ validate_boot_fd (OstreeSysroot *self, int fd, GError **error)
   if (fstatfs (fd, &stbuf) < 0)
     return glnx_throw_errno_prefix (error, "fstatfs(boot)");
   self->boot_is_vfat = (stbuf.f_type == MSDOS_SUPER_MAGIC);
-  if (self->boot_is_vfat)
-    return glnx_throw (error, "/boot cannot currently be a vfat filesystem");
   return TRUE;
 }
 
@@ -653,6 +651,9 @@ compare_loader_configs_for_sorting (gconstpointer a_pp, gconstpointer b_pp)
   return compare_boot_loader_configs (a, b);
 }
 
+static gboolean read_current_bootversion (OstreeSysroot *self, int *out_bootversion,
+                                          GCancellable *cancellable, GError **error);
+
 /* Read all the bootconfigs from `/boot/loader/`. */
 gboolean
 _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self, int bootversion,
@@ -675,7 +676,44 @@ _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self, int bootversion,
       return TRUE;
     }
 
-  g_autofree char *entries_path = g_strdup_printf ("loader.%d/entries", bootversion);
+  g_autofree char *entries_path = NULL;
+
+  /* In directory mode boot/loader is always the live state, so entries are always
+   * at loader/entries regardless of bootversion.  In symlink mode, loader points to
+   * loader.N where N == current_version; if the caller is asking for a different
+   * version (e.g. the previous one), we fall back to loader.N/entries directly.
+   */
+  struct stat loader_stbuf;
+  if (!glnx_fstatat_allow_noent (self->boot_fd, "loader", &loader_stbuf, AT_SYMLINK_NOFOLLOW,
+                                 error))
+    return FALSE;
+
+  if (errno == ENOENT || S_ISDIR (loader_stbuf.st_mode))
+    {
+      /* Directory mode (or no loader at all): prefer loader.tmp/entries when it exists
+       * (i.e. during deployment staging), otherwise use the live loader/entries.
+       */
+      struct stat tmp_stbuf;
+      if (!glnx_fstatat_allow_noent (self->boot_fd, "loader.tmp/entries", &tmp_stbuf,
+                                     AT_SYMLINK_NOFOLLOW, error))
+        return FALSE;
+      if (errno == 0 && S_ISDIR (tmp_stbuf.st_mode))
+        entries_path = g_strdup ("loader.tmp/entries");
+      else
+        entries_path = g_strdup ("loader/entries");
+    }
+  else
+    {
+      /* Symlink mode: check whether the requested bootversion is the current one */
+      int current_version;
+      if (!read_current_bootversion (self, &current_version, cancellable, error))
+        return FALSE;
+
+      if (current_version == bootversion)
+        entries_path = g_strdup ("loader/entries");
+      else
+        entries_path = g_strdup_printf ("loader.%d/entries", bootversion);
+    }
   gboolean entries_exists;
   g_auto (GLnxDirFdIterator) dfd_iter = {
     0,
@@ -722,7 +760,7 @@ _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self, int bootversion,
   return TRUE;
 }
 
-/* Get the bootversion from the `/boot/loader` symlink. */
+/* Get the bootversion from the `/boot/loader` directory or symlink. */
 static gboolean
 read_current_bootversion (OstreeSysroot *self, int *out_bootversion, GCancellable *cancellable,
                           GError **error)
@@ -735,24 +773,87 @@ read_current_bootversion (OstreeSysroot *self, int *out_bootversion, GCancellabl
     return FALSE;
   if (errno == ENOENT)
     {
-      g_debug ("Didn't find $sysroot/boot/loader symlink; assuming bootversion 0");
+      g_debug ("Didn't find $sysroot/boot/loader directory or symlink; assuming bootversion 0");
       ret_bootversion = 0;
     }
   else
     {
-      if (!S_ISLNK (stbuf.st_mode))
-        return glnx_throw (error, "Not a symbolic link: boot/loader");
-
-      g_autofree char *target
-          = glnx_readlinkat_malloc (self->sysroot_fd, "boot/loader", cancellable, error);
-      if (!target)
-        return FALSE;
-      if (g_strcmp0 (target, "loader.0") == 0)
-        ret_bootversion = 0;
-      else if (g_strcmp0 (target, "loader.1") == 0)
-        ret_bootversion = 1;
+      if (S_ISLNK (stbuf.st_mode))
+        {
+          /* Traditional link, check version by reading link name */
+          g_autofree char *target
+              = glnx_readlinkat_malloc (self->sysroot_fd, "boot/loader", cancellable, error);
+          if (!target)
+            return FALSE;
+          if (g_strcmp0 (target, "loader.0") == 0)
+            ret_bootversion = 0;
+          else if (g_strcmp0 (target, "loader.1") == 0)
+            ret_bootversion = 1;
+          else
+            return glnx_throw (error, "Invalid target '%s' in boot/loader", target);
+        }
       else
-        return glnx_throw (error, "Invalid target '%s' in boot/loader", target);
+        {
+          /* boot/loader is a real directory (e.g. vfat/ESP).  The directory is always the live
+           * state after each atomic swap, so there is no loader.N indirection to follow.
+           * Determine the bootversion by reading an ostree-*.conf entry from loader/entries/
+           * and parsing the ostree= kernel argument it contains.  If no entries exist yet
+           * (e.g. fresh install before first deployment), default to 0.
+           */
+          if (!_ostree_sysroot_maybe_load_boot_fd (self, error))
+            return FALSE;
+
+          ret_bootversion = 0;
+          if (self->boot_fd != -1)
+            {
+              gboolean entries_exists;
+              g_auto (GLnxDirFdIterator) dfd_iter = {
+                0,
+              };
+              if (!ot_dfd_iter_init_allow_noent (self->boot_fd, "loader/entries", &dfd_iter,
+                                                 &entries_exists, error))
+                return FALSE;
+
+              if (entries_exists)
+                {
+                  struct dirent *dent;
+                  /* Find the first ostree-*.conf entry and parse its ostree= argument */
+                  while (TRUE)
+                    {
+                      if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
+                        return FALSE;
+                      if (dent == NULL)
+                        break;
+
+                      if (!g_str_has_prefix (dent->d_name, "ostree-")
+                          || !g_str_has_suffix (dent->d_name, ".conf"))
+                        continue;
+
+                      g_autoptr (OstreeBootconfigParser) config = ostree_bootconfig_parser_new ();
+                      if (!ostree_bootconfig_parser_parse_at (config, dfd_iter.fd, dent->d_name,
+                                                              cancellable, error))
+                        return glnx_prefix_error (error, "Parsing %s", dent->d_name);
+
+                      const char *options = ostree_bootconfig_parser_get (config, "options");
+                      if (!options)
+                        continue;
+
+                      g_autoptr (OstreeKernelArgs) kargs = ostree_kernel_args_from_string (options);
+                      const char *ostree_arg = ostree_kernel_args_get_last_value (kargs, "ostree");
+                      if (!ostree_arg)
+                        continue;
+
+                      int entry_bootversion = 0;
+                      if (!_ostree_sysroot_parse_bootlink (ostree_arg, &entry_bootversion, NULL,
+                                                           NULL, NULL, error))
+                        return FALSE;
+
+                      ret_bootversion = entry_bootversion;
+                      break;
+                    }
+                }
+            }
+        }
     }
 
   *out_bootversion = ret_bootversion;

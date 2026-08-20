@@ -171,7 +171,17 @@ _ostree_bootloader_uboot_write_config (OstreeBootloader *bootloader, int bootver
   if (!create_config_from_boot_loader_entries (self, bootversion, new_lines, cancellable, error))
     return FALSE;
 
-  g_autofree char *new_config_path = g_strdup_printf ("boot/loader.%d/uEnv.txt", bootversion);
+  /* In directory mode boot/loader is a real directory; staging happens in loader.tmp.
+   * In symlink mode staging happens in loader.N.
+   */
+  struct stat loader_stbuf;
+  if (!glnx_fstatat_allow_noent (self->sysroot->sysroot_fd, "boot/loader", &loader_stbuf,
+                                 AT_SYMLINK_NOFOLLOW, error))
+    return FALSE;
+  gboolean loader_is_dir = (errno == 0 && S_ISDIR (loader_stbuf.st_mode));
+  g_autofree char *new_config_path = loader_is_dir
+                                         ? g_strdup ("boot/loader.tmp/uEnv.txt")
+                                         : g_strdup_printf ("boot/loader.%d/uEnv.txt", bootversion);
   g_autofree char *new_config_contents = _ostree_sysroot_join_lines (new_lines);
   if (!glnx_file_replace_contents_at (self->sysroot->sysroot_fd, new_config_path,
                                       (guint8 *)new_config_contents, strlen (new_config_contents),

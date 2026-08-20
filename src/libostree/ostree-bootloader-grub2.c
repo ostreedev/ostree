@@ -411,8 +411,19 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader *bootloader, int bootver
     }
   else
     {
-      new_config_path = ot_gfile_resolve_path_printf (self->sysroot->path,
-                                                      "boot/loader.%d/grub.cfg", bootversion);
+      /* In directory mode boot/loader is a real directory; staging happens in loader.tmp.
+       * In symlink mode staging happens in loader.N.
+       */
+      struct stat loader_stbuf;
+      if (!glnx_fstatat_allow_noent (self->sysroot->sysroot_fd, "boot/loader", &loader_stbuf,
+                                     AT_SYMLINK_NOFOLLOW, error))
+        return FALSE;
+      gboolean loader_is_dir = (errno == 0 && S_ISDIR (loader_stbuf.st_mode));
+      new_config_path
+          = loader_is_dir
+                ? ot_gfile_resolve_path_printf (self->sysroot->path, "boot/loader.tmp/grub.cfg")
+                : ot_gfile_resolve_path_printf (self->sysroot->path, "boot/loader.%d/grub.cfg",
+                                                bootversion);
     }
 
   const char *grub_argv[4] = { NULL, "-o", NULL, NULL };
