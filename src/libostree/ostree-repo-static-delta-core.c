@@ -138,11 +138,22 @@ ostree_repo_list_static_delta_names (OstreeRepo *self, GPtrArray **out_deltas,
             continue;
 
           g_autofree char *buf = g_strconcat (name1, name2, NULL);
-          GString *out = g_string_new ("");
           char checksum[OSTREE_SHA256_STRING_LEN + 1];
           guchar csum[OSTREE_SHA256_DIGEST_LEN];
           const char *dash = strchr (buf, '-');
 
+          /* The name is a single 43-char base64 checksum (from-scratch delta)
+           * or two of them joined by '-'.  Skip anything that doesn't match so
+           * ostree_checksum_b64_inplace_to_bytes() can't read past the string. */
+          if (dash == NULL)
+            {
+              if (strlen (buf) != 43)
+                continue;
+            }
+          else if (dash - buf != 43 || strlen (dash + 1) != 43)
+            continue;
+
+          GString *out = g_string_new ("");
           ostree_checksum_b64_inplace_to_bytes (buf, csum);
           ostree_checksum_inplace_from_bytes (csum, checksum);
           g_string_append (out, checksum);

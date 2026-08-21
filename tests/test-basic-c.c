@@ -608,6 +608,41 @@ test_dirmeta_xattrs (void)
   g_assert_error (local_error, G_IO_ERROR, G_IO_ERROR_FAILED);
 }
 
+static void
+test_list_static_delta_names_malformed (void)
+{
+  g_autoptr (GError) error = NULL;
+
+  /* Fresh repo so the on-disk layout matches the fd the lister scans. */
+  gboolean ret = ot_test_run_libtest ("setup_test_repository archive", &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+
+  g_autoptr (GFile) repo_path = g_file_new_for_path ("repo");
+  g_autoptr (OstreeRepo) repo = ostree_repo_new (repo_path);
+  ret = ostree_repo_open (repo, NULL, &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+
+  int dfd = ostree_repo_get_dfd (repo);
+
+  /* A deltas/<a>/<b>/superblock tree whose directory names are much shorter
+   * than a base64 checksum made ostree_repo_list_static_delta_names() read past
+   * the name buffer when decoding it. The entry must simply be skipped. */
+  ret = glnx_shutil_mkdir_p_at (dfd, "deltas/aa/bb", 0755, NULL, &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+  glnx_autofd int sb_fd
+      = openat (dfd, "deltas/aa/bb/superblock", O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
+  g_assert_cmpint (sb_fd, !=, -1);
+
+  g_autoptr (GPtrArray) names = NULL;
+  ret = ostree_repo_list_static_delta_names (repo, &names, NULL, &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+  g_assert_cmpuint (names->len, ==, 0);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -629,6 +664,7 @@ main (int argc, char **argv)
   g_test_add_func ("/big-metadata", test_big_metadata);
   g_test_add_func ("/read-xattrs", test_read_xattrs);
   g_test_add_func ("/dirmeta-xattrs", test_dirmeta_xattrs);
+  g_test_add_func ("/list-static-delta-names-malformed", test_list_static_delta_names_malformed);
 
   return g_test_run ();
 out:
