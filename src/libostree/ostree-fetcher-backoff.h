@@ -25,4 +25,6 @@ G_BEGIN_DECLS
 
 guint _ostree_fetcher_retry_backoff_max_ms (guint base_ms, guint n_retries_done);
 
+void _ostree_fetcher_retry_backoff_wait (guint n_retries_done, GCancellable *cancellable);
+
 G_END_DECLS
