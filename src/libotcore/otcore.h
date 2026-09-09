@@ -84,7 +84,6 @@ RootConfig *otcore_load_rootfs_config (const char *cmdline, GKeyFile *config, gb
  * otcore_mount_rootfs:
  * @rootfs_config: Configuration for root
  * @metadata_builder: (transfer none): GVariantBuilder to add metadata to.
- * @root_transient: Whether the root filesystem is transient.
  * @root_mountpoint: The mount point of the physical root filesystem.
  * @deploy_path: The path to the deployment.
  * @mount_target: The target path to mount the composefs image.

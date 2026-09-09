@@ -30,6 +30,84 @@
 #include <gio/gunixinputstream.h>
 #include <gio/gunixoutputstream.h>
 
+#define SHA256_B64_LEN 43
+#define STATIC_DELTA_FANOUT_LEN 2
+#define STATIC_DELTA_BASENAME_LEN (SHA256_B64_LEN - STATIC_DELTA_FANOUT_LEN)
+
+/* Decode an on-disk SHA-256 checksum encoded as RFC 4648 Base64, with '/'
+ * replaced by '_' and trailing '=' padding omitted. Do not alter @buf unless
+ * every check succeeds. */
+static gboolean
+decode_modified_base64_sha256 (const char *checksum, guint8 *buf)
+{
+  char base64[SHA256_B64_LEN + 2];
+  char canonical[SHA256_B64_LEN + 1];
+  guchar *decoded;
+  gsize decoded_len;
+
+  if (strlen (checksum) != SHA256_B64_LEN)
+    return FALSE;
+
+  for (guint i = 0; i < SHA256_B64_LEN; i++)
+    {
+      const char c = checksum[i];
+
+      if (!(g_ascii_isalnum (c) || c == '+' || c == '_'))
+        return FALSE;
+      base64[i] = c == '_' ? '/' : c;
+    }
+  base64[SHA256_B64_LEN] = '=';
+  base64[SHA256_B64_LEN + 1] = '\0';
+
+  decoded = g_base64_decode_inplace (base64, &decoded_len);
+  g_assert (decoded == (guchar *)base64);
+  if (decoded_len != OSTREE_SHA256_DIGEST_LEN)
+    return FALSE;
+
+  ostree_checksum_b64_inplace_from_bytes (decoded, canonical);
+  /* Reject alternate encodings with nonzero unused Base64 bits. */
+  if (memcmp (checksum, canonical, SHA256_B64_LEN) != 0)
+    return FALSE;
+
+  memcpy (buf, decoded, OSTREE_SHA256_DIGEST_LEN);
+  return TRUE;
+}
+
+/* Parse a static delta directory split at the two-character fanout. */
+static gboolean
+parse_static_delta_basename (const char *fanout, const char *basename, guint8 *out_from,
+                             guint8 *out_to)
+{
+  g_autoptr (GString) checksum = g_string_new (fanout);
+  const char *separator;
+
+  if (strlen (fanout) != STATIC_DELTA_FANOUT_LEN)
+    return FALSE;
+
+  separator = strchr (basename, '-');
+  if (separator != NULL)
+    {
+      if (out_from == NULL)
+        return FALSE;
+
+      g_string_append_len (checksum, basename, separator - basename);
+      if (!decode_modified_base64_sha256 (checksum->str, out_from))
+        return FALSE;
+
+      g_string_assign (checksum, separator + 1);
+      if (!decode_modified_base64_sha256 (checksum->str, out_to))
+        return FALSE;
+    }
+  else
+    {
+      g_string_append (checksum, basename);
+      if (!decode_modified_base64_sha256 (checksum->str, out_to))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 gboolean
 _ostree_static_delta_parse_checksum_array (GVariant *array, guint8 **out_checksums_array,
                                            guint *out_n_checksums, GError **error)
@@ -137,22 +215,23 @@ ostree_repo_list_static_delta_names (OstreeRepo *self, GPtrArray **out_deltas,
           if (errno == ENOENT)
             continue;
 
-          g_autofree char *buf = g_strconcat (name1, name2, NULL);
-          GString *out = g_string_new ("");
           char checksum[OSTREE_SHA256_STRING_LEN + 1];
-          guchar csum[OSTREE_SHA256_DIGEST_LEN];
-          const char *dash = strchr (buf, '-');
+          guchar csum_from[OSTREE_SHA256_DIGEST_LEN];
+          guchar csum_to[OSTREE_SHA256_DIGEST_LEN];
+          const gboolean has_from = strchr (name2, '-') != NULL;
 
-          ostree_checksum_b64_inplace_to_bytes (buf, csum);
-          ostree_checksum_inplace_from_bytes (csum, checksum);
-          g_string_append (out, checksum);
-          if (dash)
+          if (!parse_static_delta_basename (name1, name2, has_from ? csum_from : NULL, csum_to))
+            continue;
+
+          GString *out = g_string_new ("");
+          if (has_from)
             {
-              g_string_append_c (out, '-');
-              ostree_checksum_b64_inplace_to_bytes (dash + 1, csum);
-              ostree_checksum_inplace_from_bytes (csum, checksum);
+              ostree_checksum_inplace_from_bytes (csum_from, checksum);
               g_string_append (out, checksum);
+              g_string_append_c (out, '-');
             }
+          ostree_checksum_inplace_from_bytes (csum_to, checksum);
+          g_string_append (out, checksum);
 
           g_ptr_array_add (ret_deltas, g_string_free (out, FALSE));
         }
@@ -207,7 +286,7 @@ ostree_repo_list_static_delta_indexes (OstreeRepo *self, GPtrArray **out_indexes
         break;
       if (dent->d_type != DT_DIR)
         continue;
-      if (strlen (dent->d_name) != 2)
+      if (strlen (dent->d_name) != STATIC_DELTA_FANOUT_LEN)
         continue;
 
       if (!glnx_dirfd_iterator_init_at (dfd_iter.fd, dent->d_name, FALSE, &sub_dfd_iter, error))
@@ -228,17 +307,17 @@ ostree_repo_list_static_delta_indexes (OstreeRepo *self, GPtrArray **out_indexes
           const char *name1 = dent->d_name;
           const char *name2 = sub_dent->d_name;
 
-          /* base64 len is 43, but 2 chars are in the parent dir name */
-          if (strlen (name2) != 41 + strlen (".index") || !g_str_has_suffix (name2, ".index"))
+          if (strlen (name2) != STATIC_DELTA_BASENAME_LEN + strlen (".index")
+              || !g_str_has_suffix (name2, ".index"))
             continue;
-
-          g_autoptr (GString) out = g_string_new (name1);
-          g_string_append_len (out, name2, 41);
 
           char checksum[OSTREE_SHA256_STRING_LEN + 1];
           guchar csum[OSTREE_SHA256_DIGEST_LEN];
 
-          ostree_checksum_b64_inplace_to_bytes (out->str, csum);
+          g_autofree char *basename = g_strndup (name2, STATIC_DELTA_BASENAME_LEN);
+          if (!parse_static_delta_basename (name1, basename, NULL, csum))
+            continue;
+
           ostree_checksum_inplace_from_bytes (csum, checksum);
 
           g_ptr_array_add (ret_indexes, g_strdup (checksum));

@@ -222,9 +222,10 @@ struct OstreeRepo
   /* Cache the repo's device/inode to use for comparisons elsewhere */
   dev_t device;
   ino_t inode;
-  uid_t owner_uid;              /* Cache of repo's owner uid */
-  guint min_free_space_percent; /* See the min-free-space-percent config option */
-  guint64 min_free_space_mb;    /* See the min-free-space-size config option */
+  uid_t owner_uid;                     /* Cache of repo's owner uid */
+  guint min_free_space_percent;        /* See the min-free-space-percent config option */
+  guint64 min_free_space_mb;           /* See the min-free-space-size config option */
+  gboolean min_free_space_use_percent; /* See the min-free-space-percent config option */
   guint64 reserved_blocks;
   gboolean cleanup_stagedir;
 

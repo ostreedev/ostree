@@ -135,13 +135,15 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
           <para>
             Integer percentage value (0-99) that specifies a minimum percentage
             of total space (in blocks) in the underlying filesystem to keep
-            free. The default value is 3, which is enforced when neither this
-            option nor <varname>min-free-space-size</varname> are set.
+            free. The default value is 3, which is used when neither this
+            option nor <varname>min-free-space-size</varname> are set (together
+            with a default <varname>min-free-space-size</varname> of
+            <literal>1GB</literal>; the smaller of the two is enforced).
           </para>
           <para>
             If <varname>min-free-space-size</varname> is set to a non-zero
-            value, <varname>min-free-space-percent</varname> is ignored. Note
-            that, <varname>min-free-space-percent</varname> is not enforced on
+            value, the smaller of the two limits is used. Note that,
+            <varname>min-free-space-percent</varname> is not enforced on
             metadata objects. It is assumed that metadata objects are relatively
             small in size compared to content objects and thus kept outside the
             scope of this option.
@@ -161,10 +163,12 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
           </para>
           <para>
             If this option is set to a non-zero value, and
-            <varname>min-free-space-percent</varname> is also set, this option
-            takes priority. Note that, <varname>min-free-space-size</varname> is
-            not enforced on metadata objects. It is assumed that metadata objects
-            are relatively small in size compared to content objects and thus kept
+            <varname>min-free-space-percent</varname> is also set, the smaller
+            of the two limits is used. When neither option is set, the default
+            is <literal>1GB</literal> (capped at 3% of total filesystem size).
+            Note that, <varname>min-free-space-size</varname> is not enforced on
+            metadata objects. It is assumed that metadata objects are relatively
+            small in size compared to content objects and thus kept
             outside the scope of this option.
           </para>
         </listitem>

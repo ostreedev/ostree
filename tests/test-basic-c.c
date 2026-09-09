@@ -20,6 +20,7 @@
 #include "config.h"
 
 #include <err.h>
+#include <fcntl.h>
 #include <gio/gio.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -602,10 +603,150 @@ test_dirmeta_xattrs (void)
                          g_variant_new_bytestring (data));
   g_variant_builder_add (dup_builder, "(@ay@ay)", g_variant_new_bytestring ("user.a"),
                          g_variant_new_bytestring (data));
-  g_autoptr (GVariant) dup_dirmeta = g_variant_new ("(uuu@a(ayay))", uidgid, uidgid, mode,
-                                                    g_variant_builder_end (dup_builder));
+  g_autoptr (GVariant) dup_dirmeta
+      = g_variant_new ("(uuu@a(ayay))", uidgid, uidgid, mode, g_variant_builder_end (dup_builder));
   g_assert (!ostree_validate_structureof_dirmeta (dup_dirmeta, error));
   g_assert_error (local_error, G_IO_ERROR, G_IO_ERROR_FAILED);
+}
+
+static void
+create_static_delta_file (int dfd, const char *path)
+{
+  g_autoptr (GError) error = NULL;
+  g_autofree char *dir = g_path_get_dirname (path);
+  glnx_autofd int fd = -1;
+
+  g_assert (glnx_shutil_mkdir_p_at (dfd, dir, 0755, NULL, &error));
+  g_assert_no_error (error);
+  fd = openat (dfd, path, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
+  g_assert_cmpint (fd, !=, -1);
+}
+
+static gboolean
+strv_contains (GPtrArray *strv, const char *value)
+{
+  for (guint i = 0; i < strv->len; i++)
+    if (g_str_equal (strv->pdata[i], value))
+      return TRUE;
+
+  return FALSE;
+}
+
+static void
+test_list_static_delta_entries (void)
+{
+  static const char from_checksum[]
+      = "30d13b73cfe1e6988ffc345eac905f82a18def8ef1f0666fc392019e9eac388d";
+  static const char to_checksum[]
+      = "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03";
+  guint8 from_bytes[OSTREE_SHA256_DIGEST_LEN];
+  guint8 to_bytes[OSTREE_SHA256_DIGEST_LEN];
+  char from_b64[44];
+  char to_b64[44];
+  char from_fanout[3];
+  char to_fanout[3];
+  static const char modified_base64_alphabet[]
+      = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+_";
+  g_autofree char *invalid_to_b64 = NULL;
+  g_autofree char *noncanonical_to_b64 = NULL;
+  g_autofree char *invalid_second_b64 = NULL;
+  g_autofree char *from_to_b64 = NULL;
+  g_autofree char *invalid_second_delta_b64 = NULL;
+  g_autofree char *missing_second_b64 = NULL;
+  g_autofree char *double_separator_b64 = NULL;
+  g_autofree char *early_separator_b64 = NULL;
+  g_autoptr (GError) error = NULL;
+  g_autoptr (GPtrArray) names = NULL;
+  g_autoptr (GPtrArray) indexes = NULL;
+  g_autoptr (GFile) repo_path = NULL;
+  g_autoptr (OstreeRepo) repo = NULL;
+  gboolean ret;
+
+  ret = ot_test_run_libtest ("setup_test_repository archive", &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+  repo_path = g_file_new_for_path ("repo");
+  repo = ostree_repo_new (repo_path);
+  ret = ostree_repo_open (repo, NULL, &error);
+  g_assert_no_error (error);
+  g_assert (ret);
+  const int dfd = ostree_repo_get_dfd (repo);
+
+  ostree_checksum_inplace_to_bytes (from_checksum, from_bytes);
+  ostree_checksum_inplace_to_bytes (to_checksum, to_bytes);
+  ostree_checksum_b64_inplace_from_bytes (from_bytes, from_b64);
+  ostree_checksum_b64_inplace_from_bytes (to_bytes, to_b64);
+  memcpy (from_fanout, from_b64, 2);
+  from_fanout[2] = '\0';
+  memcpy (to_fanout, to_b64, 2);
+  to_fanout[2] = '\0';
+  invalid_to_b64 = g_strdup (to_b64);
+  invalid_to_b64[10] = '!';
+  noncanonical_to_b64 = g_strdup (to_b64);
+  const char *last_char = strchr (modified_base64_alphabet, to_b64[42]);
+  g_assert_nonnull (last_char);
+  noncanonical_to_b64[42] = modified_base64_alphabet[(last_char - modified_base64_alphabet) | 1];
+  invalid_second_b64 = g_strdup (to_b64);
+  invalid_second_b64[10] = '!';
+  from_to_b64 = g_strdup_printf ("%s-%s", from_b64 + 2, to_b64);
+  invalid_second_delta_b64 = g_strdup_printf ("%s-%s", from_b64 + 2, invalid_second_b64);
+  missing_second_b64 = g_strdup_printf ("%s-", from_b64 + 2);
+  double_separator_b64 = g_strdup_printf ("%s--%s", from_b64 + 2, to_b64);
+  early_separator_b64 = g_strdup_printf ("-%s", to_b64);
+
+  const struct
+  {
+    const char *fanout;
+    const char *basename;
+  } name_cases[] = {
+    { from_fanout, from_b64 + 2 },
+    { from_fanout, from_to_b64 },
+    { from_fanout, invalid_second_delta_b64 },
+    { from_fanout, missing_second_b64 },
+    { from_fanout, double_separator_b64 },
+    { from_fanout, early_separator_b64 },
+    { from_fanout, invalid_to_b64 + 2 },
+    { to_fanout, noncanonical_to_b64 + 2 },
+    { "xxx", to_b64 + 2 },
+  };
+
+  for (guint i = 0; i < G_N_ELEMENTS (name_cases); i++)
+    {
+      g_autofree char *path = g_strdup_printf ("deltas/%s/%s/superblock", name_cases[i].fanout,
+                                               name_cases[i].basename);
+      create_static_delta_file (dfd, path);
+    }
+
+  const struct
+  {
+    const char *fanout;
+    const char *basename;
+  } index_cases[] = {
+    { to_fanout, to_b64 + 2 },
+    { to_fanout, invalid_to_b64 + 2 },
+    { to_fanout, noncanonical_to_b64 + 2 },
+    { "xxx", to_b64 + 2 },
+    { to_fanout, "too-short" },
+  };
+
+  for (guint i = 0; i < G_N_ELEMENTS (index_cases); i++)
+    {
+      g_autofree char *path = g_strdup_printf ("delta-indexes/%s/%s.index", index_cases[i].fanout,
+                                               index_cases[i].basename);
+      create_static_delta_file (dfd, path);
+    }
+
+  g_assert (ostree_repo_list_static_delta_names (repo, &names, NULL, &error));
+  g_assert_no_error (error);
+  g_assert_cmpuint (names->len, ==, 2);
+  g_assert (strv_contains (names, from_checksum));
+  g_autofree char *from_to = g_strconcat (from_checksum, "-", to_checksum, NULL);
+  g_assert (strv_contains (names, from_to));
+
+  g_assert (ostree_repo_list_static_delta_indexes (repo, &indexes, NULL, &error));
+  g_assert_no_error (error);
+  g_assert_cmpuint (indexes->len, ==, 1);
+  g_assert_cmpstr (indexes->pdata[0], ==, to_checksum);
 }
 
 int
@@ -629,6 +770,7 @@ main (int argc, char **argv)
   g_test_add_func ("/big-metadata", test_big_metadata);
   g_test_add_func ("/read-xattrs", test_read_xattrs);
   g_test_add_func ("/dirmeta-xattrs", test_dirmeta_xattrs);
+  g_test_add_func ("/list-static-delta-entries", test_list_static_delta_entries);
 
   return g_test_run ();
 out:

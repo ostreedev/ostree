@@ -89,6 +89,49 @@ path_kill_slashes (char *path)
 
 #endif
 
+/* Look for a mount entry for @where (e.g. "/var") in /etc/fstab. */
+static gboolean
+fstab_has_mount_entry (const char *where, gboolean *out_found, GError **error)
+{
+#ifdef HAVE_LIBMOUNT
+  static const char fstab_path[] = "/etc/fstab";
+
+  *out_found = FALSE;
+
+  g_autoptr (OtLibMountFile) fstab = setmntent (fstab_path, "re");
+  if (!fstab)
+    {
+      if (errno == ENOENT)
+        return TRUE;
+      return glnx_throw_errno_prefix (error, "Reading %s", fstab_path);
+    }
+
+  struct mntent *me;
+  while ((me = getmntent (fstab)))
+    {
+      g_autofree char *mnt_dir = g_strdup (me->mnt_dir);
+      if (is_path (mnt_dir))
+        path_kill_slashes (mnt_dir);
+
+      if (strcmp (mnt_dir, where) == 0)
+        {
+          *out_found = TRUE;
+          break;
+        }
+    }
+
+  return TRUE;
+#else
+  /* Without libmount we can't parse /etc/fstab; just report "no entry". The
+   * generator as a whole is not functional in this configuration anyway, since
+   * fstab_generator() below throws "Not implemented". */
+  (void)where;
+  (void)error;
+  *out_found = FALSE;
+  return TRUE;
+#endif
+}
+
 /* Forcibly enable our internal units, since we detected ostree= on the kernel cmdline */
 static gboolean
 require_internal_units (const char *normal_dir, const char *early_dir, const char *late_dir,
@@ -269,6 +312,22 @@ boot_mount_generator (const char *normal_dir, GError **error)
   if (!(lstat ("/boot", &stbuf) == 0 && S_ISDIR (stbuf.st_mode)))
     return TRUE;
 
+  /* If /etc/fstab has an entry for /boot, then systemd-fstab-generator owns
+   * boot.mount and we must not generate our own.
+   *
+   * An fstab entry for /boot is the documented way to opt out of Fedora CoreOS'
+   * coreos-boot-mount-generator on systems that have no separate partition
+   * labelled "boot" (for example the layout produced by "bootc install
+   * to-disk"). Without this check we unconditionally created our own unit and
+   * aborted the whole generator with EEXIST, which meant fstab_generator()
+   * below never ran and /var was never mounted at all.
+   */
+  gboolean fstab_has_boot = FALSE;
+  if (!fstab_has_mount_entry (boot_path, &fstab_has_boot, error))
+    return FALSE;
+  if (fstab_has_boot)
+    return TRUE;
+
   glnx_autofd int normal_dir_dfd = -1;
   if (!glnx_opendirat (AT_FDCWD, normal_dir, TRUE, &normal_dir_dfd, error))
     return FALSE;
@@ -307,6 +366,7 @@ boot_mount_generator (const char *normal_dir, GError **error)
   g_clear_object (&outstream);
   if (!glnx_fchmod (tmpf.fd, 0644, error))
     return FALSE;
+  /* Error out if somehow it already exists, that'll help us debug conflicts */
   if (!glnx_link_tmpfile_at (&tmpf, GLNX_LINK_TMPFILE_NOREPLACE, normal_dir_dfd, "boot.mount",
                              error))
     return FALSE;
@@ -330,7 +390,6 @@ fstab_generator (const char *ostree_target, const bool is_aboot, const char *nor
   /* Not currently cancellable, but define a var in case we care later */
   GCancellable *cancellable = NULL;
   /* Some path constants to avoid typos */
-  static const char fstab_path[] = "/etc/fstab";
   static const char var_path[] = "/var";
 
   /* Written by ostree-sysroot-deploy.c. We parse out the stateroot here since we
@@ -348,31 +407,9 @@ fstab_generator (const char *ostree_target, const bool is_aboot, const char *nor
     return glnx_prefix_error (error, "Parsing stateroot");
 
   /* Load /etc/fstab if it exists, and look for a /var mount */
-  g_autoptr (OtLibMountFile) fstab = setmntent (fstab_path, "re");
   gboolean found_var_mnt = FALSE;
-  if (!fstab)
-    {
-      if (errno != ENOENT)
-        return glnx_throw_errno_prefix (error, "Reading %s", fstab_path);
-    }
-  else
-    {
-      /* Parse it */
-      struct mntent *me;
-      while ((me = getmntent (fstab)))
-        {
-          g_autofree char *where = g_strdup (me->mnt_dir);
-          if (is_path (where))
-            path_kill_slashes (where);
-
-          /* We're only looking for /var here */
-          if (strcmp (where, var_path) != 0)
-            continue;
-
-          found_var_mnt = TRUE;
-          break;
-        }
-    }
+  if (!fstab_has_mount_entry (var_path, &found_var_mnt, error))
+    return FALSE;
 
   /* If we found /var, we're done */
   if (found_var_mnt)
