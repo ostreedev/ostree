@@ -167,14 +167,20 @@ test_signature_lookup (TestFixture *fixture, gconstpointer user_data)
   /* Checking the signature with the revoked key for this case. */
   guint expected_signature_index = 2;
 
-  /* Lowercase letters to ensure OstreeGpgVerifyResult handles it. */
-  const char *fingerprint = "68dcc2db4bec5811c2573590bd9d2a44b7f541a6";
-
   guint signature_index;
   gboolean signature_found;
 
   /* Lookup full fingerprint. */
   signature_index = 999999;
+  const char *fingerprint = "68dcc2db4bec5811c2573590bd9d2a44b7f541a6";
+  signature_found
+      = ostree_gpg_verify_result_lookup (fixture->result, fingerprint, &signature_index);
+  g_assert_true (signature_found);
+  g_assert_cmpint (signature_index, ==, expected_signature_index);
+
+  /* Lookup full fingerprint but using mixed-case hex. */
+  signature_index = 999999;
+  fingerprint = "68dCC2db4bEc5811C2573590bd9d2A44B7f541a6";
   signature_found
       = ostree_gpg_verify_result_lookup (fixture->result, fingerprint, &signature_index);
   g_assert_true (signature_found);
@@ -182,8 +188,9 @@ test_signature_lookup (TestFixture *fixture, gconstpointer user_data)
 
   /* Lookup abbreviated key ID. */
   signature_index = 999999;
+  fingerprint = "bd9d2a44b7f541a6";
   signature_found
-      = ostree_gpg_verify_result_lookup (fixture->result, fingerprint + 24, &signature_index);
+      = ostree_gpg_verify_result_lookup (fixture->result, fingerprint, &signature_index);
   g_assert_true (signature_found);
   g_assert_cmpint (signature_index, ==, expected_signature_index);
 
@@ -199,6 +206,14 @@ test_signature_lookup (TestFixture *fixture, gconstpointer user_data)
   expected_signature_index = 2;
   signature_index = 999999;
   fingerprint = "68dcc2db4bec5811c2573590bd9d2a44b7f541a6!";
+  signature_found
+      = ostree_gpg_verify_result_lookup (fixture->result, fingerprint, &signature_index);
+  g_assert_true (signature_found);
+  g_assert_cmpint (signature_index, ==, expected_signature_index);
+
+  /* Lookup full fingerprint by subkey, case-insensitively. */
+  signature_index = 999999;
+  fingerprint = "68Dcc2DB4bec5811c2573590bd9d2a44b7f541A6!";
   signature_found
       = ostree_gpg_verify_result_lookup (fixture->result, fingerprint, &signature_index);
   g_assert_true (signature_found);

@@ -278,10 +278,10 @@ ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result, const gchar *key
       if ((match_only_subkey &&
            /* compare without the trailing `!`: */
            strlen (signature->fpr) == key_id_len - 1
-           && strncmp (key_id, signature->fpr, key_id_len - 1) == 0)
+           && g_ascii_strncasecmp (key_id, signature->fpr, key_id_len - 1) == 0)
           || (!match_only_subkey &&
               /* the first subkey in the list is the primary key: */
-              !g_strcmp0 (lookup_key->subkeys->fpr, signature_key->subkeys->fpr)))
+              g_ascii_strcasecmp (lookup_key->subkeys->fpr, signature_key->subkeys->fpr) == 0))
         {
 
           if (out_signature_index != NULL)
