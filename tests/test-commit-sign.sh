@@ -30,7 +30,7 @@ fi
 
 echo "1..11"
 
-keyid="7FCA23D8472CDAFA"
+keyid="${TEST_GPG_KEYID_1}"
 oldpwd=`pwd`
 mkdir ostree-srv
 cd ostree-srv
