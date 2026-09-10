@@ -28,7 +28,7 @@ if test -z "${OSTREE_HTTPD}"; then
     exit 0
 fi
 
-echo "1..7"
+echo "1..9"
 
 keyid="7FCA23D8472CDAFA"
 oldpwd=`pwd`
@@ -148,5 +148,19 @@ ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo show main >show.txt
 assert_not_file_has_content show.txt 'Found.*signature'
 echo "ok pull sig deleted"
+
+# Try committing with an invalid key ID
+if ${CMD_PREFIX} ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "A remote commit with invalid --gpg-sign" -m "Some Commit body" --gpg-sign="" --gpg-homedir=${test_tmpdir}/gpghome 2>commit.txt; then
+    assert_not_reached "commit with invalid --gpg-sign unexpectedly succeeded!"
+fi
+assert_file_has_content commit.txt 'Invalid key ID'
+echo "ok commit --gpg-sign validation"
+
+# Try signing with an invalid key ID
+if ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo gpg-sign --gpg-homedir=${test_tmpdir}/gpghome main "" 2>gpg-sign.txt; then
+    assert_not_reached "gpg-sign with invalid key ID unexpectedly succeeded!"
+fi
+assert_file_has_content gpg-sign.txt 'Key IDs must be valid'
+echo "ok gpg-sign key ID validation"
 
 rm -rf repo gnomerepo-files

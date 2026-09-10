@@ -5242,6 +5242,8 @@ ostree_repo_sign_commit (OstreeRepo *self, const gchar *commit_checksum, const g
   g_autoptr (GBytes) commit_data = NULL;
   g_autoptr (GBytes) signature = NULL;
 
+  g_return_val_if_fail (key_id != NULL && ot_validate_gpg_key_id (key_id, NULL), FALSE);
+
   g_autoptr (GVariant) commit_variant = NULL;
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, commit_checksum, &commit_variant,
                                  error))
@@ -5953,6 +5955,14 @@ regenerate_metadata (OstreeRepo *self, gboolean do_metadata_commit, GVariant *ad
           if (sign == NULL)
             return FALSE;
         }
+
+#ifndef OSTREE_DISABLE_GPGME
+      for (size_t i = 0; gpg_key_ids != NULL && gpg_key_ids[i] != NULL; i++)
+        {
+          if (!ot_validate_gpg_key_id (gpg_key_ids[i], NULL))
+            return glnx_throw (error, "Invalid key ID in gpg-key-ids");
+        }
+#endif
     }
 
   const gchar *main_collection_id = ostree_repo_get_collection_id (self);

@@ -211,6 +211,15 @@ ostree_builtin_gpg_sign (int argc, char **argv, OstreeCommandInvocation *invocat
   char **key_ids = argv + 2;
   int n_key_ids = argc - 2;
 
+  for (int i = 0; i < n_key_ids; i++)
+    {
+      if (!ot_validate_gpg_key_id (key_ids[i], NULL))
+        {
+          usage_error (context, "Key IDs must be valid", error);
+          return FALSE;
+        }
+    }
+
   g_autofree char *resolved_commit = NULL;
   if (!ostree_repo_resolve_rev (repo, commit, FALSE, &resolved_commit, error))
     return FALSE;

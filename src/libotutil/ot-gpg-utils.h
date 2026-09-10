@@ -46,4 +46,6 @@ void ot_gpgme_kill_agent (const char *homedir);
 gboolean ot_gpg_wkd_urls (const char *email, char **out_advanced_url, char **out_direct_url,
                           GError **error);
 
+gboolean ot_validate_gpg_key_id (const char *key_id, GError **error);
+
 G_END_DECLS
