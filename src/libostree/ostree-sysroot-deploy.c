@@ -27,11 +27,11 @@
 #include <linux/kexec.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
 #include <sys/poll.h>
 #include <sys/socket.h>
-#include <string.h>
 #include <sys/statvfs.h>
 
 #ifdef HAVE_LIBSYSTEMD
@@ -3452,12 +3452,14 @@ sysroot_cleanup_orphaned_selinux_policy (int deployment_dfd, int merge_deploymen
         continue;
 
       g_autofree char *new_upstream_dir = g_strdup_printf ("usr/etc/selinux/%s", dent->d_name);
-      if (!glnx_fstatat_allow_noent (deployment_dfd, new_upstream_dir, &stbuf, AT_SYMLINK_NOFOLLOW, error))
+      if (!glnx_fstatat_allow_noent (deployment_dfd, new_upstream_dir, &stbuf, AT_SYMLINK_NOFOLLOW,
+                                     error))
         return FALSE;
       gboolean new_upstream_exists = (errno == 0);
 
       g_autofree char *old_upstream_dir = g_strdup_printf ("usr/etc/selinux/%s", dent->d_name);
-      if (!glnx_fstatat_allow_noent (merge_deployment_dfd, old_upstream_dir, &stbuf, AT_SYMLINK_NOFOLLOW, error))
+      if (!glnx_fstatat_allow_noent (merge_deployment_dfd, old_upstream_dir, &stbuf,
+                                     AT_SYMLINK_NOFOLLOW, error))
         return FALSE;
       gboolean old_upstream_exists = (errno == 0);
 
@@ -3474,7 +3476,8 @@ sysroot_cleanup_orphaned_selinux_policy (int deployment_dfd, int merge_deploymen
       while (TRUE)
         {
           struct dirent *store_dent;
-          if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&store_iter, &store_dent, cancellable, error))
+          if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&store_iter, &store_dent, cancellable,
+                                                           error))
             return FALSE;
           if (store_dent == NULL)
             break;
@@ -3484,8 +3487,8 @@ sysroot_cleanup_orphaned_selinux_policy (int deployment_dfd, int merge_deploymen
 
           g_autofree char *new_upstream_file
               = g_strdup_printf ("usr/etc/selinux/%s/%s", dent->d_name, store_dent->d_name);
-          if (!glnx_fstatat_allow_noent (deployment_dfd, new_upstream_file, &stbuf, AT_SYMLINK_NOFOLLOW,
-                                         error))
+          if (!glnx_fstatat_allow_noent (deployment_dfd, new_upstream_file, &stbuf,
+                                         AT_SYMLINK_NOFOLLOW, error))
             return FALSE;
           gboolean exists_in_new = (errno == 0);
 
@@ -3509,13 +3512,15 @@ sysroot_cleanup_orphaned_selinux_policy (int deployment_dfd, int merge_deploymen
           g_autofree char *old_upstream_contents = NULL;
           gsize old_upstream_len = 0;
           if (!glnx_file_get_contents_utf8_at (merge_deployment_dfd, old_upstream_file,
-                                               &old_upstream_contents, &old_upstream_len, NULL, error))
+                                               &old_upstream_contents, &old_upstream_len, NULL,
+                                               error))
             return FALSE;
 
           g_autofree char *new_upstream_contents = NULL;
           gsize new_upstream_len = 0;
-          if (!glnx_file_get_contents_utf8_at (deployment_dfd, new_upstream_file, &new_upstream_contents,
-                                               &new_upstream_len, NULL, error))
+          if (!glnx_file_get_contents_utf8_at (deployment_dfd, new_upstream_file,
+                                               &new_upstream_contents, &new_upstream_len, NULL,
+                                               error))
             return FALSE;
 
           g_autofree char *new_etc_contents = NULL;
@@ -3534,8 +3539,10 @@ sysroot_cleanup_orphaned_selinux_policy (int deployment_dfd, int merge_deploymen
           g_autofree char **new_lines = g_strsplit (new_upstream_contents, "\n", -1);
           g_autofree char **etc_lines = g_strsplit (new_etc_contents, "\n", -1);
 
-          GHashTable *old_upstream_set = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-          GHashTable *new_upstream_set = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+          GHashTable *old_upstream_set
+              = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+          GHashTable *new_upstream_set
+              = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
           for (guint i = 0; old_lines[i] != NULL; i++)
             g_hash_table_insert (old_upstream_set, g_strdup (old_lines[i]), GINT_TO_POINTER (1));
@@ -3569,8 +3576,8 @@ sysroot_cleanup_orphaned_selinux_policy (int deployment_dfd, int merge_deploymen
           if (changed)
             {
               if (!glnx_file_replace_contents_at (store_iter.fd, store_dent->d_name,
-                                                  (guint8 *)cleaned.str, cleaned.len, 0, cancellable,
-                                                  error))
+                                                  (guint8 *)cleaned.str, cleaned.len, 0,
+                                                  cancellable, error))
                 return glnx_prefix_error (error, "Rewriting %s/%s", dent->d_name,
                                           store_dent->d_name);
             }
@@ -3615,8 +3622,7 @@ sysroot_finalize_selinux_policy (int deployment_dfd, int merge_deployment_dfd,
     {
       ot_journal_print (LOG_WARNING, "Failed to cleanup orphaned SELinux policy: %s",
                         local_error->message);
-      g_printerr ("Warning: failed to cleanup orphaned SELinux policy: %s\n",
-                  local_error->message);
+      g_printerr ("Warning: failed to cleanup orphaned SELinux policy: %s\n", local_error->message);
       g_clear_error (&local_error);
     }
 
@@ -3748,11 +3754,13 @@ sysroot_finalize_deployment (OstreeSysroot *self, OstreeDeployment *deployment,
       g_autofree char *merge_deployment_path
           = ostree_sysroot_get_deployment_dirpath (self, merge_deployment);
       glnx_autofd int merge_deployment_dfd = -1;
-      if (!glnx_opendirat (self->sysroot_fd, merge_deployment_path, FALSE, &merge_deployment_dfd, error))
+      if (!glnx_opendirat (self->sysroot_fd, merge_deployment_path, FALSE, &merge_deployment_dfd,
+                           error))
         return FALSE;
 
 #ifdef HAVE_SELINUX
-      if (!sysroot_finalize_selinux_policy (deployment_dfd, merge_deployment_dfd, cancellable, error))
+      if (!sysroot_finalize_selinux_policy (deployment_dfd, merge_deployment_dfd, cancellable,
+                                            error))
         return FALSE;
 #endif /* HAVE_SELINUX */
     }
