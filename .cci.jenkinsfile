@@ -56,13 +56,19 @@ cosaPod(memory: "9Gi", cpu: "4") {
     shwrap("""
       # Make sure none of the files in the unstashed build are setgid
       chmod -c -R g-s installed/
-      # Move the bits into the cosa pod (but only if major versions match)
+      # Move the bits into the cosa pod (but only if major versions match).
+      # We run unprivileged: the target directories are root-owned but
+      # group-writable (coreos-assembler#4410).  rsync insists on
+      # temporarily chmod'ing directories that lack the owner-write bit,
+      # which fails with EPERM since we don't own them, so use cp instead.
+      # --remove-destination replaces the existing root-owned files
+      # (which we can't open for writing) rather than truncating them.
       buildroot_id=\$(cat installed/buildroot-id)
       osver=\$(. /usr/lib/os-release && echo \$VERSION_ID)
       if test \$osver = \$buildroot_id; then
-        rsync -rlv installed/rootfs/ /
+        cp -dR --remove-destination installed/rootfs/. /
       fi
-      rsync -rlv installed/tests/ /
+      cp -dR --remove-destination installed/tests/. /
       coreos-assembler init --force https://github.com/coreos/fedora-coreos-config
       mkdir -p overrides/rootfs
       # And override the on-host bits
