@@ -27,8 +27,8 @@ stage("Build") {
             make -C target/c check
           """)
         } finally {
-            shwrap("cat test-suite.log || true")
-            archiveArtifacts allowEmptyArchive: true, artifacts: 'test-suite.log'
+            shwrap("cat target/c/test-suite.log || true")
+            archiveArtifacts allowEmptyArchive: true, artifacts: 'target/c/test-suite.log'
         }
       }
       stage("Build installed tests") {
