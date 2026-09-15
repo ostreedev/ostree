@@ -595,6 +595,17 @@ ostree_builtin_commit (int argc, char **argv, OstreeCommandInvocation *invocatio
       goto out;
     }
 
+#ifndef OSTREE_DISABLE_GPGME
+  for (size_t i = 0; opt_gpg_key_ids != NULL && opt_gpg_key_ids[i] != NULL; i++)
+    {
+      if (!ot_validate_gpg_key_id (opt_gpg_key_ids[i], NULL))
+        {
+          glnx_throw (error, "Invalid key ID passed to --gpg-sign");
+          goto out;
+        }
+    }
+#endif
+
   if (opt_canonical_permissions || repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_CANONICAL_PERMISSIONS;
   if (opt_no_xattrs || repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY)

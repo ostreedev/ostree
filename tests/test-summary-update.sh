@@ -24,7 +24,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..2"
+echo "1..3"
 
 COMMIT_SIGN=""
 if has_ostree_feature gpgme; then
@@ -132,3 +132,14 @@ cat files | wc -l > files-count
 assert_file_has_content files-count "^1$"
 
 echo "ok 2 update summary with collections"
+
+# Try updating the summary with an invalid key ID
+if has_ostree_feature gpgme; then
+    if ${CMD_PREFIX} ostree --repo=repo summary --update --gpg-sign="" 2>summary.txt; then
+        assert_not_reached "summary update with invalid --gpg-sign unexpectedly succeeded!"
+    fi
+    assert_file_has_content summary.txt 'Invalid key ID'
+    echo "ok --gpg-sign validation"
+else
+    echo "ok # SKIP --gpg-sign validation as GPGME is disabled"
+fi
