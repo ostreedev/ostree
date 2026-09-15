@@ -107,6 +107,25 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
             </varlistentry>
 
             <varlistentry>
+                <term><option>-j</option>, <option>--threads</option>[=<replaceable>VALUE</replaceable>]</term>
+
+                <listitem><para>
+                    Compress delta parts in parallel. <replaceable>VALUE</replaceable> is
+                    an integer in <arg choice="plain">0</arg>..<arg choice="plain">256</arg>
+                    (values <arg choice="plain">&gt; 1</arg> enable parallel compression with
+                    that many workers; <arg choice="plain">0</arg> and <arg choice="plain">1</arg>
+                    are serial) or one of <arg choice="plain">true</arg>,
+                    <arg choice="plain">yes</arg>, <arg choice="plain">on</arg>,
+                    <arg choice="plain">auto</arg> (use all CPUs) or
+                    <arg choice="plain">false</arg>, <arg choice="plain">no</arg>,
+                    <arg choice="plain">off</arg> (serial). Bare <option>--threads</option>
+                    with no value is equivalent to <arg choice="plain">auto</arg>.
+                    Defaults to serial; the <envar>OSTREE_DELTA_COMPRESS_THREADS</envar>
+                    environment variable is consulted when this option is not set.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--sign-type</option>=ENGINE</term>
 
                 <listitem><para>
