@@ -44,6 +44,9 @@
 #include "ostree-core.h"
 #include "ostree-sign-dummy.h"
 #include "ostree-sign-ed25519.h"
+#if defined(HAVE_PGP)
+#include "ostree-sign-pgp.h"
+#endif
 #include "ostree-sign-private.h"
 #include "ostree-sign-spki.h"
 #include "ostree-sign.h"
@@ -67,6 +70,9 @@ _sign_type sign_types[] = {
 #if defined(HAVE_SPKI)
   { OSTREE_SIGN_NAME_SPKI, 0 },
 #endif
+#if defined(HAVE_PGP)
+  { OSTREE_SIGN_NAME_PGP, 0 },
+#endif
   { "dummy", 0 }
 };
 
@@ -77,6 +83,9 @@ enum
 #endif
 #if defined(HAVE_SPKI)
   SIGN_SPKI,
+#endif
+#if defined(HAVE_PGP)
+  SIGN_PGP,
 #endif
   SIGN_DUMMY
 };
@@ -551,6 +560,10 @@ ostree_sign_get_by_name (const gchar *name, GError **error)
   if (sign_types[SIGN_SPKI].type == 0)
     sign_types[SIGN_SPKI].type = OSTREE_TYPE_SIGN_SPKI;
 #endif
+#if defined(HAVE_PGP)
+  if (sign_types[SIGN_PGP].type == 0)
+    sign_types[SIGN_PGP].type = OSTREE_TYPE_SIGN_PGP;
+#endif
   if (sign_types[SIGN_DUMMY].type == 0)
     sign_types[SIGN_DUMMY].type = OSTREE_TYPE_SIGN_DUMMY;
 
@@ -678,6 +691,10 @@ ostree_sign_read_pk (OstreeSign *self, GInputStream *stream)
   if (OSTREE_IS_SIGN_SPKI (self))
     return OSTREE_BLOB_READER (_ostree_blob_reader_pem_new (stream, "PUBLIC KEY"));
 #endif
+#if defined(HAVE_PGP)
+  if (OSTREE_IS_SIGN_PGP (self))
+    return OSTREE_BLOB_READER (_ostree_blob_reader_raw_new (stream));
+#endif
   if (OSTREE_IS_SIGN_DUMMY (self))
     return OSTREE_BLOB_READER (_ostree_blob_reader_raw_new (stream));
   return NULL;
@@ -704,6 +721,10 @@ ostree_sign_read_sk (OstreeSign *self, GInputStream *stream)
 #if defined(HAVE_SPKI)
   if (OSTREE_IS_SIGN_SPKI (self))
     return OSTREE_BLOB_READER (_ostree_blob_reader_pem_new (stream, "PRIVATE KEY"));
+#endif
+#if defined(HAVE_PGP)
+  if (OSTREE_IS_SIGN_PGP (self))
+    return OSTREE_BLOB_READER (_ostree_blob_reader_raw_new (stream));
 #endif
   if (OSTREE_IS_SIGN_DUMMY (self))
     return OSTREE_BLOB_READER (_ostree_blob_reader_raw_new (stream));

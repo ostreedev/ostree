@@ -31,7 +31,7 @@ name = "integration"
 path = "rust-bindings/tests/tests.rs"
 
 [workspace]
-members = [".", "rust-bindings/sys"]
+members = [".", "rust-bindings/sys", "src/ostree-sequoia"]
 
 [dependencies]
 base64 = "0.20.0"
