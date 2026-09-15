@@ -149,6 +149,35 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
             </varlistentry>
 
             <varlistentry>
+                <term><option>--sign-verify</option>=KEYTYPE=[inline|file]:PUBKEY</term>
+
+                <listitem><para>
+                    Require commits to be signed by the given public key.
+                    KEYTYPE names a signature engine, currently
+                    <literal>ed25519</literal>. The key is given either
+                    literally, as <literal>inline:PUBKEY</literal>, or as a
+                    path to a file of keys, as
+                    <literal>file:/path/to/keys</literal>.
+                </para><para>
+                    This writes the <varname>sign-verify</varname> option and
+                    the matching <varname>verification-KEYTYPE-key</varname> or
+                    <varname>verification-KEYTYPE-file</varname> companion; see
+                    <citerefentry><refentrytitle>ostree.repo-config</refentrytitle><manvolnum>5</manvolnum></citerefentry>.
+                    It does not disable GPG verification, which is enabled by
+                    default.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--no-sign-verify</option></term>
+
+                <listitem><para>
+                    Disable signature verification. This disables GPG
+                    verification as well.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--gpg-import</option>=FILE</term>
 
                 <listitem><para>

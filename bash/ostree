@@ -994,6 +994,7 @@ _ostree_remote_add() {
         --if-not-exists
         --force
         --no-gpg-verify
+        --no-sign-verify
     "
 
     local options_with_args="
@@ -1002,6 +1003,7 @@ _ostree_remote_add() {
         --gpg-import
         --repo
         --set
+        --sign-verify
         --sysroot
     "
 
