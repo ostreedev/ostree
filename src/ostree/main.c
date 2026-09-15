@@ -87,6 +87,19 @@ main (int argc, char **argv)
   g_autofree gchar *ext_command = ostree_command_lookup_external (argc, argv, commands);
   if (ext_command != NULL)
     {
+      /* Strip the subcommand verb from argv so it is not passed to the
+       * external command as an unexpected argument (matching Git's
+       * behavior). The verb is the first non-option argument after argv[0]. */
+      for (guint i = 1; i < (guint)argc; i++)
+        {
+          if (argv[i] != NULL && !g_str_has_prefix (argv[i], "-")
+              && g_strcmp0 (argv[i], "") != 0)
+            {
+              for (guint j = i; j < (guint)argc; j++)
+                argv[j] = argv[j + 1];
+              break;
+            }
+        }
       argv[0] = ext_command;
       return ostree_command_exec_external (argv);
     }
