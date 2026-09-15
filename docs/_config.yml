@@ -25,6 +25,10 @@ exclude:
 include: [reference, man]
 
 remote_theme: just-the-docs/just-the-docs@v0.4.1
+
+# Render ```mermaid fenced blocks (used by bootconfig-extra.md)
+mermaid:
+  version: "10.9.1"
 plugins:
   - jekyll-remote-theme
 

@@ -107,6 +107,10 @@ failure mode can be confusing (the machine will reboot into the same
 deployment). In systems where the workload is well-understood and not subject to
 the `/etc` issue above, it may be better to not stage deployments.
 
+Because the bootloader entry of a staged deployment is only written at
+finalization, non-standard BLS keys need special handling to survive; see
+[Extension BLS keys and staged deployments](bootconfig-extra.md).
+
 ### The system /boot
 
 While OSTree parallel installs deployments cleanly inside the

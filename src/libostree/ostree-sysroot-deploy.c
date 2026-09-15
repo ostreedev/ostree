@@ -3811,6 +3811,15 @@ _ostree_sysroot_ensure_finalize_staged_service (GError **error)
  * Like ostree_sysroot_deploy_tree(), but "finalization" only occurs at OS
  * shutdown time.
  *
+ * Extension (non-standard) BLS keys such as `x-options-source-NAME` are
+ * carried through to the finalized bootloader entry.  A caller that manages
+ * such keys should set the complete desired set on the bootconfig of
+ * @merge_deployment via ostree_bootconfig_parser_set() before calling this
+ * function; that set then replaces any extension keys of a previously
+ * staged deployment.  Callers that do not touch extension keys inherit
+ * them from the previously staged deployment (if any) or from the
+ * merge deployment's on-disk entry.
+ *
  * Since: 2020.7
  */
 gboolean
@@ -3887,27 +3896,21 @@ ostree_sysroot_stage_tree_with_options (OstreeSysroot *self, const char *osname,
 
   /* Serialize any extension BLS keys (e.g. x-options-source-tuned).
    * These are custom keys set by consumers like bootc and need to survive
-   * the staging roundtrip so they are preserved during finalization at shutdown.
-   *
-   * First check the new deployment's bootconfig (in case the caller set keys
-   * on it directly).  If none found, fall back to the merge deployment's
-   * bootconfig, which carries the keys from the currently deployed BLS entry.
-   * This ensures that x-prefixed keys are inherited across staged deployments
-   * even though _ostree_deployment_set_bootconfig_from_kargs() creates a fresh
-   * bootconfig containing only the "options" key.
+   * the staging roundtrip so they are preserved during finalization at
+   * shutdown; _ostree_deployment_set_bootconfig_from_kargs() gives the new
+   * deployment a fresh bootconfig with only "options", so they have to come
+   * from elsewhere.  The selection logic (and its rationale) lives in
+   * _ostree_bootconfig_parser_select_staged_extra_keys().
    */
   {
-    GVariant *extra = NULL;
-    OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
-    if (bootconfig)
-      extra = _ostree_bootconfig_parser_get_extra_keys_variant (bootconfig);
-    if (!extra && merge_deployment)
-      {
-        OstreeBootconfigParser *merge_bootconfig
-            = ostree_deployment_get_bootconfig (merge_deployment);
-        if (merge_bootconfig)
-          extra = _ostree_bootconfig_parser_get_extra_keys_variant (merge_bootconfig);
-      }
+    OstreeBootconfigParser *merge_bootconfig
+        = merge_deployment ? ostree_deployment_get_bootconfig (merge_deployment) : NULL;
+    g_autoptr (GVariant) previously_staged = NULL;
+    if (self->staged_deployment_data)
+      previously_staged = g_variant_lookup_value (self->staged_deployment_data, "bootconfig-extra",
+                                                  G_VARIANT_TYPE ("a{ss}"));
+    g_autoptr (GVariant) extra
+        = _ostree_bootconfig_parser_select_staged_extra_keys (merge_bootconfig, previously_staged);
     if (extra)
       g_variant_builder_add (builder, "{sv}", "bootconfig-extra", extra);
   }

@@ -4,6 +4,7 @@
 
 #include "config.h"
 #define _OSTREE_PUBLIC
+#include "../src/libostree/ostree-autocleanups.h"
 #include "../src/libostree/ostree-bootconfig-parser.c"
 
 static void
@@ -254,6 +255,220 @@ test_extra_keys_parse_write_roundtrip (void)
   (void)rmdir (tmpdir);
 }
 
+/* Helpers for the select-staged-extra-keys tests below */
+static GVariant *
+make_extra (const char *k1, const char *v1, const char *k2, const char *v2)
+{
+  g_auto (GVariantBuilder) builder = OT_VARIANT_BUILDER_INITIALIZER;
+  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a{ss}"));
+  g_variant_builder_add (&builder, "{ss}", k1, v1);
+  if (k2)
+    g_variant_builder_add (&builder, "{ss}", k2, v2);
+  return g_variant_ref_sink (g_variant_builder_end (&builder));
+}
+
+static const char *
+extra_lookup (GVariant *extra, const char *key)
+{
+  const char *val = NULL;
+  g_assert_true (g_variant_lookup (extra, key, "&s", &val));
+  return val;
+}
+
+static gboolean
+extra_contains (GVariant *extra, const char *key)
+{
+  const char *val = NULL;
+  return g_variant_lookup (extra, key, "&s", &val);
+}
+
+/* Simulate the booted deployment's bootconfig as loaded from disk */
+static OstreeBootconfigParser *
+make_booted_bootconfig (const char *extra_key, const char *extra_val)
+{
+  g_autofree char *tmpdir = g_dir_make_tmp ("ostree-test-XXXXXX", NULL);
+  g_assert_nonnull (tmpdir);
+  g_autofree char *tmpfile = g_build_filename (tmpdir, "ostree-1.conf", NULL);
+  g_autoptr (GString) bls = g_string_new ("title Fedora Linux 43\n"
+                                          "version 6.8.0-300.fc40.x86_64\n"
+                                          "linux /vmlinuz-6.8.0\n"
+                                          "initrd /initramfs-6.8.0.img\n"
+                                          "options root=UUID=abc rw\n");
+  if (extra_key)
+    g_string_append_printf (bls, "%s %s\n", extra_key, extra_val);
+  g_assert_true (g_file_set_contents (tmpfile, bls->str, -1, NULL));
+
+  OstreeBootconfigParser *parser = ostree_bootconfig_parser_new ();
+  g_assert_true (ostree_bootconfig_parser_parse_at (parser, AT_FDCWD, tmpfile, NULL, NULL));
+  (void)unlink (tmpfile);
+  (void)rmdir (tmpdir);
+  return parser;
+}
+
+static void
+test_extra_keys_modified_flag (void)
+{
+  /* Parsing from disk does not count as a modification; setting a standard
+   * key does not either; setting an extension key does.  clone() carries
+   * the flag, clear() resets it.
+   */
+  g_autoptr (OstreeBootconfigParser) parser
+      = make_booted_bootconfig ("x-options-source-tuned", "nohz=full");
+  g_assert_false (_ostree_bootconfig_parser_get_extra_keys_modified (parser));
+
+  ostree_bootconfig_parser_set (parser, "options", "root=UUID=abc rw quiet");
+  g_assert_false (_ostree_bootconfig_parser_get_extra_keys_modified (parser));
+
+  ostree_bootconfig_parser_set (parser, "x-options-source-tuned", "nohz=on");
+  g_assert_true (_ostree_bootconfig_parser_get_extra_keys_modified (parser));
+
+  g_autoptr (OstreeBootconfigParser) clone = ostree_bootconfig_parser_clone (parser);
+  g_assert_true (_ostree_bootconfig_parser_get_extra_keys_modified (clone));
+
+  _ostree_bootconfig_parser_clear_extra_keys_modified (parser);
+  g_assert_false (_ostree_bootconfig_parser_get_extra_keys_modified (parser));
+  /* The clone is independent */
+  g_assert_true (_ostree_bootconfig_parser_get_extra_keys_modified (clone));
+
+  /* The keys ostree rebuilds at finalization are standard, not extension */
+  g_autoptr (OstreeBootconfigParser) fresh = ostree_bootconfig_parser_new ();
+  ostree_bootconfig_parser_set (fresh, "aboot", "/x/aboot.img");
+  ostree_bootconfig_parser_set (fresh, "abootcfg", "/x/aboot.cfg");
+  ostree_bootconfig_parser_set (fresh, "fdtdir", "/x/dtb");
+  ostree_bootconfig_parser_set (fresh, "devicetree", "/x/foo.dtb");
+  g_assert_false (_ostree_bootconfig_parser_get_extra_keys_modified (fresh));
+  g_assert_null (_ostree_bootconfig_parser_get_extra_keys_variant (fresh));
+}
+
+static void
+test_select_staged_no_sources (void)
+{
+  /* Nothing anywhere: no merge deployment, nothing previously staged */
+  g_assert_null (_ostree_bootconfig_parser_select_staged_extra_keys (NULL, NULL));
+
+  /* Merge deployment without extension keys and nothing staged */
+  g_autoptr (OstreeBootconfigParser) booted = make_booted_bootconfig (NULL, NULL);
+  g_assert_null (_ostree_bootconfig_parser_select_staged_extra_keys (booted, NULL));
+}
+
+static void
+test_select_staged_first_staging (void)
+{
+  /* First staging of the boot by an unaware consumer: inherit the on-disk
+   * keys of the merge deployment.
+   */
+  g_autoptr (OstreeBootconfigParser) booted
+      = make_booted_bootconfig ("x-options-source-tuned", "nohz=full");
+  g_autoptr (GVariant) extra = _ostree_bootconfig_parser_select_staged_extra_keys (booted, NULL);
+  g_assert_nonnull (extra);
+  g_assert_false (g_variant_is_floating (extra));
+  g_assert_cmpuint (g_variant_n_children (extra), ==, 1);
+  g_assert_cmpstr (extra_lookup (extra, "x-options-source-tuned"), ==, "nohz=full");
+}
+
+static void
+test_select_staged_aware_consumer_wins (void)
+{
+  /* The #3609 regression: bootc staged a tombstone for dracut earlier in
+   * this boot, then re-adds dracut.  Its in-memory update on the merge
+   * deployment must win over the stale previously staged tombstone.
+   */
+  g_autoptr (OstreeBootconfigParser) booted
+      = make_booted_bootconfig ("x-options-source-tuned", "nohz=full");
+  g_autoptr (GVariant) staged
+      = make_extra ("x-options-source-tuned", "nohz=full", "x-options-source-dracut", "");
+
+  ostree_bootconfig_parser_set (booted, "x-options-source-tuned", "nohz=full");
+  ostree_bootconfig_parser_set (booted, "x-options-source-dracut", "rd.driver.pre=vfio-pci");
+
+  g_autoptr (GVariant) extra = _ostree_bootconfig_parser_select_staged_extra_keys (booted, staged);
+  g_assert_nonnull (extra);
+  g_assert_cmpuint (g_variant_n_children (extra), ==, 2);
+  g_assert_cmpstr (extra_lookup (extra, "x-options-source-dracut"), ==, "rd.driver.pre=vfio-pci");
+  g_assert_cmpstr (extra_lookup (extra, "x-options-source-tuned"), ==, "nohz=full");
+}
+
+static void
+test_select_staged_aware_consumer_same_as_disk (void)
+{
+  /* The aware consumer sets a value identical to what is on disk, after a
+   * different value was staged earlier this boot.  A "did it change vs.
+   * disk" heuristic would wrongly pick the staged value; the modified flag
+   * must make the caller's set win.
+   */
+  g_autoptr (OstreeBootconfigParser) booted
+      = make_booted_bootconfig ("x-options-source-tuned", "nohz=full");
+  g_autoptr (GVariant) staged = make_extra ("x-options-source-tuned", "nohz=on", NULL, NULL);
+
+  ostree_bootconfig_parser_set (booted, "x-options-source-tuned", "nohz=full");
+
+  g_autoptr (GVariant) extra = _ostree_bootconfig_parser_select_staged_extra_keys (booted, staged);
+  g_assert_nonnull (extra);
+  g_assert_cmpstr (extra_lookup (extra, "x-options-source-tuned"), ==, "nohz=full");
+}
+
+static void
+test_select_staged_unaware_consumer_inherits_staged (void)
+{
+  /* Cross-consumer: bootc staged tuned + dracut earlier this boot, and the
+   * booted entry only carries an old tombstone.  rpm-ostree now re-stages
+   * without touching extension keys: it must inherit the previously staged
+   * set, not the on-disk tombstone (which is what made PR #3611's TMT test
+   * fail at boot 5).
+   */
+  g_autoptr (OstreeBootconfigParser) booted
+      = make_booted_bootconfig ("x-options-source-crosstest", "");
+  g_autoptr (GVariant) staged = make_extra ("x-options-source-tuned", "nohz=on rcu_nocbs=2-7",
+                                            "x-options-source-dracut", "rd.driver.pre=vfio-pci");
+
+  /* rpm-ostree does touch "options" -- a standard key -- which must not
+   * count as an extension key modification.
+   */
+  ostree_bootconfig_parser_set (booted, "options", "root=UUID=abc rw localkarg=fromrpm");
+
+  g_autoptr (GVariant) extra = _ostree_bootconfig_parser_select_staged_extra_keys (booted, staged);
+  g_assert_nonnull (extra);
+  g_assert_true (extra == staged);
+  g_assert_cmpuint (g_variant_n_children (extra), ==, 2);
+  g_assert_cmpstr (extra_lookup (extra, "x-options-source-tuned"), ==, "nohz=on rcu_nocbs=2-7");
+  g_assert_cmpstr (extra_lookup (extra, "x-options-source-dracut"), ==, "rd.driver.pre=vfio-pci");
+  g_assert_false (extra_contains (extra, "x-options-source-crosstest"));
+}
+
+static void
+test_select_staged_unaware_consumer_no_merge_deployment (void)
+{
+  /* No merge deployment at all, but something was staged earlier */
+  g_autoptr (GVariant) staged = make_extra ("x-options-source-tuned", "nohz=on", NULL, NULL);
+  g_autoptr (GVariant) extra = _ostree_bootconfig_parser_select_staged_extra_keys (NULL, staged);
+  g_assert_true (extra == staged);
+}
+
+static void
+test_select_staged_restored_is_not_modified (void)
+{
+  /* Restoring bootconfig-extra onto a deployment (as
+   * _ostree_sysroot_reload_staged() does) then clearing the flag means a
+   * later staging with that deployment as merge deployment is treated as
+   * unaware: it should prefer the previously staged data.
+   */
+  g_autoptr (OstreeBootconfigParser) restored = ostree_bootconfig_parser_new ();
+  ostree_bootconfig_parser_set (restored, "options", "root=UUID=abc rw");
+  ostree_bootconfig_parser_set (restored, "x-options-source-tuned", "nohz=full");
+  _ostree_bootconfig_parser_clear_extra_keys_modified (restored);
+
+  g_autoptr (GVariant) staged = make_extra ("x-options-source-tuned", "nohz=on", NULL, NULL);
+  g_autoptr (GVariant) extra
+      = _ostree_bootconfig_parser_select_staged_extra_keys (restored, staged);
+  g_assert_cmpstr (extra_lookup (extra, "x-options-source-tuned"), ==, "nohz=on");
+
+  /* ...and a consumer write after the restore flips it back to authoritative */
+  ostree_bootconfig_parser_set (restored, "x-options-source-tuned", "nohz=off");
+  g_autoptr (GVariant) extra2
+      = _ostree_bootconfig_parser_select_staged_extra_keys (restored, staged);
+  g_assert_cmpstr (extra_lookup (extra2, "x-options-source-tuned"), ==, "nohz=off");
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -269,5 +484,19 @@ main (int argc, char *argv[])
   g_test_add_func ("/bootconfig-parser/extra-keys/roundtrip", test_extra_keys_roundtrip);
   g_test_add_func ("/bootconfig-parser/extra-keys/parse-write-roundtrip",
                    test_extra_keys_parse_write_roundtrip);
+  g_test_add_func ("/bootconfig-parser/extra-keys/modified-flag", test_extra_keys_modified_flag);
+  g_test_add_func ("/bootconfig-parser/select-staged/no-sources", test_select_staged_no_sources);
+  g_test_add_func ("/bootconfig-parser/select-staged/first-staging",
+                   test_select_staged_first_staging);
+  g_test_add_func ("/bootconfig-parser/select-staged/aware-consumer-wins",
+                   test_select_staged_aware_consumer_wins);
+  g_test_add_func ("/bootconfig-parser/select-staged/aware-consumer-same-as-disk",
+                   test_select_staged_aware_consumer_same_as_disk);
+  g_test_add_func ("/bootconfig-parser/select-staged/unaware-consumer-inherits-staged",
+                   test_select_staged_unaware_consumer_inherits_staged);
+  g_test_add_func ("/bootconfig-parser/select-staged/unaware-consumer-no-merge-deployment",
+                   test_select_staged_unaware_consumer_no_merge_deployment);
+  g_test_add_func ("/bootconfig-parser/select-staged/restored-is-not-modified",
+                   test_select_staged_restored_is_not_modified);
   return g_test_run ();
 }
