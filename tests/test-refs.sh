@@ -23,7 +23,7 @@ set -euo pipefail
 
 setup_fake_remote_repo1 "archive"
 
-echo '1..7'
+echo '1..8'
 
 cd ${test_tmpdir}
 mkdir repo
@@ -228,3 +228,22 @@ if ${CMD_PREFIX} ostree --repo=repo refs -A --create foobar nonexistent 2>err.tx
 fi
 assert_file_has_content_literal err.txt 'Cannot create alias to non-existent ref'
 echo "ok ref no broken alias"
+
+# Create commits for origin2 remote branches
+${CMD_PREFIX} ostree --repo=repo commit --branch=origin2:remote1 -m "test origin2 remote1" --tree=dir=tree
+${CMD_PREFIX} ostree --repo=repo commit --branch=origin2:remote2 -m "test origin2 remote2" --tree=dir=tree
+
+# Verify the refs exist
+${CMD_PREFIX} ostree --repo=repo refs > refs.txt
+assert_file_has_content refs.txt "origin2:remote1"
+assert_file_has_content refs.txt "origin2:remote2"
+
+# Delete all origin2 remote refs
+${CMD_PREFIX} ostree --repo=repo refs --delete origin2:
+
+# Verify the refs are deleted
+${CMD_PREFIX} ostree --repo=repo refs > refs.txt
+assert_not_file_has_content refs.txt "origin2:remote1"
+assert_not_file_has_content refs.txt "origin2:remote2"
+
+echo "ok delete remote refs"
