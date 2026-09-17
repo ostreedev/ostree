@@ -43,3 +43,10 @@ execute:
     how: fmf
     test:
       - /tmt/tests/tests/test-ostree-privileged
+
+/plan-bootconfig-extra-staging:
+  summary: Cross-consumer bootconfig-extra staging (multi-reboot)
+  discover:
+    how: fmf
+    test:
+      - /tmt/tests/tests/test-bootconfig-extra-staging
