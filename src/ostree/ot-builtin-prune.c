@@ -33,6 +33,7 @@ static gint opt_depth = -1;
 static gboolean opt_refs_only;
 static char *opt_delete_commit;
 static char *opt_keep_younger_than;
+static char *opt_keep_unreferenced_younger_than;
 static char **opt_retain_branch_depth;
 static char **opt_only_branches;
 static gboolean opt_commit_only;
@@ -53,6 +54,9 @@ static GOptionEntry options[] = {
     "COMMIT" },
   { "keep-younger-than", 0, 0, G_OPTION_ARG_STRING, &opt_keep_younger_than,
     "Prune all commits older than the specified date", "DATE" },
+  { "keep-unreferenced-younger-than", 0, 0, G_OPTION_ARG_STRING,
+    &opt_keep_unreferenced_younger_than, "Keep unreferenced commits newer than the specified date",
+    "DATE" },
   { "static-deltas-only", 0, 0, G_OPTION_ARG_NONE, &opt_static_deltas_only,
     "Change the behavior of delete-commit and keep-younger-than to prune only static deltas" },
   { "retain-branch-depth", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_retain_branch_depth,
@@ -153,6 +157,45 @@ traverse_keep_younger_than (OstreeRepo *repo, const char *checksum, struct times
   return TRUE;
 }
 
+static gboolean
+traverse_keep_unreferenced_younger_than (OstreeRepo *repo, struct timespec *ts,
+                                         OstreeRepoCommitTraverseFlags traverse_flags,
+                                         GHashTable *reachable, GCancellable *cancellable,
+                                         GError **error)
+{
+  g_autoptr (GHashTable) commits = NULL;
+
+  if (!ostree_repo_list_commit_objects_starting_with (repo, "", &commits, cancellable, error))
+    return FALSE;
+
+  GLNX_HASH_TABLE_FOREACH (commits, GVariant *, serialized_key)
+    {
+      const char *checksum;
+      OstreeObjectType objtype;
+      g_autoptr (GVariant) commit = NULL;
+
+      if (g_hash_table_contains (reachable, serialized_key))
+        continue;
+
+      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
+      g_assert (objtype == OSTREE_OBJECT_TYPE_COMMIT);
+
+      if (!ostree_repo_load_variant_if_exists (repo, OSTREE_OBJECT_TYPE_COMMIT, checksum, &commit,
+                                               error))
+        return FALSE;
+      g_assert (commit);
+
+      if (ostree_commit_get_timestamp (commit) >= ts->tv_sec)
+        {
+          if (!ostree_repo_traverse_commit_with_flags (repo, traverse_flags, checksum, 0, reachable,
+                                                       NULL, cancellable, error))
+            return FALSE;
+        }
+    }
+
+  return TRUE;
+}
+
 gboolean
 ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation,
                       GCancellable *cancellable, GError **error)
@@ -211,7 +254,8 @@ ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation
   gint n_objects_total;
   gint n_objects_pruned;
   guint64 objsize_total;
-  if (!(opt_retain_branch_depth || opt_keep_younger_than || opt_only_branches))
+  if (!(opt_retain_branch_depth || opt_keep_younger_than || opt_keep_unreferenced_younger_than
+        || opt_only_branches))
     {
       if (!ostree_repo_prune (repo, pruneflags, opt_depth, &n_objects_total, &n_objects_pruned,
                               &objsize_total, cancellable, error))
@@ -235,6 +279,9 @@ ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation
       struct timespec keep_younger_than_ts = {
         0,
       };
+      struct timespec keep_unreferenced_younger_than_ts = {
+        0,
+      };
       GHashTableIter hash_iter;
       gpointer key, value;
 
@@ -245,6 +292,12 @@ ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation
         {
           if (!parse_datetime (&keep_younger_than_ts, opt_keep_younger_than, NULL))
             return glnx_throw (error, "Could not parse '%s'", opt_keep_younger_than);
+        }
+      if (opt_keep_unreferenced_younger_than)
+        {
+          if (!parse_datetime (&keep_unreferenced_younger_than_ts,
+                               opt_keep_unreferenced_younger_than, NULL))
+            return glnx_throw (error, "Could not parse '%s'", opt_keep_unreferenced_younger_than);
         }
 
       /* Process --retain-branch-depth */
@@ -353,6 +406,16 @@ ostree_builtin_prune (int argc, char **argv, OstreeCommandInvocation *invocation
                                                        reachable, NULL, cancellable, error))
             return FALSE;
         }
+
+      if (!(opt_retain_branch_depth || opt_keep_younger_than || opt_only_branches)
+          && !ostree_repo_traverse_reachable_refs (repo, opt_depth, reachable, cancellable, error))
+        return FALSE;
+
+      if (opt_keep_unreferenced_younger_than
+          && !traverse_keep_unreferenced_younger_than (repo, &keep_unreferenced_younger_than_ts,
+                                                       traverse_flags, reachable, cancellable,
+                                                       error))
+        return FALSE;
 
       /* We've gathered the reachable set; start the prune ✀ */
       {
