@@ -93,6 +93,19 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
             </varlistentry>
 
             <varlistentry>
+                <term><option>--keep-unreferenced-younger-than</option>=DATE</term>
+
+                <listitem><para>
+                  Keep otherwise unreferenced commits newer than DATE. This is
+                  useful when commits may be created concurrently with pruning.
+                  The format of DATE is the same as that accepted by GNU
+                  <literal>date</literal> utility - for more information see
+                  <literal>info date</literal>. Commits timestamped exactly at
+                  DATE are kept.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--depth</option>=DEPTH</term>
 
                 <listitem><para>
