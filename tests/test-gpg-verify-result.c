@@ -130,6 +130,7 @@ test_fixture_setup (TestFixture *fixture, gconstpointer user_data)
       gpgme_data_seek (signature_buffer, 0, SEEK_SET);
     }
 
+  gpgme_set_ctx_flag (result->context, "proc-all-sigs", "1");
   gpg_error = gpgme_op_verify (result->context, signature_buffer, data_buffer, NULL);
   assert_no_gpg_error (gpg_error, NULL);
 

@@ -312,6 +312,7 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier *self, GBytes *signed_da
       goto out;
     }
 
+  gpgme_set_ctx_flag (result->context, "proc-all-sigs", "1");
   gpg_error = gpgme_op_verify (result->context, signature_buffer, data_buffer, NULL);
   if (gpg_error != GPG_ERR_NO_ERROR)
     {
