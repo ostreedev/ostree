@@ -145,6 +145,17 @@ ostree_builtin_summary (int argc, char **argv, OstreeCommandInvocation *invocati
                                     error))
     return FALSE;
 
+#ifndef OSTREE_DISABLE_GPGME
+  for (size_t i = 0; opt_gpg_key_ids != NULL && opt_gpg_key_ids[i] != NULL; i++)
+    {
+      if (!ot_validate_gpg_key_id (opt_gpg_key_ids[i], error))
+        {
+          glnx_throw (error, "Invalid key ID passed to --gpg-sign");
+          return FALSE;
+        }
+    }
+#endif
+
   /* Initialize crypto system */
   if (opt_key_ids)
     {
