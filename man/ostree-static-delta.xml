@@ -66,6 +66,24 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
         <para>
             List and manipulate static delta files.
         </para>
+
+        <para>
+            A delta generated with a signature (see <option>--sign-type</option>
+            and <option>--sign</option> under 'Generate' Options) is written in a
+            different on-disk format, in which the superblock is wrapped in a
+            signed envelope. The <command>show</command> and
+            <command>verify</command> subcommands read that envelope, but
+            <command>ostree static-delta apply-offline</command> is the only
+            command that can apply a delta wrapped in one. <command>ostree
+            pull</command> parses a fetched superblock directly, so a pull that
+            reaches for a signed delta fails with <literal>Invalid checksum of
+            length 0 expected 32</literal>. A pull into an archive-mode
+            repository does not reach that point, because such a pull does not
+            use static deltas at all. Signed static deltas are therefore for
+            offline application only, such as from removable media. A delta that
+            will be served to <command>ostree pull</command> clients must be
+            generated unsigned.
+        </para>
     </refsect1>
 
     <refsect1>
@@ -115,6 +133,11 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                     signature types.
 
                     The default is <arg choice="plain">ed25519</arg>.
+                </para>
+                <para>
+                    Signing a delta makes it applicable only by
+                    <command>ostree static-delta apply-offline</command>; see the
+                    Description above.
                 </para></listitem>
             </varlistentry>
 
