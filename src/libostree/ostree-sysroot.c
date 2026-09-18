@@ -1170,8 +1170,12 @@ ostree_sysroot_initialize (OstreeSysroot *self, GError **error)
 
       const gboolean root_is_sysroot
           = (self->root_device == self_stbuf.st_dev && self->root_inode == self_stbuf.st_ino);
-
-      self->root_is_ostree_booted = (ostree_booted && root_is_sysroot);
+      /* Also consider ostree booted if sysroot path is /sysroot and ostree-booted exists.
+       * This handles Debian bootc systems using legacy ostree bind mount where
+       * / is a deployment subpath and not a bind mount of /sysroot. */
+      const gboolean sysroot_path_is_sysroot
+          = (g_strcmp0 (gs_file_get_path_cached (self->path), "/sysroot") == 0);
+      self->root_is_ostree_booted = (ostree_booted && (root_is_sysroot || sysroot_path_is_sysroot));
       g_debug ("root_is_ostree_booted: %d", self->root_is_ostree_booted);
       self->loadstate = OSTREE_SYSROOT_LOAD_STATE_INIT;
     }
