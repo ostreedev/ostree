@@ -813,6 +813,7 @@ _ostree_prune() {
         --delete-commit
         --depth
         --keep-younger-than
+        --keep-unreferenced-younger-than
         --repo
         --retain-branch-depth
     "

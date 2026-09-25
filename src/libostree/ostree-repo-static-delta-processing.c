@@ -361,6 +361,13 @@ do_content_open_generic (OstreeRepo *repo, StaticDeltaExecutionState *state,
   if (!read_varuint64 (state, &xattr_offset, error))
     return FALSE;
 
+  if (mode_offset >= g_variant_n_children (state->mode_dict))
+    return glnx_throw (error, "Static delta mode offset %" G_GUINT64_FORMAT " out of range",
+                       mode_offset);
+  if (xattr_offset >= g_variant_n_children (state->xattr_dict))
+    return glnx_throw (error, "Static delta xattr offset %" G_GUINT64_FORMAT " out of range",
+                       xattr_offset);
+
   g_autoptr (GVariant) modev = g_variant_get_child_value (state->mode_dict, mode_offset);
   guint32 uid, gid, mode;
   g_variant_get (modev, "(uuu)", &uid, &gid, &mode);

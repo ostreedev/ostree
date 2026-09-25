@@ -35,7 +35,8 @@ set_up_repo() {
 
   mkdir files
   pushd files
-  ${CMD_PREFIX} ostree --repo=../repo commit -s "Commit 1" -b original-ref > ../original-ref-checksum
+  echo 'unique collection-ref content' > unique
+  ${CMD_PREFIX} ostree --repo=../repo commit -s "Commit 1" -b original-ref --timestamp="1985-10-25 00:00:00 +0000" > ../original-ref-checksum
   popd
   ${CMD_PREFIX} ostree --repo=repo refs --collections --create=org.example.Collection:some-ref $(cat original-ref-checksum)
 }
@@ -49,22 +50,29 @@ fi
 
 # Pruning normally should do nothing.
 ${CMD_PREFIX} ostree --repo=repo prune --refs-only > prune
-assert_file_has_content prune "^Total objects: 3$"
+assert_file_has_content prune "^Total objects: 4$"
 assert_file_has_content prune "^No unreachable objects$"
 
 # Remove the original-ref so that only the some-ref with a collection ID points to the commit.
 ${CMD_PREFIX} ostree --repo=repo refs --delete original-ref
 
+# The selective prune path must retain old commits reachable only through a
+# collection ref, including their unique content and tree objects.
+${CMD_PREFIX} ostree --repo=repo prune --keep-unreferenced-younger-than="2000-01-01"
+${CMD_PREFIX} ostree --repo=repo checkout $(cat original-ref-checksum) collection-ref-checkout
+assert_file_has_content_literal collection-ref-checkout/unique 'unique collection-ref content'
+${CMD_PREFIX} ostree --repo=repo fsck
+
 ${CMD_PREFIX} ostree --repo=repo prune --refs-only > prune
-assert_file_has_content prune "^Total objects: 3$"
+assert_file_has_content prune "^Total objects: 4$"
 assert_file_has_content prune "^No unreachable objects$"
 
 # Remove the second ref so that the commit is now orphaned.
 ${CMD_PREFIX} ostree --repo=repo refs --collections --delete org.example.Collection
 
 ${CMD_PREFIX} ostree --repo=repo prune --refs-only > prune
-assert_file_has_content prune "^Total objects: 3$"
-assert_file_has_content prune "^Deleted 3 objects, [0-9]\+ bytes freed$"
+assert_file_has_content prune "^Total objects: 4$"
+assert_file_has_content prune "^Deleted 4 objects, [0-9]\+ bytes freed$"
 
 echo "ok 1 prune-collections"
 
@@ -73,7 +81,7 @@ set_up_repo
 rm -rf repo/refs/mirrors
 
 ${CMD_PREFIX} ostree --repo=repo prune --refs-only > prune
-assert_file_has_content prune "^Total objects: 3$"
+assert_file_has_content prune "^Total objects: 4$"
 assert_file_has_content prune "^No unreachable objects$"
 
 echo "ok 2 prune-collections in old repository"

@@ -119,6 +119,32 @@ assert_repo_has_n_commits repo 4
 ${CMD_PREFIX} ostree --repo=repo prune --keep-younger-than="1 week ago"
 assert_repo_has_n_commits repo 2
 
+# Keep an unreferenced commit at the cutoff, but prune an older one.
+unreferenced_cutoff="1985-10-25 00:00:00 +0000"
+echo "unreferenced new content" > tree/root/unreferenced-new
+${CMD_PREFIX} ostree --repo=repo commit --branch=unreferenced-new tree --timestamp="${unreferenced_cutoff}"
+unreferenced_new_rev=$($OSTREE --repo=repo rev-parse unreferenced-new)
+echo "unreferenced old content" > tree/root/unreferenced-old
+${CMD_PREFIX} ostree --repo=repo commit --branch=unreferenced-old tree --timestamp="1985-10-24 23:59:59 +0000"
+unreferenced_old_rev=$($OSTREE --repo=repo rev-parse unreferenced-old)
+${CMD_PREFIX} ostree --repo=repo refs --delete unreferenced-new
+${CMD_PREFIX} ostree --repo=repo refs --delete unreferenced-old
+${CMD_PREFIX} ostree --repo=repo prune --keep-unreferenced-younger-than="${unreferenced_cutoff}"
+$OSTREE show ${unreferenced_new_rev}
+$OSTREE checkout ${unreferenced_new_rev} unreferenced-new-checkout
+assert_file_has_content_literal unreferenced-new-checkout/root/unreferenced-new "unreferenced new content"
+if $OSTREE show ${unreferenced_old_rev}; then
+    assert_not_reached "old unreferenced commit was retained"
+fi
+$OSTREE fsck
+
+# Invalid dates must be rejected before pruning.
+if ${CMD_PREFIX} ostree --repo=repo prune --keep-unreferenced-younger-than=BACON 2>err.txt; then
+    assert_not_reached "invalid date was accepted"
+fi
+assert_file_has_content err.txt "Could not parse 'BACON'"
+tap_ok keep unreferenced younger than
+
 ${CMD_PREFIX} ostree --repo=repo commit --branch=oldcommit tree --timestamp="2005-10-29 12:43:29 +0000"
 oldcommit_rev=$($OSTREE --repo=repo rev-parse oldcommit)
 $OSTREE ls ${oldcommit_rev}

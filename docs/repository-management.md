@@ -250,6 +250,17 @@ will have "tombstone markers" added so that you know they were
 explicitly deleted, but all content in them (that is not referenced by
 a still retained commit) will be garbage collected.
 
+To avoid racing with builds which are creating commits, retain recent
+unreferenced commits too:
+
+```
+ostree --repo=repo-dev prune --keep-unreferenced-younger-than="1 week ago"
+```
+
+The date format is the same as GNU `date`. This retains each matching
+commit and its objects until it is old enough to prune; a commit whose
+timestamp is exactly the specified date is retained.
+
 
 ## Generating "scratch" deltas for efficient initial downloads
 
