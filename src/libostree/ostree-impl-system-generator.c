@@ -378,6 +378,19 @@ boot_mount_generator (const char *normal_dir, GError **error)
   if (symlinkat ("../boot.mount", normal_dir_dfd, "local-fs.target.requires/boot.mount") < 0)
     return glnx_throw_errno_prefix (error, "symlinkat");
 
+  /* When it can find the root disk, systemd-gpt-auto-generator sees our
+   * still-empty /boot and claims it for the ESP, generating boot.mount (which
+   * the unit above overrides) and a boot.automount with an idle timeout. That
+   * automount then fronts our bind mount: once idle it unmounts /boot (and
+   * stops local-fs.target, which requires boot.mount), and at shutdown
+   * stopping it detaches /boot underneath ostree-finalize-staged.service.
+   * /boot is ours here, so mask the automount.
+   *
+   * https://github.com/bootc-dev/bootc/issues/2402
+   */
+  if (symlinkat ("/dev/null", normal_dir_dfd, "boot.automount") < 0)
+    return glnx_throw_errno_prefix (error, "symlinkat(boot.automount)");
+
   return TRUE;
 }
 
