@@ -282,6 +282,12 @@ static gboolean
 load_variant (const char *root_mountpoint, const char *digest, const char *extension,
               const GVariantType *type, gboolean allow_noent, GVariant **out, GError **error)
 {
+  /* The path uses a two-character fanout prefix followed by `digest + 2`, so a
+   * digest shorter than the full checksum would be read past its end while
+   * formatting the path.  Validate the length before indexing into it. */
+  if (strlen (digest) != OSTREE_SHA256_STRING_LEN)
+    return glnx_throw (error, "Invalid object digest '%s'", digest);
+
   g_autofree char *path = g_strdup_printf ("%s/ostree/repo/objects/%.2s/%s.%s", root_mountpoint,
                                            digest, digest + 2, extension);
 
