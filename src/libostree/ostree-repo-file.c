@@ -156,13 +156,19 @@ _ostree_repo_file_new_for_commit (OstreeRepo *repo, const char *commit, GError *
     return NULL;
 
   /* PARSE OSTREE_OBJECT_TYPE_COMMIT */
+  const guchar *csum_bytes;
+
   g_variant_get_child (commit_v, 6, "@ay", &tree_contents_csum_v);
-  ostree_checksum_inplace_from_bytes (g_variant_get_data (tree_contents_csum_v),
-                                      tree_contents_csum);
+  csum_bytes = ostree_checksum_bytes_peek_validate (tree_contents_csum_v, error);
+  if (csum_bytes == NULL)
+    return NULL;
+  ostree_checksum_inplace_from_bytes (csum_bytes, tree_contents_csum);
 
   g_variant_get_child (commit_v, 7, "@ay", &tree_metadata_csum_v);
-  ostree_checksum_inplace_from_bytes (g_variant_get_data (tree_metadata_csum_v),
-                                      tree_metadata_csum);
+  csum_bytes = ostree_checksum_bytes_peek_validate (tree_metadata_csum_v, error);
+  if (csum_bytes == NULL)
+    return NULL;
+  ostree_checksum_inplace_from_bytes (csum_bytes, tree_metadata_csum);
 
   return _ostree_repo_file_new_root (repo, tree_contents_csum, tree_metadata_csum);
 }

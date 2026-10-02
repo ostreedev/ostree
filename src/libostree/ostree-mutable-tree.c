@@ -677,9 +677,16 @@ ostree_mutable_tree_new_from_commit (OstreeRepo *repo, const char *rev, GError *
   g_autoptr (GVariant) metadata_checksum_v = NULL;
   char contents_checksum[OSTREE_SHA256_STRING_LEN + 1];
   char metadata_checksum[OSTREE_SHA256_STRING_LEN + 1];
+  const guchar *csum_bytes;
   g_variant_get_child (commit_v, 6, "@ay", &contents_checksum_v);
-  ostree_checksum_inplace_from_bytes (g_variant_get_data (contents_checksum_v), contents_checksum);
+  csum_bytes = ostree_checksum_bytes_peek_validate (contents_checksum_v, error);
+  if (csum_bytes == NULL)
+    return NULL;
+  ostree_checksum_inplace_from_bytes (csum_bytes, contents_checksum);
   g_variant_get_child (commit_v, 7, "@ay", &metadata_checksum_v);
-  ostree_checksum_inplace_from_bytes (g_variant_get_data (metadata_checksum_v), metadata_checksum);
+  csum_bytes = ostree_checksum_bytes_peek_validate (metadata_checksum_v, error);
+  if (csum_bytes == NULL)
+    return NULL;
+  ostree_checksum_inplace_from_bytes (csum_bytes, metadata_checksum);
   return ostree_mutable_tree_new_from_checksum (repo, contents_checksum, metadata_checksum);
 }
