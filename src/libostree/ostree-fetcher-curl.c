@@ -641,20 +641,21 @@ response_header_cb (const char *buffer, size_t size, size_t n_items, void *user_
 
   req = g_task_get_task_data (task);
 
-  const char *etag_header = "ETag: ";
-  const char *last_modified_header = "Last-Modified: ";
+  /* libcurl doesn't NUL-terminate header lines; copy once so everything
+   * below works on an ordinary C string and can't read past real_size. */
+  g_autofree char *line = g_strndup (buffer, real_size);
+  const char *etag_header = "ETag:";
+  const char *last_modified_header = "Last-Modified:";
 
-  if (real_size > strlen (etag_header)
-      && strncasecmp (buffer, etag_header, strlen (etag_header)) == 0)
+  if (g_ascii_strncasecmp (line, etag_header, strlen (etag_header)) == 0)
     {
-      g_clear_pointer (&req->out_etag, g_free);
-      req->out_etag = g_strstrip (g_strdup (buffer + strlen (etag_header)));
+      g_free (req->out_etag);
+      req->out_etag = g_strdup (g_strstrip (line + strlen (etag_header)));
     }
-  else if (real_size > strlen (last_modified_header)
-           && strncasecmp (buffer, last_modified_header, strlen (last_modified_header)) == 0)
+  else if (g_ascii_strncasecmp (line, last_modified_header, strlen (last_modified_header)) == 0)
     {
-      g_autofree char *lm_buf = g_strstrip (g_strdup (buffer + strlen (last_modified_header)));
-      g_autoptr (GDateTime) dt = _ostree_parse_rfc2616_date_time (lm_buf, strlen (lm_buf));
+      const char *lm = g_strstrip (line + strlen (last_modified_header));
+      g_autoptr (GDateTime) dt = _ostree_parse_rfc2616_date_time (lm, strlen (lm));
       req->out_last_modified = (dt != NULL) ? g_date_time_to_unix (dt) : 0;
     }
 
