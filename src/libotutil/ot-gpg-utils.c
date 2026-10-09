@@ -577,3 +577,16 @@ ot_gpg_wkd_urls (const char *email, char **out_advanced_url, char **out_direct_u
 
   return TRUE;
 }
+
+/* For now, we just check the key ID is non-empty. Stricter validation could
+ * be implemented in future. */
+gboolean
+ot_validate_gpg_key_id (const char *key_id, GError **error)
+{
+  g_return_val_if_fail (key_id != NULL, FALSE);
+
+  if (*key_id == '\0')
+    return glnx_throw (error, "Invalid empty GPG key ID");
+
+  return TRUE;
+}

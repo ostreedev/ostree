@@ -221,6 +221,11 @@ ostree_gpg_verify_result_count_valid (OstreeGpgVerifyResult *result)
  * Searches @result for a signature signed by @key_id.  If a match is found,
  * the function returns %TRUE and sets @out_signature_index so that further
  * signature details can be obtained through ostree_gpg_verify_result_get().
+ *
+ * If @key_id is a subkey fingerprint suffixed with `!`, the search will look
+ * for a signature from exactly that subkey. Otherwise, the search will look for
+ * a signature from any subkey in the primary key for @key_id.
+ *
  * If no match is found, the function returns %FALSE and leaves
  * @out_signature_index unchanged.
  *
@@ -233,17 +238,25 @@ ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result, const gchar *key
   g_auto (gpgme_key_t) lookup_key = NULL;
   gpgme_signature_t signature;
   guint signature_index;
+  size_t key_id_len;
+  gboolean match_only_subkey;
 
   g_return_val_if_fail (OSTREE_IS_GPG_VERIFY_RESULT (result), FALSE);
-  g_return_val_if_fail (key_id != NULL, FALSE);
+  g_return_val_if_fail (key_id != NULL && ot_validate_gpg_key_id (key_id, NULL), FALSE);
 
-  /* fetch requested key_id from keyring to canonicalise ID */
-  (void)gpgme_get_key (result->context, key_id, &lookup_key, 0);
+  key_id_len = strlen (key_id);
+  match_only_subkey = (key_id[key_id_len - 1] == '!');
 
-  if (lookup_key == NULL)
+  if (!match_only_subkey)
     {
-      g_debug ("Could not find key ID %s to lookup signature.", key_id);
-      return FALSE;
+      /* fetch requested key_id from keyring to canonicalise ID */
+      (void)gpgme_get_key (result->context, key_id, &lookup_key, 0);
+
+      if (lookup_key == NULL)
+        {
+          g_debug ("Could not find key ID %s to lookup signature.", key_id);
+          return FALSE;
+        }
     }
 
   for (signature = result->details->signatures, signature_index = 0; signature != NULL;
@@ -251,17 +264,26 @@ ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result, const gchar *key
     {
       g_auto (gpgme_key_t) signature_key = NULL;
 
-      (void)gpgme_get_key (result->context, signature->fpr, &signature_key, 0);
-
-      if (signature_key == NULL)
+      if (!match_only_subkey)
         {
-          g_debug ("Could not find key when looking up signature from %s.", signature->fpr);
-          continue;
+          (void)gpgme_get_key (result->context, signature->fpr, &signature_key, 0);
+
+          if (signature_key == NULL)
+            {
+              g_debug ("Could not find key when looking up signature from %s.", signature->fpr);
+              continue;
+            }
         }
 
-      /* the first subkey in the list is the primary key */
-      if (!g_strcmp0 (lookup_key->subkeys->fpr, signature_key->subkeys->fpr))
+      if ((match_only_subkey &&
+           /* compare without the trailing `!`: */
+           strlen (signature->fpr) == key_id_len - 1
+           && g_ascii_strncasecmp (key_id, signature->fpr, key_id_len - 1) == 0)
+          || (!match_only_subkey &&
+              /* the first subkey in the list is the primary key: */
+              g_ascii_strcasecmp (lookup_key->subkeys->fpr, signature_key->subkeys->fpr) == 0))
         {
+
           if (out_signature_index != NULL)
             *out_signature_index = signature_index;
           /* Note early return */
