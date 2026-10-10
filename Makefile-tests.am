@@ -292,7 +292,7 @@ _installed_or_uninstalled_test_programs = tests/test-varint tests/test-ot-unix-u
 	tests/test-keyfile-utils tests/test-ot-opt-utils tests/test-ot-tool-util \
 	tests/test-checksum tests/test-lzma tests/test-rollsum tests/test-bootconfig-parser-internals \
 	tests/test-basic-c tests/test-sysroot-c tests/test-pull-c tests/test-repo tests/test-include-ostree-h tests/test-kargs \
-	tests/test-rfc2616-dates tests/test-pem tests/test-validate-utf8
+	tests/test-rfc2616-dates tests/test-pem tests/test-validate-utf8 tests/test-fetcher-backoff
 
 if USE_GPGME
 _installed_or_uninstalled_test_programs += \
@@ -361,6 +361,10 @@ tests_test_kargs_LDADD = $(TESTS_LDADD)
 tests_test_bootconfig_parser_internals_SOURCES = tests/test-bootconfig-parser-internals.c
 tests_test_bootconfig_parser_internals_CFLAGS = $(TESTS_CFLAGS)
 tests_test_bootconfig_parser_internals_LDADD = $(TESTS_LDADD)
+
+tests_test_fetcher_backoff_SOURCES = src/libostree/ostree-fetcher-backoff.c tests/test-fetcher-backoff.c
+tests_test_fetcher_backoff_CFLAGS = $(TESTS_CFLAGS)
+tests_test_fetcher_backoff_LDADD = $(TESTS_LDADD)
 
 tests_test_repo_finder_config_SOURCES = tests/test-repo-finder-config.c
 tests_test_repo_finder_config_CFLAGS = $(TESTS_CFLAGS)
