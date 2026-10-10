@@ -114,6 +114,7 @@ create_config_from_boot_loader_entries (OstreeBootloaderUboot *self, int bootver
   for (int i = 0; i < boot_loader_configs->len; i++)
     {
       g_autofree char *index_suffix = NULL;
+      g_autofree char *bootdir = NULL;
       if (i == 0)
         index_suffix = g_strdup ("");
       else
@@ -128,6 +129,9 @@ create_config_from_boot_loader_entries (OstreeBootloaderUboot *self, int bootver
           return FALSE;
         }
       g_ptr_array_add (new_lines, g_strdup_printf ("kernel_image%s=/boot%s", index_suffix, val));
+
+      bootdir = strndup (val, strrchr(val, '/') - val);
+      g_ptr_array_add (new_lines, g_strdup_printf ("bootdir%s=%s/", index_suffix, bootdir));
 
       val = ostree_bootconfig_parser_get (config, "initrd");
       if (val)
