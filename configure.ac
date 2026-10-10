@@ -321,6 +321,24 @@ AS_IF([test x$have_gpgme = xyes],
 )
 AM_CONDITIONAL(USE_GPGME, test "x$have_gpgme" = xyes)
 
+dnl OpenPGP support via Sequoia PGP (Rust shim library)
+AC_ARG_WITH(pgp,
+	    AS_HELP_STRING([--with-pgp], [Enable OpenPGP signing via Sequoia PGP @<:@default=auto@:>@]),
+	    [], [with_pgp=auto])
+have_pgp=no
+AS_IF([test x$with_pgp != xno], [
+    PKG_CHECK_MODULES([OT_DEP_PGP], [ostree-sequoia], [
+        have_pgp=yes
+        OSTREE_FEATURES="$OSTREE_FEATURES pgp"
+        AC_DEFINE([HAVE_PGP], 1, [Define if we have the ostree-sequoia OpenPGP backend])
+    ], [
+        AS_IF([test x$with_pgp = xyes], [
+            AC_MSG_ERROR([--with-pgp was given but ostree-sequoia pkg-config module was not found])
+        ])
+    ])
+])
+AM_CONDITIONAL(USE_PGP, test "x$have_pgp" = xyes)
+
 AC_ARG_WITH(composefs,
 	    AS_HELP_STRING([--with-composefs], [Support composefs (default yes)]),
 	    :, with_composefs=maybe)
