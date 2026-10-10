@@ -1,12 +1,11 @@
-use std::borrow::BorrowMut;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
-use std::process::Command;
 use std::time;
 
 use anyhow::{bail, Context, Result};
 use rand::Rng;
+use xshell::Cmd;
 
 // HTTP Server deps
 use futures_util::future;
@@ -16,30 +15,34 @@ use hyper_staticfile::Static;
 use tokio::runtime::Runtime;
 
 /// Run command and assert that its stderr contains pat
-pub(crate) fn cmd_fails_with<C: BorrowMut<Command>>(mut c: C, pat: &str) -> Result<()> {
-    let c = c.borrow_mut();
-    let o = c.output()?;
-    if o.status.success() {
-        bail!("Command {:?} unexpectedly succeeded", c);
+pub fn cmd_fails_with(cmd: Cmd, pat: &str) -> Result<()> {
+    let cmd_str = cmd.to_string();
+    let output = cmd.ignore_status().output()?;
+
+    if output.status.success() {
+        bail!("Command {:?} unexpectedly succeeded", cmd_str);
     }
-    if twoway::find_bytes(&o.stderr, pat.as_bytes()).is_none() {
-        dbg!(String::from_utf8_lossy(&o.stdout));
-        dbg!(String::from_utf8_lossy(&o.stderr));
-        bail!("Command {:?} stderr did not match: {}", c, pat);
+
+    if twoway::find_bytes(&output.stderr, pat.as_bytes()).is_none() {
+        dbg!(String::from_utf8_lossy(&output.stdout));
+        dbg!(String::from_utf8_lossy(&output.stderr));
+        bail!("Command {:?} stderr did not match: {}", cmd_str, pat);
     }
+
     Ok(())
 }
 
-/// Run command and assert that its stdout contains pat
-pub(crate) fn cmd_has_output<C: BorrowMut<Command>>(mut c: C, pat: &str) -> Result<()> {
-    let c = c.borrow_mut();
-    let o = c.output()?;
-    if !o.status.success() {
-        bail!("Command {:?} failed", c);
+/// Run command and assert that its stdout contains `pat`
+pub(crate) fn cmd_has_output(cmd: Cmd, pat: &str) -> Result<()> {
+    let cmd_str = cmd.to_string();
+    let output = cmd.output()?; // run, error if command fails
+
+    if !output.status.success() {
+        bail!("Command {} failed", cmd_str);
     }
-    if twoway::find_bytes(&o.stdout, pat.as_bytes()).is_none() {
-        dbg!(String::from_utf8_lossy(&o.stdout));
-        bail!("Command {:?} stdout did not match: {}", c, pat);
+    if twoway::find_bytes(&output.stdout, pat.as_bytes()).is_none() {
+        dbg!(String::from_utf8_lossy(&output.stdout));
+        bail!("Command {} stdout did not match: {}", cmd_str, pat);
     }
     Ok(())
 }
@@ -201,36 +204,30 @@ pub(crate) fn prepare_reboot<M: AsRef<str>>(mark: M) -> Result<()> {
 mod tests {
     use super::*;
 
-    fn oops() -> Command {
-        let mut c = Command::new("/bin/bash");
-        c.args(&["-c", "echo oops 1>&2; exit 1"]);
-        c
+    fn oops(sh: &Shell) -> Cmd {
+        cmd!(sh, "bash -c 'echo oops 1>&2; exit 1'")
     }
 
     #[test]
     fn test_fails_with_matches() -> Result<()> {
-        cmd_fails_with(Command::new("false"), "")?;
-        cmd_fails_with(oops(), "oops")?;
+        cmd_fails_with(cmd!(sh, "false"), "")?;
+        cmd_fails_with(oops(&sh), "oops")?;
         Ok(())
     }
 
     #[test]
-    fn test_fails_with_fails() {
-        cmd_fails_with(Command::new("true"), "somepat").expect_err("true");
-        cmd_fails_with(oops(), "nomatch").expect_err("nomatch");
+    fn test_fails_with_fails() -> Result<()> {
+        let sh = Shell::new()?;
+        cmd_fails_with(cmd!(sh, "true"), "somepat").expect_err("true");
+        cmd_fails_with(oops(&sh), "nomatch").expect_err("nomatch");
+        Ok(())
     }
 
     #[test]
     fn test_output() -> Result<()> {
-        cmd_has_output(Command::new("true"), "")?;
-        assert!(cmd_has_output(Command::new("true"), "foo").is_err());
-        cmd_has_output(
-            sh_inline::bash_command!("echo foobarbaz; echo fooblahbaz").unwrap(),
-            "blah",
-        )?;
-        assert!(
-            cmd_has_output(sh_inline::bash_command!("echo foobarbaz").unwrap(), "blah").is_err()
-        );
+        let sh = Shell::new()?;
+        cmd_has_output(cmd!(sh, "echo foobarbaz; echo fooblahbaz"), "blah")?;
+        assert!(cmd_has_output(cmd!(sh, "echo foobarbaz"), "blah").is_err());
         Ok(())
     }
 

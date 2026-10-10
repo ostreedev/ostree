@@ -50,7 +50,8 @@ pub(crate) fn itest_immutable_bit() -> Result<()> {
         return Ok(());
     }
     // https://bugzilla.redhat.com/show_bug.cgi?id=1867601
-    cmd_has_output(sh_inline::bash_command!("lsattr -d /").unwrap(), "-i-")?;
+    cmd_has_output(cmd!(sh, "lsattr -d /"), "-i-")?;
+
     Ok(())
 }
 
