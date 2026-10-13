@@ -31,6 +31,39 @@ test_ed25519 (void)
   g_clear_error (&error);
 }
 
+#ifdef HAVE_OPENSSL
+/* An ECDSA P-256 public key in DER SubjectPublicKeyInfo form, as produced by
+ *   openssl ecparam -name prime256v1 -genkey -noout |
+ *     openssl ec -pubout -outform DER
+ * The spki mechanism takes any key d2i_PUBKEY() understands.
+ */
+static const guint8 ec_p256_pubkey[]
+    = { 0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01,
+        0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x03, 0x42, 0x00,
+        0x04, 0x80, 0x85, 0xe0, 0x67, 0xba, 0x0e, 0x92, 0xec, 0xa9, 0xf6, 0xfc, 0xa0,
+        0x58, 0xc1, 0xda, 0x3f, 0x9b, 0xb3, 0x23, 0x59, 0x88, 0x93, 0x9d, 0x66, 0x36,
+        0x30, 0x74, 0xb2, 0x7a, 0x9f, 0x4a, 0xf5, 0x53, 0x8d, 0x1b, 0xd8, 0xe6, 0xc7,
+        0x82, 0x46, 0xa1, 0x65, 0x4d, 0x8a, 0x70, 0x2e, 0x71, 0xc3, 0x84, 0x8a, 0x20,
+        0x3a, 0xc4, 0x18, 0x38, 0x9e, 0x24, 0x92, 0x99, 0x82, 0xcd, 0x80, 0x7f, 0xfd };
+
+static void
+test_spki (void)
+{
+  g_autoptr (GBytes) data = g_bytes_new_static ("some signed data", 16);
+  g_autoptr (GBytes) pubkey = g_bytes_new_static (ec_p256_pubkey, sizeof (ec_p256_pubkey));
+  /* Not a well-formed ECDSA signature, which openssl reports as an error
+   * rather than as a signature mismatch.
+   */
+  g_autoptr (GBytes) signature = g_bytes_new_static ("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", 32);
+  bool valid = false;
+  g_autoptr (GError) error = NULL;
+
+  g_assert (otcore_validate_spki_signature (data, pubkey, signature, &valid, &error));
+  g_assert_no_error (error);
+  g_assert (!valid);
+}
+#endif
+
 static void
 test_prepare_root_cmdline (void)
 {
@@ -135,6 +168,10 @@ main (int argc, char **argv)
   g_test_init (&argc, &argv, NULL);
   otcore_ed25519_init ();
   g_test_add_func ("/ed25519", test_ed25519);
+#ifdef HAVE_OPENSSL
+  otcore_spki_init ();
+  g_test_add_func ("/spki", test_spki);
+#endif
   g_test_add_func ("/prepare-root-cmdline", test_prepare_root_cmdline);
   g_test_add_func ("/prepare-root-config", test_prepare_root_config);
   return g_test_run ();
