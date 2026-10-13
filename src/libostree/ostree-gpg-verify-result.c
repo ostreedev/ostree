@@ -241,8 +241,8 @@ ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result, const gchar *key
   size_t key_id_len;
   gboolean match_only_subkey;
 
-  g_return_val_if_fail (OSTREE_IS_GPG_VERIFY_RESULT (result), FALSE);
-  g_return_val_if_fail (key_id != NULL && ot_validate_gpg_key_id (key_id, NULL), FALSE);
+  g_assert (OSTREE_IS_GPG_VERIFY_RESULT (result));
+  g_assert (key_id != NULL && ot_validate_gpg_key_id (key_id, NULL));
 
   key_id_len = strlen (key_id);
   match_only_subkey = (key_id[key_id_len - 1] == '!');

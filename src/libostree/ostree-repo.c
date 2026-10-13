@@ -5242,7 +5242,7 @@ ostree_repo_sign_commit (OstreeRepo *self, const gchar *commit_checksum, const g
   g_autoptr (GBytes) commit_data = NULL;
   g_autoptr (GBytes) signature = NULL;
 
-  g_return_val_if_fail (key_id != NULL && ot_validate_gpg_key_id (key_id, NULL), FALSE);
+  g_assert (key_id != NULL && ot_validate_gpg_key_id (key_id, NULL));
 
   g_autoptr (GVariant) commit_variant = NULL;
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, commit_checksum, &commit_variant,
