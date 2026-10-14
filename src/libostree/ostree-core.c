@@ -613,10 +613,19 @@ ostree_content_stream_parse (gboolean compressed, GInputStream *input, guint64 i
   g_autofree guchar *buf = g_malloc (archive_header_size);
   if (!g_input_stream_read_all (input, buf, archive_header_size, &bytes_read, cancellable, error))
     return FALSE;
+  /* Parse the header as untrusted regardless of @trusted: @trusted refers to the
+   * file content, which is not part of this variant, whereas these header bytes
+   * come straight off disk/the network.  A trusted variant skips normal-form
+   * validation, so a crafted header with a non-NUL-terminated symlink target
+   * would be read out of bounds when file_header_parse() hands the string to
+   * g_file_info_set_attribute_byte_string() (strdup).  The header is small, so
+   * validating it is cheap. */
   g_autoptr (GVariant) file_header = g_variant_ref_sink (g_variant_new_from_data (
       compressed ? _OSTREE_ZLIB_FILE_HEADER_GVARIANT_FORMAT : _OSTREE_FILE_HEADER_GVARIANT_FORMAT,
-      buf, archive_header_size, trusted, g_free, buf));
+      buf, archive_header_size, FALSE, g_free, buf));
   buf = NULL;
+  if (!g_variant_is_normal_form (file_header))
+    return glnx_throw (error, "Corrupted archive file; invalid header");
   g_autoptr (GFileInfo) ret_file_info = NULL;
   g_autoptr (GVariant) ret_xattrs = NULL;
   if (compressed)
