@@ -733,6 +733,13 @@ checkout_one_file_at (OstreeRepo *repo, OstreeRepoCheckoutAtOptions *options, Ch
       if (!name[0])
         return glnx_throw (error, "Invalid empty whiteout '%s'", name);
 
+      /* The stripped name may not have been validated as a whole; in
+       * particular, `.wh...` would otherwise resolve to `..` below and
+       * recursively delete the parent of the checkout directory.
+       */
+      if (!ot_util_filename_validate (name, error))
+        return FALSE;
+
       g_assert (name[0] != '/'); /* Sanity */
 
       if (!glnx_shutil_rm_rf_at (destination_dfd, name, cancellable, error))
@@ -746,6 +753,10 @@ checkout_one_file_at (OstreeRepo *repo, OstreeRepoCheckoutAtOptions *options, Ch
 
       if (!name[0])
         return glnx_throw (error, "Invalid empty overlayfs whiteout '%s'", name);
+
+      /* As above; the stripped name must be re-validated. */
+      if (!ot_util_filename_validate (name, error))
+        return FALSE;
 
       g_assert (name[0] != '/'); /* Sanity */
 

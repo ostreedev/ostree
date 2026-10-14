@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((91 + ${extra_basic_tests:-0}))"
+echo "1..$((92 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -1206,6 +1206,51 @@ if touch overlay/baz/.wh.cow && touch overlay/.wh.deeper && touch overlay/baz/an
 else
     echo "ok # SKIP whiteouts do not work, are you using aufs?"
     echo "ok # SKIP whiteouts do not work, are you using aufs?"
+fi
+
+# Ensure a whiteout which would escape the checkout directory after the
+# prefix is stripped (e.g. `.wh...` which becomes `..`) is rejected at
+# checkout time, rather than recursively deleting the parent directory.
+cd ${test_tmpdir}
+if has_ostree_feature libarchive; then
+    rm -rf whiteout-co-parent evil-whiteout.tar
+    mkdir -p whiteout-co-parent/somedir
+    echo precious > whiteout-co-parent/somedir/precious.txt
+    python3 - "$PWD/evil-whiteout.tar" <<'PYEOF'
+import io
+import sys
+import tarfile
+tar = tarfile.open(sys.argv[1], 'w')
+def adddir(name):
+    ti = tarfile.TarInfo(name)
+    ti.type = tarfile.DIRTYPE
+    ti.mode = 0o755
+    tar.addfile(ti)
+def addfile(name, data=b''):
+    ti = tarfile.TarInfo(name)
+    ti.size = len(data)
+    ti.mode = 0o644
+    tar.addfile(ti, io.BytesIO(data))
+adddir('./')
+# Stripping the `.wh.` prefix turns this name into `..`
+addfile('./.wh...', b'')
+addfile('./keepme', b'kept')
+tar.close()
+PYEOF
+    $OSTREE --repo=repo commit ${COMMIT_ARGS} -b evil-whiteout \
+        --tree=tar=evil-whiteout.tar -s 'malicious whiteout'
+    rm evil-whiteout.tar
+    if $OSTREE --repo=repo checkout ${CHECKOUT_U_ARG} --whiteouts \
+        evil-whiteout whiteout-co-parent/co 2>whiteout-err.txt; then
+        fatal "checkout of malicious whiteout unexpectedly succeeded"
+    fi
+    assert_file_has_content whiteout-err.txt "Invalid path uplink filename"
+    # Crucially, the parent of the checkout directory must be untouched
+    assert_has_file whiteout-co-parent/somedir/precious.txt
+    rm -rf whiteout-co-parent whiteout-err.txt
+    echo "ok checkout whiteout path traversal"
+else
+    echo "ok # SKIP no libarchive support compiled in"
 fi
 
 cd ${test_tmpdir}
