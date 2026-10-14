@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((92 + ${extra_basic_tests:-0}))"
+echo "1..$((93 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -1252,6 +1252,33 @@ PYEOF
 else
     echo "ok # SKIP no libarchive support compiled in"
 fi
+
+# Ensure that a union checkout of a directory does not follow a pre-existing
+# symlink of the same name (e.g. from a previous checkout of a malicious
+# commit) and write content outside the checkout directory.
+cd ${test_tmpdir}
+rm -rf symlink-union-parent symlink-union-base symlink-union-ext co-dir symlink-union-err.txt
+mkdir -p symlink-union-parent/preciousdir
+echo precious > symlink-union-parent/preciousdir/keep.txt
+mkdir symlink-union-base
+ln -s ../symlink-union-parent/preciousdir symlink-union-base/adir
+mkdir -p symlink-union-ext/adir
+echo pwned > symlink-union-ext/adir/new.txt
+echo overwritten > symlink-union-ext/adir/keep.txt
+$OSTREE --repo=repo commit ${COMMIT_ARGS} -b symlink-union-base \
+    --tree=dir=symlink-union-base -s 'base with symlink'
+$OSTREE --repo=repo commit ${COMMIT_ARGS} -b symlink-union-ext \
+    --tree=dir=symlink-union-ext -s 'ext with directory'
+$OSTREE --repo=repo checkout -U symlink-union-base co-dir
+if $OSTREE --repo=repo checkout -U --union symlink-union-ext co-dir 2>symlink-union-err.txt; then
+    fatal "union checkout of directory over symlink unexpectedly succeeded"
+fi
+assert_file_has_content symlink-union-err.txt "Refusing to overwrite non-directory"
+# Crucially, the symlink target outside the checkout directory must be untouched
+assert_file_has_content symlink-union-parent/preciousdir/keep.txt precious
+assert_not_has_file symlink-union-parent/preciousdir/new.txt
+rm -rf symlink-union-parent symlink-union-base symlink-union-ext co-dir symlink-union-err.txt
+echo "ok checkout union symlink"
 
 cd ${test_tmpdir}
 rm -rf test2-checkout
