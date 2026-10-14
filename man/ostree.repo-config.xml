@@ -260,6 +260,21 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
         save network bandwidth.
         </para></listitem>
       </varlistentry>
+
+      <varlistentry>
+        <term><varname>sign-verify-deltas</varname></term>
+        <listitem><para>A boolean value, defaults to false. When true, applying
+        a <emphasis>signed</emphasis> static delta with <command>ostree
+        static-delta apply-offline</command> requires a key to be supplied, and
+        fails with <literal>Key is mandatory to check delta signature</literal>
+        when none is.</para>
+        <para>This option cannot require a delta to be signed. It is consulted
+        only after a delta has been found to carry a signature, so an unsigned
+        delta is applied whatever this is set to. It also has no effect on
+        <command>ostree pull</command>, which cannot consume signed deltas at all;
+        see <citerefentry><refentrytitle>ostree-static-delta</refentrytitle><manvolnum>1</manvolnum></citerefentry>.
+        </para></listitem>
+      </varlistentry>
     </variablelist>
   </refsect1>
 
@@ -314,6 +329,44 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
         is signed by a known GPG key.
         For more information, see the <citerefentry><refentrytitle>ostree</refentrytitle><manvolnum>1</manvolnum></citerefentry>
         manual under GPG.</para></listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><varname>sign-verify</varname></term>
+        <listitem><para>Controls whether OSTree will require commits to be
+        signed by a known key using one of the non-GPG signature engines
+        (currently <literal>ed25519</literal>). If unset, empty, or set to a
+        boolean-false value (<literal>false</literal> or
+        <literal>0</literal>), no such verification is performed.</para>
+        <para>A boolean-true value enables every compiled-in signature engine.
+        Keys are optional in this case: an engine with no
+        <varname>verification-&lt;engine&gt;</varname> option set for the
+        remote is still enabled, and falls back to the system-wide key
+        storage. Any other value is read as a semicolon-delimited list of
+        engine names. Keys for each named engine then become mandatory rather
+        than optional, and a commit is accepted if any one of the named
+        engines finds a valid signature for it.</para>
+        <para>Public keys are supplied by the companion options
+        <varname>verification-&lt;engine&gt;-key</varname>, holding an inline
+        key, and <varname>verification-&lt;engine&gt;-file</varname>, holding a
+        path to a file of keys, for example
+        <varname>verification-ed25519-file</varname>.
+        <command>ostree remote add --sign-verify=ed25519=file:/path/to/key</command>
+        writes this option and the matching companion together.</para>
+        <para>This setting is independent of <varname>gpg-verify</varname>,
+        which defaults to true. Enabling only <varname>sign-verify</varname>
+        therefore leaves GPG verification enabled as well, and a pull against a
+        remote with no GPG signatures fails with <literal>GPG verification
+        enabled, but no signatures found</literal> until
+        <varname>gpg-verify</varname> is also set to false.</para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><varname>sign-verify-summary</varname></term>
+        <listitem><para>As <varname>sign-verify</varname>, but controls whether
+        the summary must carry a valid signature. If unset or empty the summary
+        is not verified.</para></listitem>
       </varlistentry>
 
       <varlistentry>
