@@ -821,8 +821,10 @@ initiate_next_curl_request (FetcherRequest *req, GTask *task)
   CURLcode rc;
   OstreeFetcher *self = req->fetcher;
 
-  if (req->easy)
-    curl_easy_cleanup (req->easy);
+  /* The old handle must go before anything it points at is freed below. */
+  g_clear_pointer (&req->easy, curl_easy_cleanup);
+  /* Headers are rebuilt for every attempt, so none carry over from the last one. */
+  g_clear_pointer (&req->req_headers, curl_slist_free_all);
   req->easy = curl_easy_init ();
   g_assert (req->easy);
 
