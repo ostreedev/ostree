@@ -65,6 +65,9 @@
 #define OPT_LOWSPEEDTIME_DEFAULT 30
 #define OPT_RETRYALL_DEFAULT TRUE
 #define OPT_OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS_DEFAULT 8
+/* Delta parts being applied at once. Each is held decompressed in memory
+ * while it is applied, so this bounds memory use however many download. */
+#define MAX_APPLYING_DELTAPARTS 2
 
 typedef struct
 {
@@ -93,6 +96,7 @@ typedef struct
   guint64 size;
   guint64 usize;
   guint n_retries_remaining;
+  int pending_fd; /* downloaded and waiting to be applied, or -1 */
 } FetchStaticDeltaData;
 
 typedef struct
@@ -159,6 +163,7 @@ static gboolean scan_one_metadata_object (OtPullData *pull_data, const char *che
                                           guint recursion_depth, const OstreeCollectionRef *ref,
                                           GCancellable *cancellable, GError **error);
 static void scan_object_queue_data_free (ScanObjectQueueData *scan_data);
+static void fetch_static_delta_data_free (gpointer data);
 static gboolean initiate_delta_request (OtPullData *pull_data, const OstreeCollectionRef *ref,
                                         const char *to_revision, const char *delta_from_revision,
                                         GError **error);
@@ -186,7 +191,8 @@ update_progress (gpointer user_data)
 
   outstanding_writes = pull_data->n_outstanding_content_write_requests
                        + pull_data->n_outstanding_metadata_write_requests
-                       + pull_data->n_outstanding_deltapart_write_requests;
+                       + pull_data->n_outstanding_deltapart_write_requests
+                       + g_queue_get_length (&pull_data->pending_deltapart_applies);
   outstanding_fetches = pull_data->n_outstanding_content_fetches
                         + pull_data->n_outstanding_metadata_fetches
                         + pull_data->n_outstanding_deltapart_fetches;
@@ -238,7 +244,8 @@ pull_termination_condition (OtPullData *pull_data)
                                  && pull_data->n_outstanding_deltapart_fetches == 0);
   gboolean current_write_idle = (pull_data->n_outstanding_metadata_write_requests == 0
                                  && pull_data->n_outstanding_content_write_requests == 0
-                                 && pull_data->n_outstanding_deltapart_write_requests == 0);
+                                 && pull_data->n_outstanding_deltapart_write_requests == 0
+                                 && g_queue_is_empty (&pull_data->pending_deltapart_applies));
   gboolean current_scan_idle = g_queue_is_empty (&pull_data->scan_object_queue);
   gboolean current_idle = current_fetch_idle && current_write_idle && current_scan_idle;
 
@@ -286,6 +293,9 @@ check_outstanding_requests_handle_error (OtPullData *pull_data, GError **errorp)
     {
       g_queue_foreach (&pull_data->scan_object_queue, (GFunc)scan_object_queue_data_free, NULL);
       g_queue_clear (&pull_data->scan_object_queue);
+      g_queue_foreach (&pull_data->pending_deltapart_applies, (GFunc)fetch_static_delta_data_free,
+                       NULL);
+      g_queue_clear (&pull_data->pending_deltapart_applies);
       g_hash_table_remove_all (pull_data->pending_fetch_metadata);
       g_hash_table_remove_all (pull_data->pending_fetch_delta_indexes);
       g_hash_table_remove_all (pull_data->pending_fetch_delta_superblocks);
@@ -382,8 +392,11 @@ fetcher_queue_is_full (OtPullData *pull_data)
       = ((pull_data->n_outstanding_metadata_fetches + pull_data->n_outstanding_content_fetches
           + pull_data->n_outstanding_deltapart_fetches)
          == pull_data->max_outstanding_fetcher_requests);
-  const gboolean deltas_full
-      = (pull_data->n_outstanding_deltapart_fetches == _OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS);
+  /* Parts that are downloaded but not yet applied sit on disk; count them
+   * so that downloads can only run so far ahead of applying. */
+  const gboolean deltas_full = (pull_data->n_outstanding_deltapart_fetches
+                                    + g_queue_get_length (&pull_data->pending_deltapart_applies)
+                                >= _OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS);
   const gboolean writes_full = ((pull_data->n_outstanding_metadata_write_requests
                                  + pull_data->n_outstanding_content_write_requests
                                  + pull_data->n_outstanding_deltapart_write_requests)
@@ -1218,11 +1231,55 @@ static void
 fetch_static_delta_data_free (gpointer data)
 {
   FetchStaticDeltaData *fetch_data = data;
+  glnx_close_fd (&fetch_data->pending_fd);
   g_free (fetch_data->expected_checksum);
   g_variant_unref (fetch_data->objects);
   g_free (fetch_data->from_revision);
   g_free (fetch_data->to_revision);
   g_free (fetch_data);
+}
+
+static void on_static_delta_written (GObject *object, GAsyncResult *result, gpointer user_data);
+
+/* Decompress one downloaded delta part and start applying it. Takes
+ * ownership of @fetch_data. */
+static void
+start_deltapart_apply (OtPullData *pull_data, FetchStaticDeltaData *fetch_data)
+{
+  g_autoptr (GVariant) part = NULL;
+  g_autoptr (GError) local_error = NULL;
+
+  g_assert (fetch_data->pending_fd >= 0);
+  g_autoptr (GInputStream) in
+      = g_unix_input_stream_new (g_steal_fd (&fetch_data->pending_fd), TRUE);
+
+  /* TODO - make async */
+  if (!_ostree_static_delta_part_open (in, NULL, 0, fetch_data->expected_checksum, &part,
+                                       pull_data->cancellable, &local_error))
+    {
+      check_outstanding_requests_handle_error (pull_data, &local_error);
+      fetch_static_delta_data_free (fetch_data);
+      return;
+    }
+
+  pull_data->n_outstanding_deltapart_write_requests++;
+  _ostree_static_delta_part_execute_async (pull_data->repo, fetch_data->objects, part,
+                                           pull_data->cancellable, on_static_delta_written,
+                                           fetch_data);
+}
+
+/* Start applying queued delta parts, up to MAX_APPLYING_DELTAPARTS at once. */
+static void
+start_pending_deltapart_applies (OtPullData *pull_data)
+{
+  while (!pull_data->caught_error
+         && pull_data->n_outstanding_deltapart_write_requests < MAX_APPLYING_DELTAPARTS)
+    {
+      FetchStaticDeltaData *fetch_data = g_queue_pop_head (&pull_data->pending_deltapart_applies);
+      if (fetch_data == NULL)
+        break;
+      start_deltapart_apply (pull_data, fetch_data);
+    }
 }
 
 static void
@@ -1245,6 +1302,7 @@ out:
   check_outstanding_requests_handle_error (pull_data, &local_error);
   /* Always free state */
   fetch_static_delta_data_free (fetch_data);
+  start_pending_deltapart_applies (pull_data);
 }
 
 static void
@@ -1256,8 +1314,6 @@ static_deltapart_fetch_on_complete (GObject *object, GAsyncResult *result, gpoin
   g_auto (GLnxTmpfile) tmpf = {
     0,
   };
-  g_autoptr (GInputStream) in = NULL;
-  g_autoptr (GVariant) part = NULL;
   g_autoptr (GError) local_error = NULL;
   GError **error = &local_error;
   gboolean free_fetch_data = TRUE;
@@ -1267,18 +1323,9 @@ static_deltapart_fetch_on_complete (GObject *object, GAsyncResult *result, gpoin
   if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &tmpf, NULL, NULL, NULL, error))
     goto out;
 
-  /* Transfer ownership of the fd */
-  in = g_unix_input_stream_new (g_steal_fd (&tmpf.fd), TRUE);
-
-  /* TODO - make async */
-  if (!_ostree_static_delta_part_open (in, NULL, 0, fetch_data->expected_checksum, &part,
-                                       pull_data->cancellable, error))
-    goto out;
-
-  _ostree_static_delta_part_execute_async (pull_data->repo, fetch_data->objects, part,
-                                           pull_data->cancellable, on_static_delta_written,
-                                           fetch_data);
-  pull_data->n_outstanding_deltapart_write_requests++;
+  /* Queue the downloaded part for applying; see start_pending_deltapart_applies(). */
+  fetch_data->pending_fd = g_steal_fd (&tmpf.fd);
+  g_queue_push_tail (&pull_data->pending_deltapart_applies, fetch_data);
   free_fetch_data = FALSE;
 
 out:
@@ -1295,6 +1342,8 @@ out:
 
   if (free_fetch_data)
     g_clear_pointer (&fetch_data, fetch_static_delta_data_free);
+
+  start_pending_deltapart_applies (pull_data);
 }
 
 static gboolean
@@ -2196,6 +2245,7 @@ process_one_static_delta (OtPullData *pull_data, const char *from_revision, cons
         continue;
 
       FetchStaticDeltaData *fetch_data = g_new0 (FetchStaticDeltaData, 1);
+      fetch_data->pending_fd = -1;
       fetch_data->from_revision = g_strdup (from_revision);
       fetch_data->to_revision = g_strdup (to_revision);
       fetch_data->pull_data = pull_data;
@@ -4977,6 +5027,9 @@ out:
   g_clear_pointer (&pull_data->pending_fetch_deltaparts, g_hash_table_unref);
   g_queue_foreach (&pull_data->scan_object_queue, (GFunc)scan_object_queue_data_free, NULL);
   g_queue_clear (&pull_data->scan_object_queue);
+  g_queue_foreach (&pull_data->pending_deltapart_applies, (GFunc)fetch_static_delta_data_free,
+                   NULL);
+  g_queue_clear (&pull_data->pending_deltapart_applies);
   g_clear_pointer (&pull_data->idle_src, g_source_destroy);
   g_clear_pointer (&pull_data->dirs, g_ptr_array_unref);
   g_clear_pointer (&remote_config, g_key_file_unref);
