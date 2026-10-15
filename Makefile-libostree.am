@@ -236,6 +236,14 @@ libostree_1_la_SOURCES += src/libostree/ostree-fetcher-curl.c \
   $(NULL)
 libostree_1_la_CFLAGS += $(OT_DEP_CURL_CFLAGS)
 libostree_1_la_LIBADD += $(OT_DEP_CURL_LIBS)
+if USE_AWS
+libostree_1_la_SOURCES += \
+	src/libostree/ostree-fetcher-s3.h \
+	src/libostree/ostree-fetcher-s3.c \
+	$(NULL)
+libostree_1_la_CFLAGS += $(AWS_CFLAGS)
+libostree_1_la_LIBADD += $(AWS_LIBS)
+endif
 else
 if USE_LIBSOUP3
 libostree_1_la_SOURCES += src/libostree/ostree-fetcher-soup3.c
