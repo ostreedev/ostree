@@ -28,6 +28,10 @@
 
 #include "libglnx.h"
 
+#ifdef HAVE_AWS
+#include "ostree-fetcher-s3.h"
+#endif
+
 void
 _ostree_fetcher_uri_free (OstreeFetcherURI *uri)
 {
@@ -136,14 +140,24 @@ _ostree_fetcher_uri_to_string (OstreeFetcherURI *uri)
   return g_uri_to_string_partial ((GUri *)uri, G_URI_HIDE_PASSWORD);
 }
 
-/* Only accept http, https, and file; particularly curl has a ton of other
- * backends like sftp that we don't want, and this also gracefully filters
- * out invalid input.
+/* Only accept http, https, file and (when built with AWS support) s3;
+ * particularly curl has a ton of other backends like sftp that we don't
+ * want, and this also gracefully filters out invalid input.
  */
 gboolean
 _ostree_fetcher_uri_validate (OstreeFetcherURI *uri, GError **error)
 {
   const char *scheme = g_uri_get_scheme ((GUri *)uri);
+  if (g_str_equal (scheme, "s3"))
+    {
+#ifdef HAVE_AWS
+      g_autoptr (OstreeS3Location) loc = _ostree_s3_location_parse ((GUri *)uri, error);
+      return loc != NULL;
+#else
+      g_autofree char *s = _ostree_fetcher_uri_to_string (uri);
+      return glnx_throw (error, "Invalid URI %s: this libostree was built without S3 support", s);
+#endif
+    }
   // TODO only allow file if explicitly requested by a higher level
   if (!(g_str_equal (scheme, "http") || g_str_equal (scheme, "https")
         || g_str_equal (scheme, "file")))

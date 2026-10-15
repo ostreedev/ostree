@@ -540,6 +540,20 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
       URLs will be given precedence.
     </para>
     <para>
+      When ostree is built with <literal>--with-aws</literal>
+      (<command>ostree --version</command> lists <literal>aws</literal>),
+      both also support the <literal>s3</literal> scheme:
+      <literal>s3://bucket/prefix</literal> pulls from a private S3
+      bucket holding an archive-mode repository, signing requests with
+      the host's AWS credentials, found the same way as by the AWS CLI.
+      The URL accepts the query parameters <literal>region</literal>,
+      <literal>profile</literal> (a profile in the shared AWS
+      configuration) and <literal>endpoint</literal> (an S3-compatible
+      server, as <literal>scheme://host[:port]</literal>); unknown
+      parameters are an error. Mirrorlists ignore <literal>s3</literal>
+      URLs.
+    </para>
+    <para>
       Note that currently, the <literal>tls-ca-path</literal> and
       <literal>tls-client-cert-path</literal> options apply to every HTTP
       request, even when <literal>contenturl</literal> and/or

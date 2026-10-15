@@ -15,7 +15,8 @@
  * License along with this library. If not, see <https://www.gnu.org/licenses/>.
  */
 
-/* Internals of the curl fetcher, for code that extends it from another file. */
+/* Shared between ostree-fetcher-curl.c and its s3:// support in
+ * ostree-fetcher-curl-s3.c. */
 
 #pragma once
 
@@ -26,6 +27,9 @@
 #include "ostree-fetcher.h"
 
 G_BEGIN_DECLS
+
+typedef struct OstreeFetcherS3 OstreeFetcherS3; /* s3:// state of a fetcher */
+typedef struct OstreeS3Request OstreeS3Request; /* s3:// state of a request */
 
 struct OstreeFetcher
 {
@@ -56,6 +60,8 @@ struct OstreeFetcher
   GHashTable *sockets;              /* Set<SockInfo> */
 
   guint64 bytes_transferred;
+
+  OstreeFetcherS3 *s3; /* NULL without HAVE_AWS */
 };
 
 /* Information associated with a request */
@@ -85,6 +91,9 @@ typedef struct FetcherRequest
   char error[CURL_ERROR_SIZE];
 
   OstreeFetcher *fetcher;
+
+  gboolean is_s3;      /* the current attempt targets an s3:// mirror */
+  OstreeS3Request *s3; /* created by the first such attempt */
 } FetcherRequest;
 
 FetcherRequest *_ostree_fetcher_request_new (OstreeFetcher *self, GPtrArray *mirrorlist,
@@ -93,7 +102,85 @@ GTask *_ostree_fetcher_request_task_new (OstreeFetcher *self, FetcherRequest *re
                                          GCancellable *cancellable, GAsyncReadyCallback callback,
                                          gpointer user_data);
 void _ostree_fetcher_request_finished (OstreeFetcher *self, GTask *task);
+void _ostree_fetcher_request_fail_later (OstreeFetcher *self, GTask *task, GError *error);
 gboolean _ostree_fetcher_request_ensure_tmpfile (FetcherRequest *req, GError **error);
 void _ostree_fetcher_request_initiate (FetcherRequest *req, GTask *task);
+
+/* s3:// hooks, called by ostree-fetcher-curl.c; all but the first three
+ * only for requests with is_s3 set. */
+#ifdef HAVE_AWS
+
+OstreeFetcherS3 *_ostree_fetcher_s3_new (void);
+void _ostree_fetcher_s3_free (OstreeFetcherS3 *s3);
+void _ostree_s3_request_free (OstreeS3Request *s3);
+
+/* Sign an attempt. Returns FALSE if the request is now waiting for
+ * credentials or has been failed; otherwise *out_url is the URL to fetch. */
+gboolean _ostree_fetcher_s3_begin_attempt (FetcherRequest *req, GTask *task, GUri *baseuri,
+                                           char **out_url);
+/* For the write callback. Returns TRUE if it dealt with the data, with the
+ * value to give curl in *out_ret. */
+gboolean _ostree_fetcher_s3_write (FetcherRequest *req, GTask *task, const void *ptr,
+                                   size_t realsize, size_t *out_ret);
+/* For the header callback, with one NUL-terminated header line. */
+void _ostree_fetcher_s3_header (FetcherRequest *req, const char *line);
+/* For a non-2xx, non-304 response: either set *out_reinitiate (retry, on
+ * this mirror or the next) or complete @task with an error. */
+void _ostree_fetcher_s3_complete_error (OstreeFetcher *self, FetcherRequest *req, GTask *task,
+                                        const char *eff_url, long response, gboolean retry_all,
+                                        gboolean *out_reinitiate);
+
+#else /* !HAVE_AWS */
+
+static inline OstreeFetcherS3 *
+_ostree_fetcher_s3_new (void)
+{
+  return NULL;
+}
+
+static inline void
+_ostree_fetcher_s3_free (OstreeFetcherS3 *s3)
+{
+}
+
+static inline void
+_ostree_s3_request_free (OstreeS3Request *s3)
+{
+}
+
+/* Without AWS support an s3:// request fails before reaching curl, so the
+ * other hooks are never called. */
+static inline gboolean
+_ostree_fetcher_s3_begin_attempt (FetcherRequest *req, GTask *task, GUri *baseuri, char **out_url)
+{
+  _ostree_fetcher_request_fail_later (req->fetcher, task,
+                                      g_error_new (G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                                                   "this libostree was built without S3 support"));
+  return FALSE;
+}
+
+static inline gboolean
+_ostree_fetcher_s3_write (FetcherRequest *req, GTask *task, const void *ptr, size_t realsize,
+                          size_t *out_ret)
+{
+  g_assert_not_reached ();
+  return FALSE;
+}
+
+static inline void
+_ostree_fetcher_s3_header (FetcherRequest *req, const char *line)
+{
+  g_assert_not_reached ();
+}
+
+static inline void
+_ostree_fetcher_s3_complete_error (OstreeFetcher *self, FetcherRequest *req, GTask *task,
+                                   const char *eff_url, long response, gboolean retry_all,
+                                   gboolean *out_reinitiate)
+{
+  g_assert_not_reached ();
+}
+
+#endif /* HAVE_AWS */
 
 G_END_DECLS

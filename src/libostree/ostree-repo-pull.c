@@ -4873,6 +4873,8 @@ ostree_repo_pull_with_options (OstreeRepo *self, const char *remote_name_or_base
               break;
             }
         }
+      else if (g_str_equal (first_scheme, "s3"))
+        g_string_append (msg, "s3: SigV4");
       g_string_append (msg, "\n");
 
       if (pull_data->n_fetched_deltaparts > 0)

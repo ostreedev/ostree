@@ -20,6 +20,7 @@
 #include "libglnx.h"
 #include "ostree-aws.h"
 #include "ostree-fetcher-s3.h"
+#include "ostree-fetcher.h"
 #include <gio/gio.h>
 #include <glib.h>
 #include <glib/gstdio.h>
@@ -481,6 +482,38 @@ test_credentials_chain (void)
   g_rmdir (tmpdir);
 }
 
+static void
+test_uri_validate (void)
+{
+  g_autoptr (GError) error = NULL;
+
+  g_autoptr (OstreeFetcherURI) good
+      = _ostree_fetcher_uri_parse ("s3://my-bucket/repo?region=us-east-1", &error);
+  g_assert_no_error (error);
+  g_assert_true (_ostree_fetcher_uri_validate (good, &error));
+  g_assert_no_error (error);
+
+  g_autoptr (OstreeFetcherURI) bad
+      = _ostree_fetcher_uri_parse ("s3://my-bucket/repo?regoin=us-east-1", &error);
+  g_assert_no_error (error);
+  g_assert_false (_ostree_fetcher_uri_validate (bad, &error));
+  g_assert_nonnull (strstr (error->message, "Unknown parameter 'regoin'"));
+  g_clear_error (&error);
+
+  /* Other schemes behave as before. */
+  g_autoptr (OstreeFetcherURI) https
+      = _ostree_fetcher_uri_parse ("https://example.com/repo", &error);
+  g_assert_no_error (error);
+  g_assert_true (_ostree_fetcher_uri_validate (https, &error));
+  g_assert_no_error (error);
+
+  g_autoptr (OstreeFetcherURI) ftp = _ostree_fetcher_uri_parse ("ftp://example.com/repo", &error);
+  g_assert_no_error (error);
+  g_assert_false (_ostree_fetcher_uri_validate (ftp, &error));
+  g_assert_nonnull (strstr (error->message, "Invalid URI scheme"));
+  g_clear_error (&error);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -499,6 +532,8 @@ main (int argc, char **argv)
   g_test_add_func ("/aws/sign-port", test_sign_port);
   g_test_add_func ("/aws/resolve-region", test_resolve_region);
   g_test_add_func ("/aws/credentials-chain", test_credentials_chain);
+
+  g_test_add_func ("/s3/uri-validate", test_uri_validate);
 
   return g_test_run ();
 }
