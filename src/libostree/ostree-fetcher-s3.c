@@ -322,6 +322,52 @@ _ostree_s3_parse_error_body (const char *body, gsize len, char **out_code, char 
   return ok;
 }
 
+/* Parse an unsigned decimal at *p, advancing it. Fails on no digits or overflow. */
+static gboolean
+parse_u64 (const char **p, guint64 *out)
+{
+  const char *s = *p;
+  guint64 v = 0;
+  if (!g_ascii_isdigit (*s))
+    return FALSE;
+  for (; g_ascii_isdigit (*s); s++)
+    {
+      const guint64 d = (guint64)(*s - '0');
+      if (v > (G_MAXUINT64 - d) / 10)
+        return FALSE;
+      v = v * 10 + d;
+    }
+  *p = s;
+  *out = v;
+  return TRUE;
+}
+
+gboolean
+_ostree_s3_parse_content_range (const char *value, guint64 *out_start, guint64 *out_end,
+                                guint64 *out_total)
+{
+  const char *p = value;
+  guint64 start, end, total;
+
+  while (g_ascii_isspace (*p))
+    p++;
+  if (!g_str_has_prefix (p, "bytes "))
+    return FALSE;
+  p += strlen ("bytes ");
+  if (!parse_u64 (&p, &start) || *p++ != '-' || !parse_u64 (&p, &end) || *p++ != '/'
+      || !parse_u64 (&p, &total))
+    return FALSE;
+  while (g_ascii_isspace (*p))
+    p++;
+  if (*p != '\0' || start > end || end >= total)
+    return FALSE;
+
+  *out_start = start;
+  *out_end = end;
+  *out_total = total;
+  return TRUE;
+}
+
 gboolean
 _ostree_s3_credentials_usable (guint64 expiry, guint64 fetched_at, guint64 now)
 {

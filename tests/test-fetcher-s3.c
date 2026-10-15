@@ -255,6 +255,51 @@ test_credentials_usable (void)
   g_assert_false (_ostree_s3_credentials_usable (now + 120, now + 500, now));
 }
 
+static void
+test_content_range (void)
+{
+  guint64 start = 99, end = 99, total = 99;
+
+  g_assert_true (_ostree_s3_parse_content_range ("bytes 0-8388607/27367424", &start, &end, &total));
+  g_assert_cmpuint (start, ==, 0);
+  g_assert_cmpuint (end, ==, 8388607);
+  g_assert_cmpuint (total, ==, 27367424);
+
+  /* whole small object returned for a larger requested range */
+  g_assert_true (_ostree_s3_parse_content_range ("bytes 0-699/700", &start, &end, &total));
+  g_assert_cmpuint (end, ==, 699);
+  g_assert_cmpuint (total, ==, 700);
+
+  /* values beyond 32 bits, and surrounding whitespace as curl hands it over */
+  g_assert_true (_ostree_s3_parse_content_range ("  bytes 8589934592-8589934599/17179869184\r\n",
+                                                 &start, &end, &total));
+  g_assert_cmpuint (start, ==, G_GUINT64_CONSTANT (8589934592));
+  g_assert_cmpuint (total, ==, G_GUINT64_CONSTANT (17179869184));
+
+  /* anything we cannot rely on is rejected, leaving the outputs alone */
+  const char *bad[] = {
+    "",
+    "bytes",
+    "bytes 0-9",
+    "bytes 0-9/*",
+    "bytes */100",
+    "items 0-9/100",
+    "bytes 9-0/100",
+    "bytes 0-100/100",
+    "bytes -5-9/100",
+    "bytes 0-9/100 junk",
+    "bytes a-b/c",
+  };
+  for (guint i = 0; i < G_N_ELEMENTS (bad); i++)
+    {
+      start = end = total = 7;
+      g_assert_false (_ostree_s3_parse_content_range (bad[i], &start, &end, &total));
+      g_assert_cmpuint (start, ==, 7);
+      g_assert_cmpuint (end, ==, 7);
+      g_assert_cmpuint (total, ==, 7);
+    }
+}
+
 /* ---- ostree-aws ---- */
 
 static const char *
@@ -528,6 +573,7 @@ main (int argc, char **argv)
   g_test_add_func ("/s3/error-body/s3", test_error_body);
   g_test_add_func ("/s3/error-body/not-s3", test_error_body_not_s3);
   g_test_add_func ("/s3/credentials-usable", test_credentials_usable);
+  g_test_add_func ("/s3/content-range", test_content_range);
   g_test_add_func ("/aws/sign", test_sign);
   g_test_add_func ("/aws/sign-port", test_sign_port);
   g_test_add_func ("/aws/resolve-region", test_resolve_region);

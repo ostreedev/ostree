@@ -288,6 +288,7 @@ _ostree_fetcher_request_task_new (OstreeFetcher *self, FetcherRequest *req, int 
 void
 _ostree_fetcher_request_finished (OstreeFetcher *self, GTask *task)
 {
+  ((FetcherRequest *)g_task_get_task_data (task))->finished = TRUE;
   g_hash_table_remove (self->outstanding_requests, task);
   if (g_hash_table_size (self->outstanding_requests) == 0)
     g_clear_pointer (&self->mainctx, g_main_context_unref);
@@ -313,9 +314,14 @@ fail_later_idle_cb (gpointer user_data)
 {
   FailLaterData *data = user_data;
   OstreeFetcher *self = g_task_get_source_object (data->task);
+  FetcherRequest *req = g_task_get_task_data (data->task);
 
-  g_task_return_error (data->task, g_steal_pointer (&data->error));
-  _ostree_fetcher_request_finished (self, data->task);
+  /* A range may have been cancelled, and so returned, in the meantime. */
+  if (!req->finished)
+    {
+      g_task_return_error (data->task, g_steal_pointer (&data->error));
+      _ostree_fetcher_request_finished (self, data->task);
+    }
   return G_SOURCE_REMOVE;
 }
 
@@ -354,6 +360,7 @@ check_multi_info (OstreeFetcher *fetcher)
       const char *eff_url;
       gboolean is_file;
       gboolean continued_request = FALSE;
+      gboolean waiting_for_ranges = FALSE;
 
       if (msg->msg != CURLMSG_DONE)
         continue;
@@ -372,7 +379,9 @@ check_multi_info (OstreeFetcher *fetcher)
 
       gboolean retry_all = (!is_file && req->fetcher->opt_retry_all);
 
-      if (req->caught_write_error)
+      if (req->is_s3 && _ostree_fetcher_s3_restarting (req))
+        continued_request = TRUE; /* nothing was written; ask again without a range */
+      else if (req->caught_write_error)
         g_task_return_error (task, g_steal_pointer (&req->caught_write_error));
       else if (curlres != CURLE_OK)
         {
@@ -433,6 +442,10 @@ check_multi_info (OstreeFetcher *fetcher)
                   continued_request = TRUE;
                 }
             }
+          else if (req->is_s3
+                   && _ostree_fetcher_s3_transfer_done (req, task, eff_url, response,
+                                                        &waiting_for_ranges))
+            ; /* completed, or waiting for the rest of the object */
           else if (req->is_membuf)
             {
               GBytes *ret;
@@ -468,8 +481,15 @@ check_multi_info (OstreeFetcher *fetcher)
       g_assert_cmpint (rc, ==, CURLM_OK);
       if (continued_request)
         _ostree_fetcher_request_initiate (req, task);
+      else if (waiting_for_ranges)
+        _ostree_fetcher_s3_complete_after_ranges (fetcher, task);
       else
-        _ostree_fetcher_request_finished (fetcher, task);
+        {
+          /* If this request failed with ranges of its object still running,
+           * stop them now rather than let them outlive it. */
+          _ostree_fetcher_s3_cancel_ranges (fetcher, req);
+          _ostree_fetcher_request_finished (fetcher, task);
+        }
     }
 }
 
@@ -479,6 +499,8 @@ timer_cb (gpointer data)
 {
   CURLMcode rc;
   OstreeFetcher *fetcher = data;
+  /* Completing requests can drop the last other reference to the fetcher. */
+  g_autoptr (OstreeFetcher) fetcher_ref = g_object_ref (fetcher);
   g_clear_pointer (&fetcher->timer_event, destroy_and_unref_source);
   rc = curl_multi_socket_action (fetcher->multi, CURL_SOCKET_TIMEOUT, 0, &fetcher->curl_running);
   g_assert_cmpint (rc, ==, CURLM_OK);
@@ -511,6 +533,8 @@ event_cb (int fd, GIOCondition condition, gpointer data)
 {
   OstreeFetcher *fetcher = data;
   CURLMcode rc;
+  /* Completing requests can drop the last other reference to the fetcher. */
+  g_autoptr (OstreeFetcher) fetcher_ref = g_object_ref (fetcher);
 
   int action
       = (condition & G_IO_IN ? CURL_CSELECT_IN : 0) | (condition & G_IO_OUT ? CURL_CSELECT_OUT : 0);

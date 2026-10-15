@@ -26,3 +26,4 @@ test-rollsum-cli
 test-kargs
 test-commit-sign-sh-ext
 test-fetcher-s3
+s3-pull-repeat

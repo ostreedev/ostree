@@ -55,6 +55,12 @@ char *_ostree_s3_location_to_request_url (const OstreeS3Location *loc, const cha
 gboolean _ostree_s3_parse_error_body (const char *body, gsize len, char **out_code,
                                       char **out_message, char **out_region);
 
+/* Parse a "Content-Range: bytes START-END/TOTAL" header value. Returns
+ * FALSE, leaving the outputs untouched, unless all three are present and
+ * consistent (START <= END < TOTAL). */
+gboolean _ostree_s3_parse_content_range (const char *value, guint64 *out_start, guint64 *out_end,
+                                         guint64 *out_total);
+
 /* Whether credentials expiring at @expiry (seconds since the epoch,
  * G_MAXUINT64 for never) and obtained at @fetched_at may be used at @now. */
 gboolean _ostree_s3_credentials_usable (guint64 expiry, guint64 fetched_at, guint64 now);

@@ -15,10 +15,14 @@
  * License along with this library. If not, see <https://www.gnu.org/licenses/>.
  */
 
-/* s3:// support for the curl fetcher: credentials, signing and S3 error
- * responses. */
+/* s3:// support for the curl fetcher: credentials, signing, S3 error
+ * responses, and fetching large objects as parallel ranged requests. */
 
 #include "config.h"
+
+#include <errno.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "ostree-aws.h"
 #include "ostree-fetcher-curl-private.h"
@@ -31,6 +35,10 @@
 /* Signing region for ?endpoint= remotes that resolve none; S3-compatible
  * servers generally accept any. */
 #define S3_ENDPOINT_FALLBACK_REGION "us-east-1"
+/* Objects larger than this are fetched as parallel ranged requests of this
+ * size each. One connection to S3 is often far slower than the link as a
+ * whole, so a single large object would otherwise hold up the end of a pull. */
+#define S3_RANGE_PART_SIZE (4 * 1024 * 1024)
 
 /* One s3:// base URI as configured on a remote. */
 typedef struct
@@ -56,6 +64,43 @@ struct OstreeFetcherS3
   GHashTable *creds;   /* "profile\nregion" -> S3CredState* */
 };
 
+/* A large object is fetched in parts: its request asks for the first part
+ * and then starts one child request per remaining part, each writing
+ * straight into the parent's tmpfile. The parent completes once its own
+ * transfer and every child have. */
+typedef enum
+{
+  S3_RANGES_OFF,      /* this attempt fetches the object in one request */
+  S3_RANGES_FIRST,    /* this attempt asked for the first part only */
+  S3_RANGES_RESTART,  /* the parts could not be tied together: fetch it whole */
+  S3_RANGES_SPAWNING, /* the children are about to be started, from an idle */
+  S3_RANGES_RUNNING,  /* the children were started (or cancelled) */
+} S3RangesState;
+
+/* The parent's side. */
+typedef struct
+{
+  S3RangesState state;
+  gboolean disabled;   /* the server refused a range or gave no strong ETag: don't ask again */
+  gboolean own_done;   /* the parent's own transfer finished; waiting for the children */
+  guint64 first;       /* bytes covered by the parent's own response */
+  guint64 total;       /* size of the whole object; 0 until known */
+  guint n_running;     /* children not yet completed */
+  GPtrArray *children; /* their tasks, until each completes (not owned) */
+  GSource *spawn;      /* the idle that starts them (owned) */
+  GError *error;       /* the first failure among them */
+} S3Ranges;
+
+/* A child's side: one part of the parent's object. */
+typedef struct
+{
+  GTask *parent;      /* owned; NULL if this request is not a part */
+  guint64 offset;     /* first byte to fetch */
+  guint64 length;     /* number of bytes to fetch */
+  guint64 written;    /* bytes written so far */
+  gboolean confirmed; /* Content-Range is exactly the range asked for */
+} S3Part;
+
 struct OstreeS3Request
 {
   /* The current attempt. */
@@ -65,6 +110,8 @@ struct OstreeS3Request
   OstreeAwsCredentials *creds; /* what the attempt was signed with */
 
   gboolean retried_expired; /* already retried once after an expired token */
+  S3Ranges ranges;
+  S3Part part;
 };
 
 static void
@@ -112,6 +159,10 @@ _ostree_s3_request_free (OstreeS3Request *s3)
     g_string_free (s3->error_body, TRUE);
   g_free (s3->bucket_region);
   g_clear_pointer (&s3->creds, _ostree_aws_credentials_unref);
+  g_clear_error (&s3->ranges.error);
+  g_clear_pointer (&s3->ranges.children, g_ptr_array_unref);
+  g_clear_pointer (&s3->ranges.spawn, g_source_unref);
+  g_clear_object (&s3->part.parent);
   g_free (s3);
 }
 
@@ -276,6 +327,15 @@ s3_sign_request (FetcherRequest *req, GTask *task, GUri *baseuri, char **out_url
   return TRUE;
 }
 
+/* Only plain downloads to a file are split: in-memory requests are small,
+ * and conditional requests must see the server's real status. */
+static gboolean
+s3_ranges_eligible (FetcherRequest *req)
+{
+  return !req->is_membuf && req->s3->part.parent == NULL && !req->s3->ranges.disabled
+         && req->if_none_match == NULL && req->if_modified_since == 0;
+}
+
 gboolean
 _ostree_fetcher_s3_begin_attempt (FetcherRequest *req, GTask *task, GUri *baseuri, char **out_url)
 {
@@ -297,7 +357,35 @@ _ostree_fetcher_s3_begin_attempt (FetcherRequest *req, GTask *task, GUri *baseur
       _ostree_fetcher_request_fail_later (req->fetcher, task, g_steal_pointer (&error));
       return FALSE;
     }
-  return !parked;
+  if (parked)
+    return FALSE;
+
+  S3Ranges *ranges = &s3->ranges;
+  ranges->state = S3_RANGES_OFF;
+  ranges->first = 0;
+  ranges->total = 0;
+  if (s3->part.parent != NULL)
+    {
+      FetcherRequest *preq = g_task_get_task_data (s3->part.parent);
+      g_autofree char *range
+          = g_strdup_printf ("Range: bytes=%" G_GUINT64_FORMAT "-%" G_GUINT64_FORMAT,
+                             s3->part.offset, s3->part.offset + s3->part.length - 1);
+      req->req_headers = curl_slist_append (req->req_headers, range);
+      /* Refuse to stitch together parts of two different objects. The
+       * parent only starts children once it has a strong ETag. */
+      g_assert (preq->out_etag != NULL);
+      g_autofree char *if_match = g_strconcat ("If-Match: ", preq->out_etag, NULL);
+      req->req_headers = curl_slist_append (req->req_headers, if_match);
+      s3->part.written = 0;
+      s3->part.confirmed = FALSE;
+    }
+  else if (s3_ranges_eligible (req))
+    {
+      ranges->state = S3_RANGES_FIRST;
+      g_autofree char *range = g_strdup_printf ("Range: bytes=0-%d", S3_RANGE_PART_SIZE - 1);
+      req->req_headers = curl_slist_append (req->req_headers, range);
+    }
+  return TRUE;
 }
 
 void
@@ -312,6 +400,14 @@ _ostree_fetcher_s3_complete_error (OstreeFetcher *self, FetcherRequest *req, GTa
   if (s3->error_body != NULL)
     (void)_ostree_s3_parse_error_body (s3->error_body->str, s3->error_body->len, &code, &message,
                                        &body_region);
+
+  if (response == 416 && s3->ranges.state == S3_RANGES_FIRST)
+    {
+      /* A zero-length object cannot satisfy any range; ask for all of it. */
+      s3->ranges.disabled = TRUE;
+      *out_reinitiate = TRUE;
+      return;
+    }
 
   /* S3 reports ExpiredToken with HTTP 400 and RequestExpired with 403, so
    * go by the error code, not the status. */
@@ -334,7 +430,8 @@ _ostree_fetcher_s3_complete_error (OstreeFetcher *self, FetcherRequest *req, GTa
       return;
     }
 
-  if (req->idx + 1 < req->mirrorlist->len)
+  /* A part belongs to its parent's mirror; it fails rather than moving on. */
+  if (s3->part.parent == NULL && req->idx + 1 < req->mirrorlist->len)
     {
       req->idx++;
       *out_reinitiate = TRUE;
@@ -385,11 +482,205 @@ _ostree_fetcher_s3_complete_error (OstreeFetcher *self, FetcherRequest *req, GTa
     _ostree_fetcher_journal_failure (self->remote_name, eff_url, msg);
 }
 
+/* Complete a parent whose own transfer and all children have finished. */
+static void
+s3_ranges_finish (OstreeFetcher *self, GTask *ptask)
+{
+  FetcherRequest *preq = g_task_get_task_data (ptask);
+  S3Ranges *ranges = &preq->s3->ranges;
+  g_autoptr (GError) error = g_steal_pointer (&ranges->error);
+  struct stat stbuf;
+
+  if (error != NULL)
+    ;
+  else if (!glnx_fstat (preq->tmpf.fd, &stbuf, &error))
+    ;
+  else if ((guint64)stbuf.st_size != ranges->total)
+    /* Every part checked its own length, so this cannot happen; but with
+     * --http-trusted the file is linked into the repo unverified, so make
+     * sure of it. */
+    g_set_error (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                 "Ranged fetch assembled %" G_GUINT64_FORMAT " bytes, expected %" G_GUINT64_FORMAT,
+                 (guint64)stbuf.st_size, ranges->total);
+  else if (lseek (preq->tmpf.fd, 0, SEEK_SET) < 0)
+    glnx_throw_errno_prefix (&error, "lseek");
+
+  if (error != NULL)
+    g_task_return_error (ptask, g_steal_pointer (&error));
+  else
+    g_task_return_boolean (ptask, TRUE);
+  _ostree_fetcher_request_finished (self, ptask);
+}
+
+void
+_ostree_fetcher_s3_complete_after_ranges (OstreeFetcher *self, GTask *task)
+{
+  FetcherRequest *req = g_task_get_task_data (task);
+  S3Ranges *ranges = &req->s3->ranges;
+  if (ranges->state != S3_RANGES_SPAWNING && ranges->n_running == 0)
+    s3_ranges_finish (self, task);
+}
+
+/* Forget @task if it is waiting for credentials. */
+static void
+s3_unpark (OstreeFetcher *self, GTask *task)
+{
+  GHashTableIter iter;
+  gpointer value;
+  g_hash_table_iter_init (&iter, self->s3->creds);
+  while (g_hash_table_iter_next (&iter, NULL, &value))
+    g_queue_remove (&((S3CredState *)value)->waiting, task);
+}
+
+/* Called as soon as the object has failed, so that no range outlives it:
+ * the pull only counts the parent, and may finish (and free the fetcher)
+ * once the parent is done. */
+void
+_ostree_fetcher_s3_cancel_ranges (OstreeFetcher *self, FetcherRequest *req)
+{
+  if (req->s3 == NULL)
+    return;
+  S3Ranges *ranges = &req->s3->ranges;
+
+  if (ranges->spawn != NULL)
+    {
+      g_source_destroy (ranges->spawn);
+      g_clear_pointer (&ranges->spawn, g_source_unref);
+      ranges->state = S3_RANGES_RUNNING;
+    }
+
+  g_autoptr (GPtrArray) tasks = g_steal_pointer (&ranges->children);
+  for (guint i = 0; tasks != NULL && i < tasks->len; i++)
+    {
+      GTask *ctask = tasks->pdata[i];
+      FetcherRequest *creq = g_task_get_task_data (ctask);
+      if (creq->finished)
+        continue;
+      if (creq->easy != NULL)
+        (void)curl_multi_remove_handle (self->multi, creq->easy);
+      s3_unpark (self, ctask);
+      g_task_return_new_error (ctask, G_IO_ERROR, G_IO_ERROR_CANCELLED,
+                               "Another part of this object failed");
+      _ostree_fetcher_request_finished (self, ctask);
+    }
+}
+
+static void
+s3_part_done (GObject *source, GAsyncResult *result, gpointer user_data)
+{
+  OstreeFetcher *self = OSTREE_FETCHER (source);
+  GTask *ctask = G_TASK (result);
+  FetcherRequest *creq = g_task_get_task_data (ctask);
+  GTask *ptask = creq->s3->part.parent;
+  FetcherRequest *preq = g_task_get_task_data (ptask);
+  S3Ranges *ranges = &preq->s3->ranges;
+  g_autoptr (GError) error = NULL;
+
+  if (!g_task_propagate_boolean (ctask, &error) && ranges->error == NULL)
+    ranges->error = g_steal_pointer (&error);
+
+  if (ranges->children != NULL)
+    g_ptr_array_remove (ranges->children, ctask);
+  g_assert_cmpuint (ranges->n_running, >, 0);
+  ranges->n_running--;
+  /* Once one part has failed the object has, so stop the others. */
+  if (ranges->error != NULL)
+    _ostree_fetcher_s3_cancel_ranges (self, preq);
+  /* The parent may already have failed on its own and been returned. */
+  if (ranges->n_running == 0 && ranges->own_done && !preq->finished)
+    s3_ranges_finish (self, ptask);
+}
+
+/* Start the child requests for everything after the parent's first part.
+ * Runs from an idle because transfers can't be added inside a curl callback. */
+static gboolean
+s3_ranges_spawn_idle (gpointer user_data)
+{
+  GTask *ptask = user_data;
+  OstreeFetcher *self = g_task_get_source_object (ptask);
+  FetcherRequest *preq = g_task_get_task_data (ptask);
+  S3Ranges *ranges = &preq->s3->ranges;
+
+  g_clear_pointer (&ranges->spawn, g_source_unref);
+  ranges->state = S3_RANGES_RUNNING;
+  if (preq->finished)
+    return G_SOURCE_REMOVE;
+
+  /* Children write into the parent's file, so it has to exist now. */
+  if (!_ostree_fetcher_request_ensure_tmpfile (preq, &ranges->error))
+    {
+      if (ranges->own_done)
+        s3_ranges_finish (self, ptask);
+      return G_SOURCE_REMOVE;
+    }
+
+  /* Child tasks complete on the thread-default context; make it ours. */
+  g_main_context_push_thread_default (self->mainctx);
+  for (guint64 offset = ranges->first; offset < ranges->total; offset += S3_RANGE_PART_SIZE)
+    {
+      FetcherRequest *creq
+          = _ostree_fetcher_request_new (self, preq->mirrorlist, preq->filename, preq->flags);
+      creq->idx = preq->idx;
+      creq->s3 = g_new0 (OstreeS3Request, 1);
+      creq->s3->part.parent = g_object_ref (ptask);
+      creq->s3->part.offset = offset;
+      creq->s3->part.length = MIN (S3_RANGE_PART_SIZE, ranges->total - offset);
+
+      GTask *ctask
+          = _ostree_fetcher_request_task_new (self, creq, g_task_get_priority (ptask),
+                                              g_task_get_cancellable (ptask), s3_part_done, NULL);
+
+      ranges->n_running++;
+      if (ranges->children == NULL)
+        ranges->children = g_ptr_array_new ();
+      g_ptr_array_add (ranges->children, ctask);
+      g_hash_table_add (self->outstanding_requests, ctask); /* takes ownership */
+      _ostree_fetcher_request_initiate (creq, ctask);
+    }
+  g_main_context_pop_thread_default (self->mainctx);
+
+  return G_SOURCE_REMOVE;
+}
+
+/* Write one chunk of a part at its place in the parent's tmpfile. */
+static gboolean
+s3_part_write (FetcherRequest *req, long response, const void *ptr, size_t realsize)
+{
+  S3Part *part = &req->s3->part;
+  FetcherRequest *preq = g_task_get_task_data (part->parent);
+
+  if (response != 206 || !part->confirmed || part->written + realsize > part->length)
+    {
+      req->caught_write_error
+          = g_error_new (G_IO_ERROR, G_IO_ERROR_FAILED,
+                         "Unexpected response to a ranged request (HTTP %ld)", response);
+      return FALSE;
+    }
+  size_t done = 0;
+  while (done < realsize)
+    {
+      ssize_t n = pwrite (preq->tmpf.fd, (const char *)ptr + done, realsize - done,
+                          part->offset + part->written + done);
+      if (n < 0 && errno == EINTR)
+        continue;
+      if (n < 0)
+        {
+          glnx_set_error_from_errno (&req->caught_write_error);
+          return FALSE;
+        }
+      done += n;
+    }
+  part->written += realsize;
+  req->fetcher->bytes_transferred += realsize;
+  return TRUE;
+}
+
 gboolean
 _ostree_fetcher_s3_write (FetcherRequest *req, GTask *task, const void *ptr, size_t realsize,
                           size_t *out_ret)
 {
   OstreeS3Request *s3 = req->s3;
+  S3Ranges *ranges = &s3->ranges;
   long response = 0;
   (void)curl_easy_getinfo (req->easy, CURLINFO_RESPONSE_CODE, &response);
 
@@ -406,6 +697,48 @@ _ostree_fetcher_s3_write (FetcherRequest *req, GTask *task, const void *ptr, siz
       return TRUE;
     }
 
+  if (s3->part.parent != NULL)
+    {
+      *out_ret = s3_part_write (req, response, ptr, realsize) ? realsize : (size_t)-1;
+      return TRUE;
+    }
+
+  if (ranges->state != S3_RANGES_FIRST || response != 206)
+    return FALSE;
+
+  /* We asked for the first part only, so a 206 must say which bytes it holds;
+   * otherwise it could be taken for the whole object. */
+  if (ranges->total == 0)
+    {
+      req->caught_write_error = g_error_new (G_IO_ERROR, G_IO_ERROR_FAILED,
+                                             "Ranged response without a usable Content-Range");
+      *out_ret = (size_t)-1;
+      return TRUE;
+    }
+
+  if (ranges->total > ranges->first)
+    {
+      /* This is the first part of a larger object, and by the first
+       * byte of the body every header is in. The rest may only be
+       * fetched separately if it can be tied to this response, which
+       * takes a strong ETag for If-Match. Otherwise an object replaced
+       * mid-download could be stitched together from two versions, so
+       * drop this attempt before writing anything and fetch it whole. */
+      if (req->out_etag == NULL || g_str_has_prefix (req->out_etag, "W/"))
+        {
+          ranges->disabled = TRUE;
+          ranges->state = S3_RANGES_RESTART;
+          *out_ret = (size_t)-1;
+          return TRUE;
+        }
+      ranges->state = S3_RANGES_SPAWNING;
+      /* Transfers can't be added from inside a curl callback. */
+      GSource *source = g_idle_source_new ();
+      g_source_set_callback (source, s3_ranges_spawn_idle, g_object_ref (task), g_object_unref);
+      g_source_attach (source, req->fetcher->mainctx);
+      ranges->spawn = source;
+    }
+
   return FALSE;
 }
 
@@ -414,10 +747,90 @@ _ostree_fetcher_s3_header (FetcherRequest *req, const char *line)
 {
   OstreeS3Request *s3 = req->s3;
   const char *bucket_region_header = "x-amz-bucket-region:";
+  const char *content_range_header = "Content-Range:";
+  guint64 start, end, total;
 
   if (g_ascii_strncasecmp (line, bucket_region_header, strlen (bucket_region_header)) == 0)
     {
       g_free (s3->bucket_region);
       s3->bucket_region = g_strdup (g_strstrip ((char *)line + strlen (bucket_region_header)));
     }
+  else if (g_ascii_strncasecmp (line, content_range_header, strlen (content_range_header)) != 0)
+    ;
+  else if (s3->part.parent != NULL)
+    {
+      S3Part *part = &s3->part;
+      part->confirmed = _ostree_s3_parse_content_range (line + strlen (content_range_header),
+                                                        &start, &end, &total)
+                        && start == part->offset && end == part->offset + part->length - 1;
+    }
+  else if (s3->ranges.state == S3_RANGES_FIRST && s3->ranges.total == 0)
+    {
+      long response = 0;
+      (void)curl_easy_getinfo (req->easy, CURLINFO_RESPONSE_CODE, &response);
+      if (response == 206
+          && _ostree_s3_parse_content_range (line + strlen (content_range_header), &start, &end,
+                                             &total)
+          && start == 0)
+        {
+          s3->ranges.first = end + 1;
+          s3->ranges.total = total;
+          if (req->max_size > 0 && total > req->max_size && req->caught_write_error == NULL)
+            req->caught_write_error = g_error_new (
+                G_IO_ERROR, G_IO_ERROR_FAILED,
+                "Object exceeded maximum size of %" G_GUINT64_FORMAT " bytes", req->max_size);
+        }
+    }
+}
+
+gboolean
+_ostree_fetcher_s3_restarting (FetcherRequest *req)
+{
+  return req->s3->ranges.state == S3_RANGES_RESTART;
+}
+
+gboolean
+_ostree_fetcher_s3_transfer_done (FetcherRequest *req, GTask *task, const char *eff_url,
+                                  long response, gboolean *out_waiting)
+{
+  OstreeS3Request *s3 = req->s3;
+  S3Ranges *ranges = &s3->ranges;
+
+  if (s3->part.parent != NULL)
+    {
+      if (response != 206 || s3->part.written != s3->part.length)
+        g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                 "While fetching %s: incomplete ranged response (HTTP "
+                                 "%ld, %" G_GUINT64_FORMAT " of %" G_GUINT64_FORMAT " bytes)",
+                                 eff_url, response, s3->part.written, s3->part.length);
+      else
+        g_task_return_boolean (task, TRUE);
+      return TRUE;
+    }
+
+  if (ranges->state == S3_RANGES_OFF)
+    return FALSE;
+
+  if (response == 206 && ranges->total == 0)
+    /* Also checked in _ostree_fetcher_s3_write(), but that never runs for
+     * an empty body. */
+    g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_FAILED,
+                             "While fetching %s: ranged response without a usable "
+                             "Content-Range",
+                             eff_url);
+  else if (ranges->total > 0 && req->current_size != ranges->first)
+    g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_FAILED,
+                             "While fetching %s: ranged response has %" G_GUINT64_FORMAT
+                             " bytes, expected %" G_GUINT64_FORMAT,
+                             eff_url, req->current_size, ranges->first);
+  else if (ranges->state == S3_RANGES_SPAWNING || ranges->state == S3_RANGES_RUNNING)
+    {
+      /* The rest of the object is arriving in parts; it is completed once
+       * they all have. */
+      ranges->own_done = TRUE;
+      *out_waiting = TRUE;
+    }
+  else
+    return FALSE; /* the object fitted in the first part, or was sent whole */
+  return TRUE;
 }

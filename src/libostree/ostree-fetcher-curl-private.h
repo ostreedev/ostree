@@ -91,6 +91,11 @@ typedef struct FetcherRequest
   char error[CURL_ERROR_SIZE];
 
   OstreeFetcher *fetcher;
+  /* Returned and forgotten (_ostree_fetcher_request_finished()). Not
+   * g_task_get_completed(), which stays FALSE until the callback has run,
+   * and that is deferred to an idle once the task's cancellable is
+   * cancelled. */
+  gboolean finished;
 
   gboolean is_s3;      /* the current attempt targets an s3:// mirror */
   OstreeS3Request *s3; /* created by the first such attempt */
@@ -114,8 +119,9 @@ OstreeFetcherS3 *_ostree_fetcher_s3_new (void);
 void _ostree_fetcher_s3_free (OstreeFetcherS3 *s3);
 void _ostree_s3_request_free (OstreeS3Request *s3);
 
-/* Sign an attempt. Returns FALSE if the request is now waiting for
- * credentials or has been failed; otherwise *out_url is the URL to fetch. */
+/* Sign an attempt and add any Range headers. Returns FALSE if the request
+ * is now waiting for credentials or has been failed; otherwise *out_url is
+ * the URL to fetch. */
 gboolean _ostree_fetcher_s3_begin_attempt (FetcherRequest *req, GTask *task, GUri *baseuri,
                                            char **out_url);
 /* For the write callback. Returns TRUE if it dealt with the data, with the
@@ -124,11 +130,23 @@ gboolean _ostree_fetcher_s3_write (FetcherRequest *req, GTask *task, const void 
                                    size_t realsize, size_t *out_ret);
 /* For the header callback, with one NUL-terminated header line. */
 void _ostree_fetcher_s3_header (FetcherRequest *req, const char *line);
+/* Whether the transfer was aborted to fetch the object again, whole. */
+gboolean _ostree_fetcher_s3_restarting (FetcherRequest *req);
 /* For a non-2xx, non-304 response: either set *out_reinitiate (retry, on
  * this mirror or the next) or complete @task with an error. */
 void _ostree_fetcher_s3_complete_error (OstreeFetcher *self, FetcherRequest *req, GTask *task,
                                         const char *eff_url, long response, gboolean retry_all,
                                         gboolean *out_reinitiate);
+/* For a 2xx response. Returns FALSE if @task should be completed as an
+ * ordinary download; TRUE if it was completed here, or (*out_waiting) must
+ * be completed by _ostree_fetcher_s3_complete_after_ranges() once the
+ * transfer is removed from curl. */
+gboolean _ostree_fetcher_s3_transfer_done (FetcherRequest *req, GTask *task, const char *eff_url,
+                                           long response, gboolean *out_waiting);
+void _ostree_fetcher_s3_complete_after_ranges (OstreeFetcher *self, GTask *task);
+/* Fail every range of @req's object that is still running or about to
+ * start. For any request; does nothing unless it has ranges. */
+void _ostree_fetcher_s3_cancel_ranges (OstreeFetcher *self, FetcherRequest *req);
 
 #else /* !HAVE_AWS */
 
@@ -173,12 +191,38 @@ _ostree_fetcher_s3_header (FetcherRequest *req, const char *line)
   g_assert_not_reached ();
 }
 
+static inline gboolean
+_ostree_fetcher_s3_restarting (FetcherRequest *req)
+{
+  g_assert_not_reached ();
+  return FALSE;
+}
+
 static inline void
 _ostree_fetcher_s3_complete_error (OstreeFetcher *self, FetcherRequest *req, GTask *task,
                                    const char *eff_url, long response, gboolean retry_all,
                                    gboolean *out_reinitiate)
 {
   g_assert_not_reached ();
+}
+
+static inline gboolean
+_ostree_fetcher_s3_transfer_done (FetcherRequest *req, GTask *task, const char *eff_url,
+                                  long response, gboolean *out_waiting)
+{
+  g_assert_not_reached ();
+  return FALSE;
+}
+
+static inline void
+_ostree_fetcher_s3_complete_after_ranges (OstreeFetcher *self, GTask *task)
+{
+  g_assert_not_reached ();
+}
+
+static inline void
+_ostree_fetcher_s3_cancel_ranges (OstreeFetcher *self, FetcherRequest *req)
+{
 }
 
 #endif /* HAVE_AWS */

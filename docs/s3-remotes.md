@@ -80,12 +80,31 @@ remotes:
 - up to 128 requests run at once, rather than 8 (set
   `--max-outstanding-fetcher-requests` to override; 0 means the default);
 - up to 16 static-delta parts download at once, rather than 2, while at most
-  2 are decompressed and applied at a time, as before.
+  2 are decompressed and applied at a time, as before;
+- objects larger than 4 MiB are fetched as parallel 4 MiB ranges written into
+  the same file. These follow-up requests come on top of the request limit.
+
+Measured from a workstation to GovCloud (about 40 ms per round trip, about
+1.5 MiB/s per connection), against 32 requests at once, 2 delta parts at a
+time and whole-object fetches: a 9,300-object pull went from about 40 s to
+23 s, an 88,000-object pull from 280 s to 100 s, and a 642 MiB static delta
+from about 130 s to 33 s.
 
 ## Integrity
 
 On a normal pull every object is checksummed before it is stored, so a
-transfer problem can fail a pull but cannot store a wrong object.
+transfer problem can fail a pull but cannot store a wrong object. Ranged
+fetching keeps this true for the one path that stores fetched files without
+checksumming them, mirroring into an archive repo with `--http-trusted`:
+
+- every ranged response, the first included, must be a 206 whose
+  `Content-Range` names exactly the bytes asked for, with a body of exactly
+  that length;
+- ranges are only used when the first response carries a strong ETag, which
+  every later range must match through `If-Match`, so an object replaced
+  mid-download is never assembled from two versions;
+- the finished file's size is checked against the object's advertised size;
+- a failed range fails the whole object, and its temporary file is discarded.
 
 Checksums only prove that objects match the commit that was fetched. To know
 the commit itself is genuine, sign commits (`ostree sign`) and enable
@@ -124,4 +143,7 @@ the commit itself is genuine, sign commits (`ostree sign`) and enable
   against independently computed SigV4 signatures, region and credential
   resolution.
 - `tests/test-pull-s3.sh`: pulls from a local MinIO with static and temporary
-  credentials, static deltas, and error cases.
+  credentials, static deltas, ranged objects, and error cases.
+- `tests/test-pull-s3-faults.sh`: pulls from a deliberately misbehaving server
+  and checks that every failure leaves no partial object, leaves the commit
+  marked partial, and recovers on the next pull.
