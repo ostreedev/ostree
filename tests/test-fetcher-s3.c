@@ -18,6 +18,7 @@
 #include "config.h"
 
 #include "libglnx.h"
+#include "ostree-aws.h"
 #include "ostree-fetcher-s3.h"
 #include <gio/gio.h>
 #include <glib.h>
@@ -255,6 +256,231 @@ test_credentials_usable (void)
 
 /* ---- ostree-aws ---- */
 
+static const char *
+find_header (GPtrArray *headers, const char *name)
+{
+  const gsize len = strlen (name);
+  for (guint i = 0; i < headers->len; i++)
+    {
+      const char *h = headers->pdata[i];
+      if (g_ascii_strncasecmp (h, name, len) == 0 && h[len] == ':')
+        return h + len + 2;
+    }
+  return NULL;
+}
+
+/* Expected signatures were computed with an independent SigV4
+ * implementation (Python hashlib/hmac), not with aws-c-auth. */
+static void
+test_sign (void)
+{
+  const guint64 t = 1369353600; /* 20130524T000000Z */
+  g_autoptr (GError) error = NULL;
+
+  g_autoptr (OstreeAwsCredentials) creds = _ostree_aws_credentials_new_static (
+      "AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", NULL);
+  g_assert_cmpuint (_ostree_aws_credentials_get_expiry (creds), ==, G_MAXUINT64);
+  g_autoptr (GPtrArray) headers = g_ptr_array_new_with_free_func (g_free);
+  _ostree_aws_sign_get_at (creds,
+                           "https://examplebucket.s3.amazonaws.com/repo/deltas/ab/c%2Bd/superblock",
+                           "us-east-1", t, headers, &error);
+  g_assert_no_error (error);
+  g_assert_cmpstr (find_header (headers, "Authorization"), ==,
+                   "AWS4-HMAC-SHA256 "
+                   "Credential=AKIAIOSFODNN7EXAMPLE/20130524/us-east-1/s3/aws4_request, "
+                   "SignedHeaders=host;x-amz-content-sha256;x-amz-date, "
+                   "Signature=1f1b4657c75f09877e88547ee17c26163a6c952895a7b120ef92e311633ed4e7");
+  g_assert_cmpstr (find_header (headers, "x-amz-date"), ==, "20130524T000000Z");
+  g_assert_cmpstr (find_header (headers, "x-amz-content-sha256"), ==, "UNSIGNED-PAYLOAD");
+  g_assert_null (find_header (headers, "x-amz-security-token"));
+
+  g_autoptr (OstreeAwsCredentials) temp_creds = _ostree_aws_credentials_new_static (
+      "AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", "TOKENEXAMPLE");
+  g_autoptr (GPtrArray) temp_headers = g_ptr_array_new_with_free_func (g_free);
+  _ostree_aws_sign_get_at (temp_creds, "https://examplebucket.s3.amazonaws.com/repo/config",
+                           "us-east-1", t, temp_headers, &error);
+  g_assert_no_error (error);
+  g_assert_cmpstr (find_header (temp_headers, "Authorization"), ==,
+                   "AWS4-HMAC-SHA256 "
+                   "Credential=AKIAIOSFODNN7EXAMPLE/20130524/us-east-1/s3/aws4_request, "
+                   "SignedHeaders=host;x-amz-content-sha256;x-amz-date;x-amz-security-token, "
+                   "Signature=d1670c1ba4ed45429c40b210bd45785d7a9fd2181a243a18cba3c25d55fa9c8f");
+  g_assert_cmpstr (find_header (temp_headers, "x-amz-security-token"), ==, "TOKENEXAMPLE");
+}
+
+/* A non-default port is part of the signed host header. */
+static void
+test_sign_port (void)
+{
+  g_autoptr (GError) error = NULL;
+  g_autoptr (OstreeAwsCredentials) creds = _ostree_aws_credentials_new_static ("AK", "SK", NULL);
+  g_autoptr (GPtrArray) with_port = g_ptr_array_new_with_free_func (g_free);
+  g_autoptr (GPtrArray) default_port = g_ptr_array_new_with_free_func (g_free);
+  g_autoptr (GPtrArray) no_port = g_ptr_array_new_with_free_func (g_free);
+  _ostree_aws_sign_get_at (creds, "http://127.0.0.1:9000/b/k", "us-east-1", 1, with_port, &error);
+  g_assert_no_error (error);
+  _ostree_aws_sign_get_at (creds, "http://127.0.0.1:80/b/k", "us-east-1", 1, default_port, &error);
+  g_assert_no_error (error);
+  _ostree_aws_sign_get_at (creds, "http://127.0.0.1/b/k", "us-east-1", 1, no_port, &error);
+  g_assert_no_error (error);
+  g_assert_cmpstr (find_header (default_port, "Authorization"), ==,
+                   find_header (no_port, "Authorization"));
+  g_assert_cmpstr (find_header (with_port, "Authorization"), !=,
+                   find_header (no_port, "Authorization"));
+
+  /* An IPv6 host is signed with its brackets, as curl sends it. The expected
+   * value comes from an independent SigV4 implementation. */
+  g_autoptr (GPtrArray) ipv6 = g_ptr_array_new_with_free_func (g_free);
+  _ostree_aws_sign_get_at (creds, "http://[::1]:9000/b/k", "us-east-1", 1, ipv6, &error);
+  g_assert_no_error (error);
+  g_assert_cmpstr (find_header (ipv6, "Authorization"), ==,
+                   "AWS4-HMAC-SHA256 Credential=AK/19700101/us-east-1/s3/aws4_request, "
+                   "SignedHeaders=host;x-amz-content-sha256;x-amz-date, "
+                   "Signature=0ad15a262c6dd98edd8c96884cc8604ee931d64885b48d2b6bf3ed786959868c");
+}
+
+static void
+clear_aws_env (const char *tmpdir)
+{
+  static const char *const names[] = { "AWS_REGION",
+                                       "AWS_DEFAULT_REGION",
+                                       "AWS_PROFILE",
+                                       "AWS_ACCESS_KEY_ID",
+                                       "AWS_SECRET_ACCESS_KEY",
+                                       "AWS_SESSION_TOKEN",
+                                       "AWS_ROLE_ARN",
+                                       "AWS_WEB_IDENTITY_TOKEN_FILE",
+                                       "AWS_CONTAINER_CREDENTIALS_FULL_URI",
+                                       "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI" };
+  for (guint i = 0; i < G_N_ELEMENTS (names); i++)
+    g_unsetenv (names[i]);
+  g_autofree char *config = g_build_filename (tmpdir, "config", NULL);
+  g_autofree char *credentials = g_build_filename (tmpdir, "credentials", NULL);
+  g_setenv ("AWS_CONFIG_FILE", config, TRUE);
+  g_setenv ("AWS_SHARED_CREDENTIALS_FILE", credentials, TRUE);
+  g_setenv ("AWS_EC2_METADATA_DISABLED", "true", TRUE);
+  g_unlink (config);
+  g_unlink (credentials);
+}
+
+static void
+test_resolve_region (void)
+{
+  g_autoptr (GError) error = NULL;
+  g_autofree char *tmpdir = g_dir_make_tmp ("test-fetcher-s3-XXXXXX", &error);
+  g_assert_no_error (error);
+  clear_aws_env (tmpdir);
+  g_autofree char *config = g_build_filename (tmpdir, "config", NULL);
+
+  /* nothing configured */
+  g_autofree char *none = _ostree_aws_resolve_region (NULL, NULL, TRUE, &error);
+  g_assert_null (none);
+  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT);
+  g_assert_nonnull (strstr (error->message, "?region="));
+  g_clear_error (&error);
+
+  /* profile */
+  g_file_set_contents (config,
+                       "[default]\nregion = eu-west-1\n\n[profile gov]\nregion = us-gov-east-1\n",
+                       -1, &error);
+  g_assert_no_error (error);
+  g_autofree char *from_default = _ostree_aws_resolve_region (NULL, NULL, TRUE, &error);
+  g_assert_no_error (error);
+  g_assert_cmpstr (from_default, ==, "eu-west-1");
+  g_autofree char *from_named = _ostree_aws_resolve_region (NULL, "gov", TRUE, &error);
+  g_assert_no_error (error);
+  g_assert_cmpstr (from_named, ==, "us-gov-east-1");
+  g_setenv ("AWS_PROFILE", "gov", TRUE);
+  g_autofree char *from_env_profile = _ostree_aws_resolve_region (NULL, NULL, TRUE, &error);
+  g_assert_no_error (error);
+  g_assert_cmpstr (from_env_profile, ==, "us-gov-east-1");
+
+  /* AWS_DEFAULT_REGION beats the profile */
+  g_setenv ("AWS_DEFAULT_REGION", "ap-south-1", TRUE);
+  g_autofree char *from_default_env = _ostree_aws_resolve_region (NULL, NULL, TRUE, &error);
+  g_assert_no_error (error);
+  g_assert_cmpstr (from_default_env, ==, "ap-south-1");
+
+  /* AWS_REGION beats AWS_DEFAULT_REGION */
+  g_setenv ("AWS_REGION", "us-gov-west-1", TRUE);
+  g_autofree char *from_region_env = _ostree_aws_resolve_region (NULL, NULL, TRUE, &error);
+  g_assert_no_error (error);
+  g_assert_cmpstr (from_region_env, ==, "us-gov-west-1");
+
+  /* the URL beats everything */
+  g_autofree char *from_url = _ostree_aws_resolve_region ("us-east-2", NULL, TRUE, &error);
+  g_assert_no_error (error);
+  g_assert_cmpstr (from_url, ==, "us-east-2");
+
+  g_unlink (config);
+  g_rmdir (tmpdir);
+}
+
+static void
+on_creds (GObject *source, GAsyncResult *result, gpointer user_data)
+{
+  GAsyncResult **out = user_data;
+  *out = g_object_ref (result);
+  g_main_context_wakeup (NULL);
+}
+
+static OstreeAwsCredentials *
+get_creds_sync (const char *region, gboolean force, GError **error)
+{
+  g_autoptr (GAsyncResult) result = NULL;
+  _ostree_aws_get_credentials_async (NULL, region, force, NULL, on_creds, &result);
+  /* Must never complete before returning to the main loop. */
+  g_assert_null (result);
+  while (result == NULL)
+    g_main_context_iteration (NULL, TRUE);
+  return _ostree_aws_get_credentials_finish (result, error);
+}
+
+static void
+test_credentials_chain (void)
+{
+  g_autoptr (GError) error = NULL;
+  g_autofree char *tmpdir = g_dir_make_tmp ("test-fetcher-s3-XXXXXX", &error);
+  g_assert_no_error (error);
+  clear_aws_env (tmpdir);
+
+  /* Each case uses its own region so it gets its own cached chain. */
+  g_autoptr (OstreeAwsCredentials) missing = get_creds_sync ("test-none-1", FALSE, &error);
+  g_assert_null (missing);
+  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED);
+  g_assert_nonnull (strstr (error->message, "No AWS credentials available"));
+  g_assert_nonnull (strstr (error->message, "profile 'default'"));
+  g_clear_error (&error);
+
+  g_setenv ("AWS_ACCESS_KEY_ID", "AKIDFIRST", TRUE);
+  g_setenv ("AWS_SECRET_ACCESS_KEY", "secret", TRUE);
+  g_autoptr (OstreeAwsCredentials) first = get_creds_sync ("test-env-1", FALSE, &error);
+  g_assert_no_error (error);
+  g_assert_nonnull (first);
+  g_assert_cmpuint (_ostree_aws_credentials_get_expiry (first), ==, G_MAXUINT64);
+
+  /* Cached: a changed environment is not seen without force_refresh ... */
+  g_autoptr (GPtrArray) h_first = g_ptr_array_new_with_free_func (g_free);
+  g_autoptr (GPtrArray) h_cached = g_ptr_array_new_with_free_func (g_free);
+  g_autoptr (GPtrArray) h_forced = g_ptr_array_new_with_free_func (g_free);
+  g_setenv ("AWS_ACCESS_KEY_ID", "AKIDSECOND", TRUE);
+  g_autoptr (OstreeAwsCredentials) cached = get_creds_sync ("test-env-1", FALSE, &error);
+  g_assert_no_error (error);
+  /* ... and is seen with it. */
+  g_autoptr (OstreeAwsCredentials) forced = get_creds_sync ("test-env-1", TRUE, &error);
+  g_assert_no_error (error);
+
+  const char *url = "https://b.s3.us-east-1.amazonaws.com/k";
+  g_assert_true (_ostree_aws_sign_get_at (first, url, "us-east-1", 1, h_first, &error));
+  g_assert_true (_ostree_aws_sign_get_at (cached, url, "us-east-1", 1, h_cached, &error));
+  g_assert_true (_ostree_aws_sign_get_at (forced, url, "us-east-1", 1, h_forced, &error));
+  g_assert_nonnull (strstr (find_header (h_first, "Authorization"), "Credential=AKIDFIRST/"));
+  g_assert_nonnull (strstr (find_header (h_cached, "Authorization"), "Credential=AKIDFIRST/"));
+  g_assert_nonnull (strstr (find_header (h_forced, "Authorization"), "Credential=AKIDSECOND/"));
+
+  g_rmdir (tmpdir);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -269,6 +495,10 @@ main (int argc, char **argv)
   g_test_add_func ("/s3/error-body/s3", test_error_body);
   g_test_add_func ("/s3/error-body/not-s3", test_error_body_not_s3);
   g_test_add_func ("/s3/credentials-usable", test_credentials_usable);
+  g_test_add_func ("/aws/sign", test_sign);
+  g_test_add_func ("/aws/sign-port", test_sign_port);
+  g_test_add_func ("/aws/resolve-region", test_resolve_region);
+  g_test_add_func ("/aws/credentials-chain", test_credentials_chain);
 
   return g_test_run ();
 }

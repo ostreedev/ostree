@@ -308,6 +308,7 @@ if USE_AWS
 _installed_or_uninstalled_test_programs += tests/test-fetcher-s3
 tests_test_fetcher_s3_SOURCES = \
 	src/libostree/ostree-fetcher-s3.c \
+	src/libostree/ostree-aws.c \
 	tests/test-fetcher-s3.c
 tests_test_fetcher_s3_CFLAGS = $(TESTS_CFLAGS) $(libglnx_cflags) $(AWS_CFLAGS)
 tests_test_fetcher_s3_LDADD = $(TESTS_LDADD) $(AWS_LIBS)

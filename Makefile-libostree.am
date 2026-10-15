@@ -240,6 +240,8 @@ if USE_AWS
 libostree_1_la_SOURCES += \
 	src/libostree/ostree-fetcher-s3.h \
 	src/libostree/ostree-fetcher-s3.c \
+	src/libostree/ostree-aws.h \
+	src/libostree/ostree-aws.c \
 	$(NULL)
 libostree_1_la_CFLAGS += $(AWS_CFLAGS)
 libostree_1_la_LIBADD += $(AWS_LIBS)
