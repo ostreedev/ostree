@@ -58,6 +58,7 @@ typedef struct
   guint32 low_speed_time;
   gboolean retry_all;
   guint32 max_outstanding_fetcher_requests;
+  guint32 max_outstanding_deltapart_requests;
 
   gboolean dry_run;
   gboolean dry_run_emitted_progress;

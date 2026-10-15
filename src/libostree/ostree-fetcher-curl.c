@@ -1000,8 +1000,10 @@ _ostree_fetcher_request_initiate (FetcherRequest *req, GTask *task)
 #endif
         /* https://github.com/curl/curl/blob/curl-7_53_0/docs/examples/http2-download.c */
 #if (CURLPIPE_MULTIPLEX > 0)
-      /* wait for pipe connection to confirm */
-      rc = curl_easy_setopt (req->easy, CURLOPT_PIPEWAIT, 1L);
+      /* Wait to see whether a connection can be shared, except for S3, which
+       * only speaks HTTP/1.1: there every request would queue behind one
+       * connection. */
+      rc = curl_easy_setopt (req->easy, CURLOPT_PIPEWAIT, req->is_s3 ? 0L : 1L);
       g_assert_cmpint (rc, ==, CURLM_OK);
 #endif
     }

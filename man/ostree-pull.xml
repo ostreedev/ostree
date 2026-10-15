@@ -169,7 +169,7 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
 
                 <listitem><para>
                     The max amount of concurrent connections allowed. 0 means the
-                    default. (default: 8)
+                    default. (default: 8, or 128 for <literal>s3://</literal> remotes)
                 </para></listitem>
             </varlistentry>
 

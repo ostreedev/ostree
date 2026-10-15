@@ -33,7 +33,7 @@ if ! curl --help all | grep -q -e '--aws-sigv4'; then
     skip "curl with --aws-sigv4 is required to request temporary credentials"
 fi
 
-echo '1..9'
+echo '1..10'
 
 cd ${test_tmpdir}
 . $(dirname $0)/libtest-s3.sh
@@ -188,3 +188,22 @@ if ostree_as ${root_user} ${root_secret} "" --repo=repo9 pull origin main 2>err.
 fi
 assert_file_has_content err.txt "HTTP 404 NoSuchBucket"
 echo "ok missing bucket"
+
+# 10: --max-outstanding-fetcher-requests controls how many connections are opened
+count_connections () {
+    new_client_repo repo10 "${s3url}"
+    OSTREE_DEBUG_HTTP=1 ostree_as ${root_user} ${root_secret} "" --repo=repo10 pull \
+        --disable-static-deltas --max-outstanding-fetcher-requests=$1 origin main 2>debug.txt >/dev/null
+    # curl >= 8.16 says "Established connection to", older curl "Connected to"
+    grep -c -E '^\* (Connected to|Established connection to) ' debug.txt || true
+}
+serial=$(count_connections 1)
+parallel=$(count_connections 16)
+# One connection per fetcher instance; a pull creates at most three.
+test "${serial}" -ge 1 -a "${serial}" -le 3 \
+    || fatal "expected 1-3 connections at concurrency 1, got ${serial}"
+test "${parallel}" -gt "${serial}" \
+    || fatal "expected more connections at concurrency 16 (${parallel}) than at 1 (${serial})"
+test "${parallel}" -le 48 \
+    || fatal "expected at most 16 connections per fetcher at concurrency 16, got ${parallel}"
+echo "ok connection count follows the concurrency limit"

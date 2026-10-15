@@ -71,6 +71,17 @@ CLI still works. Either run `aws sso login` again, or give the profile
 `credential_process = aws configure export-credentials --profile <p> --format process`,
 which delegates to the CLI.
 
+## Performance
+
+S3 serves HTTP/1.1 only, every object costs a round trip, and a single
+connection is often much slower than the link as a whole. So for `s3://`
+remotes:
+
+- up to 128 requests run at once, rather than 8 (set
+  `--max-outstanding-fetcher-requests` to override; 0 means the default);
+- up to 16 static-delta parts download at once, rather than 2, while at most
+  2 are decompressed and applied at a time, as before.
+
 ## Integrity
 
 On a normal pull every object is checksummed before it is stored, so a
@@ -103,6 +114,9 @@ the commit itself is genuine, sign commits (`ostree sign`) and enable
   for HTTP remotes.
 - Mirrorlists ignore `s3://` entries.
 - The China partition (`amazonaws.com.cn`) is not supported.
+- `min-free-space` is enforced when objects are written, not while they
+  download. With more downloads in flight, a nearly full disk can run out
+  mid-pull sooner than before; the pull then fails cleanly.
 
 ## Testing
 

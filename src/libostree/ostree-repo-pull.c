@@ -65,6 +65,12 @@
 #define OPT_LOWSPEEDTIME_DEFAULT 30
 #define OPT_RETRYALL_DEFAULT TRUE
 #define OPT_OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS_DEFAULT 8
+/* S3 only speaks HTTP/1.1 and each request costs a full round trip, so
+ * throughput comes from many requests in flight rather than multiplexing. */
+#define OPT_OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS_S3_DEFAULT 128
+/* Delta parts that may be downloading (or downloaded, waiting to be
+ * applied) at once from S3. */
+#define OPT_OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS_S3 16
 /* Delta parts being applied at once. Each is held decompressed in memory
  * while it is applied, so this bounds memory use however many download. */
 #define MAX_APPLYING_DELTAPARTS 2
@@ -396,7 +402,7 @@ fetcher_queue_is_full (OtPullData *pull_data)
    * so that downloads can only run so far ahead of applying. */
   const gboolean deltas_full = (pull_data->n_outstanding_deltapart_fetches
                                     + g_queue_get_length (&pull_data->pending_deltapart_applies)
-                                >= _OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS);
+                                >= pull_data->max_outstanding_deltapart_requests);
   const gboolean writes_full = ((pull_data->n_outstanding_metadata_write_requests
                                  + pull_data->n_outstanding_content_write_requests
                                  + pull_data->n_outstanding_deltapart_write_requests)
@@ -2105,7 +2111,7 @@ start_fetch_deltapart (OtPullData *pull_data, FetchStaticDeltaData *fetch)
   g_debug ("starting fetch of deltapart %s", deltapart_path);
   pull_data->n_outstanding_deltapart_fetches++;
   g_assert_cmpint (pull_data->n_outstanding_deltapart_fetches, <=,
-                   _OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS);
+                   pull_data->max_outstanding_deltapart_requests);
   _ostree_fetcher_request_to_tmpfile (pull_data->fetcher, pull_data->content_mirrorlist,
                                       deltapart_path, 0, NULL, 0, fetch->size,
                                       OSTREE_FETCHER_DEFAULT_PRIORITY, pull_data->cancellable,
@@ -3744,6 +3750,7 @@ ostree_repo_pull_with_options (OstreeRepo *self, const char *remote_name_or_base
   if (!opt_max_outstanding_fetcher_requests_set)
     pull_data->max_outstanding_fetcher_requests
         = OPT_OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS_DEFAULT;
+  pull_data->max_outstanding_deltapart_requests = _OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS;
 
   pull_data->repo = self;
   pull_data->progress = progress;
@@ -3964,6 +3971,25 @@ ostree_repo_pull_with_options (OstreeRepo *self, const char *remote_name_or_base
                                            pull_data->fetcher, pull_data->n_network_retries,
                                            &pull_data->content_mirrorlist, cancellable, error))
           goto out;
+      }
+  }
+
+  /* The fetcher was created before the URLs were known; apply the S3 limits
+   * now if content comes from S3 (judged by the first content mirror). */
+  {
+    OstreeFetcherURI *first_content_uri = pull_data->content_mirrorlist->pdata[0];
+    g_autofree char *content_scheme = _ostree_fetcher_uri_get_scheme (first_content_uri);
+    if (g_str_equal (content_scheme, "s3"))
+      {
+        if (!opt_max_outstanding_fetcher_requests_set)
+          pull_data->max_outstanding_fetcher_requests
+              = OPT_OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS_S3_DEFAULT;
+        /* Delta parts can never outnumber the overall request limit. */
+        pull_data->max_outstanding_deltapart_requests
+            = MIN (OPT_OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS_S3,
+                   MAX (pull_data->max_outstanding_fetcher_requests, 1));
+        _ostree_fetcher_set_max_outstanding_fetcher_requests (
+            pull_data->fetcher, pull_data->max_outstanding_fetcher_requests);
       }
   }
 
