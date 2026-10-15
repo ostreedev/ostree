@@ -147,3 +147,5 @@ the commit itself is genuine, sign commits (`ostree sign`) and enable
 - `tests/test-pull-s3-faults.sh`: pulls from a deliberately misbehaving server
   and checks that every failure leaves no partial object, leaves the commit
   marked partial, and recovers on the next pull.
+- `manual-tests/s3-check.sh`: checks against real AWS, for each credential
+  source and for performance.
