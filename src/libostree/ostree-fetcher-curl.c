@@ -733,6 +733,13 @@ _ostree_fetcher_set_max_outstanding_fetcher_requests (OstreeFetcher *self,
                                                       guint32 opt_max_outstanding_fetcher_requests)
 {
   self->opt_max_outstanding_fetcher_requests = opt_max_outstanding_fetcher_requests;
+#if CURL_AT_LEAST_VERSION(7, 30, 0)
+  /* Servers that only speak HTTP/1.1 (S3 among them) get their concurrency
+   * from parallel connections, so don't cap those below the request limit. */
+  CURLMcode rc = curl_multi_setopt (self->multi, CURLMOPT_MAX_TOTAL_CONNECTIONS,
+                                    (long)MAX (8, opt_max_outstanding_fetcher_requests));
+  g_assert_cmpint (rc, ==, CURLM_OK);
+#endif
 }
 
 void

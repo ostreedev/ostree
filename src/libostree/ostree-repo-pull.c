@@ -3474,6 +3474,7 @@ all_requested_refs_have_commit (
  *   * `retry-all-network-errors` (`b`): Retry when network issues happen, instead of
  *      failing automatically. Currently only affects libcurl. (Default set to true)
  *   * `max-outstanding-fetcher-requests` (`u`): The max amount of concurrent connections allowed.
+ *     0 means the default.
  *   * `ref-keyring-map` (`a(sss)`): Array of (collection ID, ref name, keyring
  *     remote name) tuples specifying which remote's keyring should be used when
  *     doing GPG verification of each collection-ref. This is useful to prevent a
@@ -3605,8 +3606,11 @@ ostree_repo_pull_with_options (OstreeRepo *self, const char *remote_name_or_base
       opt_retry_all_set
           = g_variant_lookup (options, "retry-all-network-errors", "b", &pull_data->retry_all);
       opt_max_outstanding_fetcher_requests_set
-          = g_variant_lookup (options, "max-outstanding-fetcher-requests", "b",
+          = g_variant_lookup (options, "max-outstanding-fetcher-requests", "u",
                               &pull_data->max_outstanding_fetcher_requests);
+      /* A limit of 0 would never start a request; treat it as unset. */
+      if (pull_data->max_outstanding_fetcher_requests == 0)
+        opt_max_outstanding_fetcher_requests_set = FALSE;
       opt_n_network_retries_set
           = g_variant_lookup (options, "n-network-retries", "u", &pull_data->n_network_retries);
       opt_ref_keyring_map_set
@@ -6384,8 +6388,10 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo *self, const char *nam
       (void)g_variant_lookup (options, "low-speed-limit-bytes", "u", &low_speed_limit);
       (void)g_variant_lookup (options, "low-speed-time-seconds", "u", &low_speed_time);
       (void)g_variant_lookup (options, "retry-all-network-errors", "b", &retry_all);
-      (void)g_variant_lookup (options, "max-outstanding-fetcher-requests", "b",
+      (void)g_variant_lookup (options, "max-outstanding-fetcher-requests", "u",
                               &max_outstanding_fetcher_requests);
+      if (max_outstanding_fetcher_requests == 0)
+        max_outstanding_fetcher_requests = OPT_OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS_DEFAULT;
     }
 
   if (!ostree_repo_remote_get_gpg_verify_summary (self, name, &gpg_verify_summary, error))
