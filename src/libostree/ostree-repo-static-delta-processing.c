@@ -266,6 +266,9 @@ _ostree_static_delta_part_execute (OstreeRepo *repo, GVariant *objects, GVariant
   ret = TRUE;
 out:
   _ostree_repo_bare_content_cleanup (&state->content_out);
+  glnx_close_fd (&state->read_source_fd);
+  g_clear_pointer (&state->read_source_object, g_free);
+  g_clear_pointer (&state->xattrs, g_variant_unref);
   return ret;
 }
 
