@@ -266,6 +266,9 @@ _ostree_static_delta_part_execute (OstreeRepo *repo, GVariant *objects, GVariant
   ret = TRUE;
 out:
   _ostree_repo_bare_content_cleanup (&state->content_out);
+  glnx_close_fd (&state->read_source_fd);
+  g_clear_pointer (&state->read_source_object, g_free);
+  g_clear_pointer (&state->xattrs, g_variant_unref);
   return ret;
 }
 
@@ -405,6 +408,7 @@ dispatch_bspatch (OstreeRepo *repo, StaticDeltaExecutionState *state, GCancellab
                   GError **error)
 {
   guint64 offset, length;
+  (void)repo;
 
   if (!read_varuint64 (state, &offset, error))
     return FALSE;
@@ -423,11 +427,9 @@ dispatch_bspatch (OstreeRepo *repo, StaticDeltaExecutionState *state, GCancellab
       if (!input_mfile)
         return FALSE;
 
-      /* Guard against integer truncation on 32-bit systems: g_malloc0() takes
-       * gsize which is 32-bit on those platforms, but bspatch() uses the full
-       * int64_t newsize.  Without this check a crafted content_size > G_MAXSIZE
-       * would allocate a truncated (small) buffer while bspatch() writes using
-       * the full 64-bit value, causing a heap buffer overflow.
+      /* Guard against integer truncation on 32-bit systems: mmap() takes gsize
+       * while bspatch() uses int64_t. Without this check the mapped region and
+       * the size used by bspatch() could differ.
        * (CVE / RHEL-189207, CWE-680, CWE-122)
        */
       if (G_UNLIKELY (state->content_size > G_MAXSIZE || state->content_size > (guint64)G_MAXINT64))
@@ -439,10 +441,11 @@ dispatch_bspatch (OstreeRepo *repo, StaticDeltaExecutionState *state, GCancellab
           return FALSE;
         }
 
-      const gsize alloc_size = (gsize)state->content_size;
       const int64_t newsize = (int64_t)state->content_size;
 
-      g_autofree guchar *buf = g_malloc0 (alloc_size);
+      guint8 *buf;
+      if (!_ostree_repo_bare_content_map (&state->content_out, &buf, cancellable, error))
+        return FALSE;
 
       struct bzpatch_opaque_s opaque;
       opaque.state = state;
@@ -456,8 +459,7 @@ dispatch_bspatch (OstreeRepo *repo, StaticDeltaExecutionState *state, GCancellab
           < 0)
         return glnx_throw (error, "bsdiff patch failed");
 
-      if (!_ostree_repo_bare_content_write (repo, &state->content_out, buf, state->content_size,
-                                            cancellable, error))
+      if (!_ostree_repo_bare_content_finish_mapped (&state->content_out, cancellable, error))
         return FALSE;
     }
 
