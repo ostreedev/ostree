@@ -499,6 +499,33 @@ test_big_metadata (void)
 }
 
 static void
+test_commit_sizes_short_entry (void)
+{
+  g_autoptr (GError) error = NULL;
+
+  /* An ostree.sizes entry shorter than a checksum plus two varints */
+  const guint8 short_entry[] = { 0x01 };
+  g_autoptr (GVariantBuilder) sizes = g_variant_builder_new (G_VARIANT_TYPE ("aay"));
+  g_variant_builder_add_value (
+      sizes, g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, short_entry, sizeof (short_entry), 1));
+  g_autoptr (GVariantBuilder) metadata = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+  g_variant_builder_add (metadata, "{sv}", "ostree.sizes", g_variant_builder_end (sizes));
+
+  const guint8 csum[OSTREE_SHA256_DIGEST_LEN] = { 0 };
+  g_autoptr (GVariant) commit = g_variant_ref_sink (g_variant_new (
+      "(@a{sv}@ay@a(say)sst@ay@ay)", g_variant_builder_end (metadata),
+      g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, NULL, 0, 1),
+      g_variant_new_array (G_VARIANT_TYPE ("(say)"), NULL, 0), "subject", "body", (guint64)0,
+      g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, csum, sizeof (csum), 1),
+      g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, csum, sizeof (csum), 1)));
+
+  g_autoptr (GPtrArray) entries = NULL;
+  g_assert (!ostree_commit_get_object_sizes (commit, &entries, &error));
+  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_FAILED);
+  g_assert_null (entries);
+}
+
+static void
 compare_xattrs (GVariant *orig, GVariant *new)
 {
   g_assert_cmpint (g_variant_n_children (orig) + 1, ==, g_variant_n_children (new));
@@ -768,6 +795,7 @@ main (int argc, char **argv)
   g_test_add_func ("/break-hardlink", test_break_hardlink);
   g_test_add_func ("/remotename", test_validate_remotename);
   g_test_add_func ("/big-metadata", test_big_metadata);
+  g_test_add_func ("/commit-sizes-short-entry", test_commit_sizes_short_entry);
   g_test_add_func ("/read-xattrs", test_read_xattrs);
   g_test_add_func ("/dirmeta-xattrs", test_dirmeta_xattrs);
   g_test_add_func ("/list-static-delta-entries", test_list_static_delta_entries);
