@@ -2545,7 +2545,9 @@ static gboolean
 read_sizes_entry (GVariant *entry, OstreeCommitSizesEntry **out_sizes, GError **error)
 {
   gsize entry_size = g_variant_get_size (entry);
-  g_return_val_if_fail (entry_size >= OSTREE_SHA256_DIGEST_LEN + 2, FALSE);
+  if (entry_size < OSTREE_SHA256_DIGEST_LEN + 2)
+    return glnx_throw (error, "Invalid ostree.sizes metadata entry of length %" G_GSIZE_FORMAT,
+                       entry_size);
 
   const guchar *buffer = g_variant_get_data (entry);
   if (buffer == NULL)
