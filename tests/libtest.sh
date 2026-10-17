@@ -109,7 +109,7 @@ export TEST_GPG_KEYHOME=${test_tmpdir}/gpghome
 export OSTREE_GPG_HOME=${test_tmpdir}/gpghome/trusted
 
 assert_has_setfattr() {
-    if ! which setfattr 2>/dev/null; then
+    if ! command -v setfattr 2>/dev/null; then
         fatal "no setfattr available to determine xattr support"
     fi
 }
@@ -755,9 +755,9 @@ which_gpg () {
     local opt
 
     # Prefer gpg2 in case gpg refers to gpg1
-    if which gpg2 &>/dev/null; then
+    if command -v gpg2 &>/dev/null; then
         gpg=gpg2
-    elif which gpg &>/dev/null; then
+    elif command -v gpg &>/dev/null; then
         gpg=gpg
     else
         # Succeed but don't return anything.
