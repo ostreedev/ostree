@@ -26,7 +26,7 @@ skip_without_user_xattrs
 bindatafiles="bash true ostree"
 morebindatafiles="false ls"
 
-echo '1..14'
+echo '1..20'
 
 mkdir repo
 ostree_repo_init repo --mode=archive
@@ -324,3 +324,105 @@ fi
 assert_file_has_content err.txt "Invalid rev GARBAGE"
 
 echo 'ok handle bad delta name'
+
+# Parallel-compression tests.
+#
+# Force several parts with --max-chunk-size=1 so the threading code is
+# actually exercised, then prove that serial and --threads=N produce
+# byte-identical part files. The superblock varies run-to-run because of
+# its timestamp, so we exclude it from the comparison. apply-offline
+# expects a directory containing a file literally named "superblock".
+mkdir delta-serial delta-par
+${CMD_PREFIX} ostree --repo=repo static-delta generate --empty --to=${newrev} \
+    --max-chunk-size=1 --filename=delta-serial/superblock
+${CMD_PREFIX} ostree --repo=repo static-delta generate --empty --to=${newrev} \
+    --max-chunk-size=1 --threads=4 --filename=delta-par/superblock
+
+# Sanity: both produced the same set of part files (0, 1, ...).
+ls delta-serial | grep -E '^[0-9]+$' | sort > delta-serial-parts.txt
+ls delta-par    | grep -E '^[0-9]+$' | sort > delta-par-parts.txt
+assert_streq "$(cat delta-serial-parts.txt)" "$(cat delta-par-parts.txt)"
+# At least 2 parts so we know chunking actually fired.
+n_parts=$(wc -l < delta-serial-parts.txt)
+if test "${n_parts}" -lt 2; then
+    assert_not_reached "expected >=2 parts with --max-chunk-size=1, got ${n_parts}"
+fi
+
+# Every part file must be byte-identical between serial and parallel.
+for p in $(cat delta-serial-parts.txt); do
+    cmp delta-serial/$p delta-par/$p || \
+        assert_not_reached "part $p differs between serial and parallel runs"
+done
+
+echo 'ok parallel compression byte-identical parts'
+
+# Apply-offline using the parallel-generated delta into a fresh repo and
+# verify the result matches the original commit.
+ostree_repo_init repo-par-apply --mode=bare-user
+${CMD_PREFIX} ostree --repo=repo-par-apply static-delta apply-offline delta-par
+${CMD_PREFIX} ostree --repo=repo-par-apply fsck
+${CMD_PREFIX} ostree --repo=repo-par-apply ls ${newrev} >/dev/null
+rm -rf repo-par-apply
+
+echo 'ok parallel compression apply-offline'
+
+# Env var path should work the same as --threads.
+mkdir delta-env
+OSTREE_DELTA_COMPRESS_THREADS=4 ${CMD_PREFIX} ostree --repo=repo \
+    static-delta generate --empty --to=${newrev} --max-chunk-size=1 \
+    --filename=delta-env/superblock
+for p in $(cat delta-serial-parts.txt); do
+    cmp delta-serial/$p delta-env/$p || \
+        assert_not_reached "part $p differs when threads enabled via env var"
+done
+
+echo 'ok parallel compression via env var'
+
+# Value parser: keyword and numeric forms must all be accepted; invalid
+# input must be rejected. --filename needs an existing parent directory,
+# so we make/clean it for each iteration.
+for v in 0 1 2 yes no true false on off auto; do
+    mkdir delta-val
+    ${CMD_PREFIX} ostree --repo=repo static-delta generate --empty --to=${newrev} \
+        --threads=$v --filename=delta-val/superblock >/dev/null
+    rm -rf delta-val
+done
+mkdir delta-val
+if ${CMD_PREFIX} ostree --repo=repo static-delta generate --empty --to=${newrev} \
+       --threads=garbage --filename=delta-val/superblock 2>err.txt; then
+    assert_not_reached "--threads=garbage unexpectedly succeeded"
+fi
+assert_file_has_content err.txt "compress-threads"
+rm -rf delta-val
+
+echo 'ok parallel compression value parsing'
+
+# Parallel-bsdiff: between the two committed trees there are modified files,
+# so --from=origrev --to=newrev exercises the bsdiff path. Compare serial vs
+# --threads=4 output and round-trip the parallel one through apply-offline.
+mkdir bsdiff-serial bsdiff-par
+${CMD_PREFIX} ostree --repo=repo static-delta generate --from=${origrev} --to=${newrev} \
+    --max-chunk-size=1 --filename=bsdiff-serial/superblock
+${CMD_PREFIX} ostree --repo=repo static-delta generate --from=${origrev} --to=${newrev} \
+    --max-chunk-size=1 --threads=4 --filename=bsdiff-par/superblock
+
+# Every part file must be byte-identical between serial and parallel bsdiff.
+ls bsdiff-serial | grep -E '^[0-9]+$' | sort > bsdiff-serial-parts.txt
+ls bsdiff-par    | grep -E '^[0-9]+$' | sort > bsdiff-par-parts.txt
+assert_streq "$(cat bsdiff-serial-parts.txt)" "$(cat bsdiff-par-parts.txt)"
+for p in $(cat bsdiff-serial-parts.txt); do
+    cmp bsdiff-serial/$p bsdiff-par/$p || \
+        assert_not_reached "bsdiff part $p differs between serial and parallel runs"
+done
+
+echo 'ok parallel bsdiff byte-identical parts'
+
+# Apply the parallel-generated from-A-to-B delta on top of A, expect B.
+ostree_repo_init repo-bsdiff-apply --mode=bare-user
+${CMD_PREFIX} ostree --repo=repo-bsdiff-apply pull-local repo ${origrev}
+${CMD_PREFIX} ostree --repo=repo-bsdiff-apply static-delta apply-offline bsdiff-par
+${CMD_PREFIX} ostree --repo=repo-bsdiff-apply fsck
+${CMD_PREFIX} ostree --repo=repo-bsdiff-apply ls ${newrev} >/dev/null
+rm -rf repo-bsdiff-apply
+
+echo 'ok parallel bsdiff apply-offline'
