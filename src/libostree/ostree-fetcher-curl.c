@@ -344,7 +344,11 @@ check_multi_info (OstreeFetcher *fetcher)
 
       gboolean retry_all = (!is_file && req->fetcher->opt_retry_all);
 
-      if (req->caught_write_error)
+      if (g_task_return_error_if_cancelled (task))
+        {
+          /* Cancellation is not a network failure and must not be journaled. */
+        }
+      else if (req->caught_write_error)
         g_task_return_error (task, g_steal_pointer (&req->caught_write_error));
       else if (curlres != CURLE_OK)
         {
@@ -666,15 +670,10 @@ response_header_cb (const char *buffer, size_t size, size_t n_items, void *user_
 static int
 prog_cb (void *p, double dltotal, double dlnow, double ult, double uln)
 {
-  CURLMcode rc;
   GTask *task = p;
-  FetcherRequest *req;
-  char *eff_url;
-  req = g_task_get_task_data (task);
-  rc = curl_easy_getinfo (req->easy, CURLINFO_EFFECTIVE_URL, &eff_url);
-  g_assert_cmpint (rc, ==, CURLM_OK);
-  g_printerr ("Progress: %s (%g/%g)\n", eff_url, dlnow, dltotal);
-  return 0;
+
+  /* libcurl calls this even when no headers or body data arrive. */
+  return g_cancellable_is_cancelled (g_task_get_cancellable (task)) ? 1 : 0;
 }
 
 static void
@@ -975,7 +974,7 @@ initiate_next_curl_request (FetcherRequest *req, GTask *task)
   rc = curl_easy_setopt (req->easy, CURLOPT_ERRORBUFFER, req->error);
   g_assert_cmpint (rc, ==, CURLM_OK);
   /* Note that the "easy" object's privdata is the task */
-  rc = curl_easy_setopt (req->easy, CURLOPT_NOPROGRESS, 1L);
+  rc = curl_easy_setopt (req->easy, CURLOPT_NOPROGRESS, 0L);
   g_assert_cmpint (rc, ==, CURLM_OK);
   rc = curl_easy_setopt (req->easy, CURLOPT_PROGRESSFUNCTION, prog_cb);
   g_assert_cmpint (rc, ==, CURLM_OK);
