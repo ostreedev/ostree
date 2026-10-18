@@ -384,7 +384,7 @@ gboolean _ostree_repo_bare_content_write (OstreeRepo *repo, OstreeRepoBareConten
                                           GError **error);
 
 gboolean _ostree_repo_bare_content_map (OstreeRepoBareContent *barewrite, guint8 **out_buf,
-                                        GCancellable *cancellable, GError **error);
+                                        size_t *out_len, GCancellable *cancellable, GError **error);
 
 gboolean _ostree_repo_bare_content_finish_mapped (OstreeRepoBareContent *barewrite,
                                                   GCancellable *cancellable, GError **error);

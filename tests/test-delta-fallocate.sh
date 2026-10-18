@@ -2,16 +2,16 @@
 # SPDX-License-Identifier: LGPL-2.0+
 set -euo pipefail
 
-echo '1..4'
+echo '1..6'
 binary="${OSTREE_UNINSTALLED}/tests/.libs/test-repo"
 if test ! -x "$binary"; then
     binary="${OSTREE_UNINSTALLED}/tests/test-repo"
 fi
 # Keep the sanitizer runtime ahead of the interposer in sanitizer builds.
 asan=$(ldd "$binary" | awk '/libasan[.]so/ {print $3}')
-for fault in unsupported enosys write sync; do
+for fault in success eintr unsupported enosys enospc eio; do
     paths="bspatch-write-multi-chunk"
-    if test "$fault" = unsupported || test "$fault" = enosys; then
+    if test "$fault" = success || test "$fault" = eintr; then
         paths+=" write-bspatch-multi-chunk repeated-bspatch-multi-chunk"
     fi
     for path in $paths; do

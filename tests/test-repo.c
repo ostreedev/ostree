@@ -974,14 +974,14 @@ test_delta_bspatch_write (Fixture *fixture, gconstpointer test_data)
   if (fault)
     {
       g_assert_cmpstr (g_getenv ("OSTREE_TEST_FALLOCATE_CALLED"), ==, "yes");
-      g_assert_cmpstr (g_getenv ("OSTREE_TEST_FALLOCATE_WRITTEN"), ==, "yes");
-      if (!g_str_equal (fault, "write"))
-        g_assert_cmpstr (g_getenv ("OSTREE_TEST_FALLOCATE_SYNCED"), ==, "yes");
-      if (g_str_equal (fault, "write") || g_str_equal (fault, "sync"))
+      if (!g_str_equal (fault, "success") && !g_str_equal (fault, "eintr"))
         {
+          int expected_errno = g_str_equal (fault, "unsupported") ? EOPNOTSUPP
+                               : g_str_equal (fault, "enosys")    ? ENOSYS
+                               : g_str_equal (fault, "enospc")    ? ENOSPC
+                                                                  : EIO;
           g_assert_false (applied);
-          g_assert_error (error, G_IO_ERROR,
-                          g_io_error_from_errno (g_str_equal (fault, "write") ? ENOSPC : EIO));
+          g_assert_error (error, G_IO_ERROR, g_io_error_from_errno (expected_errno));
           g_clear_error (&error);
           gboolean have_object;
           g_assert_true (ostree_repo_has_object (repo, OSTREE_OBJECT_TYPE_FILE, expected_checksum,

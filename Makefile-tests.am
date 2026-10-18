@@ -51,6 +51,7 @@ dist_uninstalled_test_scripts = tests/test-symbols.sh tests/coccinelle.sh tests/
 
 noinst_LTLIBRARIES += libtest-fallocate.la
 libtest_fallocate_la_SOURCES = tests/mock-fallocate.c
+libtest_fallocate_la_LIBADD = -ldl
 libtest_fallocate_la_LDFLAGS = -module -avoid-version -rpath $(abs_builddir)
 
 # This logic implements ENABLE_INSTALLED_TESTS_EXCLUSIVE; see below.
