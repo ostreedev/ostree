@@ -548,9 +548,11 @@ _ostree_repo_bare_content_write (OstreeRepo *repo, OstreeRepoBareContent *barewr
   return TRUE;
 }
 
-/* Map the writer's own temporary file, avoiding a separate patch buffer and copy. */
+/* Map the writer's own temporary file, avoiding a separate patch buffer and copy.
+ * Return only the appended range in out_buf/out_len, excluding earlier writes.
+ */
 gboolean
-_ostree_repo_bare_content_map (OstreeRepoBareContent *barewrite, guint8 **out_buf,
+_ostree_repo_bare_content_map (OstreeRepoBareContent *barewrite, guint8 **out_buf, size_t *out_len,
                                GCancellable *cancellable, GError **error)
 {
   OstreeRealRepoBareContent *real = (OstreeRealRepoBareContent *)barewrite;
@@ -565,30 +567,44 @@ _ostree_repo_bare_content_map (OstreeRepoBareContent *barewrite, guint8 **out_bu
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
 
-  if (real->content_len > 0
-      && TEMP_FAILURE_RETRY (fallocate (real->tmpf.fd, 0, real->bytes_written, real->content_len))
-             < 0)
+  if (real->content_len > 0)
     {
-      if (!G_IN_SET (errno, ENOSYS, EOPNOTSUPP))
-        return glnx_throw_errno_prefix (error, "fallocate");
-
-      /* Materialize the backing file without a file-sized heap allocation.
-       * A sparse ftruncate alone could cause SIGBUS if allocation fails when
-       * bspatch writes through the mapping. Flush delayed allocations too,
-       * so allocation errors are reported before we touch the mapping.
+      /* Reserve backing storage before touching the mapping to avoid SIGBUS on
+       * allocation failure. Prefer libc's emulation when available (glibc).
+       * Unlike fallocate(), posix_fallocate() returns the error number directly.
        */
-      static const char zeros[64 * 1024] = { 0 };
-      for (size_t offset = 0; offset < real->content_len;)
+      int res;
+      do
+        res = posix_fallocate (real->tmpf.fd, real->bytes_written, real->content_len);
+      while (res == EINTR);
+      if (G_IN_SET (res, EOPNOTSUPP, ENOSYS))
         {
-          if (g_cancellable_set_error_if_cancelled (cancellable, error))
-            return FALSE;
-          const size_t len = MIN (real->content_len - offset, sizeof (zeros));
-          if (glnx_loop_write (real->tmpf.fd, zeros, len) < 0)
-            return glnx_throw_errno_prefix (error, "write");
-          offset += len;
+          /* Some libcs, including musl, do not emulate unsupported fallocate.
+           * Materialize only the appended range, without a file-sized buffer
+           * or changing the fd offset. Flush delayed allocations before mmap.
+           */
+          static const uint8_t zeros[64 * 1024] = { 0 };
+          for (size_t offset = 0; offset < real->content_len;)
+            {
+              if (g_cancellable_set_error_if_cancelled (cancellable, error))
+                return FALSE;
+              const size_t len = MIN (real->content_len - offset, sizeof (zeros));
+              const ssize_t written = TEMP_FAILURE_RETRY (
+                  pwrite (real->tmpf.fd, zeros, len, real->bytes_written + offset));
+              if (written < 0)
+                return glnx_throw_errno_prefix (error, "pwrite");
+              if (written == 0)
+                return glnx_throw (error, "Unexpected zero-length write allocating mapped content");
+              offset += written;
+            }
+          if (TEMP_FAILURE_RETRY (fdatasync (real->tmpf.fd)) < 0)
+            return glnx_throw_errno_prefix (error, "fdatasync");
         }
-      if (TEMP_FAILURE_RETRY (fdatasync (real->tmpf.fd)) < 0)
-        return glnx_throw_errno_prefix (error, "fdatasync");
+      else if (res != 0)
+        {
+          errno = res;
+          return glnx_throw_errno_prefix (error, "posix_fallocate");
+        }
     }
 
   if (ftruncate (real->tmpf.fd, total_len) < 0)
@@ -616,6 +632,7 @@ _ostree_repo_bare_content_map (OstreeRepoBareContent *barewrite, guint8 **out_bu
       *out_buf = &zero_size_dummy;
     }
 
+  *out_len = (size_t)real->content_len;
   real->mapped_active = TRUE;
   return TRUE;
 }

@@ -695,7 +695,8 @@ skip_without_no_selinux_or_relabel () {
 _have_strace_fault_injection=''
 have_strace_fault_injection() {
     if test "${_have_strace_fault_injection}" = ''; then
-        if strace -P ${test_srcdir}/libtest-core.sh -e inject=read:retval=0 cat ${test_srcdir}/libtest-core.sh >out.txt &&
+        # Unlike cat, dd does not bypass read() with copy_file_range().
+        if strace -P ${test_srcdir}/libtest-core.sh -e inject=read:retval=0 dd if=${test_srcdir}/libtest-core.sh status=none >out.txt &&
            test '!' -s out.txt; then
             _have_strace_fault_injection=yes
         else

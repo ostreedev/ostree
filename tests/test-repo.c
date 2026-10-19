@@ -970,32 +970,27 @@ test_delta_bspatch_write (Fixture *fixture, gconstpointer test_data)
   g_autoptr (GFile) delta_dir = g_file_new_for_path (fixture->tmpdir.path);
   gboolean applied
       = ostree_repo_static_delta_execute_offline (repo, delta_dir, FALSE, NULL, &error);
-  const char *fault = g_getenv ("OSTREE_TEST_FALLOCATE");
-  if (fault)
+  const char *fault = g_getenv ("OSTREE_TEST_FALLOCATE_ERROR");
+  if (fault && *fault)
     {
-      g_assert_cmpstr (g_getenv ("OSTREE_TEST_FALLOCATE_CALLED"), ==, "yes");
-      g_assert_cmpstr (g_getenv ("OSTREE_TEST_FALLOCATE_WRITTEN"), ==, "yes");
-      if (!g_str_equal (fault, "write"))
-        g_assert_cmpstr (g_getenv ("OSTREE_TEST_FALLOCATE_SYNCED"), ==, "yes");
-      if (g_str_equal (fault, "write") || g_str_equal (fault, "sync"))
-        {
-          g_assert_false (applied);
-          g_assert_error (error, G_IO_ERROR,
-                          g_io_error_from_errno (g_str_equal (fault, "write") ? ENOSPC : EIO));
-          g_clear_error (&error);
-          gboolean have_object;
-          g_assert_true (ostree_repo_has_object (repo, OSTREE_OBJECT_TYPE_FILE, expected_checksum,
-                                                 &have_object, NULL, &error));
-          g_assert_no_error (error);
-          g_assert_false (have_object);
-          g_autofree char *tmp_path = g_build_filename (fixture->tmpdir.path, "repo", "tmp", NULL);
-          g_autoptr (GDir) tmp = g_dir_open (tmp_path, 0, &error);
-          g_assert_no_error (error);
-          const char *name;
-          while ((name = g_dir_read_name (tmp)))
-            g_assert_cmpstr (name, ==, "cache");
-          return;
-        }
+      int expected_errno = g_str_equal (fault, "enosys")   ? ENOSYS
+                           : g_str_equal (fault, "enospc") ? ENOSPC
+                                                           : EIO;
+      g_assert_false (applied);
+      g_assert_error (error, G_IO_ERROR, g_io_error_from_errno (expected_errno));
+      g_clear_error (&error);
+      gboolean have_object;
+      g_assert_true (ostree_repo_has_object (repo, OSTREE_OBJECT_TYPE_FILE, expected_checksum,
+                                             &have_object, NULL, &error));
+      g_assert_no_error (error);
+      g_assert_false (have_object);
+      g_autofree char *tmp_path = g_build_filename (fixture->tmpdir.path, "repo", "tmp", NULL);
+      g_autoptr (GDir) tmp = g_dir_open (tmp_path, 0, &error);
+      g_assert_no_error (error);
+      const char *name;
+      while ((name = g_dir_read_name (tmp)))
+        g_assert_cmpstr (name, ==, "cache");
+      return;
     }
   g_assert_no_error (error);
   g_assert_true (applied);

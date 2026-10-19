@@ -441,10 +441,9 @@ dispatch_bspatch (OstreeRepo *repo, StaticDeltaExecutionState *state, GCancellab
           return FALSE;
         }
 
-      const int64_t newsize = (int64_t)state->content_size;
-
       guint8 *buf;
-      if (!_ostree_repo_bare_content_map (&state->content_out, &buf, cancellable, error))
+      size_t buflen;
+      if (!_ostree_repo_bare_content_map (&state->content_out, &buf, &buflen, cancellable, error))
         return FALSE;
 
       struct bzpatch_opaque_s opaque;
@@ -455,7 +454,7 @@ dispatch_bspatch (OstreeRepo *repo, StaticDeltaExecutionState *state, GCancellab
       stream.read = bspatch_read;
       stream.opaque = &opaque;
       if (bspatch ((const guint8 *)g_mapped_file_get_contents (input_mfile),
-                   g_mapped_file_get_length (input_mfile), buf, newsize, &stream)
+                   g_mapped_file_get_length (input_mfile), buf, (int64_t)buflen, &stream)
           < 0)
         return glnx_throw (error, "bsdiff patch failed");
 
