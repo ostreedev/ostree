@@ -95,6 +95,7 @@ struct OstreeFetcher
   GHashTable *outstanding_requests; /* Set<GTask> */
   GHashTable *sockets;              /* Set<SockInfo> */
   GHashTable *retry_after;          /* int64_t monotonic deadlines in microseconds, keyed by URI */
+  int64_t retry_after_cleanup_time;
 
   guint64 bytes_transferred;
 };
@@ -334,6 +335,42 @@ retry_after_seconds (const char *header)
   return MAX (0, (int64_t)date - g_get_real_time () / G_USEC_PER_SEC);
 }
 
+/* Bound stale deadline retention without scanning the table on every request. */
+static void
+cleanup_expired_retry_after (OstreeFetcher *fetcher, int64_t now)
+{
+  if (now - fetcher->retry_after_cleanup_time < 10 * G_USEC_PER_SEC)
+    return;
+
+  GHashTableIter iter;
+  gpointer value;
+  g_hash_table_iter_init (&iter, fetcher->retry_after);
+  while (g_hash_table_iter_next (&iter, NULL, &value))
+    if (*(int64_t *)value <= now)
+      g_hash_table_iter_remove (&iter);
+
+  fetcher->retry_after_cleanup_time = now;
+}
+
+static gboolean
+record_retry_after (FetcherRequest *req, const char *uri, int64_t now)
+{
+  uint64_t delay = retry_after_seconds (req->out_retry_after);
+  cleanup_expired_retry_after (req->fetcher, now);
+  if (delay == 0)
+    return FALSE;
+
+  int64_t *deadline = g_new (int64_t, 1);
+  *deadline = delay > (G_MAXINT64 - now) / G_USEC_PER_SEC
+                  ? G_MAXINT64
+                  : now + delay * G_USEC_PER_SEC;
+  int64_t *previous = g_hash_table_lookup (req->fetcher->retry_after, uri);
+  if (previous != NULL)
+    *deadline = MAX (*deadline, *previous);
+  g_hash_table_replace (req->fetcher->retry_after, g_strdup (uri), deadline);
+  return delay > MAX_RETRY_AFTER_SECONDS;
+}
+
 static void
 remove_outstanding_request (OstreeFetcher *self, GTask *task)
 {
@@ -378,6 +415,24 @@ check_multi_info (OstreeFetcher *fetcher)
 
       gboolean retry_all = (!is_file && req->fetcher->opt_retry_all);
 
+      /* The response code and headers are available even if the body is
+       * truncated (for example, CURLE_PARTIAL_FILE). Preserve Retry-After
+       * before handling the transfer error, but never override local writes
+       * or cancellation. */
+      gboolean retry_after_too_long = FALSE;
+      if (!req->caught_write_error && retry_all)
+        {
+          rc = curl_easy_getinfo (easy, CURLINFO_RESPONSE_CODE, &response);
+          g_assert_cmpint (rc, ==, CURLM_OK);
+          if (response == 503)
+            {
+              g_autofree char *uri
+                  = request_get_uri (req, req->mirrorlist->pdata[req->idx]);
+              retry_after_too_long
+                  = record_retry_after (req, uri, g_get_monotonic_time ());
+            }
+        }
+
       if (req->caught_write_error)
         g_task_return_error (task, g_steal_pointer (&req->caught_write_error));
       else if (curlres != CURLE_OK)
@@ -394,7 +449,9 @@ check_multi_info (OstreeFetcher *fetcher)
                * We accomplish that by using G_IO_ERROR_TIMED_OUT.
                */
               g_task_return_new_error (
-                  task, G_IO_ERROR, retry_all ? G_IO_ERROR_TIMED_OUT : G_IO_ERROR,
+                  task, G_IO_ERROR,
+                  retry_after_too_long ? G_IO_ERROR_FAILED
+                                       : retry_all ? G_IO_ERROR_TIMED_OUT : G_IO_ERROR,
                   "While fetching %s: [%u] %s", eff_url, curlres, curl_easy_strerror (curlres));
               _ostree_fetcher_journal_failure (req->fetcher->remote_name, eff_url,
                                                curl_easy_strerror (curlres));
@@ -419,30 +476,8 @@ check_multi_info (OstreeFetcher *fetcher)
               GIOErrorEnum giocode
                   = _ostree_fetcher_http_status_code_to_io_error (response, retry_all);
 
-              /* RFC 9110, Section 10.2.3 defines Retry-After for HTTP 503. */
-              if (response == 503 && retry_all)
-                {
-                  uint64_t delay = retry_after_seconds (req->out_retry_after);
-                  if (delay > MAX_RETRY_AFTER_SECONDS)
-                    giocode = G_IO_ERROR_FAILED;
-                  if (delay > 0)
-                    {
-                      /* The caller decides whether to retry. Record the delay
-                       * without waiting, since the caller may have no retries
-                       * left. Use the original URL even after a redirect. */
-                      g_autofree char *uri
-                          = request_get_uri (req, req->mirrorlist->pdata[req->idx]);
-                      int64_t *deadline = g_new (int64_t, 1);
-                      int64_t now = g_get_monotonic_time ();
-                      *deadline = delay > (G_MAXINT64 - now) / G_USEC_PER_SEC
-                                      ? G_MAXINT64
-                                      : now + delay * G_USEC_PER_SEC;
-                      int64_t *previous = g_hash_table_lookup (fetcher->retry_after, uri);
-                      if (previous != NULL)
-                        *deadline = MAX (*deadline, *previous);
-                      g_hash_table_replace (fetcher->retry_after, g_steal_pointer (&uri), deadline);
-                    }
-                }
+              if (retry_after_too_long)
+                giocode = G_IO_ERROR_FAILED;
 
               if (req->idx + 1 == req->mirrorlist->len)
                 {
