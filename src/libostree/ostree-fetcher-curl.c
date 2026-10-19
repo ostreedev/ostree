@@ -671,9 +671,10 @@ static int
 prog_cb (void *p, double dltotal, double dlnow, double ult, double uln)
 {
   GTask *task = p;
+  GCancellable *cancellable = g_task_get_cancellable (task);
 
   /* libcurl calls this even when no headers or body data arrive. */
-  return g_cancellable_is_cancelled (g_task_get_cancellable (task)) ? 1 : 0;
+  return cancellable != NULL && g_cancellable_is_cancelled (cancellable) ? 1 : 0;
 }
 
 static void
