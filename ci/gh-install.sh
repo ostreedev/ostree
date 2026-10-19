@@ -103,6 +103,7 @@ case "$ID" in
             procps
             python3
             python3-yaml
+            strace
             xsltproc
             zlib1g-dev
         )
