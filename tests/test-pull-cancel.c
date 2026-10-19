@@ -98,6 +98,10 @@ test_cancel_stalled_summary (gconstpointer user_data)
   StalledRequest request = { .listener = listener,
                             .cancellable = cancellable,
                             .send_headers = GPOINTER_TO_INT (user_data) };
+  /* The test server is loopback-only; do not let inherited proxy settings
+   * route the request away from it. */
+  g_setenv ("no_proxy", "127.0.0.1,localhost", TRUE);
+  g_setenv ("NO_PROXY", "127.0.0.1,localhost", TRUE);
   g_mutex_init (&request.mutex);
   g_cond_init (&request.cond);
   GThread *server = g_thread_new ("stalled-http", serve_stalled_request, &request);
@@ -105,6 +109,9 @@ test_cancel_stalled_summary (gconstpointer user_data)
   g_autoptr (GBytes) summary = NULL;
   gboolean success
       = ostree_repo_remote_fetch_summary (repo, "origin", &summary, NULL, cancellable, &error);
+  g_assert_false (success);
+  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_CANCELLED);
+
   int64_t finished_at = g_get_monotonic_time ();
   g_mutex_lock (&request.mutex);
   request.done = TRUE;
@@ -114,8 +121,6 @@ test_cancel_stalled_summary (gconstpointer user_data)
   g_cond_clear (&request.cond);
   g_mutex_clear (&request.mutex);
 
-  g_assert_false (success);
-  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_CANCELLED);
   g_test_message ("Cancellation took %.3f seconds",
                   (finished_at - request.cancelled_at) / (double)G_USEC_PER_SEC);
   g_assert_cmpint (finished_at - request.cancelled_at, <, 3 * G_USEC_PER_SEC);
