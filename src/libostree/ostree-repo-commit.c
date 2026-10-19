@@ -570,14 +570,37 @@ _ostree_repo_bare_content_map (OstreeRepoBareContent *barewrite, guint8 **out_bu
   if (real->content_len > 0)
     {
       /* Reserve backing storage before touching the mapping to avoid SIGBUS on
-       * allocation failure. Leave fallocate emulation to libc (provided by glibc).
+       * allocation failure. Prefer libc's emulation when available (glibc).
        * Unlike fallocate(), posix_fallocate() returns the error number directly.
        */
       int res;
       do
         res = posix_fallocate (real->tmpf.fd, real->bytes_written, real->content_len);
       while (res == EINTR);
-      if (res != 0)
+      if (G_IN_SET (res, EOPNOTSUPP, ENOSYS))
+        {
+          /* Some libcs, including musl, do not emulate unsupported fallocate.
+           * Materialize only the appended range, without a file-sized buffer
+           * or changing the fd offset. Flush delayed allocations before mmap.
+           */
+          static const uint8_t zeros[64 * 1024] = { 0 };
+          for (size_t offset = 0; offset < real->content_len;)
+            {
+              if (g_cancellable_set_error_if_cancelled (cancellable, error))
+                return FALSE;
+              const size_t len = MIN (real->content_len - offset, sizeof (zeros));
+              const ssize_t written = TEMP_FAILURE_RETRY (
+                  pwrite (real->tmpf.fd, zeros, len, real->bytes_written + offset));
+              if (written < 0)
+                return glnx_throw_errno_prefix (error, "pwrite");
+              if (written == 0)
+                return glnx_throw (error, "Unexpected zero-length write allocating mapped content");
+              offset += written;
+            }
+          if (TEMP_FAILURE_RETRY (fdatasync (real->tmpf.fd)) < 0)
+            return glnx_throw_errno_prefix (error, "fdatasync");
+        }
+      else if (res != 0)
         {
           errno = res;
           return glnx_throw_errno_prefix (error, "posix_fallocate");
