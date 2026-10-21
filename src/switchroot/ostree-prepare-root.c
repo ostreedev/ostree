@@ -298,8 +298,9 @@ main (int argc, char *argv[])
   // filename.
   g_assert (deploy_directory_name && *deploy_directory_name);
 
-  /* These are global state directories underneath /run */
-  if (mkdirat (AT_FDCWD, OTCORE_RUN_OSTREE, 0755) < 0)
+  /* These are global state directories underneath /run. The initramfs may
+   * have created /run/ostree already, to hold INITRAMFS_MOUNT_VAR. */
+  if (mkdirat (AT_FDCWD, OTCORE_RUN_OSTREE, 0755) < 0 && errno != EEXIST)
     err (EXIT_FAILURE, "Failed to create %s", OTCORE_RUN_OSTREE);
   if (mkdirat (AT_FDCWD, OTCORE_RUN_OSTREE_PRIVATE, 0) < 0)
     err (EXIT_FAILURE, "Failed to create %s", OTCORE_RUN_OSTREE_PRIVATE);
