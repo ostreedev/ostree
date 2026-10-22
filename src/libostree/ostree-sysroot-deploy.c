@@ -3408,6 +3408,39 @@ sysroot_finalize_selinux_policy (int deployment_dfd, GError **error)
     return TRUE;
 
   /*
+   * Skip the SELinux policy refresh if the policy has no module store under
+   * /etc/selinux. An image that ships only a compiled policy has nothing to
+   * rebuild, and semodule fails without a store.
+   */
+  g_autofree char *config_contents
+      = glnx_file_get_contents_utf8_at (deployment_dfd, "etc/selinux/config", NULL, NULL, error);
+  if (!config_contents)
+    return FALSE;
+  g_autofree char *policy_type = NULL;
+  g_auto (GStrv) lines = g_strsplit (config_contents, "\n", -1);
+  for (char **iter = lines; *iter; iter++)
+    {
+      char *line = g_strstrip (*iter);
+      if (g_str_has_prefix (line, "SELINUXTYPE="))
+        {
+          g_free (policy_type);
+          policy_type = g_strstrip (g_strdup (line + strlen ("SELINUXTYPE=")));
+        }
+    }
+  if (policy_type != NULL && *policy_type != '\0')
+    {
+      g_autofree char *store_path = g_strconcat ("etc/selinux/", policy_type, "/active", NULL);
+      if (!glnx_fstatat_allow_noent (deployment_dfd, store_path, NULL, 0, error))
+        return FALSE;
+      if (errno == ENOENT)
+        {
+          ot_journal_print (LOG_INFO, "No SELinux policy store at /%s, skipping policy refresh",
+                            store_path);
+          return TRUE;
+        }
+    }
+
+  /*
    * Skip the SELinux policy refresh if the --refresh
    * flag is not supported by semodule.
    */
