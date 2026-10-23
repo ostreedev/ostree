@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((91 + ${extra_basic_tests:-0}))"
+echo "1..$((93 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -1207,6 +1207,83 @@ else
     echo "ok # SKIP whiteouts do not work, are you using aufs?"
     echo "ok # SKIP whiteouts do not work, are you using aufs?"
 fi
+
+# Ensure a whiteout which would escape the checkout directory after the
+# prefix is stripped (e.g. `.wh...` which becomes `..`) is rejected at
+# checkout time, rather than recursively deleting the parent directory.
+cd ${test_tmpdir}
+if has_ostree_feature libarchive; then
+    rm -rf whiteout-co-parent evil-whiteout.tar
+    mkdir -p whiteout-co-parent/somedir
+    echo precious > whiteout-co-parent/somedir/precious.txt
+    python3 - "$PWD/evil-whiteout.tar" <<'PYEOF'
+import io
+import os
+import sys
+import tarfile
+tar = tarfile.open(sys.argv[1], 'w')
+def adddir(name):
+    ti = tarfile.TarInfo(name)
+    ti.uid = os.getuid()
+    ti.gid = os.getgid()
+    ti.type = tarfile.DIRTYPE
+    ti.mode = 0o755
+    tar.addfile(ti)
+def addfile(name, data=b''):
+    ti = tarfile.TarInfo(name)
+    ti.uid = os.getuid()
+    ti.gid = os.getgid()
+    ti.size = len(data)
+    ti.mode = 0o644
+    tar.addfile(ti, io.BytesIO(data))
+adddir('./')
+# Stripping the `.wh.` prefix turns this name into `..`
+addfile('./.wh...', b'')
+addfile('./keepme', b'kept')
+tar.close()
+PYEOF
+    $OSTREE --repo=repo commit ${COMMIT_ARGS} -b evil-whiteout \
+        --tree=tar=evil-whiteout.tar -s 'malicious whiteout'
+    rm evil-whiteout.tar
+    if $OSTREE --repo=repo checkout ${CHECKOUT_U_ARG} --whiteouts \
+        evil-whiteout whiteout-co-parent/co 2>whiteout-err.txt; then
+        fatal "checkout of malicious whiteout unexpectedly succeeded"
+    fi
+    assert_file_has_content whiteout-err.txt "Invalid path uplink filename"
+    # Crucially, the parent of the checkout directory must be untouched
+    assert_has_file whiteout-co-parent/somedir/precious.txt
+    rm -rf whiteout-co-parent whiteout-err.txt
+    echo "ok checkout whiteout path traversal"
+else
+    echo "ok # SKIP no libarchive support compiled in"
+fi
+
+# Ensure that a union checkout of a directory does not follow a pre-existing
+# symlink of the same name (e.g. from a previous checkout of a malicious
+# commit) and write content outside the checkout directory.
+cd ${test_tmpdir}
+rm -rf symlink-union-parent symlink-union-base symlink-union-ext co-dir symlink-union-err.txt
+mkdir -p symlink-union-parent/preciousdir
+echo precious > symlink-union-parent/preciousdir/keep.txt
+mkdir symlink-union-base
+ln -s ../symlink-union-parent/preciousdir symlink-union-base/adir
+mkdir -p symlink-union-ext/adir
+echo pwned > symlink-union-ext/adir/new.txt
+echo overwritten > symlink-union-ext/adir/keep.txt
+$OSTREE --repo=repo commit ${COMMIT_ARGS} -b symlink-union-base \
+    --tree=dir=symlink-union-base -s 'base with symlink'
+$OSTREE --repo=repo commit ${COMMIT_ARGS} -b symlink-union-ext \
+    --tree=dir=symlink-union-ext -s 'ext with directory'
+$OSTREE --repo=repo checkout -U symlink-union-base co-dir
+if $OSTREE --repo=repo checkout -U --union symlink-union-ext co-dir 2>symlink-union-err.txt; then
+    fatal "union checkout of directory over symlink unexpectedly succeeded"
+fi
+assert_file_has_content symlink-union-err.txt "Refusing to overwrite non-directory"
+# Crucially, the symlink target outside the checkout directory must be untouched
+assert_file_has_content symlink-union-parent/preciousdir/keep.txt precious
+assert_not_has_file symlink-union-parent/preciousdir/new.txt
+rm -rf symlink-union-parent symlink-union-base symlink-union-ext co-dir symlink-union-err.txt
+echo "ok checkout union symlink"
 
 cd ${test_tmpdir}
 rm -rf test2-checkout

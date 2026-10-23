@@ -733,6 +733,13 @@ checkout_one_file_at (OstreeRepo *repo, OstreeRepoCheckoutAtOptions *options, Ch
       if (!name[0])
         return glnx_throw (error, "Invalid empty whiteout '%s'", name);
 
+      /* The stripped name may not have been validated as a whole; in
+       * particular, `.wh...` would otherwise resolve to `..` below and
+       * recursively delete the parent of the checkout directory.
+       */
+      if (!ot_util_filename_validate (name, error))
+        return FALSE;
+
       g_assert (name[0] != '/'); /* Sanity */
 
       if (!glnx_shutil_rm_rf_at (destination_dfd, name, cancellable, error))
@@ -746,6 +753,10 @@ checkout_one_file_at (OstreeRepo *repo, OstreeRepoCheckoutAtOptions *options, Ch
 
       if (!name[0])
         return glnx_throw (error, "Invalid empty overlayfs whiteout '%s'", name);
+
+      /* As above; the stripped name must be re-validated. */
+      if (!ot_util_filename_validate (name, error))
+        return FALSE;
 
       g_assert (name[0] != '/'); /* Sanity */
 
@@ -1106,14 +1117,29 @@ checkout_tree_at_recurse (OstreeRepo *self, OstreeRepoCheckoutAtOptions *options
           case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES:
           case OSTREE_REPO_CHECKOUT_OVERWRITE_ADD_FILES:
           case OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_IDENTICAL:
-            did_exist = TRUE;
+            {
+              /* The existing entry may be a symlink, e.g. from a previous
+               * union checkout of a malicious commit.  We must not follow
+               * it below, or content would be written outside of the
+               * destination directory.
+               */
+              struct stat existing_stbuf;
+              if (!glnx_fstatat (destination_parent_fd, destination_name, &existing_stbuf,
+                                 AT_SYMLINK_NOFOLLOW, error))
+                return FALSE;
+              if (!S_ISDIR (existing_stbuf.st_mode))
+                return glnx_throw (error,
+                                   "Refusing to overwrite non-directory '%s' with a directory",
+                                   destination_name);
+              did_exist = TRUE;
+            }
             break;
           }
       }
   }
 
   glnx_autofd int destination_dfd = -1;
-  if (!glnx_opendirat (destination_parent_fd, destination_name, TRUE, &destination_dfd, error))
+  if (!glnx_opendirat (destination_parent_fd, destination_name, FALSE, &destination_dfd, error))
     return FALSE;
 
   struct stat repo_dfd_stat;

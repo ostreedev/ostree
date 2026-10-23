@@ -35,6 +35,9 @@ mkdir files
 for bin in ${bindatafiles}; do
     cp $(which ${bin}) files
 done
+# Keep the initial delta's fallback behavior covered without depending on the
+# sizes of binaries supplied by the test host.
+dd if=/dev/zero of=files/large-content bs=1M count=5 status=none
 
 ${CMD_PREFIX} ostree --repo=repo commit -b test -s test --tree=dir=files
 
@@ -81,7 +84,7 @@ get_assert_one_direntry_matching() {
 
 origrev=$(${CMD_PREFIX} ostree --repo=repo rev-parse test)
 
-${CMD_PREFIX} ostree --repo=repo static-delta generate --empty --to=${origrev}
+${CMD_PREFIX} ostree --repo=repo static-delta generate --empty --to=${origrev} --min-fallback-size=0
 ${CMD_PREFIX} ostree --repo=repo static-delta generate --if-not-exists --empty --to=${origrev} > out.txt
 assert_file_has_content out.txt "${origrev} already exists"
 ${CMD_PREFIX} ostree --repo=repo static-delta list | grep ${origrev} || exit 1
@@ -93,6 +96,10 @@ ${CMD_PREFIX} ostree --repo=repo static-delta indexes | wc -l > indexcount
 assert_file_has_content indexcount "^1$"
 ${CMD_PREFIX} ostree --repo=repo static-delta indexes | grep ${origrev} || exit 1
 
+# The large object makes the from-empty delta exercise the no-fallback path.
+# Do not include it in the bsdiff fixture below: bsdiff's CPU cost scales
+# poorly for an otherwise uninteresting all-zero input.
+rm files/large-content
 permuteDirectory 1 files
 ${CMD_PREFIX} ostree --repo=repo commit -b test -s test --tree=dir=files
 
