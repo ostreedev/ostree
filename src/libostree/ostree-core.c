@@ -2244,6 +2244,10 @@ ostree_validate_structureof_dirtree (GVariant *dirtree, GError **error)
   g_autoptr (GVariant) content_csum_v = NULL;
   g_autoptr (GVariant) meta_csum_v = NULL;
   g_autoptr (GVariantIter) contents_iter = NULL;
+  /* A name must not appear twice, in particular not as both a file and a
+   * subdirectory: checkout would create the file (possibly a symlink) and
+   * then open it as the subdirectory. */
+  g_autoptr (GHashTable) names = g_hash_table_new (g_str_hash, g_str_equal);
 
   if (!validate_variant (dirtree, OSTREE_TREE_GVARIANT_FORMAT, error))
     return FALSE;
@@ -2254,6 +2258,8 @@ ostree_validate_structureof_dirtree (GVariant *dirtree, GError **error)
     {
       if (!ot_util_filename_validate (filename, error))
         return FALSE;
+      if (!g_hash_table_add (names, (char *)filename))
+        return glnx_throw (error, "Duplicate name in dirtree: %s", filename);
       if (!ostree_validate_structureof_csum_v (content_csum_v, error))
         return FALSE;
     }
@@ -2270,6 +2276,8 @@ ostree_validate_structureof_dirtree (GVariant *dirtree, GError **error)
     {
       if (!ot_util_filename_validate (filename, error))
         return FALSE;
+      if (!g_hash_table_add (names, (char *)filename))
+        return glnx_throw (error, "Duplicate name in dirtree: %s", filename);
       if (!ostree_validate_structureof_csum_v (content_csum_v, error))
         return FALSE;
       if (!ostree_validate_structureof_csum_v (meta_csum_v, error))
