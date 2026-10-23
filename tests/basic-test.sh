@@ -1218,16 +1218,21 @@ if has_ostree_feature libarchive; then
     echo precious > whiteout-co-parent/somedir/precious.txt
     python3 - "$PWD/evil-whiteout.tar" <<'PYEOF'
 import io
+import os
 import sys
 import tarfile
 tar = tarfile.open(sys.argv[1], 'w')
 def adddir(name):
     ti = tarfile.TarInfo(name)
+    ti.uid = os.getuid()
+    ti.gid = os.getgid()
     ti.type = tarfile.DIRTYPE
     ti.mode = 0o755
     tar.addfile(ti)
 def addfile(name, data=b''):
     ti = tarfile.TarInfo(name)
+    ti.uid = os.getuid()
+    ti.gid = os.getgid()
     ti.size = len(data)
     ti.mode = 0o644
     tar.addfile(ti, io.BytesIO(data))
