@@ -28,6 +28,7 @@
 #include <sys/vfs.h>
 #include <sys/wait.h>
 
+#include "ostree-bootconfig-parser-private.h"
 #include "ostree-bootloader-aboot.h"
 #include "ostree-bootloader-grub2.h"
 #include "ostree-bootloader-syslinux.h"
@@ -1228,6 +1229,9 @@ _ostree_sysroot_reload_staged (OstreeSysroot *self, GError **error)
           /* Restore any extension BLS keys (e.g. x-options-source-tuned)
            * that were serialized during staging. This preserves custom keys
            * set by consumers like bootc through the staging roundtrip.
+           * This is persistent state, not a consumer modification, so clear
+           * the modified flag afterwards; see
+           * _ostree_bootconfig_parser_select_staged_extra_keys().
            */
           {
             g_autoptr (GVariant) bootconfig_extra = NULL;
@@ -1240,6 +1244,7 @@ _ostree_sysroot_reload_staged (OstreeSysroot *self, GError **error)
                 g_variant_iter_init (&iter, bootconfig_extra);
                 while (g_variant_iter_next (&iter, "{&s&s}", &key, &value))
                   ostree_bootconfig_parser_set (bootconfig, key, value);
+                _ostree_bootconfig_parser_clear_extra_keys_modified (bootconfig);
               }
           }
 
