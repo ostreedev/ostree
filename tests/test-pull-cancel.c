@@ -81,8 +81,8 @@ test_cancel_stalled_summary (gconstpointer user_data)
   g_autoptr (GSocketListener) listener = g_socket_listener_new ();
   g_autoptr (GSocketAddress) address = g_inet_socket_address_new_from_string ("127.0.0.1", 0);
   g_autoptr (GSocketAddress) bound_address = NULL;
-  g_socket_listener_add_address (listener, address, G_SOCKET_TYPE_STREAM,
-                                 G_SOCKET_PROTOCOL_TCP, NULL, &bound_address, &error);
+  g_socket_listener_add_address (listener, address, G_SOCKET_TYPE_STREAM, G_SOCKET_PROTOCOL_TCP,
+                                 NULL, &bound_address, &error);
   g_assert_no_error (error);
   guint16 port = g_inet_socket_address_get_port (G_INET_SOCKET_ADDRESS (bound_address));
   g_autofree char *url = g_strdup_printf ("http://127.0.0.1:%u", port);
@@ -95,9 +95,8 @@ test_cancel_stalled_summary (gconstpointer user_data)
   g_assert_no_error (error);
 
   g_autoptr (GCancellable) cancellable = g_cancellable_new ();
-  StalledRequest request = { .listener = listener,
-                            .cancellable = cancellable,
-                            .send_headers = GPOINTER_TO_INT (user_data) };
+  StalledRequest request = { .listener = listener, .cancellable = cancellable,
+                             .send_headers = GPOINTER_TO_INT (user_data) };
   /* The test server is loopback-only; do not let inherited proxy settings
    * route the request away from it. */
   g_setenv ("no_proxy", "127.0.0.1,localhost", TRUE);
