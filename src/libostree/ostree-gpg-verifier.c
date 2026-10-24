@@ -312,6 +312,19 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier *self, GBytes *signed_da
       goto out;
     }
 
+    /* proc-all-sigs (GPGME >= 1.24) makes GPGME report expired and otherwise
+     * filtered signatures that GnuPG >= 2.5 omits from the default status output.
+     * Without it, e.g. expired signatures are silently dropped. The flag does not
+     * exist in GPGME < 1.24, where behavior is unchanged from before (no
+     * regression); guard at compile time and check the setter result. */
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x011800
+  {
+    gpgme_error_t proc_all_err = gpgme_set_ctx_flag (result->context, "proc-all-sigs", "1");
+    if (proc_all_err != GPG_ERR_NO_ERROR)
+      g_debug ("Failed to set GPGME \"proc-all-sigs\" flag: %s", gpgme_strerror (proc_all_err));
+  }
+#endif
+
   gpg_error = gpgme_op_verify (result->context, signature_buffer, data_buffer, NULL);
   if (gpg_error != GPG_ERR_NO_ERROR)
     {
