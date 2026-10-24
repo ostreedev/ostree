@@ -35,6 +35,11 @@ fi
 # Since there is no need to create menu entries for that case.
 # See: https://src.fedoraproject.org/rpms/grub2/c/7c2bab5e98d
 . /etc/default/grub
+
+for f in /etc/default/grub.d/*.cfg; do
+    [ -f "$f" ] && . "$f"
+done
+
 if test -f /boot/grub2/.grub2-blscfg-supported && \
    test "${GRUB_ENABLE_BLSCFG}" = "true"; then
    exit 0
