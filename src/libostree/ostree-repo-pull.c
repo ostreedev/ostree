@@ -65,6 +65,15 @@
 #define OPT_LOWSPEEDTIME_DEFAULT 30
 #define OPT_RETRYALL_DEFAULT TRUE
 #define OPT_OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS_DEFAULT 8
+/* S3 only speaks HTTP/1.1 and each request costs a full round trip, so
+ * throughput comes from many requests in flight rather than multiplexing. */
+#define OPT_OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS_S3_DEFAULT 128
+/* Delta parts that may be downloading (or downloaded, waiting to be
+ * applied) at once from S3. */
+#define OPT_OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS_S3 16
+/* Delta parts being applied at once. Each is held decompressed in memory
+ * while it is applied, so this bounds memory use however many download. */
+#define MAX_APPLYING_DELTAPARTS 2
 
 typedef struct
 {
@@ -93,6 +102,7 @@ typedef struct
   guint64 size;
   guint64 usize;
   guint n_retries_remaining;
+  int pending_fd; /* downloaded and waiting to be applied, or -1 */
 } FetchStaticDeltaData;
 
 typedef struct
@@ -159,6 +169,7 @@ static gboolean scan_one_metadata_object (OtPullData *pull_data, const char *che
                                           guint recursion_depth, const OstreeCollectionRef *ref,
                                           GCancellable *cancellable, GError **error);
 static void scan_object_queue_data_free (ScanObjectQueueData *scan_data);
+static void fetch_static_delta_data_free (gpointer data);
 static gboolean initiate_delta_request (OtPullData *pull_data, const OstreeCollectionRef *ref,
                                         const char *to_revision, const char *delta_from_revision,
                                         GError **error);
@@ -186,7 +197,8 @@ update_progress (gpointer user_data)
 
   outstanding_writes = pull_data->n_outstanding_content_write_requests
                        + pull_data->n_outstanding_metadata_write_requests
-                       + pull_data->n_outstanding_deltapart_write_requests;
+                       + pull_data->n_outstanding_deltapart_write_requests
+                       + g_queue_get_length (&pull_data->pending_deltapart_applies);
   outstanding_fetches = pull_data->n_outstanding_content_fetches
                         + pull_data->n_outstanding_metadata_fetches
                         + pull_data->n_outstanding_deltapart_fetches;
@@ -238,7 +250,8 @@ pull_termination_condition (OtPullData *pull_data)
                                  && pull_data->n_outstanding_deltapart_fetches == 0);
   gboolean current_write_idle = (pull_data->n_outstanding_metadata_write_requests == 0
                                  && pull_data->n_outstanding_content_write_requests == 0
-                                 && pull_data->n_outstanding_deltapart_write_requests == 0);
+                                 && pull_data->n_outstanding_deltapart_write_requests == 0
+                                 && g_queue_is_empty (&pull_data->pending_deltapart_applies));
   gboolean current_scan_idle = g_queue_is_empty (&pull_data->scan_object_queue);
   gboolean current_idle = current_fetch_idle && current_write_idle && current_scan_idle;
 
@@ -286,6 +299,9 @@ check_outstanding_requests_handle_error (OtPullData *pull_data, GError **errorp)
     {
       g_queue_foreach (&pull_data->scan_object_queue, (GFunc)scan_object_queue_data_free, NULL);
       g_queue_clear (&pull_data->scan_object_queue);
+      g_queue_foreach (&pull_data->pending_deltapart_applies, (GFunc)fetch_static_delta_data_free,
+                       NULL);
+      g_queue_clear (&pull_data->pending_deltapart_applies);
       g_hash_table_remove_all (pull_data->pending_fetch_metadata);
       g_hash_table_remove_all (pull_data->pending_fetch_delta_indexes);
       g_hash_table_remove_all (pull_data->pending_fetch_delta_superblocks);
@@ -382,8 +398,11 @@ fetcher_queue_is_full (OtPullData *pull_data)
       = ((pull_data->n_outstanding_metadata_fetches + pull_data->n_outstanding_content_fetches
           + pull_data->n_outstanding_deltapart_fetches)
          == pull_data->max_outstanding_fetcher_requests);
-  const gboolean deltas_full
-      = (pull_data->n_outstanding_deltapart_fetches == _OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS);
+  /* Parts that are downloaded but not yet applied sit on disk; count them
+   * so that downloads can only run so far ahead of applying. */
+  const gboolean deltas_full = (pull_data->n_outstanding_deltapart_fetches
+                                    + g_queue_get_length (&pull_data->pending_deltapart_applies)
+                                >= pull_data->max_outstanding_deltapart_requests);
   const gboolean writes_full = ((pull_data->n_outstanding_metadata_write_requests
                                  + pull_data->n_outstanding_content_write_requests
                                  + pull_data->n_outstanding_deltapart_write_requests)
@@ -1218,11 +1237,55 @@ static void
 fetch_static_delta_data_free (gpointer data)
 {
   FetchStaticDeltaData *fetch_data = data;
+  glnx_close_fd (&fetch_data->pending_fd);
   g_free (fetch_data->expected_checksum);
   g_variant_unref (fetch_data->objects);
   g_free (fetch_data->from_revision);
   g_free (fetch_data->to_revision);
   g_free (fetch_data);
+}
+
+static void on_static_delta_written (GObject *object, GAsyncResult *result, gpointer user_data);
+
+/* Decompress one downloaded delta part and start applying it. Takes
+ * ownership of @fetch_data. */
+static void
+start_deltapart_apply (OtPullData *pull_data, FetchStaticDeltaData *fetch_data)
+{
+  g_autoptr (GVariant) part = NULL;
+  g_autoptr (GError) local_error = NULL;
+
+  g_assert (fetch_data->pending_fd >= 0);
+  g_autoptr (GInputStream) in
+      = g_unix_input_stream_new (g_steal_fd (&fetch_data->pending_fd), TRUE);
+
+  /* TODO - make async */
+  if (!_ostree_static_delta_part_open (in, NULL, 0, fetch_data->expected_checksum, &part,
+                                       pull_data->cancellable, &local_error))
+    {
+      check_outstanding_requests_handle_error (pull_data, &local_error);
+      fetch_static_delta_data_free (fetch_data);
+      return;
+    }
+
+  pull_data->n_outstanding_deltapart_write_requests++;
+  _ostree_static_delta_part_execute_async (pull_data->repo, fetch_data->objects, part,
+                                           pull_data->cancellable, on_static_delta_written,
+                                           fetch_data);
+}
+
+/* Start applying queued delta parts, up to MAX_APPLYING_DELTAPARTS at once. */
+static void
+start_pending_deltapart_applies (OtPullData *pull_data)
+{
+  while (!pull_data->caught_error
+         && pull_data->n_outstanding_deltapart_write_requests < MAX_APPLYING_DELTAPARTS)
+    {
+      FetchStaticDeltaData *fetch_data = g_queue_pop_head (&pull_data->pending_deltapart_applies);
+      if (fetch_data == NULL)
+        break;
+      start_deltapart_apply (pull_data, fetch_data);
+    }
 }
 
 static void
@@ -1245,6 +1308,7 @@ out:
   check_outstanding_requests_handle_error (pull_data, &local_error);
   /* Always free state */
   fetch_static_delta_data_free (fetch_data);
+  start_pending_deltapart_applies (pull_data);
 }
 
 static void
@@ -1256,8 +1320,6 @@ static_deltapart_fetch_on_complete (GObject *object, GAsyncResult *result, gpoin
   g_auto (GLnxTmpfile) tmpf = {
     0,
   };
-  g_autoptr (GInputStream) in = NULL;
-  g_autoptr (GVariant) part = NULL;
   g_autoptr (GError) local_error = NULL;
   GError **error = &local_error;
   gboolean free_fetch_data = TRUE;
@@ -1267,18 +1329,9 @@ static_deltapart_fetch_on_complete (GObject *object, GAsyncResult *result, gpoin
   if (!_ostree_fetcher_request_to_tmpfile_finish (fetcher, result, &tmpf, NULL, NULL, NULL, error))
     goto out;
 
-  /* Transfer ownership of the fd */
-  in = g_unix_input_stream_new (g_steal_fd (&tmpf.fd), TRUE);
-
-  /* TODO - make async */
-  if (!_ostree_static_delta_part_open (in, NULL, 0, fetch_data->expected_checksum, &part,
-                                       pull_data->cancellable, error))
-    goto out;
-
-  _ostree_static_delta_part_execute_async (pull_data->repo, fetch_data->objects, part,
-                                           pull_data->cancellable, on_static_delta_written,
-                                           fetch_data);
-  pull_data->n_outstanding_deltapart_write_requests++;
+  /* Queue the downloaded part for applying; see start_pending_deltapart_applies(). */
+  fetch_data->pending_fd = g_steal_fd (&tmpf.fd);
+  g_queue_push_tail (&pull_data->pending_deltapart_applies, fetch_data);
   free_fetch_data = FALSE;
 
 out:
@@ -1295,6 +1348,8 @@ out:
 
   if (free_fetch_data)
     g_clear_pointer (&fetch_data, fetch_static_delta_data_free);
+
+  start_pending_deltapart_applies (pull_data);
 }
 
 static gboolean
@@ -2056,7 +2111,7 @@ start_fetch_deltapart (OtPullData *pull_data, FetchStaticDeltaData *fetch)
   g_debug ("starting fetch of deltapart %s", deltapart_path);
   pull_data->n_outstanding_deltapart_fetches++;
   g_assert_cmpint (pull_data->n_outstanding_deltapart_fetches, <=,
-                   _OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS);
+                   pull_data->max_outstanding_deltapart_requests);
   _ostree_fetcher_request_to_tmpfile (pull_data->fetcher, pull_data->content_mirrorlist,
                                       deltapart_path, 0, NULL, 0, fetch->size,
                                       OSTREE_FETCHER_DEFAULT_PRIORITY, pull_data->cancellable,
@@ -2196,6 +2251,7 @@ process_one_static_delta (OtPullData *pull_data, const char *from_revision, cons
         continue;
 
       FetchStaticDeltaData *fetch_data = g_new0 (FetchStaticDeltaData, 1);
+      fetch_data->pending_fd = -1;
       fetch_data->from_revision = g_strdup (from_revision);
       fetch_data->to_revision = g_strdup (to_revision);
       fetch_data->pull_data = pull_data;
@@ -3474,6 +3530,7 @@ all_requested_refs_have_commit (
  *   * `retry-all-network-errors` (`b`): Retry when network issues happen, instead of
  *      failing automatically. Currently only affects libcurl. (Default set to true)
  *   * `max-outstanding-fetcher-requests` (`u`): The max amount of concurrent connections allowed.
+ *     0 means the default.
  *   * `ref-keyring-map` (`a(sss)`): Array of (collection ID, ref name, keyring
  *     remote name) tuples specifying which remote's keyring should be used when
  *     doing GPG verification of each collection-ref. This is useful to prevent a
@@ -3605,8 +3662,11 @@ ostree_repo_pull_with_options (OstreeRepo *self, const char *remote_name_or_base
       opt_retry_all_set
           = g_variant_lookup (options, "retry-all-network-errors", "b", &pull_data->retry_all);
       opt_max_outstanding_fetcher_requests_set
-          = g_variant_lookup (options, "max-outstanding-fetcher-requests", "b",
+          = g_variant_lookup (options, "max-outstanding-fetcher-requests", "u",
                               &pull_data->max_outstanding_fetcher_requests);
+      /* A limit of 0 would never start a request; treat it as unset. */
+      if (pull_data->max_outstanding_fetcher_requests == 0)
+        opt_max_outstanding_fetcher_requests_set = FALSE;
       opt_n_network_retries_set
           = g_variant_lookup (options, "n-network-retries", "u", &pull_data->n_network_retries);
       opt_ref_keyring_map_set
@@ -3690,6 +3750,7 @@ ostree_repo_pull_with_options (OstreeRepo *self, const char *remote_name_or_base
   if (!opt_max_outstanding_fetcher_requests_set)
     pull_data->max_outstanding_fetcher_requests
         = OPT_OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS_DEFAULT;
+  pull_data->max_outstanding_deltapart_requests = _OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS;
 
   pull_data->repo = self;
   pull_data->progress = progress;
@@ -3910,6 +3971,25 @@ ostree_repo_pull_with_options (OstreeRepo *self, const char *remote_name_or_base
                                            pull_data->fetcher, pull_data->n_network_retries,
                                            &pull_data->content_mirrorlist, cancellable, error))
           goto out;
+      }
+  }
+
+  /* The fetcher was created before the URLs were known; apply the S3 limits
+   * now if content comes from S3 (judged by the first content mirror). */
+  {
+    OstreeFetcherURI *first_content_uri = pull_data->content_mirrorlist->pdata[0];
+    g_autofree char *content_scheme = _ostree_fetcher_uri_get_scheme (first_content_uri);
+    if (g_str_equal (content_scheme, "s3"))
+      {
+        if (!opt_max_outstanding_fetcher_requests_set)
+          pull_data->max_outstanding_fetcher_requests
+              = OPT_OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS_S3_DEFAULT;
+        /* Delta parts can never outnumber the overall request limit. */
+        pull_data->max_outstanding_deltapart_requests
+            = MIN (OPT_OSTREE_MAX_OUTSTANDING_DELTAPART_REQUESTS_S3,
+                   MAX (pull_data->max_outstanding_fetcher_requests, 1));
+        _ostree_fetcher_set_max_outstanding_fetcher_requests (
+            pull_data->fetcher, pull_data->max_outstanding_fetcher_requests);
       }
   }
 
@@ -4869,6 +4949,8 @@ ostree_repo_pull_with_options (OstreeRepo *self, const char *remote_name_or_base
               break;
             }
         }
+      else if (g_str_equal (first_scheme, "s3"))
+        g_string_append (msg, "s3: SigV4");
       g_string_append (msg, "\n");
 
       if (pull_data->n_fetched_deltaparts > 0)
@@ -4971,6 +5053,9 @@ out:
   g_clear_pointer (&pull_data->pending_fetch_deltaparts, g_hash_table_unref);
   g_queue_foreach (&pull_data->scan_object_queue, (GFunc)scan_object_queue_data_free, NULL);
   g_queue_clear (&pull_data->scan_object_queue);
+  g_queue_foreach (&pull_data->pending_deltapart_applies, (GFunc)fetch_static_delta_data_free,
+                   NULL);
+  g_queue_clear (&pull_data->pending_deltapart_applies);
   g_clear_pointer (&pull_data->idle_src, g_source_destroy);
   g_clear_pointer (&pull_data->dirs, g_ptr_array_unref);
   g_clear_pointer (&remote_config, g_key_file_unref);
@@ -6384,8 +6469,10 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo *self, const char *nam
       (void)g_variant_lookup (options, "low-speed-limit-bytes", "u", &low_speed_limit);
       (void)g_variant_lookup (options, "low-speed-time-seconds", "u", &low_speed_time);
       (void)g_variant_lookup (options, "retry-all-network-errors", "b", &retry_all);
-      (void)g_variant_lookup (options, "max-outstanding-fetcher-requests", "b",
+      (void)g_variant_lookup (options, "max-outstanding-fetcher-requests", "u",
                               &max_outstanding_fetcher_requests);
+      if (max_outstanding_fetcher_requests == 0)
+        max_outstanding_fetcher_requests = OPT_OSTREE_MAX_OUTSTANDING_FETCHER_REQUESTS_DEFAULT;
     }
 
   if (!ostree_repo_remote_get_gpg_verify_summary (self, name, &gpg_verify_summary, error))

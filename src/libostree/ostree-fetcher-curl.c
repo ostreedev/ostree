@@ -48,12 +48,12 @@
 
 #include "ostree-date-utils-private.h"
 #include "ostree-enumtypes.h"
+#include "ostree-fetcher-curl-private.h"
 #include "ostree-fetcher-util.h"
 #include "ostree-fetcher.h"
 #include "ostree-repo-private.h"
 #include "otutil.h"
 
-typedef struct FetcherRequest FetcherRequest;
 typedef struct SockInfo SockInfo;
 
 static int sock_cb (CURL *e, curl_socket_t s, int what, void *cbp, void *sockp);
@@ -61,68 +61,13 @@ static gboolean timer_cb (gpointer data);
 static void sock_unref (SockInfo *f);
 static int update_timeout_cb (CURLM *multi, long timeout_ms, void *userp);
 static void request_unref (FetcherRequest *req);
-static void initiate_next_curl_request (FetcherRequest *req, GTask *task);
 static void destroy_and_unref_source (GSource *source);
-
-struct OstreeFetcher
-{
-  GObject parent_instance;
-
-  OstreeFetcherConfigFlags config_flags;
-  char *remote_name;
-  char *tls_ca_db_path;
-  char *tls_client_cert_path;
-  char *tls_client_key_path;
-  char *cookie_jar_path;
-  char *proxy;
-  struct curl_slist *extra_headers;
-  int tmpdir_dfd;
-  bool force_anonymous;
-  bool finalizing; // Set if we're in the process of teardown
-  char *custom_user_agent;
-  guint32 opt_low_speed_limit;
-  guint32 opt_low_speed_time;
-  gboolean opt_retry_all;
-  guint32 opt_max_outstanding_fetcher_requests;
-
-  GMainContext *mainctx;
-  CURLM *multi;
-  GSource *timer_event;
-  int curl_running;
-  GHashTable *outstanding_requests; /* Set<GTask> */
-  GHashTable *sockets;              /* Set<SockInfo> */
-
-  guint64 bytes_transferred;
-};
-
-/* Information associated with a request */
-struct FetcherRequest
-{
-  guint refcount;
-  GPtrArray *mirrorlist;
-  guint idx;
-
-  char *filename;
-  guint64 current_size;
-  guint64 max_size;
-  OstreeFetcherRequestFlags flags;
-  struct curl_slist *req_headers;
-  char *if_none_match;       /* request ETag */
-  guint64 if_modified_since; /* seconds since the epoch */
-  gboolean is_membuf;
-  GError *caught_write_error;
-  GLnxTmpfile tmpf;
-  GString *output_buf;
-  gboolean out_not_modified; /* TRUE if the server gave a HTTP 304 Not Modified response, which we
-                                don’t propagate as an error */
-  char *out_etag;            /* response ETag */
-  guint64 out_last_modified; /* response Last-Modified, seconds since the epoch */
-
-  CURL *easy;
-  char error[CURL_ERROR_SIZE];
-
-  OstreeFetcher *fetcher;
-};
+static void _ostree_fetcher_request_async (OstreeFetcher *self, GPtrArray *mirrorlist,
+                                           const char *filename, OstreeFetcherRequestFlags flags,
+                                           const char *if_none_match, guint64 if_modified_since,
+                                           gboolean is_membuf, guint64 max_size, int priority,
+                                           GCancellable *cancellable, GAsyncReadyCallback callback,
+                                           gpointer user_data);
 
 /* Information associated with a specific socket */
 struct SockInfo
@@ -201,6 +146,8 @@ _ostree_fetcher_finalize (GObject *object)
   g_clear_pointer (&self->extra_headers, curl_slist_free_all);
   g_hash_table_unref (self->outstanding_requests);
   g_hash_table_unref (self->sockets);
+  if (self->s3 != NULL)
+    _ostree_fetcher_s3_free (self->s3);
   g_clear_pointer (&self->timer_event, destroy_and_unref_source);
   if (self->mainctx)
     g_main_context_unref (self->mainctx);
@@ -242,6 +189,7 @@ _ostree_fetcher_init (OstreeFetcher *self)
   self->outstanding_requests
       = g_hash_table_new_full (NULL, NULL, (GDestroyNotify)g_object_unref, NULL);
   self->sockets = g_hash_table_new_full (NULL, NULL, (GDestroyNotify)sock_unref, NULL);
+  self->s3 = _ostree_fetcher_s3_new ();
   rc = curl_multi_setopt (self->multi, CURLMOPT_SOCKETFUNCTION, sock_cb);
   g_assert_cmpint (rc, ==, CURLM_OK);
   rc = curl_multi_setopt (self->multi, CURLMOPT_SOCKETDATA, self);
@@ -297,8 +245,8 @@ request_get_uri (FetcherRequest *req, GUri *baseuri)
   }
 }
 
-static gboolean
-ensure_tmpfile (FetcherRequest *req, GError **error)
+gboolean
+_ostree_fetcher_request_ensure_tmpfile (FetcherRequest *req, GError **error)
 {
   if (req->tmpf.initialized)
     return TRUE;
@@ -306,6 +254,92 @@ ensure_tmpfile (FetcherRequest *req, GError **error)
     return glnx_open_anonymous_tmpfile (O_RDWR | O_CLOEXEC, &req->tmpf, error);
   else
     return _ostree_fetcher_tmpf (req->fetcher->tmpdir_dfd, &req->tmpf, error);
+}
+
+FetcherRequest *
+_ostree_fetcher_request_new (OstreeFetcher *self, GPtrArray *mirrorlist, const char *filename,
+                             OstreeFetcherRequestFlags flags)
+{
+  FetcherRequest *req = g_new0 (FetcherRequest, 1);
+  req->refcount = 1;
+  req->fetcher = self;
+  req->mirrorlist = g_ptr_array_ref (mirrorlist);
+  req->filename = g_strdup (filename);
+  req->flags = flags;
+  return req;
+}
+
+/* Takes ownership of @req. */
+GTask *
+_ostree_fetcher_request_task_new (OstreeFetcher *self, FetcherRequest *req, int priority,
+                                  GCancellable *cancellable, GAsyncReadyCallback callback,
+                                  gpointer user_data)
+{
+  GTask *task = g_task_new (self, cancellable, callback, user_data);
+  /* We'll use the GTask priority for our own priority queue. */
+  g_task_set_priority (task, priority);
+  g_task_set_source_tag (task, _ostree_fetcher_request_async);
+  g_task_set_task_data (task, req, (GDestroyNotify)request_unref);
+  return task;
+}
+
+/* Forget a request that has just been returned; with none left, let go of
+ * the main context. */
+void
+_ostree_fetcher_request_finished (OstreeFetcher *self, GTask *task)
+{
+  ((FetcherRequest *)g_task_get_task_data (task))->finished = TRUE;
+  g_hash_table_remove (self->outstanding_requests, task);
+  if (g_hash_table_size (self->outstanding_requests) == 0)
+    g_clear_pointer (&self->mainctx, g_main_context_unref);
+}
+
+typedef struct
+{
+  GTask *task; /* owned */
+  GError *error;
+} FailLaterData;
+
+static void
+fail_later_data_free (gpointer user_data)
+{
+  FailLaterData *data = user_data;
+  g_clear_error (&data->error);
+  g_object_unref (data->task);
+  g_free (data);
+}
+
+static gboolean
+fail_later_idle_cb (gpointer user_data)
+{
+  FailLaterData *data = user_data;
+  OstreeFetcher *self = g_task_get_source_object (data->task);
+  FetcherRequest *req = g_task_get_task_data (data->task);
+
+  /* A range may have been cancelled, and so returned, in the meantime. */
+  if (!req->finished)
+    {
+      g_task_return_error (data->task, g_steal_pointer (&data->error));
+      _ostree_fetcher_request_finished (self, data->task);
+    }
+  return G_SOURCE_REMOVE;
+}
+
+/* Fail a request that never reached curl. This is deferred to an idle so
+ * it behaves the same whether called from _ostree_fetcher_request_async()
+ * (which adds the task to outstanding_requests only after we return) or
+ * from a callback. Takes ownership of @error. */
+void
+_ostree_fetcher_request_fail_later (OstreeFetcher *self, GTask *task, GError *error)
+{
+  FailLaterData *data = g_new0 (FailLaterData, 1);
+  data->task = g_object_ref (task);
+  data->error = error;
+
+  GSource *source = g_idle_source_new ();
+  g_source_set_callback (source, fail_later_idle_cb, data, fail_later_data_free);
+  g_source_attach (source, self->mainctx);
+  g_source_unref (source);
 }
 
 /* Check for completed transfers, and remove their easy handles */
@@ -326,6 +360,7 @@ check_multi_info (OstreeFetcher *fetcher)
       const char *eff_url;
       gboolean is_file;
       gboolean continued_request = FALSE;
+      gboolean waiting_for_ranges = FALSE;
 
       if (msg->msg != CURLMSG_DONE)
         continue;
@@ -344,7 +379,9 @@ check_multi_info (OstreeFetcher *fetcher)
 
       gboolean retry_all = (!is_file && req->fetcher->opt_retry_all);
 
-      if (req->caught_write_error)
+      if (req->is_s3 && _ostree_fetcher_s3_restarting (req))
+        continued_request = TRUE; /* nothing was written; ask again without a range */
+      else if (req->caught_write_error)
         g_task_return_error (task, g_steal_pointer (&req->caught_write_error));
       else if (curlres != CURLE_OK)
         {
@@ -380,7 +417,10 @@ check_multi_info (OstreeFetcher *fetcher)
               req->out_not_modified = TRUE;
             }
 
-          if (!is_file && !(response >= 200 && response < 300) && response != 304)
+          if (req->is_s3 && !(response >= 200 && response < 300) && response != 304)
+            _ostree_fetcher_s3_complete_error (fetcher, req, task, eff_url, response, retry_all,
+                                               &continued_request);
+          else if (!is_file && !(response >= 200 && response < 300) && response != 304)
             {
               GIOErrorEnum giocode
                   = _ostree_fetcher_http_status_code_to_io_error (response, retry_all);
@@ -398,9 +438,14 @@ check_multi_info (OstreeFetcher *fetcher)
                 }
               else
                 {
+                  req->idx++;
                   continued_request = TRUE;
                 }
             }
+          else if (req->is_s3
+                   && _ostree_fetcher_s3_transfer_done (req, task, eff_url, response,
+                                                        &waiting_for_ranges))
+            ; /* completed, or waiting for the rest of the object */
           else if (req->is_membuf)
             {
               GBytes *ret;
@@ -415,7 +460,7 @@ check_multi_info (OstreeFetcher *fetcher)
               g_autoptr (GError) local_error = NULL;
               GError **error = &local_error;
 
-              if (!ensure_tmpfile (req, error))
+              if (!_ostree_fetcher_request_ensure_tmpfile (req, error))
                 {
                   g_task_return_error (task, g_steal_pointer (&local_error));
                 }
@@ -435,17 +480,15 @@ check_multi_info (OstreeFetcher *fetcher)
       rc = curl_multi_remove_handle (fetcher->multi, easy);
       g_assert_cmpint (rc, ==, CURLM_OK);
       if (continued_request)
-        {
-          req->idx++;
-          initiate_next_curl_request (req, task);
-        }
+        _ostree_fetcher_request_initiate (req, task);
+      else if (waiting_for_ranges)
+        _ostree_fetcher_s3_complete_after_ranges (fetcher, task);
       else
         {
-          g_hash_table_remove (fetcher->outstanding_requests, task);
-          if (g_hash_table_size (fetcher->outstanding_requests) == 0)
-            {
-              g_clear_pointer (&fetcher->mainctx, g_main_context_unref);
-            }
+          /* If this request failed with ranges of its object still running,
+           * stop them now rather than let them outlive it. */
+          _ostree_fetcher_s3_cancel_ranges (fetcher, req);
+          _ostree_fetcher_request_finished (fetcher, task);
         }
     }
 }
@@ -456,6 +499,8 @@ timer_cb (gpointer data)
 {
   CURLMcode rc;
   OstreeFetcher *fetcher = data;
+  /* Completing requests can drop the last other reference to the fetcher. */
+  g_autoptr (OstreeFetcher) fetcher_ref = g_object_ref (fetcher);
   g_clear_pointer (&fetcher->timer_event, destroy_and_unref_source);
   rc = curl_multi_socket_action (fetcher->multi, CURL_SOCKET_TIMEOUT, 0, &fetcher->curl_running);
   g_assert_cmpint (rc, ==, CURLM_OK);
@@ -488,6 +533,8 @@ event_cb (int fd, GIOCondition condition, gpointer data)
 {
   OstreeFetcher *fetcher = data;
   CURLMcode rc;
+  /* Completing requests can drop the last other reference to the fetcher. */
+  g_autoptr (OstreeFetcher) fetcher_ref = g_object_ref (fetcher);
 
   int action
       = (condition & G_IO_IN ? CURL_CSELECT_IN : 0) | (condition & G_IO_OUT ? CURL_CSELECT_OUT : 0);
@@ -592,6 +639,13 @@ write_cb (void *ptr, size_t size, size_t nmemb, void *data)
   if (req->caught_write_error)
     return -1;
 
+  if (req->is_s3)
+    {
+      size_t ret;
+      if (_ostree_fetcher_s3_write (req, task, ptr, realsize, &ret))
+        return ret;
+    }
+
   if (req->max_size > 0)
     {
       if (realsize > req->max_size || (realsize + req->current_size) > req->max_size)
@@ -611,7 +665,7 @@ write_cb (void *ptr, size_t size, size_t nmemb, void *data)
     g_string_append_len (req->output_buf, ptr, realsize);
   else
     {
-      if (!ensure_tmpfile (req, &req->caught_write_error))
+      if (!_ostree_fetcher_request_ensure_tmpfile (req, &req->caught_write_error))
         return -1;
       g_assert (req->tmpf.fd >= 0);
       if (glnx_loop_write (req->tmpf.fd, ptr, realsize) < 0)
@@ -658,6 +712,8 @@ response_header_cb (const char *buffer, size_t size, size_t n_items, void *user_
       g_autoptr (GDateTime) dt = _ostree_parse_rfc2616_date_time (lm, strlen (lm));
       req->out_last_modified = (dt != NULL) ? g_date_time_to_unix (dt) : 0;
     }
+  else if (req->is_s3)
+    _ostree_fetcher_s3_header (req, line);
 
   return real_size;
 }
@@ -693,6 +749,7 @@ request_unref (FetcherRequest *req)
   g_free (req->out_etag);
   g_clear_pointer (&req->req_headers, curl_slist_free_all);
   curl_easy_cleanup (req->easy);
+  _ostree_s3_request_free (req->s3);
 
   g_free (req);
 }
@@ -733,6 +790,13 @@ _ostree_fetcher_set_max_outstanding_fetcher_requests (OstreeFetcher *self,
                                                       guint32 opt_max_outstanding_fetcher_requests)
 {
   self->opt_max_outstanding_fetcher_requests = opt_max_outstanding_fetcher_requests;
+#if CURL_AT_LEAST_VERSION(7, 30, 0)
+  /* Servers that only speak HTTP/1.1 (S3 among them) get their concurrency
+   * from parallel connections, so don't cap those below the request limit. */
+  CURLMcode rc = curl_multi_setopt (self->multi, CURLMOPT_MAX_TOTAL_CONNECTIONS,
+                                    (long)MAX (8, opt_max_outstanding_fetcher_requests));
+  g_assert_cmpint (rc, ==, CURLM_OK);
+#endif
 }
 
 void
@@ -808,25 +872,34 @@ adopt_steal_mainctx (OstreeFetcher *self, GMainContext *mainctx)
     setsock (fdp, fdp->sockfd, fdp->action, self);
 }
 
-static void
-initiate_next_curl_request (FetcherRequest *req, GTask *task)
+void
+_ostree_fetcher_request_initiate (FetcherRequest *req, GTask *task)
 {
   CURLcode rc;
   OstreeFetcher *self = req->fetcher;
 
-  if (req->easy)
-    curl_easy_cleanup (req->easy);
-  req->easy = curl_easy_init ();
-  g_assert (req->easy);
+  /* The old handle must go before anything it points at is freed below. */
+  g_clear_pointer (&req->easy, curl_easy_cleanup);
+  /* Headers are rebuilt for every attempt, so none carry over from the last one
+   * (signed S3 headers in particular must never go to another mirror). */
+  g_clear_pointer (&req->req_headers, curl_slist_free_all);
 
   g_assert_cmpint (req->idx, <, req->mirrorlist->len);
 
   GUri *baseuri = req->mirrorlist->pdata[req->idx];
-  {
-    g_autofree char *uri = request_get_uri (req, baseuri);
-    rc = curl_easy_setopt (req->easy, CURLOPT_URL, uri);
-    g_assert_cmpint (rc, ==, CURLM_OK);
-  }
+  g_autofree char *uri = NULL;
+
+  req->is_s3 = g_str_equal (g_uri_get_scheme (baseuri), "s3");
+  if (req->is_s3 && !_ostree_fetcher_s3_begin_attempt (req, task, baseuri, &uri))
+    return;
+
+  req->easy = curl_easy_init ();
+  g_assert (req->easy);
+
+  if (uri == NULL)
+    uri = request_get_uri (req, baseuri);
+  rc = curl_easy_setopt (req->easy, CURLOPT_URL, uri);
+  g_assert_cmpint (rc, ==, CURLM_OK);
 
   rc = curl_easy_setopt (req->easy, CURLOPT_USERAGENT,
                          self->custom_user_agent ?: OSTREE_FETCHER_USERAGENT_STRING);
@@ -951,8 +1024,10 @@ initiate_next_curl_request (FetcherRequest *req, GTask *task)
 #endif
         /* https://github.com/curl/curl/blob/curl-7_53_0/docs/examples/http2-download.c */
 #if (CURLPIPE_MULTIPLEX > 0)
-      /* wait for pipe connection to confirm */
-      rc = curl_easy_setopt (req->easy, CURLOPT_PIPEWAIT, 1L);
+      /* Wait to see whether a connection can be shared, except for S3, which
+       * only speaks HTTP/1.1: there every request would queue behind one
+       * connection. */
+      rc = curl_easy_setopt (req->easy, CURLOPT_PIPEWAIT, req->is_s3 ? 0L : 1L);
       g_assert_cmpint (rc, ==, CURLM_OK);
 #endif
     }
@@ -979,7 +1054,10 @@ initiate_next_curl_request (FetcherRequest *req, GTask *task)
   g_assert_cmpint (rc, ==, CURLM_OK);
   rc = curl_easy_setopt (req->easy, CURLOPT_PROGRESSFUNCTION, prog_cb);
   g_assert_cmpint (rc, ==, CURLM_OK);
-  rc = curl_easy_setopt (req->easy, CURLOPT_FOLLOWLOCATION, 1L);
+  /* Not for S3: curl forwards custom headers to redirect targets, which
+   * would hand the signature and session token to another host. An S3
+   * redirect means "wrong region", which _ostree_fetcher_s3_complete_error() reports. */
+  rc = curl_easy_setopt (req->easy, CURLOPT_FOLLOWLOCATION, req->is_s3 ? 0L : 1L);
   g_assert_cmpint (rc, ==, CURLM_OK);
   rc = curl_easy_setopt (req->easy, CURLOPT_CONNECTTIMEOUT, 30L);
   g_assert_cmpint (rc, ==, CURLM_OK);
@@ -1025,14 +1103,8 @@ _ostree_fetcher_request_async (OstreeFetcher *self, GPtrArray *mirrorlist, const
       g_assert (self->mainctx == mainctx);
     }
 
-  req = g_new0 (FetcherRequest, 1);
-  req->refcount = 1;
-  req->error[0] = '\0';
-  req->fetcher = self;
-  req->mirrorlist = g_ptr_array_ref (mirrorlist);
-  req->filename = g_strdup (filename);
+  req = _ostree_fetcher_request_new (self, mirrorlist, filename, flags);
   req->max_size = max_size;
-  req->flags = flags;
   req->if_none_match = g_strdup (if_none_match);
   req->if_modified_since = if_modified_since;
   req->is_membuf = is_membuf;
@@ -1042,13 +1114,9 @@ _ostree_fetcher_request_async (OstreeFetcher *self, GPtrArray *mirrorlist, const
   if (req->is_membuf)
     req->output_buf = g_string_new ("");
 
-  task = g_task_new (self, cancellable, callback, user_data);
-  /* We'll use the GTask priority for our own priority queue. */
-  g_task_set_priority (task, priority);
-  g_task_set_source_tag (task, _ostree_fetcher_request_async);
-  g_task_set_task_data (task, req, (GDestroyNotify)request_unref);
+  task = _ostree_fetcher_request_task_new (self, req, priority, cancellable, callback, user_data);
 
-  initiate_next_curl_request (req, task);
+  _ostree_fetcher_request_initiate (req, task);
 
   g_hash_table_add (self->outstanding_requests, g_steal_pointer (&task));
 }

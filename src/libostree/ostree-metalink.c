@@ -326,9 +326,12 @@ metalink_parser_text (GMarkupParseContext *context, const gchar *text, gsize tex
     case OSTREE_METALINK_STATE_URL:
       {
         g_autofree char *uri_text = g_strndup (text, text_len);
-        OstreeFetcherURI *uri = _ostree_fetcher_uri_parse (uri_text, NULL);
-        if (uri != NULL)
-          g_ptr_array_add (self->urls, uri);
+        g_autoptr (OstreeFetcherURI) uri = _ostree_fetcher_uri_parse (uri_text, NULL);
+        g_autofree char *scheme = uri ? _ostree_fetcher_uri_get_scheme (uri) : NULL;
+        /* The protocol= attribute is only a label; check the URL itself, so
+         * a metalink can't steer us to file:// or (credentialed) s3://. */
+        if (uri != NULL && (g_str_equal (scheme, "http") || g_str_equal (scheme, "https")))
+          g_ptr_array_add (self->urls, g_steal_pointer (&uri));
       }
       break;
     case OSTREE_METALINK_STATE_PASSTHROUGH:

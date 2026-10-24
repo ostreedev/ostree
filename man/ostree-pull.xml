@@ -168,7 +168,8 @@ License along with this library. If not, see <https://www.gnu.org/licenses/>.
                 <term><option>--max-outstanding-fetcher-requests</option>=N</term>
 
                 <listitem><para>
-                    The max amount of concurrent connections allowed. (default: 8)
+                    The max amount of concurrent connections allowed. 0 means the
+                    default. (default: 8, or 128 for <literal>s3://</literal> remotes)
                 </para></listitem>
             </varlistentry>
 
