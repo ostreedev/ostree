@@ -95,7 +95,8 @@ test_cancel_stalled_summary (gconstpointer user_data)
   g_assert_no_error (error);
 
   g_autoptr (GCancellable) cancellable = g_cancellable_new ();
-  StalledRequest request = { .listener = listener, .cancellable = cancellable,
+  StalledRequest request = { .listener = listener,
+                             .cancellable = cancellable,
                              .send_headers = GPOINTER_TO_INT (user_data) };
   /* The test server is loopback-only; do not let inherited proxy settings
    * route the request away from it. */
