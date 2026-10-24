@@ -57,14 +57,14 @@ static GOptionEntry repo_entry[]
           "PATH" },
         { NULL } };
 
-static GOptionEntry global_admin_entries[] = {
-  /* No description since it's hidden from --help output. */
-  { "print-current-dir", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &opt_print_current_dir, NULL,
-    NULL },
-  { "sysroot", 0, 0, G_OPTION_ARG_FILENAME, &opt_sysroot, "Create a new OSTree sysroot at PATH",
-    "PATH" },
-  { NULL }
-};
+static GOptionEntry global_admin_entries[]
+    = { /* No description since it's hidden from --help output. */
+        { "print-current-dir", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &opt_print_current_dir,
+          NULL, NULL },
+        { "sysroot", 0, 0, G_OPTION_ARG_FILENAME, &opt_sysroot,
+          "Create a new OSTree sysroot at PATH", "PATH" },
+        { NULL }
+      };
 
 static GOptionContext *
 ostree_option_context_new_with_commands (OstreeCommand *commands)
