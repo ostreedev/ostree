@@ -382,6 +382,20 @@ tests_test_sysroot_c_LDADD = $(TESTS_LDADD)
 tests_test_pull_c_CFLAGS = $(TESTS_CFLAGS)
 tests_test_pull_c_LDADD = $(TESTS_LDADD)
 
+if USE_CURL
+_installed_or_uninstalled_test_programs += tests/test-fetcher-retry-after
+tests_test_fetcher_retry_after_SOURCES = \
+	tests/test-fetcher-retry-after.c \
+	src/libostree/ostree-fetcher-curl.c \
+	src/libostree/ostree-fetcher-util.c \
+	src/libostree/ostree-fetcher-uri.c \
+	src/libostree/ostree-date-utils.c \
+	$(NULL)
+nodist_tests_test_fetcher_retry_after_SOURCES = src/libostree/ostree-enumtypes.c
+tests_test_fetcher_retry_after_CFLAGS = $(TESTS_CFLAGS) $(OT_DEP_CURL_CFLAGS)
+tests_test_fetcher_retry_after_LDADD = $(TESTS_LDADD) $(OT_DEP_CURL_LIBS)
+endif
+
 tests_test_repo_CFLAGS = $(TESTS_CFLAGS)
 tests_test_repo_LDADD = $(TESTS_LDADD)
 
