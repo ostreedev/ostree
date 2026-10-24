@@ -10,6 +10,7 @@ test-rollsum
 test-bloom
 test-bsdiff
 test-checksum
+test-fetcher-uri
 test-gpg-verify-result
 test-include-ostree-h
 test-keyfile-utils
