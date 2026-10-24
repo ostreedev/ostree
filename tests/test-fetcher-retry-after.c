@@ -95,13 +95,15 @@ serve (gpointer user_data)
         }
       if (g_str_equal (server->mode, "redirect"))
         g_clear_pointer (&header, g_free);
-      if (unavailable && (g_str_equal (server->mode, "truncated")
-                          || g_str_equal (server->mode, "truncated-long")))
+      if (unavailable
+          && (g_str_equal (server->mode, "truncated")
+              || g_str_equal (server->mode, "truncated-long")))
         {
           const char *delay = g_str_equal (server->mode, "truncated-long") ? "61" : "1";
-          g_autofree char *response = g_strdup_printf (
-              "HTTP/1.1 503 Service Unavailable\r\nRetry-After: %s\r\n"
-              "Content-Length: 100\r\nConnection: close\r\n\r\nshort", delay);
+          g_autofree char *response
+              = g_strdup_printf ("HTTP/1.1 503 Service Unavailable\r\nRetry-After: %s\r\n"
+                                 "Content-Length: 100\r\nConnection: close\r\n\r\nshort",
+                                 delay);
           g_assert_true (
               g_output_stream_write_all (g_io_stream_get_output_stream (G_IO_STREAM (connection)),
                                          response, strlen (response), NULL, NULL, &error));
@@ -187,8 +189,8 @@ test_retry_after (gconstpointer user_data)
       g_assert_cmpint (elapsed, <, 5 * G_USEC_PER_SEC);
     }
   else if (g_str_equal (mode, "long") || g_str_equal (mode, "overflow")
-           || g_str_equal (mode, "truncated-long")
-           || g_str_equal (mode, "disabled") || g_str_equal (mode, "exhausted"))
+           || g_str_equal (mode, "truncated-long") || g_str_equal (mode, "disabled")
+           || g_str_equal (mode, "exhausted"))
     {
       g_assert_false (success);
       g_assert_nonnull (error);
@@ -334,10 +336,10 @@ int
 main (int argc, char **argv)
 {
   g_test_init (&argc, &argv, NULL);
-  const char *modes[] = { "seconds",   "date",   "date-rfc850", "date-asctime", "invalid",
-                          "past",      "zero",   "long",        "overflow",     "disabled",
-                          "exhausted", "always", "cancel",      "redirect",     "mirrors",
-                          "truncated", "truncated-long" };
+  const char *modes[]
+      = { "seconds", "date",     "date-rfc850", "date-asctime", "invalid",       "past",
+          "zero",    "long",     "overflow",    "disabled",     "exhausted",     "always",
+          "cancel",  "redirect", "mirrors",     "truncated",    "truncated-long" };
   for (size_t i = 0; i < G_N_ELEMENTS (modes); i++)
     {
       g_autofree char *name = g_strdup_printf ("/fetcher/retry-after/%s", modes[i]);

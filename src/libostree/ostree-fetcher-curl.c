@@ -361,9 +361,8 @@ record_retry_after (FetcherRequest *req, const char *uri, int64_t now)
     return FALSE;
 
   int64_t *deadline = g_new (int64_t, 1);
-  *deadline = delay > (G_MAXINT64 - now) / G_USEC_PER_SEC
-                  ? G_MAXINT64
-                  : now + delay * G_USEC_PER_SEC;
+  *deadline
+      = delay > (G_MAXINT64 - now) / G_USEC_PER_SEC ? G_MAXINT64 : now + delay * G_USEC_PER_SEC;
   int64_t *previous = g_hash_table_lookup (req->fetcher->retry_after, uri);
   if (previous != NULL)
     *deadline = MAX (*deadline, *previous);
@@ -426,10 +425,8 @@ check_multi_info (OstreeFetcher *fetcher)
           g_assert_cmpint (rc, ==, CURLM_OK);
           if (response == 503)
             {
-              g_autofree char *uri
-                  = request_get_uri (req, req->mirrorlist->pdata[req->idx]);
-              retry_after_too_long
-                  = record_retry_after (req, uri, g_get_monotonic_time ());
+              g_autofree char *uri = request_get_uri (req, req->mirrorlist->pdata[req->idx]);
+              retry_after_too_long = record_retry_after (req, uri, g_get_monotonic_time ());
             }
         }
 
@@ -448,11 +445,12 @@ check_multi_info (OstreeFetcher *fetcher)
               /* When it is not a file, we want to retry the request.
                * We accomplish that by using G_IO_ERROR_TIMED_OUT.
                */
-              g_task_return_new_error (
-                  task, G_IO_ERROR,
-                  retry_after_too_long ? G_IO_ERROR_FAILED
-                                       : retry_all ? G_IO_ERROR_TIMED_OUT : G_IO_ERROR,
-                  "While fetching %s: [%u] %s", eff_url, curlres, curl_easy_strerror (curlres));
+              g_task_return_new_error (task, G_IO_ERROR,
+                                       retry_after_too_long ? G_IO_ERROR_FAILED
+                                       : retry_all          ? G_IO_ERROR_TIMED_OUT
+                                                            : G_IO_ERROR,
+                                       "While fetching %s: [%u] %s", eff_url, curlres,
+                                       curl_easy_strerror (curlres));
               _ostree_fetcher_journal_failure (req->fetcher->remote_name, eff_url,
                                                curl_easy_strerror (curlres));
             }
