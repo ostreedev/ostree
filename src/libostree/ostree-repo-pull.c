@@ -4298,6 +4298,13 @@ ostree_repo_pull_with_options (OstreeRepo *self, const char *remote_name_or_base
                            "sign-verify-summary=false in remote config to disable)");
               goto out;
             }
+          if (!bytes_summary && pull_data->signapi_summary_verifiers)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                           "Signature verification enabled, but no summary found (use "
+                           "sign-verify-summary=false in remote config to disable)");
+              goto out;
+            }
           if (bytes_summary && bytes_sig)
             {
               g_autoptr (GVariant) signatures = NULL;
