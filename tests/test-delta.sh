@@ -26,7 +26,7 @@ skip_without_user_xattrs
 bindatafiles="bash true ostree"
 morebindatafiles="false ls"
 
-echo '1..14'
+echo '1..15'
 
 mkdir repo
 ostree_repo_init repo --mode=archive
@@ -267,6 +267,21 @@ assert_str_match "${part0_meta_empty}" "nobjects=0"
 assert_streq "${totalsize_empty}" "Total Uncompressed Size: 0 (0 bytes)"
 
 echo 'ok generate + show empty delta part'
+
+rm -rf repo3
+ostree_repo_init repo3 --mode=archive
+${CMD_PREFIX} ostree --repo=repo3 pull-local repo ${newrev} ${samerev}
+${CMD_PREFIX} ostree --repo=repo3 static-delta generate --from=${newrev} --to=${samerev}
+deltaprefix=$(get_assert_one_direntry_matching repo3/deltas '.')
+deltadir=$(get_assert_one_direntry_matching repo3/deltas/${deltaprefix} '-')
+truncate -s 0 repo3/deltas/${deltaprefix}/${deltadir}/0
+if ${CMD_PREFIX} ostree --repo=repo3 static-delta show ${newrev}-${samerev} 2> err.txt; then
+    assert_not_reached "static-delta show with a zero-length part unexpectedly succeeded"
+fi
+assert_file_has_content err.txt "Empty static delta part"
+rm -rf repo3
+
+echo 'ok show zero-length delta part file'
 
 ${CMD_PREFIX} ostree --repo=repo summary -u
 

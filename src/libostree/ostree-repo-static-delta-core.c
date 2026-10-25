@@ -748,6 +748,8 @@ _ostree_static_delta_part_open (GInputStream *part_in, GBytes *inline_part_bytes
     /* First byte is compression type */
     if (!g_input_stream_read_all (source_in, buf, sizeof (buf), &bytes_read, cancellable, error))
       return glnx_prefix_error (error, "Reading initial compression flag byte");
+    if (bytes_read != sizeof (buf))
+      return glnx_throw (error, "Empty static delta part");
     comptype = buf[0];
   }
 
