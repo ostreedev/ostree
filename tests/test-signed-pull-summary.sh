@@ -25,7 +25,7 @@ set -euo pipefail
 
 skip_known_xfail_docker
 
-echo "1..16"
+echo "1..18"
 
 # Ensure repo caching is in use.
 unset OSTREE_SKIP_CACHE
@@ -59,6 +59,7 @@ do
                 echo "ok ${engine} pull with signed summary # SKIP due libsodium unavailability"
                 echo "ok ${engine} prune summary cache # SKIP due libsodium unavailability"
                 echo "ok ${engine} pull with signed summary and cachedir # SKIP due libsodium unavailability"
+                echo "ok ${engine} pull with signed summary via metalink # SKIP due libsodium unavailability"
                 echo "ok ${engine} pull with invalid ${engine} summary signature fails # SKIP due libsodium unavailability"
                 echo "ok ${engine} pull with missing summary fails # SKIP due libsodium unavailability"
                 echo "ok ${engine} pull delta with signed summary # SKIP due libsodium unavailability"
@@ -129,6 +130,31 @@ do
     assert_has_file repo/tmp/cache/summaries/origin
 
     echo "ok ${engine} pull with signed summary"
+
+    # A metalink provides the summary directly, before the normal summary
+    # download path. Verify that its bytes are retained for signature
+    # verification, including when the summary cache is empty.
+    cat > ${test_tmpdir}/ostree-srv/metalink.xml <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<metalink version="3.0" xmlns="http://www.metalinker.org/">
+  <files>
+    <file name="summary">
+      <size>$(stat -c '%s' ${test_tmpdir}/ostree-srv/gnomerepo/summary)</size>
+      <verification>
+        <hash type="sha256">$(sha256sum ${test_tmpdir}/ostree-srv/gnomerepo/summary | cut -f 1 -d ' ')</hash>
+      </verification>
+      <resources>
+        <url protocol="http" type="http" location="US" preference="100">$(cat httpd-address)/ostree/gnomerepo/summary</url>
+      </resources>
+    </file>
+  </files>
+</metalink>
+EOF
+    repo_reinit --set=verification-${engine}-key=${PUBLIC_KEY} \
+        --set=metalink=$(cat httpd-address)/ostree/metalink.xml
+    ${OSTREE} --repo=repo pull origin main
+    assert_has_file repo/tmp/cache/summaries/origin
+    echo "ok ${engine} pull with signed summary via metalink"
 
     touch repo/tmp/cache/summaries/foo
     touch repo/tmp/cache/summaries/foo.sig

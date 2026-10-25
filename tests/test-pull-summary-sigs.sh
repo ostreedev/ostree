@@ -29,7 +29,7 @@ unset OSTREE_SKIP_CACHE
 COMMIT_SIGN=""
 if has_ostree_feature gpgme; then
     COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
-    echo "1..10"
+    echo "1..11"
 else
     # Only one test don't need GPG support
     echo "1..1"
@@ -128,6 +128,17 @@ fi
 assert_file_has_content err.txt "no signatures found"
 mv ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{.good,}
 echo "ok pull with invalid summary gpg signature fails"
+
+# A present summary.sig with an absent summary must not be accepted either.
+cd ${test_tmpdir}
+repo_reinit
+mv ${test_tmpdir}/ostree-srv/gnomerepo/summary{,.absent}
+if ${OSTREE} --repo=repo pull origin main 2>err.txt; then
+    assert_not_reached "Successful pull with summary absent but summary.sig present"
+fi
+assert_file_has_content err.txt "no summary found"
+mv ${test_tmpdir}/ostree-srv/gnomerepo/summary{.absent,}
+echo "ok pull with missing summary fails"
 
 cd ${test_tmpdir}
 repo_reinit
