@@ -883,6 +883,11 @@ remote_list_collection_refs_process_refs (OstreeRepo *self, const gchar *remote_
 {
   gsize j, n;
 
+  /* Check the collection ID. */
+  if (summary_collection_id != NULL
+      && !ostree_validate_collection_id (summary_collection_id, error))
+    return FALSE;
+
   for (j = 0, n = g_variant_n_children (summary_refs); j < n; j++)
     {
       const guchar *csum_bytes;
@@ -1177,8 +1182,9 @@ _ostree_repo_update_collection_refs (OstreeRepo *self,
  *
  * #OstreeCollectionRefs are guaranteed to be returned with their collection ID
  * set to a non-%NULL value; so no refs from `refs/heads` will be listed if no
- * collection ID is configured for the repository
- * (ostree_repo_get_collection_id()).
+ * valid collection ID is configured for the repository
+ * (ostree_repo_get_collection_id()). Similarly, directories in `refs/mirrors`
+ * whose names are not valid collection IDs are ignored.
  *
  * If you want to exclude refs from `refs/remotes`, use
  * %OSTREE_REPO_LIST_REFS_EXT_EXCLUDE_REMOTES in @flags. Similarly use
@@ -1217,6 +1223,19 @@ ostree_repo_list_collection_refs (OstreeRepo *self, const char *match_collection
   g_autoptr (GString) base_path = g_string_new ("");
 
   const gchar *main_collection_id = ostree_repo_get_collection_id (self);
+
+  /* core.collection-id is not validated when the config is loaded. */
+  if (main_collection_id != NULL)
+    {
+      g_autoptr (GError) local_error = NULL;
+      if (!ostree_validate_collection_id (main_collection_id, &local_error))
+        {
+          g_debug ("Ignoring refs/heads due to no valid collection ID being configured for the "
+                   "repository: %s",
+                   local_error->message);
+          main_collection_id = NULL;
+        }
+    }
 
   if (main_collection_id != NULL
       && (match_collection_id == NULL || g_strcmp0 (match_collection_id, main_collection_id) == 0))
@@ -1264,8 +1283,16 @@ ostree_repo_list_collection_refs (OstreeRepo *self, const char *match_collection
             {
               if (match_collection_id != NULL && g_strcmp0 (match_collection_id, dent->d_name) != 0)
                 continue;
-              else
-                current_collection_id = dent->d_name;
+
+              g_autoptr (GError) local_error = NULL;
+              if (!ostree_validate_collection_id (dent->d_name, &local_error))
+                {
+                  g_debug ("Ignoring mirror ‘%s’ due to it not being a valid collection ID: %s",
+                           dent->d_name, local_error->message);
+                  continue;
+                }
+
+              current_collection_id = dent->d_name;
             }
           else /* refs_dir = "refs/remotes" */
             {
