@@ -1152,7 +1152,10 @@ _ostree_repo_static_delta_dump (OstreeRepo *self, const char *delta_id, GCancell
       g_autoptr (GVariant) checksum_v = NULL;
       char checksum[OSTREE_SHA256_STRING_LEN + 1];
       g_variant_get_child (fallback, i, "(y@aytt)", NULL, &checksum_v, &size, &usize);
-      ostree_checksum_inplace_from_bytes (ostree_checksum_bytes_peek (checksum_v), checksum);
+      const guchar *csum = ostree_checksum_bytes_peek_validate (checksum_v, error);
+      if (!csum)
+        return FALSE;
+      ostree_checksum_inplace_from_bytes (csum, checksum);
       size = maybe_swap_endian_u64 (swap_endian, size);
       usize = maybe_swap_endian_u64 (swap_endian, usize);
       g_print ("  %s\n", checksum);
