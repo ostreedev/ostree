@@ -4210,43 +4210,22 @@ ostree_repo_pull_with_options (OstreeRepo *self, const char *remote_name_or_base
             }
         }
 
-#ifndef OSTREE_DISABLE_GPGME
-      if (!bytes_summary && pull_data->gpg_verify_summary)
+      if (pull_data->summary && !bytes_summary)
         {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                       "GPG verification enabled, but no summary found (use "
-                       "gpg-verify-summary=false in remote config to disable)");
-          goto out;
-        }
-#endif /* OSTREE_DISABLE_GPGME */
-
-      if (!bytes_summary && require_summary_for_mirror)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Fetching all refs was requested in mirror mode, but remote repository "
-                       "does not have a summary");
-          goto out;
+          bytes_summary = g_variant_get_data_as_bytes (pull_data->summary);
+          g_clear_pointer (&pull_data->summary, g_variant_unref);
         }
 
-#ifndef OSTREE_DISABLE_GPGME
-      if (!bytes_sig && pull_data->gpg_verify_summary)
+      if (pull_data->gpg_verify_summary || pull_data->signapi_summary_verifiers)
         {
-          g_set_error (error, OSTREE_GPG_ERROR, OSTREE_GPG_ERROR_NO_SIGNATURE,
-                       "GPG verification enabled, but no summary.sig found (use "
-                       "gpg-verify-summary=false in remote config to disable)");
-          goto out;
-        }
-
-      if (pull_data->gpg_verify_summary && bytes_summary && bytes_sig)
-        {
-          g_autoptr (OstreeGpgVerifyResult) result = NULL;
           g_autoptr (GError) temp_error = NULL;
 
-          result = ostree_repo_verify_summary (self, pull_data->remote_name, bytes_summary,
-                                               bytes_sig, cancellable, &temp_error);
-          if (!ostree_gpg_verify_result_require_valid_signature (result, &temp_error))
+          if (!_ostree_repo_verify_summary (self, pull_data->remote_name,
+                                            pull_data->gpg_verify_summary,
+                                            pull_data->signapi_summary_verifiers, bytes_summary,
+                                            bytes_sig, cancellable, &temp_error))
             {
-              if (summary_from_cache)
+              if (summary_from_cache && bytes_sig)
                 {
                   /* The cached summary doesn't match, fetch a new one and verify again.
                    * Don’t set the cache headers in the HTTP request, to force a
@@ -4275,9 +4254,10 @@ ostree_repo_pull_with_options (OstreeRepo *self, const char *remote_name_or_base
                           cancellable, error))
                     goto out;
 
-                  g_autoptr (OstreeGpgVerifyResult) retry = ostree_repo_verify_summary (
-                      self, pull_data->remote_name, bytes_summary, bytes_sig, cancellable, error);
-                  if (!ostree_gpg_verify_result_require_valid_signature (retry, error))
+                  if (!_ostree_repo_verify_summary (self, pull_data->remote_name,
+                                                    pull_data->gpg_verify_summary,
+                                                    pull_data->signapi_summary_verifiers,
+                                                    bytes_summary, bytes_sig, cancellable, error))
                     goto out;
                 }
               else
@@ -4287,77 +4267,13 @@ ostree_repo_pull_with_options (OstreeRepo *self, const char *remote_name_or_base
                 }
             }
         }
-#endif /* OSTREE_DISABLE_GPGME */
 
-      if (pull_data->signapi_summary_verifiers)
+      if (!bytes_summary && require_summary_for_mirror)
         {
-          if (!bytes_sig && pull_data->signapi_summary_verifiers)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Signatures verification enabled, but no summary.sig found (use "
-                           "sign-verify-summary=false in remote config to disable)");
-              goto out;
-            }
-          if (!bytes_summary && pull_data->signapi_summary_verifiers)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                           "Signature verification enabled, but no summary found (use "
-                           "sign-verify-summary=false in remote config to disable)");
-              goto out;
-            }
-          if (bytes_summary && bytes_sig)
-            {
-              g_autoptr (GVariant) signatures = NULL;
-              g_autoptr (GError) temp_error = NULL;
-
-              signatures
-                  = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT, bytes_sig, FALSE);
-
-              g_assert (pull_data->signapi_summary_verifiers);
-              if (!_sign_verify_for_remote (pull_data->signapi_summary_verifiers, bytes_summary,
-                                            signatures, NULL, &temp_error))
-                {
-                  if (summary_from_cache)
-                    {
-                      /* The cached summary doesn't match, fetch a new one and verify again.
-                       * Don’t set the cache headers in the HTTP request, to force a
-                       * full download. */
-                      if ((self->test_error_flags & OSTREE_REPO_TEST_ERROR_INVALID_CACHE) > 0)
-                        {
-                          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                                       "Remote %s cached summary invalid and "
-                                       "OSTREE_REPO_TEST_ERROR_INVALID_CACHE specified",
-                                       pull_data->remote_name);
-                          goto out;
-                        }
-                      else
-                        g_debug ("Remote %s cached summary invalid, pulling new version",
-                                 pull_data->remote_name);
-
-                      summary_from_cache = FALSE;
-                      g_clear_pointer (&bytes_summary, g_bytes_unref);
-                      g_clear_pointer (&summary_etag, g_free);
-                      summary_last_modified = 0;
-                      if (!_ostree_fetcher_mirrored_request_to_membuf (
-                              pull_data->fetcher, pull_data->meta_mirrorlist, "summary",
-                              OSTREE_FETCHER_REQUEST_OPTIONAL_CONTENT, NULL,
-                              0, /* no cache headers */
-                              pull_data->n_network_retries, &bytes_summary, &summary_not_modified,
-                              &summary_etag, &summary_last_modified, OSTREE_MAX_METADATA_SIZE,
-                              cancellable, error))
-                        goto out;
-
-                      if (!_sign_verify_for_remote (pull_data->signapi_summary_verifiers,
-                                                    bytes_summary, signatures, NULL, error))
-                        goto out;
-                    }
-                  else
-                    {
-                      g_propagate_error (error, g_steal_pointer (&temp_error));
-                      goto out;
-                    }
-                }
-            }
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Fetching all refs was requested in mirror mode, but remote repository "
+                       "does not have a summary");
+          goto out;
         }
 
       if (bytes_summary)
