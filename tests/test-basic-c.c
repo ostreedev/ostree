@@ -636,6 +636,37 @@ test_dirmeta_xattrs (void)
   g_assert_error (local_error, G_IO_ERROR, G_IO_ERROR_FAILED);
 }
 
+static GVariant *
+new_test_dirtree (const char *file_name, const char *dir_name)
+{
+  const guint8 csum[OSTREE_SHA256_DIGEST_LEN] = { 0 };
+  g_autoptr (GVariantBuilder) files = g_variant_builder_new (G_VARIANT_TYPE ("a(say)"));
+  g_autoptr (GVariantBuilder) dirs = g_variant_builder_new (G_VARIANT_TYPE ("a(sayay)"));
+  g_variant_builder_add (files, "(s@ay)", file_name,
+                         g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, csum, sizeof (csum), 1));
+  g_variant_builder_add (dirs, "(s@ay@ay)", dir_name,
+                         g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, csum, sizeof (csum), 1),
+                         g_variant_new_fixed_array (G_VARIANT_TYPE_BYTE, csum, sizeof (csum), 1));
+  return g_variant_ref_sink (g_variant_new ("(@a(say)@a(sayay))", g_variant_builder_end (files),
+                                            g_variant_builder_end (dirs)));
+}
+
+static void
+test_dirtree_duplicate_name (void)
+{
+  g_autoptr (GError) local_error = NULL;
+  GError **error = &local_error;
+
+  g_autoptr (GVariant) dirtree = new_test_dirtree ("foo", "bar");
+  g_assert (ostree_validate_structureof_dirtree (dirtree, error));
+  g_assert_no_error (local_error);
+
+  /* A name listed as both a file and a subdirectory must be rejected */
+  g_autoptr (GVariant) dup_dirtree = new_test_dirtree ("foo", "foo");
+  g_assert (!ostree_validate_structureof_dirtree (dup_dirtree, error));
+  g_assert_error (local_error, G_IO_ERROR, G_IO_ERROR_FAILED);
+}
+
 static void
 create_static_delta_file (int dfd, const char *path)
 {
@@ -798,6 +829,7 @@ main (int argc, char **argv)
   g_test_add_func ("/commit-sizes-short-entry", test_commit_sizes_short_entry);
   g_test_add_func ("/read-xattrs", test_read_xattrs);
   g_test_add_func ("/dirmeta-xattrs", test_dirmeta_xattrs);
+  g_test_add_func ("/dirtree-duplicate-name", test_dirtree_duplicate_name);
   g_test_add_func ("/list-static-delta-entries", test_list_static_delta_entries);
 
   return g_test_run ();
