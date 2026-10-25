@@ -381,7 +381,7 @@ _ostree_repo_static_delta_is_signed (OstreeRepo *self, int fd, GPtrArray **out_v
   if (out_value)
     *out_value = NULL;
 
-  if (!ot_variant_read_fd (fd, 0, (GVariantType *)OSTREE_STATIC_DELTA_SIGNED_FORMAT, TRUE, &delta,
+  if (!ot_variant_read_fd (fd, 0, (GVariantType *)OSTREE_STATIC_DELTA_SIGNED_FORMAT, FALSE, &delta,
                            error))
     return FALSE;
 
@@ -414,10 +414,13 @@ _ostree_repo_static_delta_is_signed (OstreeRepo *self, int fd, GPtrArray **out_v
       g_variant_unref (item);
     }
 
-  if (out_value && ret)
+  if (!ret)
+    return glnx_throw (error, "no signatures in static-delta");
+
+  if (out_value)
     ot_transfer_out_value (out_value, &signatures);
 
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -426,7 +429,7 @@ _ostree_repo_static_delta_verify_signature (OstreeRepo *self, int fd, OstreeSign
 {
   g_autoptr (GVariant) delta = NULL;
 
-  if (!ot_variant_read_fd (fd, 0, (GVariantType *)OSTREE_STATIC_DELTA_SIGNED_FORMAT, TRUE, &delta,
+  if (!ot_variant_read_fd (fd, 0, (GVariantType *)OSTREE_STATIC_DELTA_SIGNED_FORMAT, FALSE, &delta,
                            error))
     return FALSE;
 
@@ -533,7 +536,7 @@ ostree_repo_static_delta_execute_offline_with_signature (OstreeRepo *self, GFile
         }
 
       g_autoptr (GVariant) delta = NULL;
-      if (!ot_variant_read_fd (meta_fd, 0, (GVariantType *)OSTREE_STATIC_DELTA_SIGNED_FORMAT, TRUE,
+      if (!ot_variant_read_fd (meta_fd, 0, (GVariantType *)OSTREE_STATIC_DELTA_SIGNED_FORMAT, FALSE,
                                &delta, error))
         return FALSE;
 
@@ -1051,7 +1054,7 @@ _ostree_repo_static_delta_dump (OstreeRepo *self, const char *delta_id, GCancell
   if (is_signed)
     {
       if (!ot_variant_read_fd (superblock_fd, 0, (GVariantType *)OSTREE_STATIC_DELTA_SIGNED_FORMAT,
-                               TRUE, &delta, error))
+                               FALSE, &delta, error))
         return FALSE;
 
       g_autoptr (GVariant) child = g_variant_get_child_value (delta, 1);
@@ -1062,7 +1065,7 @@ _ostree_repo_static_delta_dump (OstreeRepo *self, const char *delta_id, GCancell
   else
     {
       if (!ot_variant_read_fd (superblock_fd, 0,
-                               (GVariantType *)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT, TRUE,
+                               (GVariantType *)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT, FALSE,
                                &delta_superblock, error))
         return FALSE;
     }

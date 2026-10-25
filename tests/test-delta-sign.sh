@@ -25,7 +25,7 @@ skip_without_user_xattrs
 
 bindatafiles="bash true ostree"
 
-echo '1..7'
+echo '1..8'
 
 # This is explicitly opt in for testing
 export OSTREE_DUMMY_SIGN_ENABLED=1
@@ -170,3 +170,22 @@ ${CMD_PREFIX} ostree --repo=repo2 static-delta apply-offline --sign-type=dummy r
 assert_file_has_content apply-offline-bad-key.txt "signature: dummy: incorrect signatures found: 1"
 
 echo 'ok apply offline failed with dummy and bad key'
+
+# A superblock file comes from outside the repository and is read before its
+# signature is checked; make sure one whose signature key is not
+# NUL-terminated isn't accepted as signed.
+${CMD_PREFIX} ostree --repo=repo static-delta generate --from=${origrev} --to=${newrev} --inline --sign-type=dummy --sign=dummysign --filename=signed.delta
+${CMD_PREFIX} ostree --repo=repo static-delta verify --sign-type=dummy ./signed.delta dummysign > verify-file-signed.txt
+assert_file_has_content verify-file-signed.txt "Verification OK"
+cp signed.delta corrupt.delta
+key=ostree.sign.dummy
+offset=$(($(grep -obaF ${key} corrupt.delta | tail -n 1 | cut -d: -f1) + ${#key}))
+assert_streq "$(dd if=corrupt.delta bs=1 skip=${offset} count=1 status=none | od -An -tx1 | tr -d ' ')" "00"
+printf 'X' | dd of=corrupt.delta bs=1 seek=${offset} conv=notrunc status=none
+${CMD_PREFIX} ostree --repo=repo static-delta verify --sign-type=dummy ./corrupt.delta dummysign > verify-corrupt-key.txt 2>&1 && exit 1
+assert_file_has_content verify-corrupt-key.txt "no signatures in static-delta"
+${CMD_PREFIX} ostree --repo=repo static-delta show ./corrupt.delta > show-corrupt-key.txt 2>&1 && exit 1
+assert_file_has_content show-corrupt-key.txt "Signed: no"
+assert_file_has_content show-corrupt-key.txt "^error: "
+
+echo 'ok corrupt signature key in delta superblock'
