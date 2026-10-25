@@ -25,7 +25,7 @@ set -euo pipefail
 
 skip_known_xfail_docker
 
-echo "1..14"
+echo "1..16"
 
 # Ensure repo caching is in use.
 unset OSTREE_SKIP_CACHE
@@ -60,6 +60,7 @@ do
                 echo "ok ${engine} prune summary cache # SKIP due libsodium unavailability"
                 echo "ok ${engine} pull with signed summary and cachedir # SKIP due libsodium unavailability"
                 echo "ok ${engine} pull with invalid ${engine} summary signature fails # SKIP due libsodium unavailability"
+                echo "ok ${engine} pull with missing summary fails # SKIP due libsodium unavailability"
                 echo "ok ${engine} pull delta with signed summary # SKIP due libsodium unavailability"
 
                 continue
@@ -164,6 +165,19 @@ do
     assert_file_has_content err.txt "No signatures found"
     mv ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{.good,}
     echo "ok ${engine} pull with invalid ${engine} summary signature fails"
+
+    # A present summary.sig with an absent summary must not be accepted: with
+    # sign-verify-summary enabled the pull has to fail rather than fall back to
+    # resolving refs from the unsigned refs/heads/ files served by the remote.
+    cd ${test_tmpdir}
+    repo_reinit --set=verification-${engine}-key=${PUBLIC_KEY}
+    mv ${test_tmpdir}/ostree-srv/gnomerepo/summary{,.absent}
+    if ${OSTREE} --repo=repo pull origin main 2>err.txt; then
+        assert_not_reached "Successful ${engine} pull with summary absent but summary.sig present"
+    fi
+    assert_file_has_content err.txt "no summary found"
+    mv ${test_tmpdir}/ostree-srv/gnomerepo/summary{.absent,}
+    echo "ok ${engine} pull with missing summary fails"
 
     # Generate a delta
     ${OSTREE} --repo=${test_tmpdir}/ostree-srv/gnomerepo static-delta generate --empty main
