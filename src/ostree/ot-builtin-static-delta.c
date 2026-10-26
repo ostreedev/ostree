@@ -40,6 +40,20 @@ static char **opt_key_ids;
 static char *opt_sign_name;
 static char *opt_keysfilename;
 static char *opt_keysdir;
+static char *opt_threads;
+static gboolean opt_threads_set;
+
+/* Callback for --threads[=VALUE]. Without an argument, treat as "yes" so the
+ * library picks all CPUs. Empty/yes/true/auto/N/false are all accepted by the
+ * library-side parser; we just pass the string through. */
+static gboolean
+opt_threads_cb (const gchar *option_name, const gchar *value, gpointer data, GError **error)
+{
+  opt_threads_set = TRUE;
+  g_free (opt_threads);
+  opt_threads = g_strdup (value != NULL ? value : "");
+  return TRUE;
+}
 
 #define BUILTINPROTO(name) \
   static gboolean ot_static_delta_builtin_##name (int argc, char **argv, \
@@ -107,6 +121,11 @@ static GOptionEntry generate_options[] = {
 #if defined(HAVE_ED25519)
   { "keys-file", 0, 0, G_OPTION_ARG_STRING, &opt_keysfilename, "Read key(s) from file", "NAME" },
 #endif
+  { "threads", 'j', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, opt_threads_cb,
+    "Compress parts in parallel. Accepts an integer in 0..256 (>1 enables "
+    "parallel compression with that many workers; 0 and 1 are serial) or "
+    "true/false/yes/no/auto. Defaults to off; bare --threads means auto.",
+    "[VALUE]" },
   { NULL }
 };
 
@@ -416,6 +435,9 @@ ot_static_delta_builtin_generate (int argc, char **argv, OstreeCommandInvocation
       if (opt_endianness || opt_swap_endianness)
         g_variant_builder_add (parambuilder, "{sv}", "endianness",
                                g_variant_new_uint32 (endianness));
+      if (opt_threads_set)
+        g_variant_builder_add (parambuilder, "{sv}", "compress-threads",
+                               g_variant_new_string (opt_threads));
 
       if (opt_key_ids || opt_keysfilename)
         {
