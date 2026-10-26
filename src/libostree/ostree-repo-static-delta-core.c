@@ -381,7 +381,7 @@ _ostree_repo_static_delta_is_signed (OstreeRepo *self, int fd, GPtrArray **out_v
   if (out_value)
     *out_value = NULL;
 
-  if (!ot_variant_read_fd (fd, 0, (GVariantType *)OSTREE_STATIC_DELTA_SIGNED_FORMAT, TRUE, &delta,
+  if (!ot_variant_read_fd (fd, 0, (GVariantType *)OSTREE_STATIC_DELTA_SIGNED_FORMAT, FALSE, &delta,
                            error))
     return FALSE;
 
@@ -414,10 +414,13 @@ _ostree_repo_static_delta_is_signed (OstreeRepo *self, int fd, GPtrArray **out_v
       g_variant_unref (item);
     }
 
-  if (out_value && ret)
+  if (!ret)
+    return glnx_throw (error, "no signatures in static-delta");
+
+  if (out_value)
     ot_transfer_out_value (out_value, &signatures);
 
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -426,7 +429,7 @@ _ostree_repo_static_delta_verify_signature (OstreeRepo *self, int fd, OstreeSign
 {
   g_autoptr (GVariant) delta = NULL;
 
-  if (!ot_variant_read_fd (fd, 0, (GVariantType *)OSTREE_STATIC_DELTA_SIGNED_FORMAT, TRUE, &delta,
+  if (!ot_variant_read_fd (fd, 0, (GVariantType *)OSTREE_STATIC_DELTA_SIGNED_FORMAT, FALSE, &delta,
                            error))
     return FALSE;
 
@@ -533,7 +536,7 @@ ostree_repo_static_delta_execute_offline_with_signature (OstreeRepo *self, GFile
         }
 
       g_autoptr (GVariant) delta = NULL;
-      if (!ot_variant_read_fd (meta_fd, 0, (GVariantType *)OSTREE_STATIC_DELTA_SIGNED_FORMAT, TRUE,
+      if (!ot_variant_read_fd (meta_fd, 0, (GVariantType *)OSTREE_STATIC_DELTA_SIGNED_FORMAT, FALSE,
                                &delta, error))
         return FALSE;
 
@@ -745,6 +748,8 @@ _ostree_static_delta_part_open (GInputStream *part_in, GBytes *inline_part_bytes
     /* First byte is compression type */
     if (!g_input_stream_read_all (source_in, buf, sizeof (buf), &bytes_read, cancellable, error))
       return glnx_prefix_error (error, "Reading initial compression flag byte");
+    if (bytes_read != sizeof (buf))
+      return glnx_throw (error, "Empty static delta part");
     comptype = buf[0];
   }
 
@@ -1051,7 +1056,7 @@ _ostree_repo_static_delta_dump (OstreeRepo *self, const char *delta_id, GCancell
   if (is_signed)
     {
       if (!ot_variant_read_fd (superblock_fd, 0, (GVariantType *)OSTREE_STATIC_DELTA_SIGNED_FORMAT,
-                               TRUE, &delta, error))
+                               FALSE, &delta, error))
         return FALSE;
 
       g_autoptr (GVariant) child = g_variant_get_child_value (delta, 1);
@@ -1062,7 +1067,7 @@ _ostree_repo_static_delta_dump (OstreeRepo *self, const char *delta_id, GCancell
   else
     {
       if (!ot_variant_read_fd (superblock_fd, 0,
-                               (GVariantType *)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT, TRUE,
+                               (GVariantType *)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT, FALSE,
                                &delta_superblock, error))
         return FALSE;
     }
@@ -1149,7 +1154,10 @@ _ostree_repo_static_delta_dump (OstreeRepo *self, const char *delta_id, GCancell
       g_autoptr (GVariant) checksum_v = NULL;
       char checksum[OSTREE_SHA256_STRING_LEN + 1];
       g_variant_get_child (fallback, i, "(y@aytt)", NULL, &checksum_v, &size, &usize);
-      ostree_checksum_inplace_from_bytes (ostree_checksum_bytes_peek (checksum_v), checksum);
+      const guchar *csum = ostree_checksum_bytes_peek_validate (checksum_v, error);
+      if (!csum)
+        return FALSE;
+      ostree_checksum_inplace_from_bytes (csum, checksum);
       size = maybe_swap_endian_u64 (swap_endian, size);
       usize = maybe_swap_endian_u64 (swap_endian, usize);
       g_print ("  %s\n", checksum);
