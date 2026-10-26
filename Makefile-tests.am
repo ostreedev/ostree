@@ -311,6 +311,10 @@ if USE_AVAHI
 test_programs += tests/test-repo-finder-avahi
 endif
 
+if USE_CURL_OR_SOUP
+test_programs += tests/test-fetcher-uri
+endif
+
 # An interactive tool
 noinst_PROGRAMS += tests/test-rollsum-cli
 
@@ -340,6 +344,12 @@ tests_test_rollsum_LDADD = $(bupsplitpath) $(TESTS_LDADD) $(OT_DEP_ZLIB_LIBS)
 tests_test_bloom_SOURCES = src/libostree/ostree-bloom.c tests/test-bloom.c
 tests_test_bloom_CFLAGS = $(TESTS_CFLAGS)
 tests_test_bloom_LDADD = $(TESTS_LDADD)
+
+if USE_CURL_OR_SOUP
+tests_test_fetcher_uri_SOURCES = src/libostree/ostree-fetcher-uri.c tests/test-fetcher-uri.c
+tests_test_fetcher_uri_CFLAGS = $(TESTS_CFLAGS)
+tests_test_fetcher_uri_LDADD = $(TESTS_LDADD)
+endif
 
 tests_test_include_ostree_h_SOURCES = tests/test-include-ostree-h.c
 # Don't use TESTS_CFLAGS so we test if the public header can be included by external programs

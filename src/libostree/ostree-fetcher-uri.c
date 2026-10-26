@@ -65,10 +65,10 @@ _ostree_fetcher_uri_parse (const char *str, GError **error)
         default:
           return (OstreeFetcherURI *)uri;
         }
-      nuri = g_uri_build_with_user (g_uri_get_flags (uri), "http", g_uri_get_user (uri),
-                                    g_uri_get_password (uri), NULL, g_uri_get_host (uri), -1,
-                                    g_uri_get_path (uri), g_uri_get_query (uri),
-                                    g_uri_get_fragment (uri));
+      nuri = g_uri_build_with_user (g_uri_get_flags (uri), g_uri_get_scheme (uri),
+                                    g_uri_get_user (uri), g_uri_get_password (uri), NULL,
+                                    g_uri_get_host (uri), -1, g_uri_get_path (uri),
+                                    g_uri_get_query (uri), g_uri_get_fragment (uri));
       g_uri_unref (uri);
       uri = nuri;
     }
