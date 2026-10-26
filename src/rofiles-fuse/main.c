@@ -446,7 +446,11 @@ do_open (const char *path, mode_t mode, struct fuse_file_info *finfo)
 
   path = ENSURE_RELPATH (path);
 
-  if ((finfo->flags & O_ACCMODE) == O_RDONLY)
+  /* With atomic_o_trunc (the libfuse3 default) the kernel passes O_TRUNC
+   * here instead of sending a separate truncate, and O_RDONLY | O_TRUNC
+   * truncates too, so treat any O_TRUNC open as a write.
+   */
+  if ((finfo->flags & O_ACCMODE) == O_RDONLY && (finfo->flags & O_TRUNC) == 0)
     {
       /* Read */
       fd = openat (basefd, path, finfo->flags, mode);
@@ -632,7 +636,7 @@ callback_listxattr (const char *path, char *list, size_t size)
 static int
 callback_removexattr (const char *path, const char *name)
 {
-  path = ENSURE_RELPATH (path);
+  PATH_WRITE_ENTRYPOINT (path);
 
   char buf[PATH_MAX];
   snprintf (buf, sizeof (buf), "/proc/self/fd/%d/%s", basefd, path);
