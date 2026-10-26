@@ -51,6 +51,12 @@ for path in firstfile{,-link}; do
     assert_file_has_content err.txt "Read-only file system"
     assert_file_has_content mnt/firstfile first
     assert_file_has_content checkout-test2/firstfile first
+    # O_RDONLY | O_TRUNC truncates too
+    if python3 -c 'import os, sys; os.open(sys.argv[1], os.O_RDONLY | os.O_TRUNC)' mnt/${path} 2>err.txt; then
+        assert_not_reached "inplace truncation O_RDONLY ${path}"
+    fi
+    assert_file_has_content err.txt "Read-only file system"
+    assert_file_has_content checkout-test2/firstfile first
 done
 echo "ok failed inplace mutation (open O_TRUNCATE)"
 
@@ -76,6 +82,15 @@ echo "ok failed mutation chmod + chown"
 if setfattr -n user.foo -v bar mnt/firstfile-link; then
     assert_not_reached "set xattr on linked file"
 fi
+# Add an xattr behind the mount so there is one to remove
+setfattr -n user.foo -v bar checkout-test2/firstfile
+if setfattr -x user.foo mnt/firstfile 2>err.txt; then
+    assert_not_reached "remove xattr on linked file"
+fi
+assert_file_has_content err.txt "Read-only file system"
+getfattr -n user.foo checkout-test2/firstfile > out.txt
+assert_file_has_content_literal out.txt 'user.foo="bar"'
+setfattr -x user.foo checkout-test2/firstfile
 
 # Test creating new files, using chown + chmod on them as well
 echo anewfile-for-fuse > mnt/anewfile-for-fuse
