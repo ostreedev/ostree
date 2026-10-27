@@ -152,12 +152,14 @@ ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=spki -
 
 tap_ok "verify spki system-wide configuration"
 
-# Add the public key into revoked list
+# Add the public key into revoked list, next to another revoked key
+gen_spki_random_public_pem > ${test_tmpdir}/revoked.spki.d/random
 cat "${SPKIPUBLICPEM}" > ${test_tmpdir}/revoked.spki.d/correct
 # Check if public key is not valid anymore
-if ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=spki --keys-dir=${test_tmpdir} ${COMMIT}; then
+if ${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo sign --verify --sign-type=spki --keys-dir=${test_tmpdir} ${COMMIT} 2>err.txt; then
     exit 1
 fi
+assert_file_has_content err.txt 'spki: Signature couldn.t be verified'
 rm -rf ${test_tmpdir}/{trusted,revoked}.spki.d
 tap_ok "verify spki revoking keys mechanism"
 
