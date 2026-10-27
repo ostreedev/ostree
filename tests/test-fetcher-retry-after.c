@@ -97,9 +97,10 @@ serve (gpointer user_data)
         g_clear_pointer (&header, g_free);
       if (unavailable
           && (g_str_equal (server->mode, "truncated")
-              || g_str_equal (server->mode, "truncated-long")))
+              || g_str_equal (server->mode, "truncated-long")
+              || g_str_equal (server->mode, "truncated-mirrors")))
         {
-          const char *delay = g_str_equal (server->mode, "truncated-long") ? "61" : "1";
+          const char *delay = g_str_equal (server->mode, "truncated") ? "1" : "61";
           g_autofree char *response
               = g_strdup_printf ("HTTP/1.1 503 Service Unavailable\r\nRetry-After: %s\r\n"
                                  "Content-Length: 100\r\nConnection: close\r\n\r\nshort",
@@ -283,6 +284,53 @@ on_complete (GObject *object, GAsyncResult *result, gpointer user_data)
 }
 
 static void
+test_truncated_mirrors (gconstpointer user_data)
+{
+  g_autoptr (GError) error = NULL;
+  g_autoptr (GSocketListener) listener = g_socket_listener_new ();
+  g_autoptr (GCancellable) stop = g_cancellable_new ();
+  unsigned short port = g_socket_listener_add_any_inet_port (listener, NULL, &error);
+  g_assert_no_error (error);
+  Server server = { listener, stop, "truncated-mirrors", 0, 0 };
+  GThread *thread = g_thread_new ("retry-after-server", serve, &server);
+  g_autoptr (GPtrArray) mirrors
+      = g_ptr_array_new_with_free_func ((GDestroyNotify)_ostree_fetcher_uri_free);
+  const char *paths[] = { "slow", "fast" };
+  for (size_t i = 0; i < G_N_ELEMENTS (paths); i++)
+    {
+      g_autofree char *url = g_strdup_printf ("http://127.0.0.1:%hu/%s", port, paths[i]);
+      g_ptr_array_add (mirrors, _ostree_fetcher_uri_parse (url, &error));
+      g_assert_no_error (error);
+    }
+  g_autoptr (OstreeFetcher) fetcher
+      = _ostree_fetcher_new (AT_FDCWD, NULL, OSTREE_FETCHER_FLAGS_DISABLE_HTTP2);
+  _ostree_fetcher_set_retry_all (fetcher, TRUE);
+  _ostree_fetcher_set_proxy (fetcher, "");
+  _ostree_fetcher_set_force_anonymous_tmpfiles (fetcher);
+
+  Completion completion = { .tmpfile = GPOINTER_TO_INT (user_data) };
+  if (completion.tmpfile)
+    _ostree_fetcher_request_to_tmpfile (fetcher, mirrors, NULL, 0, NULL, 0, 1024,
+                                        G_PRIORITY_DEFAULT, NULL, on_complete, &completion);
+  else
+    _ostree_fetcher_request_to_membuf (fetcher, mirrors, NULL, 0, NULL, 0, 1024, G_PRIORITY_DEFAULT,
+                                       NULL, on_complete, &completion);
+  while (!completion.done)
+    g_main_context_iteration (NULL, TRUE);
+  g_assert_cmpint (g_atomic_int_get (&server.attempts), ==, 1);
+
+  /* The failed mirror must remain blocked after fallback succeeds. */
+  g_autoptr (GBytes) contents = NULL;
+  g_assert_false (_ostree_fetcher_request_uri_to_membuf (
+      fetcher, mirrors->pdata[0], 0, NULL, 0, 0, &contents, NULL, NULL, NULL, 1024, NULL, &error));
+  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_FAILED);
+  g_assert_cmpint (g_atomic_int_get (&server.attempts), ==, 1);
+
+  g_cancellable_cancel (stop);
+  g_thread_join (thread);
+}
+
+static void
 test_concurrent (gconstpointer user_data)
 {
   g_autoptr (GError) error = NULL;
@@ -349,5 +397,9 @@ main (int argc, char **argv)
                         test_concurrent);
   g_test_add_data_func ("/fetcher/retry-after/concurrent-tmpfile", GINT_TO_POINTER (TRUE),
                         test_concurrent);
+  g_test_add_data_func ("/fetcher/retry-after/truncated-mirrors-membuf", GINT_TO_POINTER (FALSE),
+                        test_truncated_mirrors);
+  g_test_add_data_func ("/fetcher/retry-after/truncated-mirrors-tmpfile", GINT_TO_POINTER (TRUE),
+                        test_truncated_mirrors);
   return g_test_run ();
 }

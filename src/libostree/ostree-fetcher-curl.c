@@ -432,9 +432,15 @@ check_multi_info (OstreeFetcher *fetcher)
 
       if (req->caught_write_error)
         g_task_return_error (task, g_steal_pointer (&req->caught_write_error));
+      else if (g_task_return_error_if_cancelled (task))
+        {
+          /* Do not start another mirror after cancellation. */
+        }
       else if (curlres != CURLE_OK)
         {
-          if (is_file && curlres == CURLE_FILE_COULDNT_READ_FILE)
+          if (retry_after_too_long && req->idx + 1 < req->mirrorlist->len)
+            continued_request = TRUE;
+          else if (is_file && curlres == CURLE_FILE_COULDNT_READ_FILE)
             {
               /* Handle file not found */
               g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_NOT_FOUND, "%s",
@@ -528,6 +534,12 @@ check_multi_info (OstreeFetcher *fetcher)
       g_assert_cmpint (rc, ==, CURLM_OK);
       if (continued_request)
         {
+          /* Failed HTTP responses may have written a body, including a
+           * truncated 503. Never prepend that body to the next mirror's data. */
+          if (req->output_buf != NULL)
+            g_string_truncate (req->output_buf, 0);
+          glnx_tmpfile_clear (&req->tmpf);
+          req->current_size = 0;
           req->idx++;
           initiate_next_curl_request (req, task);
         }
