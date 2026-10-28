@@ -75,6 +75,9 @@ typedef enum
 {
   OSTREE_REPO_TEST_ERROR_PRE_COMMIT = (1 << 0),
   OSTREE_REPO_TEST_ERROR_INVALID_CACHE = (1 << 1),
+  /* Disable mmap only for static-delta BSPATCH output. Its source remains a
+   * read-only mapping, since bspatch() needs random access to it. */
+  OSTREE_REPO_TEST_ERROR_DISABLE_MMAP = (1 << 2),
 } OstreeRepoTestErrorFlags;
 
 struct OstreeRepoCommitModifier
