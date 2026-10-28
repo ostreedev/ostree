@@ -451,7 +451,7 @@ _spki_add_revoked (OstreeSign *self, GVariant *revoked_key, GError **error)
   g_debug ("Read spki revoked key = %s", hex);
 
   g_autoptr (GBytes) key_bytes = g_bytes_new_static (key, n_elements);
-  if (g_list_find_custom (sign->revoked_keys, key, g_bytes_compare) == NULL)
+  if (g_list_find_custom (sign->revoked_keys, key_bytes, g_bytes_compare) == NULL)
     {
       GBytes *new_key_bytes = g_bytes_new (key, n_elements);
       sign->revoked_keys = g_list_prepend (sign->revoked_keys, new_key_bytes);
