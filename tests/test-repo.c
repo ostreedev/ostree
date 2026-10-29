@@ -840,10 +840,22 @@ delta_varuint (GByteArray *ops, uint64_t value)
 
 typedef struct
 {
+  const char *path;
   size_t len;
   gboolean write_first;
   gboolean repeat_patch;
 } DeltaPatchTest;
+
+static const DeltaPatchTest delta_patch_tests[] = {
+  { "/repo/delta/bspatch-write-empty", 0, FALSE, FALSE },
+  { "/repo/delta/bspatch-write", 3, FALSE, FALSE },
+  { "/repo/delta/bspatch-write-multi-chunk", 65537, FALSE, FALSE },
+  { "/repo/delta/bspatch-write-checksum-chunks", 1024 * 1024 + 1, FALSE, FALSE },
+  { "/repo/delta/write-bspatch", 3, TRUE, FALSE },
+  { "/repo/delta/repeated-bspatch", 3, FALSE, TRUE },
+  { "/repo/delta/write-bspatch-multi-chunk", 65537, TRUE, FALSE },
+  { "/repo/delta/repeated-bspatch-multi-chunk", 65537, FALSE, TRUE },
+};
 
 /* Exercise the real opcode executor and commit path, including a WRITE after
  * BSPATCH. Checking the stored bytes independently of the accumulated checksum
@@ -859,17 +871,20 @@ test_delta_bspatch_write (Fixture *fixture, gconstpointer test_data)
   g_autoptr (OstreeRepo) repo = ostree_repo_create_at (
       fixture->tmpdir.fd, "repo", OSTREE_REPO_MODE_BARE_USER_ONLY, NULL, NULL, &error);
   g_assert_no_error (error);
+  if (g_strcmp0 (g_getenv ("OSTREE_REPO_TEST_ERROR"), "disable-mmap") == 0)
+    g_assert_true ((repo->test_error_flags & OSTREE_REPO_TEST_ERROR_DISABLE_MMAP) != 0);
   g_autoptr (OstreeRepo) reference = ostree_repo_create_at (
       fixture->tmpdir.fd, "reference", OSTREE_REPO_MODE_BARE_USER_ONLY, NULL, NULL, &error);
   g_assert_no_error (error);
   g_autofree uint8_t *expected = g_malloc (expected_len);
   memset (expected, 'A', expected_len);
   expected[test->write_first ? 0 : expected_len - 1] = 'D';
+  static const uint8_t source[] = "Dld";
   g_autofree char *expected_checksum = ostree_repo_write_regfile_inline (
       reference, NULL, 0, 0, S_IFREG | 0644, NULL, expected, expected_len, NULL, &error);
   g_assert_no_error (error);
   g_autofree char *source_checksum = ostree_repo_write_regfile_inline (
-      repo, NULL, 0, 0, S_IFREG | 0644, NULL, (const uint8_t *)"Dld", 3, NULL, &error);
+      repo, NULL, 0, 0, S_IFREG | 0644, NULL, source, sizeof (source) - 1, NULL, &error);
   g_assert_no_error (error);
 
   uint8_t source_bytes[OSTREE_SHA256_DIGEST_LEN];
@@ -878,10 +893,19 @@ test_delta_bspatch_write (Fixture *fixture, gconstpointer test_data)
   g_byte_array_append (payload, source_bytes, sizeof (source_bytes));
   if (len > 0)
     {
-      /* A bspatch control triple: no diff bytes, len literal bytes, no seek. */
-      uint64_t control[] = { 0, GUINT64_TO_LE (len), 0 };
+      /* The diff block uses old bytes; the remaining bytes are literals. Keep
+       * the source small so fallocate fault injection still targets the output.
+       */
+      const size_t diff_len = MIN (len, sizeof (source) - 1);
+      uint64_t control[] = { GUINT64_TO_LE (diff_len), GUINT64_TO_LE (len - diff_len), 0 };
       g_byte_array_append (payload, (const uint8_t *)control, sizeof (control));
-      g_byte_array_append (payload, expected + (test->write_first ? 1 : 0), len);
+      for (size_t i = 0; i < diff_len; i++)
+        {
+          const uint8_t diff = 'A' - source[i];
+          g_byte_array_append (payload, &diff, 1);
+        }
+      g_byte_array_append (payload, expected + (test->write_first ? 1 : 0) + diff_len,
+                           len - diff_len);
     }
   const size_t patch_len = payload->len - sizeof (source_bytes);
   const size_t write_offset = payload->len;
@@ -1005,36 +1029,42 @@ test_delta_bspatch_write (Fixture *fixture, gconstpointer test_data)
   g_assert_cmpmem (actual, bytes_read, expected, expected_len);
 }
 
+/* Run the same opcode fixtures in a fresh process so OSTREE_REPO_TEST_ERROR is
+ * set before any repositories (or their worker threads) are created. */
+static void
+test_delta_disable_mmap (void)
+{
+  g_autoptr (GError) error = NULL;
+  g_autofree char *self = g_file_read_link ("/proc/self/exe", &error);
+  g_assert_no_error (error);
+  g_auto (GStrv) disable_mmap_env
+      = g_environ_setenv (g_get_environ (), "OSTREE_REPO_TEST_ERROR", "disable-mmap", TRUE);
+
+  for (guint i = 0; i < G_N_ELEMENTS (delta_patch_tests); i++)
+    {
+      char *argv[] = { self, "-p", (char *)delta_patch_tests[i].path, NULL };
+      int status;
+      g_autofree char *stdout = NULL;
+      g_autofree char *stderr = NULL;
+      g_assert_true (g_spawn_sync (NULL, argv, disable_mmap_env, G_SPAWN_DEFAULT, NULL, NULL,
+                                   &stdout, &stderr, &status, &error));
+      g_assert_no_error (error);
+      if (!g_spawn_check_exit_status (status, &error))
+        g_error ("%s failed: %s\n%s", delta_patch_tests[i].path, error->message, stderr);
+    }
+}
+
 int
 main (int argc, char **argv)
 {
   setlocale (LC_ALL, "");
   g_test_init (&argc, &argv, NULL);
 
-  static const DeltaPatchTest patch_tests[] = {
-    { 0, FALSE, FALSE },     { 3, FALSE, FALSE },
-    { 65537, FALSE, FALSE }, { 1024 * 1024 + 1, FALSE, FALSE },
-    { 3, TRUE, FALSE },      { 3, FALSE, TRUE },
-    { 65537, TRUE, FALSE },  { 65537, FALSE, TRUE },
-  };
-
   g_test_add ("/repo/hash", Fixture, NULL, setup, test_repo_hash, teardown);
-  g_test_add ("/repo/delta/bspatch-write-empty", Fixture, &patch_tests[0], setup,
-              test_delta_bspatch_write, teardown);
-  g_test_add ("/repo/delta/bspatch-write", Fixture, &patch_tests[1], setup,
-              test_delta_bspatch_write, teardown);
-  g_test_add ("/repo/delta/bspatch-write-multi-chunk", Fixture, &patch_tests[2], setup,
-              test_delta_bspatch_write, teardown);
-  g_test_add ("/repo/delta/bspatch-write-checksum-chunks", Fixture, &patch_tests[3], setup,
-              test_delta_bspatch_write, teardown);
-  g_test_add ("/repo/delta/write-bspatch", Fixture, &patch_tests[4], setup,
-              test_delta_bspatch_write, teardown);
-  g_test_add ("/repo/delta/repeated-bspatch", Fixture, &patch_tests[5], setup,
-              test_delta_bspatch_write, teardown);
-  g_test_add ("/repo/delta/write-bspatch-multi-chunk", Fixture, &patch_tests[6], setup,
-              test_delta_bspatch_write, teardown);
-  g_test_add ("/repo/delta/repeated-bspatch-multi-chunk", Fixture, &patch_tests[7], setup,
-              test_delta_bspatch_write, teardown);
+  for (guint i = 0; i < G_N_ELEMENTS (delta_patch_tests); i++)
+    g_test_add (delta_patch_tests[i].path, Fixture, &delta_patch_tests[i], setup,
+                test_delta_bspatch_write, teardown);
+  g_test_add_func ("/repo/delta/disable-mmap", test_delta_disable_mmap);
   g_test_add ("/repo/hash/closed", Fixture, NULL, setup, test_repo_hash_closed, teardown);
   g_test_add ("/repo/equal", Fixture, NULL, setup, test_repo_equal, teardown);
   g_test_add ("/repo/get_min_free_space", Fixture, NULL, setup, test_repo_get_min_free_space,

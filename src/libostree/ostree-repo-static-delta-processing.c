@@ -408,7 +408,6 @@ dispatch_bspatch (OstreeRepo *repo, StaticDeltaExecutionState *state, GCancellab
                   GError **error)
 {
   guint64 offset, length;
-  (void)repo;
 
   if (!read_varuint64 (state, &offset, error))
     return FALSE;
@@ -427,9 +426,9 @@ dispatch_bspatch (OstreeRepo *repo, StaticDeltaExecutionState *state, GCancellab
       if (!input_mfile)
         return FALSE;
 
-      /* Guard against integer truncation on 32-bit systems: mmap() takes gsize
-       * while bspatch() uses int64_t. Without this check the mapped region and
-       * the size used by bspatch() could differ.
+      /* Guard against integer truncation on 32-bit systems: allocation and
+       * mapping sizes use gsize while bspatch() uses int64_t. Without this check
+       * the output buffer and the size used by bspatch() could differ.
        * (CVE / RHEL-189207, CWE-680, CWE-122)
        */
       if (G_UNLIKELY (state->content_size > G_MAXSIZE || state->content_size > (guint64)G_MAXINT64))
@@ -442,8 +441,28 @@ dispatch_bspatch (OstreeRepo *repo, StaticDeltaExecutionState *state, GCancellab
         }
 
       guint8 *buf;
-      size_t buflen;
-      if (!_ostree_repo_bare_content_map (&state->content_out, &buf, &buflen, cancellable, error))
+      size_t buflen = (size_t)state->content_size;
+      g_autofree guint8 *heap_buf = NULL;
+      const gboolean heap_output
+          = repo->is_on_fuse || (repo->test_error_flags & OSTREE_REPO_TEST_ERROR_DISABLE_MMAP) != 0;
+
+      /* revokefs enables FUSE direct I/O for writable files. The kernel does
+       * not allow MAP_SHARED mappings of those files. The test-only
+       * disable-mmap flag exercises this output path; the BSPATCH source is
+       * still read through its read-only mapping above.
+       */
+      if (heap_output)
+        {
+          heap_buf = g_try_malloc (MAX (buflen, (size_t)1));
+          if (!heap_buf)
+            return glnx_throw (error,
+                               "Unable to allocate %" G_GSIZE_FORMAT
+                               " bytes for static delta bspatch output",
+                               buflen);
+          buf = heap_buf;
+        }
+      else if (!_ostree_repo_bare_content_map (&state->content_out, &buf, &buflen, cancellable,
+                                               error))
         return FALSE;
 
       struct bzpatch_opaque_s opaque;
@@ -458,7 +477,13 @@ dispatch_bspatch (OstreeRepo *repo, StaticDeltaExecutionState *state, GCancellab
           < 0)
         return glnx_throw (error, "bsdiff patch failed");
 
-      if (!_ostree_repo_bare_content_finish_mapped (&state->content_out, cancellable, error))
+      if (heap_output)
+        {
+          if (!_ostree_repo_bare_content_write (repo, &state->content_out, buf, buflen, cancellable,
+                                                error))
+            return FALSE;
+        }
+      else if (!_ostree_repo_bare_content_finish_mapped (&state->content_out, cancellable, error))
         return FALSE;
     }
 

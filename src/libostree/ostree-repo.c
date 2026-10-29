@@ -1304,6 +1304,7 @@ ostree_repo_init (OstreeRepo *self)
   const GDebugKey test_error_keys[] = {
     { "pre-commit", OSTREE_REPO_TEST_ERROR_PRE_COMMIT },
     { "invalid-cache", OSTREE_REPO_TEST_ERROR_INVALID_CACHE },
+    { "disable-mmap", OSTREE_REPO_TEST_ERROR_DISABLE_MMAP },
   };
 
 #ifndef OSTREE_DISABLE_GPGME
