@@ -275,13 +275,26 @@ ostree_bootconfig_parser_get_overlay_initrds (OstreeBootconfigParser *self)
   return self->overlay_initrds;
 }
 
-static void
-write_key (OstreeBootconfigParser *self, GString *buf, const char *key, const char *value)
+static gboolean
+write_key (OstreeBootconfigParser *self, GString *buf, const char *key, const char *value,
+           GError **error)
 {
+  /* Entries are line-oriented, so a newline in a key or value would be read
+   * back as a separate directive. Reject it here rather than emitting an entry
+   * that doesn't round-trip; otherwise a value coming from commit metadata
+   * (e.g. the version string used in "title") could inject extra bootloader
+   * keys such as "options" or "linux".
+   */
+  if (strchr (key, '\n') != NULL)
+    return glnx_throw (error, "Invalid newline in bootloader config key");
+  if (strchr (value, '\n') != NULL)
+    return glnx_throw (error, "Invalid newline in bootloader config value for key '%s'", key);
+
   g_string_append (buf, key);
   g_string_append_c (buf, self->separators[0]);
   g_string_append (buf, value);
   g_string_append_c (buf, '\n');
+  return TRUE;
 }
 
 gboolean
@@ -302,7 +315,8 @@ ostree_bootconfig_parser_write_at (OstreeBootconfigParser *self, int dfd, const 
       const char *value = g_hash_table_lookup (self->options, key);
       if (value != NULL)
         {
-          write_key (self, buf, key, value);
+          if (!write_key (self, buf, key, value, error))
+            return FALSE;
           g_hash_table_add (keys_written, (gpointer)key);
         }
     }
@@ -313,7 +327,10 @@ ostree_bootconfig_parser_write_at (OstreeBootconfigParser *self, int dfd, const 
       /* we should've written the primary initrd already */
       g_assert (g_hash_table_contains (keys_written, "initrd"));
       for (char **it = self->overlay_initrds; it && *it; it++)
-        write_key (self, buf, "initrd", *it);
+        {
+          if (!write_key (self, buf, "initrd", *it, error))
+            return FALSE;
+        }
     }
 
   /* Write unknown fields */
@@ -321,7 +338,8 @@ ostree_bootconfig_parser_write_at (OstreeBootconfigParser *self, int dfd, const 
     {
       if (g_hash_table_lookup (keys_written, k))
         continue;
-      write_key (self, buf, k, v);
+      if (!write_key (self, buf, k, v, error))
+        return FALSE;
     }
 
   if (!glnx_file_replace_contents_at (dfd, path, (guint8 *)buf->str, buf->len,
