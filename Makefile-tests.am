@@ -202,7 +202,9 @@ tests_repo_finder_mount_SOURCES = tests/repo-finder-mount.c
 tests_repo_finder_mount_CFLAGS = $(common_tests_cflags)
 tests_repo_finder_mount_LDADD = $(common_tests_ldadd) libostreetest.la
 
-fuse_tests = tests/test-rofiles-fuse.sh
+fuse_tests = \
+	tests/test-delta-fuse.sh \
+	tests/test-rofiles-fuse.sh
 if BUILDOPT_FUSE
 _installed_or_uninstalled_test_scripts += $(fuse_tests)
 uninstalled_test_data += tests/rofiles-fuse-symlink-stamp
