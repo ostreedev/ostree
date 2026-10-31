@@ -219,6 +219,13 @@ else
 EXTRA_DIST += $(libsoup_tests)
 endif
 
+if USE_AWS
+_installed_or_uninstalled_test_scripts += tests/test-pull-s3.sh tests/test-pull-s3-faults.sh
+else
+EXTRA_DIST += tests/test-pull-s3.sh tests/test-pull-s3-faults.sh
+endif
+EXTRA_DIST += tests/s3-fault-server.py tests/libtest-s3.sh
+
 # These call into gjs scripts
 js_tests = tests/test-corruption.sh tests/test-pull-corruption.sh
 if BUILDOPT_GJS
@@ -300,6 +307,21 @@ if USE_GPGME
 _installed_or_uninstalled_test_programs += \
 	tests/test-gpg-verify-result \
 	$(NULL)
+endif
+
+if USE_AWS
+_installed_or_uninstalled_test_programs += tests/test-fetcher-s3
+tests_test_fetcher_s3_SOURCES = \
+	src/libostree/ostree-fetcher-s3.c \
+	src/libostree/ostree-aws.c \
+	src/libostree/ostree-fetcher-uri.c \
+	tests/test-fetcher-s3.c
+tests_test_fetcher_s3_CFLAGS = $(TESTS_CFLAGS) $(libglnx_cflags) $(AWS_CFLAGS)
+tests_test_fetcher_s3_LDADD = $(TESTS_LDADD) $(AWS_LIBS)
+test_extra_programs += tests/s3-pull-repeat
+tests_s3_pull_repeat_SOURCES = tests/s3-pull-repeat.c
+tests_s3_pull_repeat_CFLAGS = $(TESTS_CFLAGS)
+tests_s3_pull_repeat_LDADD = $(TESTS_LDADD)
 endif
 
 if USE_LIBSOUP_OR_LIBSOUP3
