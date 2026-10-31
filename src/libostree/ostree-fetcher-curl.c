@@ -136,6 +136,7 @@ struct FetcherRequest
   guint64 out_last_modified; /* response Last-Modified, seconds since the epoch */
   char *out_retry_after;
   GSource *retry_source;
+  GPtrArray *retryable_uris; /* Earlier mirrors that returned transient errors */
 
   CURL *easy;
   char error[CURL_ERROR_SIZE];
@@ -402,6 +403,21 @@ remove_outstanding_request (OstreeFetcher *self, GTask *task)
     g_clear_pointer (&self->mainctx, g_main_context_unref);
 }
 
+/* Leave retry counts with the caller, but do not let a later mirror's long
+ * delay hide an earlier transient failure that can still be retried. */
+static GIOErrorEnum
+retry_after_error (FetcherRequest *req)
+{
+  int64_t now = g_get_monotonic_time ();
+  for (size_t i = 0; req->retryable_uris != NULL && i < req->retryable_uris->len; i++)
+    {
+      RetryAfter *retry = lookup_retry_after (req->fetcher, req->retryable_uris->pdata[i], now);
+      if (retry == NULL || retry->deadline - now <= MAX_RETRY_AFTER_SECONDS * G_USEC_PER_SEC)
+        return G_IO_ERROR_TIMED_OUT;
+    }
+  return G_IO_ERROR_FAILED;
+}
+
 /* Check for completed transfers, and remove their easy handles */
 static void
 check_multi_info (OstreeFetcher *fetcher)
@@ -476,7 +492,7 @@ check_multi_info (OstreeFetcher *fetcher)
                * We accomplish that by using G_IO_ERROR_TIMED_OUT.
                */
               g_task_return_new_error (task, G_IO_ERROR,
-                                       retry_after_too_long ? G_IO_ERROR_FAILED
+                                       retry_after_too_long ? retry_after_error (req)
                                        : retry_all          ? G_IO_ERROR_TIMED_OUT
                                                             : G_IO_ERROR,
                                        "While fetching %s: [%u] %s", eff_url, curlres,
@@ -505,7 +521,7 @@ check_multi_info (OstreeFetcher *fetcher)
                   = _ostree_fetcher_http_status_code_to_io_error (response, retry_all);
 
               if (retry_after_too_long)
-                giocode = G_IO_ERROR_FAILED;
+                giocode = retry_after_error (req);
 
               if (req->idx + 1 == req->mirrorlist->len)
                 {
@@ -520,6 +536,13 @@ check_multi_info (OstreeFetcher *fetcher)
                 }
               else
                 {
+                  if (giocode == G_IO_ERROR_TIMED_OUT && !retry_after_too_long)
+                    {
+                      if (req->retryable_uris == NULL)
+                        req->retryable_uris = g_ptr_array_new_with_free_func (g_free);
+                      g_ptr_array_add (req->retryable_uris,
+                                       request_get_uri (req, req->mirrorlist->pdata[req->idx]));
+                    }
                   continued_request = TRUE;
                 }
             }
@@ -827,6 +850,7 @@ request_unref (FetcherRequest *req)
   g_free (req->out_etag);
   g_free (req->out_retry_after);
   g_clear_pointer (&req->retry_source, destroy_and_unref_source);
+  g_clear_pointer (&req->retryable_uris, g_ptr_array_unref);
   g_clear_pointer (&req->req_headers, curl_slist_free_all);
   curl_easy_cleanup (req->easy);
 
@@ -982,7 +1006,7 @@ initiate_next_curl_request (FetcherRequest *req, GTask *task)
               req->idx++;
               continue;
             }
-          g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_FAILED,
+          g_task_return_new_error (task, G_IO_ERROR, retry_after_error (req),
                                    "Retry-After for %s exceeds maximum wait of %u seconds",
                                    requested_uri, MAX_RETRY_AFTER_SECONDS);
           remove_outstanding_request (self, task);

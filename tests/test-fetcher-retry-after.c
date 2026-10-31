@@ -58,6 +58,13 @@ serve (gpointer user_data)
       gboolean unavailable = !fast && (attempt == 0 || g_str_equal (server->mode, "always"));
       if (g_str_equal (server->mode, "mirrors"))
         unavailable = !fast || g_atomic_int_add (&server->fast_attempts, 1) == 0;
+      gboolean reverse = g_str_has_prefix (server->mode, "reverse-");
+      if (reverse)
+        {
+          unavailable = fast || attempt < (g_str_equal (server->mode, "reverse-cached") ? 2 : 1);
+          if (fast)
+            g_atomic_int_inc (&server->fast_attempts);
+        }
       g_autofree char *header = NULL;
       if (unavailable)
         {
@@ -90,6 +97,8 @@ serve (gpointer user_data)
                 value = "60";
               else if (g_str_equal (server->mode, "mirrors"))
                 value = fast ? "0" : "61";
+              else if (reverse)
+                value = fast ? "120" : "1";
               header = g_strdup_printf ("rEtRy-AfTeR: %s\r\n", value);
             }
         }
@@ -98,7 +107,8 @@ serve (gpointer user_data)
       if (unavailable
           && (g_str_equal (server->mode, "truncated")
               || g_str_equal (server->mode, "truncated-long")
-              || g_str_equal (server->mode, "truncated-mirrors")))
+              || g_str_equal (server->mode, "truncated-mirrors")
+              || (fast && g_str_equal (server->mode, "reverse-truncated"))))
         {
           const char *delay = g_str_equal (server->mode, "truncated") ? "1" : "61";
           g_autofree char *response
@@ -162,7 +172,7 @@ test_retry_after (gconstpointer user_data)
   g_autoptr (GBytes) contents = NULL;
   int64_t start = g_get_monotonic_time ();
   gboolean success;
-  if (g_str_equal (mode, "mirrors"))
+  if (g_str_equal (mode, "mirrors") || g_str_has_prefix (mode, "reverse-"))
     {
       g_autoptr (GPtrArray) mirrors
           = g_ptr_array_new_with_free_func ((GDestroyNotify)_ostree_fetcher_uri_free);
@@ -222,7 +232,14 @@ test_retry_after (gconstpointer user_data)
       g_assert_no_error (error);
       g_assert_cmpmem (g_bytes_get_data (contents, NULL), g_bytes_get_size (contents), "ok", 2);
       g_assert_cmpint (g_atomic_int_get (&server.attempts), ==,
-                       g_str_equal (mode, "mirrors") ? 1 : 2);
+                       g_str_equal (mode, "mirrors")          ? 1
+                       : g_str_equal (mode, "reverse-cached") ? 3
+                                                              : 2);
+      if (g_str_has_prefix (mode, "reverse-"))
+        {
+          g_assert_cmpint (g_atomic_int_get (&server.fast_attempts), ==, 1);
+          g_assert_cmpint (elapsed, >=, G_USEC_PER_SEC);
+        }
       if (g_str_equal (mode, "mirrors"))
         g_assert_cmpint (g_atomic_int_get (&server.fast_attempts), ==, 2);
       if (g_str_equal (mode, "seconds") || g_str_has_prefix (mode, "date")
@@ -385,9 +402,10 @@ main (int argc, char **argv)
 {
   g_test_init (&argc, &argv, NULL);
   const char *modes[]
-      = { "seconds", "date",     "date-rfc850", "date-asctime", "invalid",       "past",
-          "zero",    "long",     "overflow",    "disabled",     "exhausted",     "always",
-          "cancel",  "redirect", "mirrors",     "truncated",    "truncated-long" };
+      = { "seconds",   "date",           "date-rfc850",    "date-asctime",      "invalid",
+          "past",      "zero",           "long",           "overflow",          "disabled",
+          "exhausted", "always",         "cancel",         "redirect",          "mirrors",
+          "truncated", "truncated-long", "reverse-normal", "reverse-truncated", "reverse-cached" };
   for (size_t i = 0; i < G_N_ELEMENTS (modes); i++)
     {
       g_autofree char *name = g_strdup_printf ("/fetcher/retry-after/%s", modes[i]);
