@@ -394,6 +394,12 @@ tests_test_sysroot_c_LDADD = $(TESTS_LDADD)
 tests_test_pull_c_CFLAGS = $(TESTS_CFLAGS)
 tests_test_pull_c_LDADD = $(TESTS_LDADD)
 
+if USE_CURL
+_installed_or_uninstalled_test_programs += tests/test-pull-cancel
+tests_test_pull_cancel_CFLAGS = $(TESTS_CFLAGS)
+tests_test_pull_cancel_LDADD = $(TESTS_LDADD)
+endif
+
 tests_test_repo_CFLAGS = $(TESTS_CFLAGS)
 tests_test_repo_LDADD = $(TESTS_LDADD)
 
