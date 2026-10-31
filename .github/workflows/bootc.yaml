@@ -39,11 +39,22 @@ jobs:
           path: target/unittest
 
   integration:
+    name: integration (${{ matrix.stream }}, ${{ matrix.plans.name }})
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         stream: [stream9, stream10]
+        # Each TMT plan boots its own VM (several minutes of provisioning
+        # each), and the bootconfig-extra plan reboots six times, so run
+        # that one on its own runner instead of serializing everything.
+        plans:
+          - name: core
+            args: --exclude bootconfig-extra
+            timeout: 45
+          - name: bootconfig-extra
+            args: --filter bootconfig-extra
+            timeout: 90
     steps:
       - uses: actions/checkout@v6
         with:
@@ -57,11 +68,11 @@ jobs:
       - name: build
         run: STREAM=${{ matrix.stream }} just build
       - name: TMT tests (bcvk)
-        timeout-minutes: 40
-        run: STREAM=${{ matrix.stream }} just test-tmt
+        timeout-minutes: ${{ matrix.plans.timeout }}
+        run: STREAM=${{ matrix.stream }} just test-tmt ${{ matrix.plans.args }}
       - name: Archive TMT logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tmt-log-PR-${{ github.event.number }}-${{ matrix.stream }}
+          name: tmt-log-PR-${{ github.event.number }}-${{ matrix.stream }}-${{ matrix.plans.name }}
           path: /var/tmp/tmt
