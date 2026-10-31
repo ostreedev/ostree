@@ -52,6 +52,14 @@ G_BEGIN_DECLS
  */
 #define OSTREE_SIGN_NAME_SPKI "spki"
 
+/**
+ * OSTREE_SIGN_NAME_PGP:
+ * The name of the OpenPGP signing type (Sequoia PGP backend).
+ *
+ * Since: 2026.1
+ */
+#define OSTREE_SIGN_NAME_PGP "pgp"
+
 _OSTREE_PUBLIC
 G_DECLARE_INTERFACE (OstreeSign, ostree_sign, OSTREE, SIGN, GObject)
 

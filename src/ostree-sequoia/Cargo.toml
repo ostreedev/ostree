@@ -1,0 +1,25 @@
+[package]
+name = "ostree-sequoia"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "LGPL-2.0-or-later"
+description = "OpenPGP signing/verification shim for ostree using Sequoia PGP"
+
+[lib]
+name = "ostree_sequoia"
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+sequoia-openpgp = { version = "2", default-features = false }
+sequoia-policy-config = "0.8"
+anyhow = "1"
+chrono = "0.4"
+
+[features]
+default = ["crypto-openssl"]
+crypto-openssl = ["sequoia-openpgp/crypto-openssl"]
+crypto-rust = ["sequoia-openpgp/crypto-rust"]
+
+[build-dependencies]
+cbindgen = "0.28"
