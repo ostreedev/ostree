@@ -56,6 +56,19 @@
 typedef struct FetcherRequest FetcherRequest;
 typedef struct SockInfo SockInfo;
 
+typedef struct
+{
+  char *uri;
+  int64_t deadline; /* Monotonic time in microseconds */
+} RetryAfter;
+
+static void
+retry_after_clear (gpointer data)
+{
+  RetryAfter *retry = data;
+  g_free (retry->uri);
+}
+
 /* Fail if the server requests a wait longer than 60 seconds. Do not retry early. */
 #define MAX_RETRY_AFTER_SECONDS 60
 
@@ -94,8 +107,7 @@ struct OstreeFetcher
   int curl_running;
   GHashTable *outstanding_requests; /* Set<GTask> */
   GHashTable *sockets;              /* Set<SockInfo> */
-  GHashTable *retry_after;          /* int64_t monotonic deadlines in microseconds, keyed by URI */
-  int64_t retry_after_cleanup_time;
+  GArray *retry_after;              /* RetryAfter records */
 
   guint64 bytes_transferred;
 };
@@ -208,7 +220,7 @@ _ostree_fetcher_finalize (GObject *object)
   g_clear_pointer (&self->extra_headers, curl_slist_free_all);
   g_hash_table_unref (self->outstanding_requests);
   g_hash_table_unref (self->sockets);
-  g_hash_table_unref (self->retry_after);
+  g_array_unref (self->retry_after);
   g_clear_pointer (&self->timer_event, destroy_and_unref_source);
   if (self->mainctx)
     g_main_context_unref (self->mainctx);
@@ -250,7 +262,8 @@ _ostree_fetcher_init (OstreeFetcher *self)
   self->outstanding_requests
       = g_hash_table_new_full (NULL, NULL, (GDestroyNotify)g_object_unref, NULL);
   self->sockets = g_hash_table_new_full (NULL, NULL, (GDestroyNotify)sock_unref, NULL);
-  self->retry_after = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  self->retry_after = g_array_new (FALSE, FALSE, sizeof (RetryAfter));
+  g_array_set_clear_func (self->retry_after, retry_after_clear);
   rc = curl_multi_setopt (self->multi, CURLMOPT_SOCKETFUNCTION, sock_cb);
   g_assert_cmpint (rc, ==, CURLM_OK);
   rc = curl_multi_setopt (self->multi, CURLMOPT_SOCKETDATA, self);
@@ -320,7 +333,7 @@ ensure_tmpfile (FetcherRequest *req, GError **error)
 /* Invalid headers and past dates allow an immediate retry. Numeric overflow
  * returns G_MAXUINT64, which exceeds the wait limit. */
 static uint64_t
-retry_after_seconds (const char *header)
+retry_after_seconds (const char *header, int64_t real_now)
 {
   if (header == NULL || *header == '\0')
     return 0;
@@ -332,41 +345,52 @@ retry_after_seconds (const char *header)
   time_t date = curl_getdate (header, NULL);
   if (date == (time_t)-1)
     return 0;
-  return MAX (0, (int64_t)date - g_get_real_time () / G_USEC_PER_SEC);
+  /* Only the HTTP-date conversion uses wall-clock time. The resulting
+   * relative delay is recorded against the monotonic clock below. */
+  return MAX (0, (int64_t)date - real_now / G_USEC_PER_SEC);
 }
 
-/* Bound stale deadline retention without scanning the table on every request. */
-static void
-cleanup_expired_retry_after (OstreeFetcher *fetcher, int64_t now)
+/* There are normally few pending delays. Prune all expired records, not just
+ * the requested URI: a successful fallback may never visit that URI again. */
+static RetryAfter *
+lookup_retry_after (OstreeFetcher *fetcher, const char *uri, int64_t now)
 {
-  if (now - fetcher->retry_after_cleanup_time < 10 * G_USEC_PER_SEC)
-    return;
-
-  GHashTableIter iter;
-  gpointer value;
-  g_hash_table_iter_init (&iter, fetcher->retry_after);
-  while (g_hash_table_iter_next (&iter, NULL, &value))
-    if (*(int64_t *)value <= now)
-      g_hash_table_iter_remove (&iter);
-
-  fetcher->retry_after_cleanup_time = now;
+  for (size_t i = 0; i < fetcher->retry_after->len;)
+    {
+      RetryAfter *retry = &g_array_index (fetcher->retry_after, RetryAfter, i);
+      if (retry->deadline <= now)
+        g_array_remove_index_fast (fetcher->retry_after, i);
+      else
+        i++;
+    }
+  for (size_t i = 0; i < fetcher->retry_after->len; i++)
+    {
+      RetryAfter *retry = &g_array_index (fetcher->retry_after, RetryAfter, i);
+      if (g_str_equal (retry->uri, uri))
+        return retry;
+    }
+  return NULL;
 }
 
 static gboolean
-record_retry_after (FetcherRequest *req, const char *uri, int64_t now)
+record_retry_after (FetcherRequest *req, const char *uri)
 {
-  uint64_t delay = retry_after_seconds (req->out_retry_after);
-  cleanup_expired_retry_after (req->fetcher, now);
+  int64_t real_now = g_get_real_time ();
+  int64_t now = g_get_monotonic_time ();
+  uint64_t delay = retry_after_seconds (req->out_retry_after, real_now);
+  RetryAfter *previous = lookup_retry_after (req->fetcher, uri, now);
   if (delay == 0)
     return FALSE;
 
-  int64_t *deadline = g_new (int64_t, 1);
-  *deadline
+  int64_t deadline
       = delay > (G_MAXINT64 - now) / G_USEC_PER_SEC ? G_MAXINT64 : now + delay * G_USEC_PER_SEC;
-  int64_t *previous = g_hash_table_lookup (req->fetcher->retry_after, uri);
   if (previous != NULL)
-    *deadline = MAX (*deadline, *previous);
-  g_hash_table_replace (req->fetcher->retry_after, g_strdup (uri), deadline);
+    previous->deadline = MAX (deadline, previous->deadline);
+  else
+    {
+      RetryAfter retry = { g_strdup (uri), deadline };
+      g_array_append_val (req->fetcher->retry_after, retry);
+    }
   return delay > MAX_RETRY_AFTER_SECONDS;
 }
 
@@ -426,7 +450,7 @@ check_multi_info (OstreeFetcher *fetcher)
           if (response == 503)
             {
               g_autofree char *uri = request_get_uri (req, req->mirrorlist->pdata[req->idx]);
-              retry_after_too_long = record_retry_after (req, uri, g_get_monotonic_time ());
+              retry_after_too_long = record_retry_after (req, uri);
             }
         }
 
@@ -946,8 +970,9 @@ initiate_next_curl_request (FetcherRequest *req, GTask *task)
   while (TRUE)
     {
       g_autofree char *requested_uri = request_get_uri (req, req->mirrorlist->pdata[req->idx]);
-      int64_t *deadline = g_hash_table_lookup (self->retry_after, requested_uri);
-      int64_t remaining = deadline != NULL ? *deadline - g_get_monotonic_time () : 0;
+      int64_t now = g_get_monotonic_time ();
+      RetryAfter *retry = lookup_retry_after (self, requested_uri, now);
+      int64_t remaining = retry != NULL ? retry->deadline - now : 0;
       if (remaining > MAX_RETRY_AFTER_SECONDS * G_USEC_PER_SEC)
         {
           /* Try another mirror if this one still requires too long a wait.
@@ -978,7 +1003,6 @@ initiate_next_curl_request (FetcherRequest *req, GTask *task)
           g_source_attach (req->retry_source, self->mainctx);
           return;
         }
-      g_hash_table_remove (self->retry_after, requested_uri);
       break;
     }
   g_clear_pointer (&req->out_retry_after, g_free);
