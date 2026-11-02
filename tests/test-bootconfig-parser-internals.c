@@ -254,11 +254,50 @@ test_extra_keys_parse_write_roundtrip (void)
   (void)rmdir (tmpdir);
 }
 
+static void
+test_write_rejects_newline (void)
+{
+  /* A value containing a newline (e.g. coming from attacker-controlled commit
+   * "version" metadata that is folded into the "title") must not be written,
+   * since it would be parsed back as a separate bootloader directive such as
+   * "options" or "linux". write_at() should fail instead of emitting it.
+   */
+  g_autofree char *tmpdir = g_dir_make_tmp ("ostree-test-XXXXXX", NULL);
+  g_assert_nonnull (tmpdir);
+  g_autofree char *outfile = g_build_filename (tmpdir, "ostree-test-out.conf", NULL);
+
+  OstreeBootconfigParser *parser = ostree_bootconfig_parser_new ();
+  ostree_bootconfig_parser_set (parser, "linux", "/vmlinuz");
+  ostree_bootconfig_parser_set (parser, "options", "root=UUID=abc rw");
+  /* Injected directive hidden behind a newline */
+  ostree_bootconfig_parser_set (parser, "title", "Fedora 1.0\noptions init=/bin/sh");
+
+  g_autoptr (GError) error = NULL;
+  gboolean r = ostree_bootconfig_parser_write_at (parser, AT_FDCWD, outfile, NULL, &error);
+  g_assert_false (r);
+  g_assert_nonnull (error);
+  /* Nothing should have been written */
+  g_assert_false (g_file_test (outfile, G_FILE_TEST_EXISTS));
+
+  g_object_unref (parser);
+
+  /* The same value without a newline writes fine. */
+  OstreeBootconfigParser *parser2 = ostree_bootconfig_parser_new ();
+  ostree_bootconfig_parser_set (parser2, "linux", "/vmlinuz");
+  ostree_bootconfig_parser_set (parser2, "title", "Fedora 1.0 options init=/bin/sh");
+  g_assert_true (ostree_bootconfig_parser_write_at (parser2, AT_FDCWD, outfile, NULL, NULL));
+  g_object_unref (parser2);
+
+  (void)unlink (outfile);
+  (void)rmdir (tmpdir);
+}
+
 int
 main (int argc, char *argv[])
 {
   g_test_init (&argc, &argv, NULL);
 
+  g_test_add_func ("/bootconfig-parser/write/rejects-newline", test_write_rejects_newline);
   g_test_add_func ("/bootconfig-parser/tries/valid", test_parse_tries_valid);
   g_test_add_func ("/bootconfig-parser/tries/invalid", test_parse_tries_invalid);
   g_test_add_func ("/bootconfig-parser/extra-keys/empty", test_extra_keys_variant_empty);
