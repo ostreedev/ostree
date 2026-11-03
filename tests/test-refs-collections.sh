@@ -22,7 +22,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo '1..2'
+echo '1..3'
 
 cd ${test_tmpdir}
 mkdir repo
@@ -152,3 +152,21 @@ rm -rf repo/refs/mirrors
 ${CMD_PREFIX} ostree refs --repo=repo --collections --delete org.example.NonexistentCollection
 
 echo "ok 2 refs collections in old repository"
+
+# Invalid collection IDs in the repository itself (a refs/mirrors directory
+# name, or core.collection-id) are ignored when listing collection refs.
+mkdir -p repo/refs/mirrors/not-a-collection-id
+cp repo/refs/heads/ctest repo/refs/mirrors/not-a-collection-id/ctest-invalid
+${CMD_PREFIX} ostree --repo=repo refs --collections > refs
+assert_file_has_content refs "^(org\.example\.Collection, ctest)$"
+assert_file_has_content refs "^(org\.example\.RemoteCollection, rcommit)$"
+assert_not_file_has_content refs "ctest-invalid"
+rm -rf repo/refs/mirrors/not-a-collection-id
+
+${CMD_PREFIX} ostree --repo=repo config set core.collection-id not-a-collection-id
+${CMD_PREFIX} ostree --repo=repo refs --collections > refs
+assert_file_has_content refs "^(org\.example\.RemoteCollection, rcommit)$"
+assert_not_file_has_content refs "ctest"
+${CMD_PREFIX} ostree --repo=repo config set core.collection-id org.example.Collection
+
+echo "ok 3 refs collections with invalid collection IDs"

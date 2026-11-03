@@ -23,7 +23,7 @@ set -euo pipefail
 
 skip_without_ostree_feature gpgme
 
-echo '1..1'
+echo '1..2'
 
 # Create two upstream collection repositories with some example commits
 cd ${test_tmpdir}
@@ -236,3 +236,33 @@ for repo in local; do
 done
 
 echo "ok find-remotes"
+
+# A remote whose summary advertises an invalid collection ID, as its main
+# collection ID or in its collection map, is ignored by the config finder.
+mkdir invalid-collection
+ostree_repo_init invalid-collection
+pushd files
+${CMD_PREFIX} ostree --repo=../invalid-collection commit -s "Test invalid-collection commit 1" -b app1 > ../invalid-app1-checksum
+popd
+csum_bytes=$(sed -e 's/../0x&, /g' -e 's/, $//' invalid-app1-checksum)
+
+mkdir local-invalid
+ostree_repo_init local-invalid
+${CMD_PREFIX} ostree --repo=local-invalid remote add --no-gpg-verify invalid-remote file://$(pwd)/invalid-collection --collection-id org.example.AppsCollection
+
+${CMD_PREFIX} ostree --repo=invalid-collection summary --update --add-metadata="ostree.summary.collection-id='org.example.AppsCollection'"
+${CMD_PREFIX} ostree --repo=local-invalid find-remotes --finders=config org.example.AppsCollection app1 > find
+assert_file_has_content find "^    - (org\.example\.AppsCollection, app1) = $(cat invalid-app1-checksum)$"
+assert_file_has_content find "^1/1 refs were found\.$"
+
+${CMD_PREFIX} ostree --repo=invalid-collection summary --update --add-metadata="ostree.summary.collection-id='not a collection ID'"
+G_MESSAGES_DEBUG=all ${CMD_PREFIX} ostree --repo=local-invalid find-remotes --finders=config org.example.AppsCollection app1 > find 2>&1
+assert_file_has_content find "Invalid collection ID not a collection ID"
+assert_file_has_content find "^No results\.$"
+
+${CMD_PREFIX} ostree --repo=invalid-collection summary --update --add-metadata="ostree.summary.collection-map={'not a collection ID': [('app1', (uint64 0, [byte ${csum_bytes}], @a{sv} {}))]}"
+G_MESSAGES_DEBUG=all ${CMD_PREFIX} ostree --repo=local-invalid find-remotes --finders=config org.example.AppsCollection app1 > find 2>&1
+assert_file_has_content find "Invalid collection ID not a collection ID"
+assert_file_has_content find "^No results\.$"
+
+echo "ok find-remotes invalid collection IDs in summary"
