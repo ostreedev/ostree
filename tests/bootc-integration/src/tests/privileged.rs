@@ -264,3 +264,24 @@ booted_test!(privileged_verify_selinux_labels, {
 
     Ok(())
 });
+
+// https://github.com/bootc-dev/bootc/issues/2402
+booted_test!(privileged_verify_boot_not_automounted, {
+    let sh = Shell::new()?;
+    // Our /boot bind mount must not be fronted by an autofs mount, which
+    // would expire it when idle and detach it before finalization at shutdown.
+    let autofs = cmd!(sh, "findmnt -n -t autofs /boot")
+        .ignore_status()
+        .read()?;
+    ensure!(autofs.is_empty(), "/boot is an automount: {autofs}");
+
+    let fragment = cmd!(sh, "systemctl show -P FragmentPath boot.mount").read()?;
+    if fragment.trim() == "/run/systemd/generator/boot.mount" {
+        let state = cmd!(sh, "systemctl show -P LoadState boot.automount").read()?;
+        ensure!(
+            state.trim() == "masked",
+            "boot.automount is not masked, LoadState={state}"
+        );
+    }
+    Ok(())
+});
