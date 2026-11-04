@@ -58,6 +58,7 @@ typedef struct
   guint32 low_speed_time;
   gboolean retry_all;
   guint32 max_outstanding_fetcher_requests;
+  guint32 max_outstanding_deltapart_requests;
 
   gboolean dry_run;
   gboolean dry_run_emitted_progress;
@@ -113,6 +114,7 @@ typedef struct
   guint n_outstanding_content_write_requests;
   guint n_outstanding_deltapart_fetches;
   guint n_outstanding_deltapart_write_requests;
+  GQueue pending_deltapart_applies; /* FetchStaticDeltaData*: downloaded, waiting to be applied */
   guint n_total_deltaparts;
   guint n_total_delta_fallbacks;
   guint64 fetched_deltapart_size; /* How much of the delta we have now */
