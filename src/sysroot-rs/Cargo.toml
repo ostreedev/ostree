@@ -1,0 +1,20 @@
+[package]
+description = "Internal Rust sysroot code"
+edition = "2021"
+keywords = ["ostree", "libostree"]
+license = "MIT"
+name = "ostreesysrs"
+readme = "rust-bindings/README.md"
+repository = "https://github.com/ostreedev/ostree"
+rust-version = "1.70.0"
+version = "0.0.0"
+publish = false
+
+[lib]
+name = "ostreesysrs"
+crate-type = ["cdylib"]
+
+[dependencies]
+ostree = { package = "ostree", path = "../..", version = "0.19", features = ["v2022_6"] }
+libc = "0.2"
+rustix = { version = "0.38", features = ["fs"] }
