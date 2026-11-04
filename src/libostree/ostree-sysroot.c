@@ -23,6 +23,7 @@
 #include "otutil.h"
 #include <err.h>
 #include <linux/magic.h>
+#include <string.h>
 #include <sys/file.h>
 #include <sys/mount.h>
 #include <sys/vfs.h>
@@ -414,11 +415,52 @@ remount_writable (const char *path, gboolean *did_remount, GError **error)
         return TRUE;
     }
 
+  int mount_flags = MS_RELATIME | MS_REMOUNT;
+
+  // Check if /boot is actually mounted or not
+  // if we have /boot mounted as systemd's boot.automount service
+  // it gets unmounted before the finalization can be complete and
+  // the below remount operation fails with "EINVAL"
+  if (strcmp (path, "/boot") == 0)
+    {
+      glnx_autofd int root_fd = open ("/", O_DIRECTORY | O_RDONLY | O_CLOEXEC);
+
+      if (root_fd < 0)
+        {
+          return glnx_throw_errno_prefix (error, "Opening root RO");
+        }
+
+      struct statx st;
+
+      if (statx (root_fd, "boot", AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW, 0, &st) < 0)
+        {
+          return glnx_throw_errno_prefix (error, "Checking if /boot is a mountpoint");
+        }
+
+      gboolean is_boot_mountpoint = (st.stx_attributes_mask & STATX_ATTR_MOUNT_ROOT)
+                                    && (st.stx_attributes & STATX_ATTR_MOUNT_ROOT);
+
+      if (!is_boot_mountpoint)
+        {
+          mount_flags &= ~MS_REMOUNT;
+          mount_flags |= MS_BIND;
+
+          if (mount ("/sysroot/boot", path, NULL, mount_flags, "") < 0)
+            return glnx_throw_errno_prefix (error, "Bind mounting %s read-write", path);
+
+          *did_remount = TRUE;
+          g_debug ("bind mounted %s writable", path);
+
+          return TRUE;
+        }
+    }
+
   if ((stvfsbuf.f_flag & ST_RDONLY) != 0)
     {
-      /* OK, let's remount writable. */
-      if (mount (path, path, NULL, MS_REMOUNT | MS_RELATIME, "") < 0)
+      /* OK, let's remount/bind mount as writable. */
+      if (mount (path, path, NULL, mount_flags, "") < 0)
         return glnx_throw_errno_prefix (error, "Remounting %s read-write", path);
+
       *did_remount = TRUE;
       g_debug ("remounted %s writable", path);
     }
