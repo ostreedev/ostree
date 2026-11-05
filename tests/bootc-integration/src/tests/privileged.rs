@@ -181,6 +181,39 @@ booted_test!(privileged_verify_osinit_unshare, {
     Ok(())
 });
 
+// https://github.com/bootc-dev/bootc/issues/2402
+booted_test!(privileged_verify_boot_path_not_required, {
+    let sh = Shell::new()?;
+    // This is about /boot being on the physical root, where the deployment's
+    // /boot is just a bind mount of /sysroot/boot. With a separate boot
+    // partition, /sysroot/boot is an empty mountpoint.
+    let on_physical_root =
+        std::fs::symlink_metadata("/sysroot/boot/loader").is_ok_and(|m| m.file_type().is_symlink());
+    if !on_physical_root {
+        return Ok(());
+    }
+
+    // In a new mount namespace, put an empty tmpfs over /boot: like an
+    // automount stacked on it that has expired, /boot is then not the boot
+    // filesystem. Reading and writing the bootloader entries must still work.
+    let karg = "ostree.test-boot-path=1";
+    let script = format!(
+        "mount -t tmpfs tmpfs /boot && ostree admin status && \
+         ostree admin kargs edit-in-place --append-if-missing={karg}"
+    );
+    cmd!(sh, "unshare -m --propagation private sh -c {script}").run()?;
+
+    // The real entries have the new karg
+    let entries = cmd!(sh, "grep -l -r -F {karg} /boot/loader/entries")
+        .ignore_status()
+        .read()?;
+    ensure!(
+        !entries.is_empty(),
+        "{karg} not found in /boot/loader/entries; was it written to the tmpfs?"
+    );
+    Ok(())
+});
+
 privileged_test!(privileged_verify_nofifo, {
     let sh = Shell::new()?;
     let tmp = tempfile::tempdir()?;
