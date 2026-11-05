@@ -449,6 +449,21 @@ composefs_error_message (int errsv)
 #endif
 
 /**
+ * otcore_boot_is_on_physical_root:
+ *
+ * Returns: %TRUE if /boot is a directory of the physical root filesystem rather
+ * than a separate partition, which we detect by the boot/loader symlink being
+ * present there; with a separate partition, boot/ is an empty mountpoint.
+ */
+bool
+otcore_boot_is_on_physical_root (const char *physical_root)
+{
+  g_autofree char *boot_loader = g_build_filename (physical_root, "boot/loader", NULL);
+  struct stat stbuf;
+  return lstat (boot_loader, &stbuf) == 0 && S_ISLNK (stbuf.st_mode);
+}
+
+/**
  * otcore_mount_boot:
  *
  * Mount /boot as a bind mount for a deployment if it's on the same partition
@@ -457,13 +472,12 @@ composefs_error_message (int errsv)
 gboolean
 otcore_mount_boot (const char *physical_root, const char *deployment, GError **error)
 {
-  g_autofree char *boot_loader = g_build_filename (physical_root, "boot/loader", NULL);
   struct stat stbuf;
 
   /* If /boot is on the same partition, use a bind mount to make it visible
    * at /boot inside the deployment.
    */
-  if (!(lstat (boot_loader, &stbuf) == 0 && S_ISLNK (stbuf.st_mode)))
+  if (!otcore_boot_is_on_physical_root (physical_root))
     return TRUE;
 
   g_autofree char *target_boot = g_build_filename (deployment, "boot", NULL);

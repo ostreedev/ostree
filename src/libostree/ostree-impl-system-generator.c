@@ -301,11 +301,8 @@ boot_mount_generator (const char *normal_dir, GError **error)
   static const char boot_path[] = "/boot";
   struct stat stbuf;
 
-  /* Check if /boot is on the same partition as /sysroot by looking for
-   * /sysroot/boot/loader as a symlink. This is the same check used by
-   * otcore_mount_boot() in the initramfs path.
-   */
-  if (!(lstat ("/sysroot/boot/loader", &stbuf) == 0 && S_ISLNK (stbuf.st_mode)))
+  /* This is the same check used by otcore_mount_boot() in the initramfs path. */
+  if (!otcore_boot_is_on_physical_root ("/sysroot"))
     return TRUE; /* /boot is a separate partition, systemd handles it */
 
   /* Verify the target /boot directory exists */
