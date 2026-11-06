@@ -122,7 +122,6 @@ struct OstreeSysroot
 #define _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_FLAG_TRANSIENT "unlocked-transient"
 
 #define _OSTREE_SYSROOT_BOOT_INITRAMFS_OVERLAYS "ostree/initramfs-overlays"
-#define _OSTREE_SYSROOT_INITRAMFS_OVERLAYS "boot/" _OSTREE_SYSROOT_BOOT_INITRAMFS_OVERLAYS
 
 // Relative to /boot, consumed by ostree-boot-complete.service
 #define _OSTREE_FINALIZE_STAGED_FAILURE_PATH "ostree/finalize-failure.stamp"

@@ -38,6 +38,23 @@ run_sync (const char *cmdline, GError **error)
 }
 
 static void
+test_sysroot_cleanup_empty (void)
+{
+  g_auto (GLnxTmpDir) tmpdir = { 0 };
+  g_autoptr (GError) error = NULL;
+  g_assert (glnx_mkdtempat (AT_FDCWD, "/tmp/test-sysroot-XXXXXX", 0700, &tmpdir, &error));
+  g_assert_no_error (error);
+  g_autoptr (GFile) path = g_file_new_for_path (tmpdir.path);
+  g_autoptr (OstreeSysroot) sysroot = ostree_sysroot_new (path);
+  g_assert_true (ostree_sysroot_ensure_initialized (sysroot, NULL, &error));
+  g_assert_no_error (error);
+  g_assert_true (ostree_sysroot_load (sysroot, NULL, &error));
+  g_assert_no_error (error);
+  g_assert_true (ostree_sysroot_cleanup (sysroot, NULL, &error));
+  g_assert_no_error (error);
+}
+
+static void
 test_sysroot_reload (gconstpointer data)
 {
   OstreeSysroot *sysroot = (void *)data;
@@ -69,6 +86,23 @@ test_sysroot_reload (gconstpointer data)
     goto out;
   g_assert (!changed);
 
+  {
+    /* Losing boot/ must not cause cleanup to delete the existing deployment. */
+    g_autoptr (GPtrArray) deployments = ostree_sysroot_get_deployments (sysroot);
+    g_assert_cmpuint (deployments->len, >, 0);
+    g_autoptr (GFile) deployment_dir
+        = ostree_sysroot_get_deployment_directory (sysroot, deployments->pdata[0]);
+    g_assert_cmpint (rename ("sysroot/boot", "sysroot/boot.saved"), ==, 0);
+    g_autoptr (OstreeSysroot) missing_boot = ostree_sysroot_new (ostree_sysroot_get_path (sysroot));
+    g_assert_true (ostree_sysroot_load (missing_boot, NULL, &error));
+    g_assert_no_error (error);
+    g_assert_false (ostree_sysroot_cleanup (missing_boot, NULL, &error));
+    g_assert_nonnull (error);
+    g_clear_error (&error);
+    g_assert_true (g_file_query_exists (deployment_dir, NULL));
+    g_assert_cmpint (rename ("sysroot/boot.saved", "sysroot/boot"), ==, 0);
+  }
+
 out:
   if (error)
     g_error ("%s", error->message);
@@ -87,6 +121,7 @@ main (int argc, char **argv)
     goto out;
 
   g_test_add_data_func ("/sysroot-reload", sysroot, test_sysroot_reload);
+  g_test_add_func ("/sysroot-cleanup-empty", test_sysroot_cleanup_empty);
 
   return g_test_run ();
 out:

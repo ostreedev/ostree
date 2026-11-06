@@ -353,6 +353,31 @@ validate_boot_fd (OstreeSysroot *self, int fd, GError **error)
   return TRUE;
 }
 
+/* Path to the boot filesystem of a booted system. When /boot is a directory of
+ * the physical root, the deployment's /boot is only a bind mount of it made by
+ * ostree-system-generator, and other units can stack an automount on that
+ * path; systemd-gpt-auto-generator does for an unused ESP, e.g. when booted
+ * via BIOS. Once that automount expires, /boot is no longer reachable from
+ * another mount namespace (EPERM), so use the source, which always is.
+ * Returns a string literal.
+ */
+static const char *
+booted_boot_path (void)
+{
+  if (otcore_boot_is_on_physical_root ("/sysroot"))
+    return "/sysroot/boot";
+  return "/boot";
+}
+
+/* Open the boot/ directory, or return -1 with errno set */
+static int
+open_boot_dir (OstreeSysroot *self)
+{
+  if (self->root_is_ostree_booted)
+    return glnx_opendirat_with_errno (AT_FDCWD, booted_boot_path (), TRUE);
+  return glnx_opendirat_with_errno (self->sysroot_fd, "boot", TRUE);
+}
+
 /* Require that both self->sysroot_fd is set.
  * If the sysroot has a boot/ subdirectory, it will be loaded.
  * If not, self->boot_fd will remain -1.
@@ -367,7 +392,7 @@ _ostree_sysroot_maybe_load_boot_fd (OstreeSysroot *self, GError **error)
     return FALSE;
   if (self->boot_fd == -1)
     {
-      glnx_autofd int fd = glnx_opendirat_with_errno (self->sysroot_fd, "boot", TRUE);
+      glnx_autofd int fd = open_boot_dir (self);
       if (fd < 0)
         {
           if (errno != ENOENT)
@@ -391,9 +416,9 @@ _ostree_sysroot_ensure_boot_fd (OstreeSysroot *self, GError **error)
     return FALSE;
   if (self->boot_fd == -1)
     {
-      glnx_autofd int fd = -1;
-      if (!glnx_opendirat (self->sysroot_fd, "boot", TRUE, &fd, error))
-        return FALSE;
+      glnx_autofd int fd = open_boot_dir (self);
+      if (fd < 0)
+        return glnx_throw_errno_prefix (error, "opendir(boot)");
       if (!validate_boot_fd (self, fd, error))
         return FALSE;
       self->boot_fd = glnx_steal_fd (&fd);
@@ -730,8 +755,11 @@ read_current_bootversion (OstreeSysroot *self, int *out_bootversion, GCancellabl
   int ret_bootversion;
   struct stat stbuf;
 
-  if (!glnx_fstatat_allow_noent (self->sysroot_fd, "boot/loader", &stbuf, AT_SYMLINK_NOFOLLOW,
-                                 error))
+  if (!_ostree_sysroot_maybe_load_boot_fd (self, error))
+    return FALSE;
+  if (self->boot_fd == -1)
+    errno = ENOENT;
+  else if (!glnx_fstatat_allow_noent (self->boot_fd, "loader", &stbuf, AT_SYMLINK_NOFOLLOW, error))
     return FALSE;
   if (errno == ENOENT)
     {
@@ -744,7 +772,7 @@ read_current_bootversion (OstreeSysroot *self, int *out_bootversion, GCancellabl
         return glnx_throw (error, "Not a symbolic link: boot/loader");
 
       g_autofree char *target
-          = glnx_readlinkat_malloc (self->sysroot_fd, "boot/loader", cancellable, error);
+          = glnx_readlinkat_malloc (self->boot_fd, "loader", cancellable, error);
       if (!target)
         return FALSE;
       if (g_strcmp0 (target, "loader.0") == 0)
@@ -1346,8 +1374,11 @@ sysroot_load_from_bootloader_configs (OstreeSysroot *self, GCancellable *cancell
 
   if (self->root_is_ostree_booted && !self->booted_deployment)
     {
-      if (!glnx_fstatat_allow_noent (self->sysroot_fd, "boot/loader", NULL, AT_SYMLINK_NOFOLLOW,
-                                     error))
+      /* read_current_bootversion() loaded boot_fd if there is a boot/ */
+      if (self->boot_fd == -1)
+        errno = ENOENT;
+      else if (!glnx_fstatat_allow_noent (self->boot_fd, "loader", NULL, AT_SYMLINK_NOFOLLOW,
+                                          error))
         return FALSE;
       if (errno == ENOENT)
         {
