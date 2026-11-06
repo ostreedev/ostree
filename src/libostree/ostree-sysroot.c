@@ -239,8 +239,8 @@ ostree_sysroot_new_default (void)
  *
  * If this function has been called, then when a function which requires
  * writable access is invoked, libostree will automatically remount as writable
- * any mount points on which it operates.  This currently is just `/sysroot` and
- * `/boot`.
+ * any mount points on which it operates.  This currently is just `/sysroot` and,
+ * if it is a separate filesystem, `/boot`.
  *
  * If you invoke this function, it must be before ostree_sysroot_load(); it may
  * be invoked before or after ostree_sysroot_initialize().
@@ -475,9 +475,18 @@ _ostree_sysroot_ensure_writable (OstreeSysroot *self, GError **error)
   gboolean did_remount_sysroot = FALSE;
   if (!remount_writable ("/sysroot", &did_remount_sysroot, error))
     return FALSE;
-  gboolean did_remount_boot = FALSE;
-  if (!remount_writable ("/boot", &did_remount_boot, error))
-    return FALSE;
+
+  /* When /boot is a directory of the physical root, boot_fd is opened from
+   * /sysroot/boot, which is now writable. /boot is then only a bind mount of it
+   * that may have an automount stacked on top (see booted_boot_path()), so
+   * leave it alone. Otherwise /boot is its own filesystem; remount it.
+   */
+  if (!otcore_boot_is_on_physical_root ("/sysroot"))
+    {
+      gboolean did_remount_boot = FALSE;
+      if (!remount_writable ("/boot", &did_remount_boot, error))
+        return FALSE;
+    }
 
   /* Now close and reopen our file descriptors */
   ostree_sysroot_unload (self);
