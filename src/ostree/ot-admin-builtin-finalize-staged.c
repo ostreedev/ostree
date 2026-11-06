@@ -71,11 +71,28 @@ ot_admin_builtin_finalize_staged (int argc, char **argv, OstreeCommandInvocation
               cancellable, error))
         return FALSE;
 
-      /* By default the sysroot now holds a file descriptor for /boot open.
-       * We want that open until the deployment is finalized during
+      /* By default the sysroot now holds a file descriptor for the boot
+       * filesystem open. When /boot is on the physical root, that fd is for
+       * /sysroot/boot, and /boot is only a bind mount of it, on which
+       * systemd-gpt-auto-generator may have stacked an automount. Hold that
+       * bind mount open as well: if the automount expired, stopping boot.mount
+       * would stop ostree-finalize-staged.service (RequiresMountsFor=/boot) and
+       * finalize far too early. Anything else at /boot, such as an ESP, isn't
+       * ours to hold.
+       * We want these open until the deployment is finalized during
        * system shutdown, so block until we get SIGTERM which systemd will send
-       * when the unit is stopped, then we'll exit and release it.
+       * when the unit is stopped, then we'll exit and release them.
        */
+      glnx_autofd int boot_fd = -1;
+      if (!glnx_opendirat (AT_FDCWD, "/boot", TRUE, &boot_fd, error))
+        return FALSE;
+      struct stat boot_stbuf;
+      if (!glnx_fstat (boot_fd, &boot_stbuf, error))
+        return FALSE;
+      if (!glnx_fstatat_allow_noent (AT_FDCWD, "/sysroot/boot", &stbuf, 0, error))
+        return FALSE;
+      if (errno == ENOENT || boot_stbuf.st_dev != stbuf.st_dev || boot_stbuf.st_ino != stbuf.st_ino)
+        glnx_close_fd (&boot_fd);
       pause ();
     }
   else

@@ -2189,9 +2189,12 @@ prepare_new_bootloader_link (OstreeSysroot *sysroot, int current_bootversion, in
   g_assert ((current_bootversion == 0 && new_bootversion == 1)
             || (current_bootversion == 1 && new_bootversion == 0));
 
+  if (!_ostree_sysroot_ensure_boot_fd (sysroot, error))
+    return FALSE;
+
   /* This allows us to support both /boot on a seperate filesystem to / as well
    * as on the same filesystem. */
-  if (TEMP_FAILURE_RETRY (symlinkat (".", sysroot->sysroot_fd, "boot/boot")) < 0)
+  if (TEMP_FAILURE_RETRY (symlinkat (".", sysroot->boot_fd, "boot")) < 0)
     if (errno != EEXIST)
       return glnx_throw_errno_prefix (error, "symlinkat");
 
@@ -2199,7 +2202,7 @@ prepare_new_bootloader_link (OstreeSysroot *sysroot, int current_bootversion, in
 
   /* We shouldn't actually need to replace but it's easier to reuse
      that code */
-  if (!symlink_at_replace (new_target, sysroot->sysroot_fd, "boot/loader.tmp", cancellable, error))
+  if (!symlink_at_replace (new_target, sysroot->boot_fd, "loader.tmp", cancellable, error))
     return FALSE;
 
   return TRUE;
@@ -2402,11 +2405,13 @@ write_deployments_bootswap (OstreeSysroot *self, GPtrArray *new_deployments,
 {
   const int new_bootversion = self->bootversion ? 0 : 1;
 
-  g_autofree char *new_loader_entries_dir
-      = g_strdup_printf ("boot/loader.%d/entries", new_bootversion);
-  if (!glnx_shutil_rm_rf_at (self->sysroot_fd, new_loader_entries_dir, cancellable, error))
+  if (!_ostree_sysroot_ensure_boot_fd (self, error))
     return FALSE;
-  if (!glnx_shutil_mkdir_p_at (self->sysroot_fd, new_loader_entries_dir, 0755, cancellable, error))
+
+  g_autofree char *new_loader_entries_dir = g_strdup_printf ("loader.%d/entries", new_bootversion);
+  if (!glnx_shutil_rm_rf_at (self->boot_fd, new_loader_entries_dir, cancellable, error))
+    return FALSE;
+  if (!glnx_shutil_mkdir_p_at (self->boot_fd, new_loader_entries_dir, 0755, cancellable, error))
     return FALSE;
 
   /* Only show the osname in bootloader titles if there are multiple
