@@ -189,10 +189,25 @@ cleanup_other_bootversions (OstreeSysroot *self, GCancellable *cancellable, GErr
   /* Reusable buffer for path */
   g_autoptr (GString) buf = g_string_new ("");
 
+  if (self->boot_fd < 0)
+    {
+      /* Missing boot/ is only safe for a genuinely empty sysroot. Otherwise
+       * missing boot entries would make every deployment look unreferenced.
+       */
+      g_autoptr (GPtrArray) deployments = NULL;
+      if (!list_all_deployment_directories (self, &deployments, cancellable, error))
+        return FALSE;
+      if (deployments && deployments->len > 0)
+        return glnx_throw (error, "Cannot clean up a populated sysroot without boot/");
+    }
+
   /* These directories are for the other major version */
   g_string_truncate (buf, 0);
-  g_string_append_printf (buf, "boot/loader.%d", cleanup_bootversion);
-  if (!glnx_shutil_rm_rf_at (self->sysroot_fd, buf->str, cancellable, error))
+  g_string_append_printf (buf, "loader.%d", cleanup_bootversion);
+  /* Loading an empty sysroot is allowed without a boot/ directory. Only the
+   * bootfs cleanup is optional; still remove stale links on the rootfs below.
+   */
+  if (self->boot_fd >= 0 && !glnx_shutil_rm_rf_at (self->boot_fd, buf->str, cancellable, error))
     return FALSE;
   g_string_truncate (buf, 0);
   g_string_append_printf (buf, "ostree/boot.%d", cleanup_bootversion);
@@ -318,6 +333,12 @@ _ostree_sysroot_cleanup_bootfs (OstreeSysroot *self, GCancellable *cancellable, 
         g_hash_table_add (active_overlay_initrds, (char *)glnx_basename (*it));
     }
 
+  /* sysroot_load() already tried to open boot/. An empty sysroot need not
+   * have one, in which case there is no bootfs content to clean up.
+   */
+  if (self->boot_fd < 0)
+    return TRUE;
+
   /* Clean up boot directories */
   g_auto (GStrv) all_boot_dirs = NULL;
   if (!_ostree_sysroot_list_all_boot_directories (self, &all_boot_dirs, cancellable, error))
@@ -341,7 +362,7 @@ _ostree_sysroot_cleanup_bootfs (OstreeSysroot *self, GCancellable *cancellable, 
 
   /* Clean up overlay initrds */
   glnx_autofd int overlays_dfd
-      = glnx_opendirat_with_errno (self->sysroot_fd, _OSTREE_SYSROOT_INITRAMFS_OVERLAYS, FALSE);
+      = glnx_opendirat_with_errno (self->boot_fd, _OSTREE_SYSROOT_BOOT_INITRAMFS_OVERLAYS, FALSE);
   if (overlays_dfd < 0)
     {
       if (errno != ENOENT)

@@ -19,6 +19,58 @@
 
 #include "otcore.h"
 
+#include <sched.h>
+#include <sys/mount.h>
+
+static void
+test_boot_on_physical_root (void)
+{
+  g_auto (GLnxTmpDir) tmpdir = { 0 };
+  g_autoptr (GError) error = NULL;
+  g_assert (glnx_mkdtempat (AT_FDCWD, "/tmp/test-boot-XXXXXX", 0700, &tmpdir, &error));
+  g_assert_no_error (error);
+  g_assert_false (otcore_boot_is_on_physical_root (tmpdir.path));
+  g_assert_cmpint (mkdirat (tmpdir.fd, "boot", 0755), ==, 0);
+  /* An empty mountpoint for a not-yet-mounted fstab /boot is not root boot. */
+  g_assert_false (otcore_boot_is_on_physical_root (tmpdir.path));
+  g_assert_cmpint (symlinkat ("loader.0", tmpdir.fd, "boot/loader"), ==, 0);
+  g_assert_true (otcore_boot_is_on_physical_root (tmpdir.path));
+}
+
+static void
+test_boot_on_separate_fs (void)
+{
+  /* Keep mount changes private, even when run as root. */
+  if (unshare (CLONE_NEWNS) < 0)
+    {
+      g_test_skip ("Mount namespace unavailable");
+      return;
+    }
+  g_assert_cmpint (mount (NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL), ==, 0);
+  g_auto (GLnxTmpDir) tmpdir = { 0 };
+  g_autoptr (GError) error = NULL;
+  g_assert (glnx_mkdtempat (AT_FDCWD, "/tmp/test-boot-XXXXXX", 0700, &tmpdir, &error));
+  g_assert_no_error (error);
+  g_assert_cmpint (mkdirat (tmpdir.fd, "boot", 0755), ==, 0);
+  g_autofree char *boot = g_build_filename (tmpdir.path, "boot", NULL);
+#ifdef STATX_MNT_ID
+  struct statx stx;
+  if (statx (AT_FDCWD, tmpdir.path, 0, STATX_MNT_ID, &stx) == 0 && (stx.stx_mask & STATX_MNT_ID))
+    {
+      g_assert_cmpint (mkdirat (tmpdir.fd, "other-boot", 0755), ==, 0);
+      g_assert_cmpint (symlinkat ("loader.0", tmpdir.fd, "other-boot/loader"), ==, 0);
+      g_autofree char *other_boot = g_build_filename (tmpdir.path, "other-boot", NULL);
+      g_assert_cmpint (mount (other_boot, boot, NULL, MS_BIND, NULL), ==, 0);
+      g_assert_false (otcore_boot_is_on_physical_root (tmpdir.path));
+      g_assert_cmpint (umount (boot), ==, 0);
+    }
+#endif
+  g_assert_cmpint (mount ("tmpfs", boot, "tmpfs", 0, NULL), ==, 0);
+  g_assert_cmpint (symlinkat ("loader.0", tmpdir.fd, "boot/loader"), ==, 0);
+  g_assert_false (otcore_boot_is_on_physical_root (tmpdir.path));
+  g_assert_cmpint (umount (boot), ==, 0);
+}
+
 static void
 test_ed25519 (void)
 {
@@ -248,5 +300,7 @@ main (int argc, char **argv)
 #endif
   g_test_add_func ("/prepare-root-cmdline", test_prepare_root_cmdline);
   g_test_add_func ("/prepare-root-config", test_prepare_root_config);
+  g_test_add_func ("/boot/on-physical-root", test_boot_on_physical_root);
+  g_test_add_func ("/boot/on-separate-fs", test_boot_on_separate_fs);
   return g_test_run ();
 }

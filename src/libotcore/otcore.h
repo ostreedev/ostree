@@ -98,6 +98,7 @@ RootConfig *otcore_load_rootfs_config (const char *cmdline, GKeyFile *config, gb
 gboolean otcore_mount_rootfs (RootConfig *rootfs_config, GVariantBuilder *metadata_builder,
                               const char *root_mountpoint, const char *deploy_path,
                               const char *mount_target, bool *out_using_composefs, GError **error);
+bool otcore_boot_is_on_physical_root (const char *physical_root);
 gboolean otcore_mount_boot (const char *physical_root, const char *deploy_path, GError **error);
 
 gboolean otcore_mount_etc (GKeyFile *config, GVariantBuilder *metadata_builder,

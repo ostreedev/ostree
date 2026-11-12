@@ -449,6 +449,44 @@ composefs_error_message (int errsv)
 #endif
 
 /**
+ * otcore_boot_is_on_physical_root:
+ *
+ * Returns: %TRUE if /boot is a directory of the physical root filesystem rather
+ * than a separate filesystem. The loader symlink also has to be present:
+ * before fstab mounts a separate /boot, its empty mountpoint is on the root
+ * filesystem too. Conversely, a mounted separate /boot can contain loader,
+ * so the symlink alone does not establish filesystem identity.
+ */
+bool
+otcore_boot_is_on_physical_root (const char *physical_root)
+{
+  g_autofree char *boot = g_build_filename (physical_root, "boot", NULL);
+  struct stat root_stbuf, boot_stbuf;
+  if (stat (physical_root, &root_stbuf) < 0 || lstat (boot, &boot_stbuf) < 0
+      || !S_ISDIR (boot_stbuf.st_mode))
+    return false;
+
+  /* Mount IDs also distinguish same-filesystem bind mounts, without mistaking
+   * a nested Btrfs subvolume (which has a different st_dev) for a mountpoint.
+   * Older headers/kernels fall back to the device comparison.
+   */
+  bool same_mount = root_stbuf.st_dev == boot_stbuf.st_dev;
+#ifdef STATX_MNT_ID
+  struct statx root_stx, boot_stx;
+  if (statx (AT_FDCWD, physical_root, AT_NO_AUTOMOUNT, STATX_MNT_ID, &root_stx) == 0
+      && statx (AT_FDCWD, boot, AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT, STATX_MNT_ID, &boot_stx) == 0
+      && (root_stx.stx_mask & STATX_MNT_ID) && (boot_stx.stx_mask & STATX_MNT_ID))
+    same_mount = root_stx.stx_mnt_id == boot_stx.stx_mnt_id;
+#endif
+  if (!same_mount)
+    return false;
+
+  g_autofree char *boot_loader = g_build_filename (boot, "loader", NULL);
+  struct stat stbuf;
+  return lstat (boot_loader, &stbuf) == 0 && S_ISLNK (stbuf.st_mode);
+}
+
+/**
  * otcore_mount_boot:
  *
  * Mount /boot as a bind mount for a deployment if it's on the same partition
@@ -457,13 +495,12 @@ composefs_error_message (int errsv)
 gboolean
 otcore_mount_boot (const char *physical_root, const char *deployment, GError **error)
 {
-  g_autofree char *boot_loader = g_build_filename (physical_root, "boot/loader", NULL);
   struct stat stbuf;
 
   /* If /boot is on the same partition, use a bind mount to make it visible
    * at /boot inside the deployment.
    */
-  if (!(lstat (boot_loader, &stbuf) == 0 && S_ISLNK (stbuf.st_mode)))
+  if (!otcore_boot_is_on_physical_root (physical_root))
     return TRUE;
 
   g_autofree char *target_boot = g_build_filename (deployment, "boot", NULL);
