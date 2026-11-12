@@ -119,9 +119,10 @@ read_varuint64 (StaticDeltaExecutionState *state, guint64 *out_value, GError **e
 static gboolean
 open_output_target (StaticDeltaExecutionState *state, GCancellable *cancellable, GError **error)
 {
-  g_assert (state->checksums != NULL);
-  g_assert (state->output_target == NULL);
-  g_assert (state->checksum_index < state->n_checksums);
+  if (G_UNLIKELY (state->checksums == NULL || state->output_target != NULL
+                  || state->checksum_index >= state->n_checksums))
+    return glnx_throw (error, "Invalid static delta op stream: object index %u out of %u",
+                       state->checksum_index, state->n_checksums);
 
   guint8 *objcsum
       = (guint8 *)state->checksums + (state->checksum_index * OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN);
@@ -628,13 +629,12 @@ dispatch_open (OstreeRepo *repo, StaticDeltaExecutionState *state, GCancellable 
 {
   GLNX_AUTO_PREFIX_ERROR ("opcode open", error);
 
-  g_assert (state->output_target == NULL);
+  if (state->output_target != NULL)
+    return glnx_throw (error, "Static delta opcode open while another object is open");
   /* FIXME - lift this restriction */
-  if (!state->stats_only)
-    {
-      g_assert (repo->mode == OSTREE_REPO_MODE_BARE || repo->mode == OSTREE_REPO_MODE_BARE_USER
-                || repo->mode == OSTREE_REPO_MODE_BARE_USER_ONLY);
-    }
+  if (!state->stats_only && repo->mode != OSTREE_REPO_MODE_BARE
+      && repo->mode != OSTREE_REPO_MODE_BARE_USER && repo->mode != OSTREE_REPO_MODE_BARE_USER_ONLY)
+    return glnx_throw (error, "Static delta opcode open requires a bare repository");
 
   if (!open_output_target (state, cancellable, error))
     return FALSE;
