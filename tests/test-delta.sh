@@ -26,7 +26,7 @@ skip_without_user_xattrs
 bindatafiles="bash true ostree"
 morebindatafiles="false ls"
 
-echo '1..15'
+echo '1..16'
 
 mkdir repo
 ostree_repo_init repo --mode=archive
@@ -223,6 +223,17 @@ ${CMD_PREFIX} ostree --repo=repo2 fsck
 ${CMD_PREFIX} ostree --repo=repo2 ls ${newrev} >/dev/null
 
 echo 'ok apply offline'
+
+# OPEN/WRITE/CLOSE delta operations use bare-content finalization, which does
+# not produce the xattr sidecar records required by bare-split-xattrs.
+rm -rf repo2
+ostree_repo_init repo2 --mode=bare-split-xattrs
+OSTREE_EXP_WRITE_BARE_SPLIT_XATTRS=true ${CMD_PREFIX} ostree --repo=repo2 pull-local repo ${origrev}
+if ${CMD_PREFIX} ostree --repo=repo2 static-delta apply-offline repo/deltas/${deltaprefix}/${deltadir} 2>err.txt; then
+    assert_not_reached "static delta apply to bare-split-xattrs unexpectedly succeeded"
+fi
+assert_file_has_content err.txt "Static delta opcode open requires a bare repository"
+echo 'ok reject applying a delta to bare-split-xattrs'
 
 rm -rf repo/deltas/${deltaprefix}/${deltadir}/*
 ${CMD_PREFIX} ostree --repo=repo static-delta generate --from=${origrev} --to=${newrev} --inline
