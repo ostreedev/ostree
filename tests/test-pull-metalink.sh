@@ -28,7 +28,7 @@ fi
 
 setup_fake_remote_repo1 "archive"
 
-echo '1..9'
+echo '1..10'
 
 # And another web server acting as the metalink server
 cd ${test_tmpdir}
@@ -126,6 +126,15 @@ cd ${test_tmpdir}
 grep -v '<url protocol' < metalink-data/metalink.xml.orig > metalink-data/metalink.xml
 test_metalink_pull_error "No.*url.*method.*elements"
 echo "ok metalink err no url"
+
+# A metalink must not be able to send the client to a non-HTTP scheme by
+# labelling it protocol="http"; in particular not to s3://, where requests
+# are signed with the host's AWS credentials.
+cd ${test_tmpdir}
+sed -e 's,\(<url protocol[^>]*>\)[^<]*</url>,\1s3://some-bucket/repo/summary?endpoint=http://127.0.0.1:9</url>,' < metalink-data/metalink.xml.orig > metalink-data/metalink.xml
+assert_file_has_content metalink-data/metalink.xml "s3://some-bucket"
+test_metalink_pull_error "No.*url.*method.*elements"
+echo "ok metalink err non-http url"
 
 cd ${test_tmpdir}
 echo bacon > metalink-data/metalink.xml
