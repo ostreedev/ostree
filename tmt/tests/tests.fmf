@@ -3,7 +3,7 @@
   duration: 15m
   test: |
     set -xeuo pipefail
-    for t in privileged_verify_ostree_booted privileged_verify_sysroot privileged_verify_composefs privileged_verify_ostree_cli privileged_verify_sysroot_readonly privileged_verify_ostree_run_metadata privileged_verify_immutable_bit privileged_verify_osinit_unshare privileged_verify_selinux_labels; do
+    for t in privileged_verify_ostree_booted privileged_verify_sysroot privileged_verify_composefs privileged_verify_ostree_cli privileged_verify_sysroot_readonly privileged_verify_ostree_run_metadata privileged_verify_immutable_bit privileged_verify_osinit_unshare privileged_verify_selinux_labels privileged_verify_boot_not_automounted; do
         ostree-bootc-integration-tests --exact "$t"
     done
 
