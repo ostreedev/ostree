@@ -182,6 +182,7 @@ gpgme_tests = \
 	tests/test-remote-gpg-list-keys.sh \
 	tests/test-gpg-signed-commit.sh \
 	tests/test-admin-gpg.sh \
+	tests/test-pull-static-delta-verify.sh \
 	$(NULL)
 if USE_GPGME
 _installed_or_uninstalled_test_scripts += $(gpgme_tests)

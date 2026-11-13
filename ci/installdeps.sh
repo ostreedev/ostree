@@ -24,4 +24,4 @@ if test -n "${CI_PKGS:-}"; then
     pkg_install ${CI_PKGS}
 fi
 pkg_install_if_os fedora gjs gnome-desktop-testing parallel coccinelle clang \
-                  python3-PyYAML
+                  python3-PyYAML python3-gobject
