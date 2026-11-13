@@ -25,7 +25,7 @@ set -euo pipefail
 
 skip_known_xfail_docker
 
-echo "1..18"
+echo "1..20"
 
 # Ensure repo caching is in use.
 unset OSTREE_SKIP_CACHE
@@ -61,6 +61,7 @@ do
                 echo "ok ${engine} pull with signed summary and cachedir # SKIP due libsodium unavailability"
                 echo "ok ${engine} pull with signed summary via metalink # SKIP due libsodium unavailability"
                 echo "ok ${engine} pull with invalid ${engine} summary signature fails # SKIP due libsodium unavailability"
+                echo "ok ${engine} pull with invalid ${engine} summary signature via metalink fails # SKIP due libsodium unavailability"
                 echo "ok ${engine} pull with missing summary fails # SKIP due libsodium unavailability"
                 echo "ok ${engine} pull delta with signed summary # SKIP due libsodium unavailability"
 
@@ -191,6 +192,20 @@ EOF
     assert_file_has_content err.txt "No signatures found"
     mv ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{.good,}
     echo "ok ${engine} pull with invalid ${engine} summary signature fails"
+
+    # The same through a metalink, which provides the summary before the
+    # normal summary download path: its signature must still be checked.
+    cd ${test_tmpdir}
+    repo_reinit --set=verification-${engine}-key=${PUBLIC_KEY} \
+        --set=metalink=$(cat httpd-address)/ostree/metalink.xml
+    mv ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{,.good}
+    echo invalid > ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig
+    if ${OSTREE} --repo=repo pull origin main 2>err.txt; then
+        assert_not_reached "Successful ${engine} metalink pull with invalid summary signature"
+    fi
+    assert_file_has_content err.txt "No signatures found"
+    mv ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{.good,}
+    echo "ok ${engine} pull with invalid ${engine} summary signature via metalink fails"
 
     # A present summary.sig with an absent summary must not be accepted: with
     # sign-verify-summary enabled the pull has to fail rather than fall back to
