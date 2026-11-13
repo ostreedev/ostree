@@ -3605,7 +3605,7 @@ ostree_repo_pull_with_options (OstreeRepo *self, const char *remote_name_or_base
       opt_retry_all_set
           = g_variant_lookup (options, "retry-all-network-errors", "b", &pull_data->retry_all);
       opt_max_outstanding_fetcher_requests_set
-          = g_variant_lookup (options, "max-outstanding-fetcher-requests", "b",
+          = g_variant_lookup (options, "max-outstanding-fetcher-requests", "u",
                               &pull_data->max_outstanding_fetcher_requests);
       opt_n_network_retries_set
           = g_variant_lookup (options, "n-network-retries", "u", &pull_data->n_network_retries);
@@ -6384,7 +6384,7 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo *self, const char *nam
       (void)g_variant_lookup (options, "low-speed-limit-bytes", "u", &low_speed_limit);
       (void)g_variant_lookup (options, "low-speed-time-seconds", "u", &low_speed_time);
       (void)g_variant_lookup (options, "retry-all-network-errors", "b", &retry_all);
-      (void)g_variant_lookup (options, "max-outstanding-fetcher-requests", "b",
+      (void)g_variant_lookup (options, "max-outstanding-fetcher-requests", "u",
                               &max_outstanding_fetcher_requests);
     }
 
