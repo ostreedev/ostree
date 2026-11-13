@@ -25,6 +25,7 @@ script=$(basename ${0})
 # Atomically safe location where to generete grub.cfg when executing system upgrade.
 new_grub2_cfg=${2}
 entries_path=$(dirname $new_grub2_cfg)/entries
+custom_scripts="/etc/ostree-grub.d"
 
 read_config()
 {
@@ -105,10 +106,22 @@ timeout=10
 EOF
 }
 
+populate_custom_section()
+{
+if [ -d "$custom_scripts" ]; then
+    for script in $(ls -v $custom_scripts/*); do
+        echo -e "\n### BEGIN ${script} ###" >> ${new_grub2_cfg} 
+        cat ${script} >> ${new_grub2_cfg}
+        echo -e "\n### END ${script} ###\n" >> ${new_grub2_cfg}
+    done
+fi
+}
+
 generate_grub2_cfg()
 {
     populate_warning
     populate_header
+    populate_custom_section
     populate_menu
 }
 
