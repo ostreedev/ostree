@@ -221,6 +221,8 @@ endif
 if USE_CURL_OR_SOUP
 libostree_1_la_SOURCES += \
 	src/libostree/ostree-fetcher.h \
+	src/libostree/ostree-fetcher-backoff.h \
+	src/libostree/ostree-fetcher-backoff.c \
 	src/libostree/ostree-fetcher-util.h \
 	src/libostree/ostree-fetcher-util.c \
   src/libostree/ostree-fetcher-uri.c \

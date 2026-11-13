@@ -23,6 +23,9 @@ set -euo pipefail
 
 skip_without_ostree_httpd
 
+# This test forces many retries; skip the real backoff so it stays fast.
+export OSTREE_FETCHER_TEST_BACKOFF_MS=0
+
 COMMIT_SIGN=""
 if has_ostree_feature gpgme; then
     COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
