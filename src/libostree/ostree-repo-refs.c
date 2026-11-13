@@ -49,7 +49,11 @@ add_ref_to_set (const char *remote, const char *collection_id, int base_fd, cons
           g_string_append (refname, remote);
           g_string_append_c (refname, ':');
         }
-      g_string_append (refname, path);
+      /* Strip leading ./ for remote refs */
+      if (remote && g_str_has_prefix (path, "./"))
+        g_string_append (refname, path + 2);
+      else
+        g_string_append (refname, path);
       g_hash_table_insert (refs, g_string_free (g_steal_pointer (&refname), FALSE), contents);
     }
   else
