@@ -22,6 +22,8 @@ EXTRA_DIST += \
 	buildutil/tap-test \
 	tests/glib.supp \
 	tests/ostree.supp \
+	tests/coccinelle/README.md \
+	tests/coccinelle/raw-free.cocci \
 	$(NULL)
 
 # We should probably consider flipping the default for DEBUG.  Also,
