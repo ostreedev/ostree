@@ -52,6 +52,11 @@
 
 #include "config.h"
 
+// With older glibc (e.g. 2.34 on Amazon Linux 2023), <sys/mount.h> must
+// precede <linux/btrfs.h>, which pulls in <linux/mount.h> whose MS_* macros
+// break glibc's enum.
+#include <sys/mount.h>
+
 #include <ctype.h>
 #include <err.h>
 #include <errno.h>
@@ -65,7 +70,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
-#include <sys/mount.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>

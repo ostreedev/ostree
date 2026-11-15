@@ -156,6 +156,35 @@ case "$ID" in
         apt-get -y install "${PACKAGES[@]}" "$@"
         ;;
 
+    (amzn)
+        # Amazon Linux ships an ostree source package, so take its build
+        # dependencies and add what the test suite and gh-build.sh use.
+        # libsoup3-devel is listed explicitly since without an HTTP
+        # backend most pull tests fail. The image's gnupg2-minimal lacks
+        # gpg-agent, which the signing tests need.
+        PACKAGES=(
+            attr
+            bubblewrap
+            cpio
+            elfutils
+            fuse3
+            git
+            gjs
+            gnupg2
+            jq
+            libsoup3-devel
+            procps-ng
+            python3-pyyaml
+            shadow-utils
+            util-linux
+            which
+        )
+
+        dnf -y install dnf-plugins-core
+        dnf -y builddep ostree
+        dnf -y install --allowerasing "${PACKAGES[@]}" "$@"
+        ;;
+
     (*)
         echo "Don't know how to set up ${ID}" >&2
         exit 1
