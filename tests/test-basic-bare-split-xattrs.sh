@@ -7,7 +7,11 @@ set -euo pipefail
 . $(dirname $0)/libtest.sh
 
 mode="bare-split-xattrs"
-OSTREE="${CMD_PREFIX} ostree --repo=${test_tmpdir}/repo"
+ostree_bin=$(command -v ostree)
+if test -n "${OSTREE_UNINSTALLED:-}"; then
+    ostree_bin="${OSTREE_UNINSTALLED}/ostree"
+fi
+OSTREE="${CMD_PREFIX} ${ostree_bin} --repo=${test_tmpdir}/repo"
 
 skip_without_sudo
 SUDO="sudo --non-interactive"
