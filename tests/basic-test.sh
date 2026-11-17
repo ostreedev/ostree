@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..$((93 + ${extra_basic_tests:-0}))"
+echo "1..$((94 + ${extra_basic_tests:-0}))"
 
 CHECKOUT_U_ARG=""
 CHECKOUT_H_ARGS="-H"
@@ -415,6 +415,29 @@ if grep -q 'mode=bare' repo/config; then
 fi
 echo "ok pull-local --untrusted corruption"
 rm repo{2,3} -rf
+
+# Detached metadata isn't covered by the commit checksum, so it can't be
+# trusted to be in normal form. Overwrite the NUL terminating a key
+# ("testkey" plus its NUL fill 8 bytes, so the value follows directly) and
+# check that reading it, and pulling it --untrusted, doesn't run into the value.
+cd ${test_tmpdir}
+ostree_repo_init repo2 --mode=archive
+ostree_repo_init repo3 --mode=archive
+$CMD_PREFIX ostree --repo=repo3 pull-local repo test2
+$CMD_PREFIX ostree --repo=repo3 commit -b detached-corrupt --tree=ref=test2 \
+    --add-detached-metadata-string=testkey=bar
+rev=$($CMD_PREFIX ostree --repo=repo3 rev-parse detached-corrupt)
+commitmeta=repo3/objects/${rev:0:2}/${rev:2}.commitmeta
+offset=$(($(grep -obaF testkey ${commitmeta} | cut -d: -f1) + 7))
+assert_streq "$(dd if=${commitmeta} bs=1 skip=${offset} count=1 status=none | od -An -tx1 | tr -d ' ')" "00"
+printf 'X' | dd of=${commitmeta} bs=1 seek=${offset} conv=notrunc status=none
+$CMD_PREFIX ostree --repo=repo3 show --list-detached-metadata-keys detached-corrupt > detached-keys.txt
+assert_not_file_has_content detached-keys.txt testkeyX
+$CMD_PREFIX ostree --repo=repo2 pull-local --untrusted repo3 detached-corrupt
+$CMD_PREFIX ostree --repo=repo2 show --list-detached-metadata-keys detached-corrupt > detached-keys.txt
+assert_not_file_has_content detached-keys.txt testkeyX
+rm repo{2,3} detached-keys.txt -rf
+echo "ok detached metadata is not trusted to be in normal form"
 
 # This is mostly a copy of the suid test in test-basic-user-only.sh,
 # but for the `pull --bareuseronly-files` case.

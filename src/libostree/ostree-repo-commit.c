@@ -3211,14 +3211,14 @@ ostree_repo_read_commit_detached_metadata (OstreeRepo *self, const char *checksu
       if (!ot_openat_ignore_enoent (self->commit_stagedir.fd, buf, &fd, error))
         return FALSE;
       if (fd != -1)
-        return ot_variant_read_fd (fd, 0, G_VARIANT_TYPE ("a{sv}"), TRUE, out_metadata, error);
+        return ot_variant_read_fd (fd, 0, G_VARIANT_TYPE ("a{sv}"), FALSE, out_metadata, error);
     }
 
   glnx_autofd int fd = -1;
   if (!ot_openat_ignore_enoent (self->objects_dir_fd, buf, &fd, error))
     return FALSE;
   if (fd != -1)
-    return ot_variant_read_fd (fd, 0, G_VARIANT_TYPE ("a{sv}"), TRUE, out_metadata, error);
+    return ot_variant_read_fd (fd, 0, G_VARIANT_TYPE ("a{sv}"), FALSE, out_metadata, error);
 
   if (self->parent_repo)
     return ostree_repo_read_commit_detached_metadata (self->parent_repo, checksum, out_metadata,
