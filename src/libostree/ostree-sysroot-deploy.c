@@ -3451,12 +3451,6 @@ sysroot_cleanup_orphaned_selinux_policy (int deployment_dfd, int merge_deploymen
       if (dent->d_type != DT_DIR)
         continue;
 
-      g_autofree char *new_upstream_dir = g_strdup_printf ("usr/etc/selinux/%s", dent->d_name);
-      if (!glnx_fstatat_allow_noent (deployment_dfd, new_upstream_dir, &stbuf, AT_SYMLINK_NOFOLLOW,
-                                     error))
-        return FALSE;
-      gboolean new_upstream_exists = (errno == 0);
-
       g_autofree char *old_upstream_dir = g_strdup_printf ("usr/etc/selinux/%s", dent->d_name);
       if (!glnx_fstatat_allow_noent (merge_deployment_dfd, old_upstream_dir, &stbuf,
                                      AT_SYMLINK_NOFOLLOW, error))
@@ -3503,36 +3497,34 @@ sysroot_cleanup_orphaned_selinux_policy (int deployment_dfd, int merge_deploymen
           if (!exists_in_old)
             continue;
 
-          // If file exists in new upstream, it's still valid - skip it
-          if (exists_in_new)
-            continue;
-
-          // File doesn't exist in new upstream but existed in old upstream - it's orphaned
-
-          g_autofree char *old_upstream_contents = NULL;
           gsize old_upstream_len = 0;
-          if (!glnx_file_get_contents_utf8_at (merge_deployment_dfd, old_upstream_file,
-                                               &old_upstream_contents, &old_upstream_len, NULL,
-                                               error))
+          g_autofree char *old_upstream_contents = glnx_file_get_contents_utf8_at (
+              merge_deployment_dfd, old_upstream_file, &old_upstream_len, cancellable, error);
+          if (old_upstream_contents == NULL)
             return FALSE;
 
-          g_autofree char *new_upstream_contents = NULL;
+          /* If the file is gone from the new upstream, treat its contents as
+           * empty so that all of the old lines are considered orphaned. */
+          g_autofree char *new_upstream_contents = g_strdup ("");
           gsize new_upstream_len = 0;
-          if (!glnx_file_get_contents_utf8_at (deployment_dfd, new_upstream_file,
-                                               &new_upstream_contents, &new_upstream_len, NULL,
-                                               error))
-            return FALSE;
+          if (exists_in_new)
+            {
+              new_upstream_contents = glnx_file_get_contents_utf8_at (
+                  deployment_dfd, new_upstream_file, &new_upstream_len, cancellable, error);
+              if (new_upstream_contents == NULL)
+                return FALSE;
+            }
 
-          g_autofree char *new_etc_contents = NULL;
           gsize new_etc_len = 0;
-          if (!glnx_file_get_contents_utf8_at (store_iter.fd, store_dent->d_name, &new_etc_contents,
-                                               &new_etc_len, NULL, error))
+          g_autofree char *new_etc_contents = glnx_file_get_contents_utf8_at (
+              store_iter.fd, store_dent->d_name, &new_etc_len, cancellable, error);
+          if (new_etc_contents == NULL)
             return FALSE;
 
           if (memchr (new_etc_contents, '\0', new_etc_len) != NULL)
             continue;
 
-          g_auto (GString) cleaned = G_STRING_INIT;
+          g_autoptr (GString) cleaned = g_string_new (NULL);
           gboolean changed = FALSE;
 
           g_autofree char **old_lines = g_strsplit (old_upstream_contents, "\n", -1);
@@ -3576,7 +3568,7 @@ sysroot_cleanup_orphaned_selinux_policy (int deployment_dfd, int merge_deploymen
           if (changed)
             {
               if (!glnx_file_replace_contents_at (store_iter.fd, store_dent->d_name,
-                                                  (guint8 *)cleaned.str, cleaned.len, 0,
+                                                  (guint8 *)cleaned->str, cleaned->len, 0,
                                                   cancellable, error))
                 return glnx_prefix_error (error, "Rewriting %s/%s", dent->d_name,
                                           store_dent->d_name);
