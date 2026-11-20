@@ -594,7 +594,7 @@ callback_setxattr (const char *path, const char *name, const char *value, size_t
   char buf[PATH_MAX];
   snprintf (buf, sizeof (buf), "/proc/self/fd/%d/%s", basefd, path);
 
-  if (setxattr (buf, name, value, size, flags) == -1)
+  if (lsetxattr (buf, name, value, size, flags) == -1)
     return -errno;
   return 0;
 }
@@ -607,7 +607,7 @@ callback_getxattr (const char *path, const char *name, char *value, size_t size)
   char buf[PATH_MAX];
   snprintf (buf, sizeof (buf), "/proc/self/fd/%d/%s", basefd, path);
 
-  ssize_t n = getxattr (buf, name, value, size);
+  ssize_t n = lgetxattr (buf, name, value, size);
   if (n == -1)
     return -errno;
   return n;
