@@ -174,6 +174,13 @@ libostree_1_la_SOURCES += \
 	$(NULL)
 endif # USE_GPGME
 
+if USE_PGP
+libostree_1_la_SOURCES += \
+	src/libostree/ostree-sign-pgp.c \
+	src/libostree/ostree-sign-pgp.h \
+	$(NULL)
+endif # USE_PGP
+
 symbol_files = $(top_srcdir)/src/libostree/libostree-released.sym
 
 # Uncomment this include when adding new development symbols.
@@ -190,7 +197,7 @@ EXTRA_DIST += \
 
 libostree_1_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/bsdiff -I$(srcdir)/libglnx -I$(srcdir)/src/libotutil -I$(srcdir)/src/libotcore -I$(srcdir)/src/libostree -I$(builddir)/src/libostree \
     -I$(srcdir)/src/switchroot \
-	$(OT_INTERNAL_GIO_UNIX_CFLAGS) $(OT_INTERNAL_GPGME_CFLAGS) $(OT_DEP_LZMA_CFLAGS) $(OT_DEP_ZLIB_CFLAGS) $(OT_DEP_CRYPTO_CFLAGS) \
+	$(OT_INTERNAL_GIO_UNIX_CFLAGS) $(OT_INTERNAL_GPGME_CFLAGS) $(OT_DEP_LZMA_CFLAGS) $(OT_DEP_ZLIB_CFLAGS) $(OT_DEP_CRYPTO_CFLAGS) $(OT_DEP_PGP_CFLAGS) \
 	-fvisibility=hidden '-D_OSTREE_PUBLIC=__attribute__((visibility("default"))) extern' \
 	-DPKGLIBEXECDIR=\"$(pkglibexecdir)\"
 if BUILDOPT_USE_STATIC_COMPILER
@@ -198,7 +205,7 @@ libostree_1_la_CFLAGS += -DOSTREE_PREPARE_ROOT_STATIC=1
 endif
 libostree_1_la_LDFLAGS = -version-number 1:0:0 -Bsymbolic-functions $(addprefix $(wl_versionscript_arg),$(symbol_files))
 libostree_1_la_LIBADD = libotutil.la libotcore.la libglnx.la libbsdiff.la $(OT_INTERNAL_GIO_UNIX_LIBS) $(OT_INTERNAL_GPGME_LIBS) \
-                        $(OT_DEP_LZMA_LIBS) $(OT_DEP_ZLIB_LIBS) $(OT_DEP_CRYPTO_LIBS)
+                        $(OT_DEP_LZMA_LIBS) $(OT_DEP_ZLIB_LIBS) $(OT_DEP_CRYPTO_LIBS) $(OT_DEP_PGP_LIBS)
 # Some change between rust-1.21.0-1.fc27 and rust-1.22.1-1.fc27.x86_64
 libostree_1_la_LIBADD += $(bupsplitpath)
 EXTRA_libostree_1_la_DEPENDENCIES = $(symbol_files)
