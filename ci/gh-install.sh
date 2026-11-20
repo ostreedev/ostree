@@ -102,6 +102,7 @@ case "$ID" in
             jq
             procps
             python3
+            python3-gi
             python3-yaml
             strace
             xsltproc

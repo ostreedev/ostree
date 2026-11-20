@@ -2098,6 +2098,12 @@ process_one_static_delta (OtPullData *pull_data, const char *from_revision, cons
       if (!ostree_validate_structureof_csum_v (to_csum_v, error))
         return FALSE;
       g_autofree char *to_checksum = ostree_checksum_from_bytes_v (to_csum_v);
+      /* The superblock isn't signed; the commit signature checked below only
+       * covers the commit embedded in it, so it must be the one we asked for.
+       */
+      if (strcmp (to_checksum, to_revision) != 0)
+        return glnx_throw (error, "Static delta superblock targets commit %s, expected %s",
+                           to_checksum, to_revision);
 
       gboolean have_to_commit;
       if (!ostree_repo_has_object (pull_data->repo, OSTREE_OBJECT_TYPE_COMMIT, to_checksum,
@@ -2111,6 +2117,10 @@ process_one_static_delta (OtPullData *pull_data, const char *from_revision, cons
               = _ostree_get_relative_static_delta_path (from_revision, to_revision, "commitmeta");
           g_autoptr (GVariant) detached_data
               = g_variant_lookup_value (metadata, detached_path, G_VARIANT_TYPE ("a{sv}"));
+
+          if (!_ostree_verify_metadata_object (OSTREE_OBJECT_TYPE_COMMIT, to_revision, to_commit,
+                                               error))
+            return FALSE;
 
           if (!_verify_unwritten_commit (pull_data, to_revision, to_commit, detached_data, ref,
                                          cancellable, error))
