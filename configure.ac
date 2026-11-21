@@ -162,6 +162,41 @@ AS_IF([test x$with_curl != xno ], [
 ], [with_soup_default=check])
 AM_CONDITIONAL(USE_CURL, test x$with_curl != xno)
 if test x$with_curl = xyes; then OSTREE_FEATURES="$OSTREE_FEATURES libcurl"; fi
+
+dnl Native s3:// remotes: credentials and SigV4 signing via aws-c-auth,
+dnl transport via libcurl. aws-c-auth ships CMake config only, so there is
+dnl no pkg-config check; override AWS_CFLAGS / AWS_LIBS if it is not on the
+dnl default search path.
+AC_ARG_WITH(aws,
+	    AS_HELP_STRING([--with-aws], [Enable s3:// remotes using aws-c-auth; requires --with-curl @<:@default=no@:>@]),
+	    [], [with_aws=no])
+AC_ARG_VAR([AWS_CFLAGS], [C compiler flags for the AWS C libraries])
+AC_ARG_VAR([AWS_LIBS], [linker flags for the AWS C libraries])
+AS_IF([test x$with_aws != xno], [
+  AS_IF([test x$with_curl != xyes], [
+    AC_MSG_ERROR([--with-aws requires --with-curl])
+  ])
+  AS_IF([test -z "$AWS_LIBS"], [
+    AWS_LIBS="-laws-c-auth -laws-c-http -laws-c-io -laws-c-cal -laws-c-sdkutils -laws-c-common"
+  ])
+  save_CPPFLAGS=$CPPFLAGS
+  save_LIBS=$LIBS
+  CPPFLAGS="$CPPFLAGS $AWS_CFLAGS"
+  LIBS="$AWS_LIBS $LIBS"
+  AC_CHECK_HEADER([aws/auth/credentials.h], [],
+    [AC_MSG_ERROR([aws-c-auth headers not found; set AWS_CFLAGS])])
+  dnl The SSO provider is the newest API we use; its presence is the version floor.
+  AC_CHECK_FUNC([aws_credentials_provider_new_sso], [],
+    [AC_MSG_ERROR([aws-c-auth >= 0.9.1 not found; set AWS_LIBS])])
+  CPPFLAGS=$save_CPPFLAGS
+  LIBS=$save_LIBS
+  with_aws=yes
+  dnl For static linking of libostree; the AWS libraries have no .pc files.
+  LIBS_PRIVATE="${LIBS_PRIVATE:+$LIBS_PRIVATE }${AWS_LIBS}"
+  AC_DEFINE([HAVE_AWS], 1, [Define if s3:// remotes are supported via aws-c-auth])
+  OSTREE_FEATURES="$OSTREE_FEATURES aws"
+])
+AM_CONDITIONAL(USE_AWS, test x$with_aws = xyes)
 AC_ARG_ENABLE(http2,
 AS_HELP_STRING([--disable-http2],
   [Disable use of http2 (default: no)]),,
@@ -747,6 +782,7 @@ echo "
     HTTP backend:                                 $fetcher_backend
     libsoup:                                      $with_soup
     libsoup3:                                     $with_soup3
+    aws-c-auth (s3:// remotes):                   $with_aws
     SELinux:                                      $with_selinux
     fs-verity:                                    $ac_cv_header_linux_fsverity_h
     cryptographic checksums:                      $with_crypto
