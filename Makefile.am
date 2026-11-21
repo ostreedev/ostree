@@ -128,6 +128,7 @@ include Makefile-switchroot.am
 if BUILDOPT_FUSE
 include src/rofiles-fuse/Makefile-inc.am
 endif
+include Makefile-sysroot-rs.am
 include Makefile-tests.am
 include Makefile-boot.am
 include Makefile-man.am
