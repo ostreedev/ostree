@@ -39,6 +39,8 @@ typedef enum
   OSTREE_SYSROOT_DEBUG_TEST_NO_DTB = 1 << 3, /* https://github.com/ostreedev/ostree/issues/2154 */
   /* Treat /boot as VFAT, which cannot hold symbolic links (e.g. an ESP) */
   OSTREE_SYSROOT_DEBUG_TEST_BOOT_VFAT = 1 << 4,
+  /* Act as if /boot did not support renameat2 (RENAME_EXCHANGE) */
+  OSTREE_SYSROOT_DEBUG_TEST_NO_RENAME_EXCHANGE = 1 << 5,
 } OstreeSysrootDebugFlags;
 
 typedef enum

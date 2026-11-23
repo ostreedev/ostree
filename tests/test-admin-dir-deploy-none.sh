@@ -24,7 +24,7 @@ set -euo pipefail
 # Exports OSTREE_SYSROOT so --sysroot not needed.
 setup_os_repository "archive" "sysroot.bootloader none"
 
-extra_admin_tests=9
+extra_admin_tests=10
 folders_instead_symlinks_in_boot=1
 
 . $(dirname $0)/admin-test.sh
@@ -225,6 +225,18 @@ assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/.vmlinuz-3.6.0.hm
 assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/initramfs-3.6.0.img 'an initramfs'
 assert_boot_loader_is_dir
 echo "ok generate bls config on first deployment"
+
+# Without RENAME_EXCHANGE (e.g. VFAT before Linux 6.0), the swap falls back to two
+# renames, and must leave neither loader.tmp nor loader.old behind.
+env OSTREE_SYSROOT_DEBUG="${OSTREE_SYSROOT_DEBUG},test-no-rename-exchange" \
+    ${CMD_PREFIX} ostree admin deploy --karg-append=fallback=1 --os testos testos/buildmain/x86_64-runtime > out.txt
+assert_file_has_content out.txt "bootconfig swap: yes"
+assert_boot_loader_is_dir
+if ! grep -q "fallback=1" sysroot/boot/loader/entries/ostree-*.conf; then
+    fatal "new deployment not found in boot/loader/entries"
+fi
+${CMD_PREFIX} ostree admin status
+echo "ok swap without RENAME_EXCHANGE"
 
 # TODO: add tests to try setting with an unsupported bootloader config,
 # once https://github.com/ostreedev/ostree/issues/1827 is solved.

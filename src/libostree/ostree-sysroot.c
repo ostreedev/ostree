@@ -191,6 +191,7 @@ ostree_sysroot_init (OstreeSysroot *self)
     { "no-xattrs", OSTREE_SYSROOT_DEBUG_NO_XATTRS },
     { "no-dtb", OSTREE_SYSROOT_DEBUG_TEST_NO_DTB },
     { "test-boot-vfat", OSTREE_SYSROOT_DEBUG_TEST_BOOT_VFAT },
+    { "test-no-rename-exchange", OSTREE_SYSROOT_DEBUG_TEST_NO_RENAME_EXCHANGE },
   };
 
   self->opt_flags = g_parse_debug_string (g_getenv ("OSTREE_SYSROOT_OPTS"), globalopt_keys,

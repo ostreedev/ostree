@@ -2414,10 +2414,14 @@ exchange_loader_dirs (OstreeSysroot *sysroot, gboolean *out_atomic, GError **err
 {
   *out_atomic = TRUE;
 #ifndef ENABLE_WRPSEUDO_COMPAT
-  if (renameat2 (sysroot->boot_fd, "loader.tmp", sysroot->boot_fd, "loader", RENAME_EXCHANGE) == 0)
-    return TRUE;
-  if (!G_IN_SET (errno, ENOSYS, EINVAL))
-    return glnx_throw_errno_prefix (error, "Exchanging loader.tmp and loader");
+  if (!(sysroot->debug_flags & OSTREE_SYSROOT_DEBUG_TEST_NO_RENAME_EXCHANGE))
+    {
+      if (renameat2 (sysroot->boot_fd, "loader.tmp", sysroot->boot_fd, "loader", RENAME_EXCHANGE)
+          == 0)
+        return TRUE;
+      if (!G_IN_SET (errno, ENOSYS, EINVAL))
+        return glnx_throw_errno_prefix (error, "Exchanging loader.tmp and loader");
+    }
 #endif
 
   /* RENAME_EXCHANGE is not supported, e.g. by VFAT before Linux 6.0. Fall
