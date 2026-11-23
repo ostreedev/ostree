@@ -112,10 +112,12 @@ sysroot_flags_to_copy_flags (GLnxFileCopyFlags defaults, OstreeSysrootDebugFlags
  * hardlink if we're on the same partition.
  */
 static gboolean
-install_into_boot (OstreeRepo *repo, OstreeSePolicy *sepolicy, int src_dfd, const char *src_subpath,
-                   int dest_dfd, const char *dest_subpath, GCancellable *cancellable,
-                   GError **error)
+install_into_boot (OstreeSysroot *sysroot, OstreeSePolicy *sepolicy, int src_dfd,
+                   const char *src_subpath, int dest_dfd, const char *dest_subpath,
+                   GCancellable *cancellable, GError **error)
 {
+  OstreeRepo *repo = ostree_sysroot_repo (sysroot);
+
   if (linkat (src_dfd, src_subpath, dest_dfd, dest_subpath, 0) == 0)
     return TRUE; /* Note early return */
   if (!G_IN_SET (errno, EMLINK, EXDEV))
@@ -157,8 +159,10 @@ install_into_boot (OstreeRepo *repo, OstreeSePolicy *sepolicy, int src_dfd, cons
   if (glnx_regfile_copy_bytes (src_fd, tmp_dest.fd, (off_t)-1) < 0)
     return glnx_throw_errno_prefix (error, "regfile copy");
 
-  /* Kernel data should always be root-owned */
-  if (fchown (tmp_dest.fd, src_stbuf.st_uid, src_stbuf.st_gid) != 0)
+  /* Kernel data should always be root-owned. On VFAT, ownership is defined by
+   * the mount options, and changing it fails unless it matches them.
+   */
+  if (!sysroot->boot_is_vfat && fchown (tmp_dest.fd, src_stbuf.st_uid, src_stbuf.st_gid) != 0)
     return glnx_throw_errno_prefix (error, "fchown");
 
   if (fchmod (tmp_dest.fd, src_stbuf.st_mode & 07777) != 0)
@@ -207,7 +211,8 @@ dirfd_copy_attributes_and_xattrs (int src_parent_dfd, const char *src_name, int 
   struct stat src_stbuf;
   if (!glnx_fstat (src_dfd, &src_stbuf, error))
     return FALSE;
-  if (fchown (dest_dfd, src_stbuf.st_uid, src_stbuf.st_gid) != 0)
+  if (!(flags & GLNX_FILE_COPY_NOCHOWN)
+      && fchown (dest_dfd, src_stbuf.st_uid, src_stbuf.st_gid) != 0)
     return glnx_throw_errno_prefix (error, "fchown");
   if (fchmod (dest_dfd, src_stbuf.st_mode) != 0)
     return glnx_throw_errno_prefix (error, "fchmod");
@@ -1883,7 +1888,7 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
     return FALSE;
   if (errno == ENOENT)
     {
-      if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd,
+      if (!install_into_boot (sysroot, sepolicy, kernel_layout->boot_dfd,
                               kernel_layout->kernel_srcpath, bootcsum_dfd,
                               kernel_layout->kernel_namever, cancellable, error))
         return FALSE;
@@ -1900,7 +1905,7 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
         return FALSE;
       if (errno == ENOENT)
         {
-          if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd,
+          if (!install_into_boot (sysroot, sepolicy, kernel_layout->boot_dfd,
                                   kernel_layout->initramfs_srcpath, bootcsum_dfd,
                                   kernel_layout->initramfs_namever, cancellable, error))
             return FALSE;
@@ -1917,7 +1922,7 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
             return FALSE;
           if (errno == ENOENT)
             {
-              if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd,
+              if (!install_into_boot (sysroot, sepolicy, kernel_layout->boot_dfd,
                                       kernel_layout->devicetree_srcpath, bootcsum_dfd,
                                       kernel_layout->devicetree_namever, cancellable, error))
                 return FALSE;
@@ -1927,9 +1932,11 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
         {
           // Don't copy xattrs for devicetree; Fedora derives label them modules_t which is
           // wrong for when they're installed, we want the default boot_t.
+          GLnxFileCopyFlags copy_flags = GLNX_FILE_COPY_NOXATTRS;
+          if (sysroot->boot_is_vfat)
+            copy_flags |= GLNX_FILE_COPY_NOCHOWN;
           if (!copy_dir_recurse (kernel_layout->boot_dfd, bootcsum_dfd,
-                                 kernel_layout->devicetree_srcpath, GLNX_FILE_COPY_NOXATTRS,
-                                 cancellable, error))
+                                 kernel_layout->devicetree_srcpath, copy_flags, cancellable, error))
             return FALSE;
         }
     }
@@ -1941,7 +1948,7 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
         return FALSE;
       if (errno == ENOENT)
         {
-          if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd,
+          if (!install_into_boot (sysroot, sepolicy, kernel_layout->boot_dfd,
                                   kernel_layout->kernel_hmac_srcpath, bootcsum_dfd,
                                   kernel_layout->kernel_hmac_namever, cancellable, error))
             return FALSE;
@@ -1956,7 +1963,7 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
 
       if (errno == ENOENT)
         {
-          if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd,
+          if (!install_into_boot (sysroot, sepolicy, kernel_layout->boot_dfd,
                                   kernel_layout->aboot_srcpath, bootcsum_dfd,
                                   kernel_layout->aboot_namever, cancellable, error))
             return FALSE;
@@ -1997,8 +2004,8 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
         {
           g_autofree char *srcpath
               = g_strdup_printf (_OSTREE_SYSROOT_RUNSTATE_STAGED_INITRDS_DIR "/%s", checksum);
-          if (!install_into_boot (repo, sepolicy, AT_FDCWD, srcpath, sysroot->boot_fd, rel_destpath,
-                                  cancellable, error))
+          if (!install_into_boot (sysroot, sepolicy, AT_FDCWD, srcpath, sysroot->boot_fd,
+                                  rel_destpath, cancellable, error))
             return FALSE;
         }
 
