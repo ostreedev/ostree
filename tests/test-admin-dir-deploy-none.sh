@@ -24,7 +24,7 @@ set -euo pipefail
 # Exports OSTREE_SYSROOT so --sysroot not needed.
 setup_os_repository "archive" "sysroot.bootloader none"
 
-extra_admin_tests=6
+extra_admin_tests=9
 folders_instead_symlinks_in_boot=1
 
 . $(dirname $0)/admin-test.sh
@@ -128,6 +128,62 @@ diff -u entries-before.txt entries-after.txt
 rm sysroot/boot/loader/entries
 mv sysroot/boot/shared-entries sysroot/boot/loader/entries
 echo "ok boot/loader/entries as a symbolic link is rejected"
+
+# On a VFAT /boot (e.g. an ESP) without boot/loader yet, the first deployment
+# creates boot/loader as a directory.
+cd ${test_tmpdir}
+rm httpd osdata testos-repo sysroot -rf
+setup_os_repository "archive" "sysroot.bootloader none"
+${CMD_PREFIX} ostree pull-local --repo=sysroot/ostree/repo --remote testos testos-repo testos/buildmain/x86_64-runtime
+for path in loader loader.tmp; do
+    if test -e sysroot/boot/${path} || test -L sysroot/boot/${path}; then
+        fatal "sysroot/boot/${path} exists"
+    fi
+done
+orig_sysroot_debug="${OSTREE_SYSROOT_DEBUG}"
+export OSTREE_SYSROOT_DEBUG="${OSTREE_SYSROOT_DEBUG},test-boot-vfat"
+# The /boot/... paths of sysroot.bootprefix rely on the boot -> . symlink
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo config set sysroot.bootprefix true
+if ${CMD_PREFIX} ostree admin deploy --os testos testos/buildmain/x86_64-runtime 2>err.txt; then
+    fatal "deployed with sysroot.bootprefix on VFAT"
+fi
+assert_file_has_content err.txt "sysroot.bootprefix is not supported with a VFAT /boot"
+for path in loader loader.tmp; do
+    if test -e sysroot/boot/${path} || test -L sysroot/boot/${path}; then
+        fatal "sysroot/boot/${path} exists"
+    fi
+done
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo config set sysroot.bootprefix false
+echo "ok sysroot.bootprefix rejected on VFAT /boot"
+${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --os testos testos/buildmain/x86_64-runtime
+assert_boot_loader_is_dir
+# The conformance marker is up to the bootloader (e.g. bootctl install)
+assert_not_has_file sysroot/boot/loader/entries.srel
+if test -L sysroot/boot/boot; then
+    fatal "sysroot/boot/boot symlink created on VFAT"
+fi
+assert_file_has_content sysroot/boot/loader/entries/ostree-1.conf 'options.* root=LABEL=MOO'
+${CMD_PREFIX} ostree admin deploy --os testos testos/buildmain/x86_64-runtime
+assert_boot_loader_is_dir
+assert_has_file sysroot/boot/loader/entries/ostree-1.conf
+assert_has_file sysroot/boot/loader/entries/ostree-2.conf
+${CMD_PREFIX} ostree admin status
+export OSTREE_SYSROOT_DEBUG="${orig_sysroot_debug}"
+echo "ok first deployment on VFAT /boot"
+
+# Bootloader backends relying on symbolic links are rejected on VFAT
+for bootloader in syslinux uboot; do
+    cd ${test_tmpdir}
+    rm httpd osdata testos-repo sysroot -rf
+    setup_os_repository "archive" "sysroot.bootloader ${bootloader}"
+    ${CMD_PREFIX} ostree pull-local --repo=sysroot/ostree/repo --remote testos testos-repo testos/buildmain/x86_64-runtime
+    if env OSTREE_SYSROOT_DEBUG="${OSTREE_SYSROOT_DEBUG},test-boot-vfat" \
+           ${CMD_PREFIX} ostree admin deploy --os testos testos/buildmain/x86_64-runtime 2>err.txt; then
+        fatal "deployed with ${bootloader} on VFAT"
+    fi
+    assert_file_has_content err.txt "not supported with a VFAT /boot"
+done
+echo "ok syslinux and U-Boot rejected on VFAT /boot"
 
 # entries.srel declaring type1 semantics requires boot/loader to be a directory
 cd ${test_tmpdir}

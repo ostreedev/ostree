@@ -190,6 +190,7 @@ ostree_sysroot_init (OstreeSysroot *self)
     { "test-fifreeze", OSTREE_SYSROOT_DEBUG_TEST_FIFREEZE },
     { "no-xattrs", OSTREE_SYSROOT_DEBUG_NO_XATTRS },
     { "no-dtb", OSTREE_SYSROOT_DEBUG_TEST_NO_DTB },
+    { "test-boot-vfat", OSTREE_SYSROOT_DEBUG_TEST_BOOT_VFAT },
   };
 
   self->opt_flags = g_parse_debug_string (g_getenv ("OSTREE_SYSROOT_OPTS"), globalopt_keys,
@@ -347,7 +348,8 @@ validate_boot_fd (OstreeSysroot *self, int fd, GError **error)
   struct statfs stbuf;
   if (fstatfs (fd, &stbuf) < 0)
     return glnx_throw_errno_prefix (error, "fstatfs(boot)");
-  self->boot_is_vfat = (stbuf.f_type == MSDOS_SUPER_MAGIC);
+  self->boot_is_vfat = (stbuf.f_type == MSDOS_SUPER_MAGIC)
+                       || (self->debug_flags & OSTREE_SYSROOT_DEBUG_TEST_BOOT_VFAT) > 0;
   return TRUE;
 }
 
