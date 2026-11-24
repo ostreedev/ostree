@@ -33,7 +33,7 @@ ostree_repo_init repo --mode=archive
 
 mkdir files
 for bin in ${bindatafiles}; do
-    cp $(which ${bin}) files
+    cp $(command -v ${bin}) files
 done
 # Keep the initial delta's fallback behavior covered without depending on the
 # sizes of binaries supplied by the test host.
