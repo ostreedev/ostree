@@ -130,6 +130,17 @@ test_fixture_setup (TestFixture *fixture, gconstpointer user_data)
       gpgme_data_seek (signature_buffer, 0, SEEK_SET);
     }
 
+    /* proc-all-sigs requires GPGME >= 1.24. When built against a new enough
+     * GPGME, setting it must succeed; assert so the test loudly fails rather
+     * than silently under-counting signatures. On older GPGME the flag is
+     * unavailable and check-counts behaves as it did before this change. */
+#if defined(GPGME_VERSION_NUMBER) && GPGME_VERSION_NUMBER >= 0x011800
+  {
+    gpgme_error_t proc_all_err = gpgme_set_ctx_flag (result->context, "proc-all-sigs", "1");
+    g_assert (proc_all_err == GPG_ERR_NO_ERROR);
+  }
+#endif
+
   gpg_error = gpgme_op_verify (result->context, signature_buffer, data_buffer, NULL);
   assert_no_gpg_error (gpg_error, NULL);
 
