@@ -417,6 +417,30 @@ setup_os_boot_grub2() {
     esac
 }
 
+# Make sysroot/boot/loader a plain directory instead of a symbolic link to
+# loader.0, as used e.g. for systemd-boot on an ESP. Like bootctl, also mark it
+# as following BLS type1 semantics.
+setup_os_boot_loader_dir() {
+    if test -L sysroot/boot/loader; then
+        local target
+        target=$(readlink sysroot/boot/loader)
+        rm sysroot/boot/loader
+        mv sysroot/boot/${target} sysroot/boot/loader
+    else
+        mkdir -p sysroot/boot/loader
+    fi
+    echo type1 > sysroot/boot/loader/entries.srel
+}
+
+assert_boot_loader_is_dir() {
+    if test -L sysroot/boot/loader || ! test -d sysroot/boot/loader; then
+        ls -al sysroot/boot
+        fatal "sysroot/boot/loader is not a plain directory"
+    fi
+    assert_not_has_dir sysroot/boot/loader.tmp
+    assert_not_has_dir sysroot/boot/loader.old
+}
+
 setup_os_boot_configured_bootloader() {
     bootloader_keyval=$1
     ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo config set ${bootloader_keyval}

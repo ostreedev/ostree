@@ -452,10 +452,11 @@ composefs_error_message (int errsv)
  * otcore_boot_is_on_physical_root:
  *
  * Returns: %TRUE if /boot is a directory of the physical root filesystem rather
- * than a separate filesystem. The loader symlink also has to be present:
- * before fstab mounts a separate /boot, its empty mountpoint is on the root
+ * than a separate filesystem. boot/loader also has to be present (either as
+ * the traditional symlink, or as a directory e.g. for systemd-boot): before
+ * fstab mounts a separate /boot, its empty mountpoint is on the root
  * filesystem too. Conversely, a mounted separate /boot can contain loader,
- * so the symlink alone does not establish filesystem identity.
+ * so its presence alone does not establish filesystem identity.
  */
 bool
 otcore_boot_is_on_physical_root (const char *physical_root)
@@ -483,7 +484,7 @@ otcore_boot_is_on_physical_root (const char *physical_root)
 
   g_autofree char *boot_loader = g_build_filename (boot, "loader", NULL);
   struct stat stbuf;
-  return lstat (boot_loader, &stbuf) == 0 && S_ISLNK (stbuf.st_mode);
+  return lstat (boot_loader, &stbuf) == 0 && (S_ISLNK (stbuf.st_mode) || S_ISDIR (stbuf.st_mode));
 }
 
 /**

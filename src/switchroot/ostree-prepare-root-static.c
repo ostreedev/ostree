@@ -240,7 +240,8 @@ main (int argc, char *argv[])
 
   /* Prepare /boot.
    * If /boot is on the same partition, use a bind mount to make it visible
-   * at /boot inside the deployment.
+   * at /boot inside the deployment. boot/loader is either a symlink, or a
+   * directory (see _ostree_sysroot_query_loader_is_dir()).
    *
    * Note: The composefs/systemd path (ostree-prepare-root.c) no longer does this -
    * it's handled by ostree-system-generator's boot.mount unit instead, which
@@ -251,7 +252,7 @@ main (int argc, char *argv[])
     err (EXIT_FAILURE, "failed to assemble /boot/loader path");
   if (ret >= sizeof (srcpath))
     errx (EXIT_FAILURE, "path too long while assembling /boot/loader path");
-  if (lstat (srcpath, &stbuf) == 0 && S_ISLNK (stbuf.st_mode))
+  if (lstat (srcpath, &stbuf) == 0 && (S_ISLNK (stbuf.st_mode) || S_ISDIR (stbuf.st_mode)))
     {
       if (lstat ("boot", &stbuf) == 0 && S_ISDIR (stbuf.st_mode))
         {

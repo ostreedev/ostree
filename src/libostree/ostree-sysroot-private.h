@@ -37,6 +37,10 @@ typedef enum
   /* This is a temporary flag until we fully drop the explicit `systemctl start
    * ostree-finalize-staged.service` so that tests can exercise the new path unit. */
   OSTREE_SYSROOT_DEBUG_TEST_NO_DTB = 1 << 3, /* https://github.com/ostreedev/ostree/issues/2154 */
+  /* Treat /boot as VFAT, which cannot hold symbolic links (e.g. an ESP) */
+  OSTREE_SYSROOT_DEBUG_TEST_BOOT_VFAT = 1 << 4,
+  /* Act as if /boot did not support renameat2 (RENAME_EXCHANGE) */
+  OSTREE_SYSROOT_DEBUG_TEST_NO_RENAME_EXCHANGE = 1 << 5,
 } OstreeSysrootDebugFlags;
 
 typedef enum
@@ -135,6 +139,15 @@ OstreeDeployment *_ostree_sysroot_new_deployment_object (OstreeSysroot *self, co
                                                          GError **error);
 
 void _ostree_sysroot_emit_journal_msg (OstreeSysroot *self, const char *msg);
+
+gboolean _ostree_sysroot_get_live_loader_dir (OstreeSysroot *self, const char **out_dir,
+                                              GError **error);
+
+gboolean _ostree_sysroot_query_loader_is_dir (OstreeSysroot *self, gboolean *out_is_dir,
+                                              GError **error);
+
+gboolean _ostree_sysroot_get_new_loader_dir (OstreeSysroot *self, int bootversion,
+                                             char **out_loader_dir, GError **error);
 
 gboolean _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self, int bootversion,
                                                    GPtrArray **out_loader_configs,

@@ -107,15 +107,24 @@ sysroot_flags_to_copy_flags (GLnxFileCopyFlags defaults, OstreeSysrootDebugFlags
   return defaults;
 }
 
+/* Create the symlink boot/boot. Sets errno on failure. */
+static int
+create_bootself_link (OstreeSysroot *self)
+{
+  return TEMP_FAILURE_RETRY (symlinkat (".", self->boot_fd, "boot"));
+}
+
 /* Try a hardlink if we can, otherwise fall back to copying.  Used
  * right now for kernels/initramfs/device trees in /boot, where we can just
  * hardlink if we're on the same partition.
  */
 static gboolean
-install_into_boot (OstreeRepo *repo, OstreeSePolicy *sepolicy, int src_dfd, const char *src_subpath,
-                   int dest_dfd, const char *dest_subpath, GCancellable *cancellable,
-                   GError **error)
+install_into_boot (OstreeSysroot *sysroot, OstreeSePolicy *sepolicy, int src_dfd,
+                   const char *src_subpath, int dest_dfd, const char *dest_subpath,
+                   GCancellable *cancellable, GError **error)
 {
+  OstreeRepo *repo = ostree_sysroot_repo (sysroot);
+
   if (linkat (src_dfd, src_subpath, dest_dfd, dest_subpath, 0) == 0)
     return TRUE; /* Note early return */
   if (!G_IN_SET (errno, EMLINK, EXDEV))
@@ -157,8 +166,10 @@ install_into_boot (OstreeRepo *repo, OstreeSePolicy *sepolicy, int src_dfd, cons
   if (glnx_regfile_copy_bytes (src_fd, tmp_dest.fd, (off_t)-1) < 0)
     return glnx_throw_errno_prefix (error, "regfile copy");
 
-  /* Kernel data should always be root-owned */
-  if (fchown (tmp_dest.fd, src_stbuf.st_uid, src_stbuf.st_gid) != 0)
+  /* Kernel data should always be root-owned. On VFAT, ownership is defined by
+   * the mount options, and changing it fails unless it matches them.
+   */
+  if (!sysroot->boot_is_vfat && fchown (tmp_dest.fd, src_stbuf.st_uid, src_stbuf.st_gid) != 0)
     return glnx_throw_errno_prefix (error, "fchown");
 
   if (fchmod (tmp_dest.fd, src_stbuf.st_mode & 07777) != 0)
@@ -207,7 +218,8 @@ dirfd_copy_attributes_and_xattrs (int src_parent_dfd, const char *src_name, int 
   struct stat src_stbuf;
   if (!glnx_fstat (src_dfd, &src_stbuf, error))
     return FALSE;
-  if (fchown (dest_dfd, src_stbuf.st_uid, src_stbuf.st_gid) != 0)
+  if (!(flags & GLNX_FILE_COPY_NOCHOWN)
+      && fchown (dest_dfd, src_stbuf.st_uid, src_stbuf.st_gid) != 0)
     return glnx_throw_errno_prefix (error, "fchown");
   if (fchmod (dest_dfd, src_stbuf.st_mode) != 0)
     return glnx_throw_errno_prefix (error, "fchmod");
@@ -1828,10 +1840,11 @@ bootloader_entry_filename (OstreeSysroot *sysroot, guint n_deployments,
 
 /* Given @deployment, prepare it to be booted; basically copying its
  * kernel/initramfs into /boot/ostree (if needed) and writing out an entry in
- * /boot/loader/entries.
+ * @bootconfdir (relative to the boot directory), where the new bootloader
+ * configuration is being staged.
  */
 static gboolean
-install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
+install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion, const char *bootconfdir,
                            OstreeDeployment *deployment, guint n_deployments, gboolean show_osname,
                            GCancellable *cancellable, GError **error)
 
@@ -1859,7 +1872,6 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
   const char *osname = ostree_deployment_get_osname (deployment);
   const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
   g_autofree char *bootcsumdir = g_strdup_printf ("ostree/%s-%s", osname, bootcsum);
-  g_autofree char *bootconfdir = g_strdup_printf ("loader.%d/entries", new_bootversion);
 
   if (!glnx_shutil_mkdir_p_at (sysroot->boot_fd, bootcsumdir, 0775, cancellable, error))
     return FALSE;
@@ -1883,7 +1895,7 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
     return FALSE;
   if (errno == ENOENT)
     {
-      if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd,
+      if (!install_into_boot (sysroot, sepolicy, kernel_layout->boot_dfd,
                               kernel_layout->kernel_srcpath, bootcsum_dfd,
                               kernel_layout->kernel_namever, cancellable, error))
         return FALSE;
@@ -1900,7 +1912,7 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
         return FALSE;
       if (errno == ENOENT)
         {
-          if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd,
+          if (!install_into_boot (sysroot, sepolicy, kernel_layout->boot_dfd,
                                   kernel_layout->initramfs_srcpath, bootcsum_dfd,
                                   kernel_layout->initramfs_namever, cancellable, error))
             return FALSE;
@@ -1917,7 +1929,7 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
             return FALSE;
           if (errno == ENOENT)
             {
-              if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd,
+              if (!install_into_boot (sysroot, sepolicy, kernel_layout->boot_dfd,
                                       kernel_layout->devicetree_srcpath, bootcsum_dfd,
                                       kernel_layout->devicetree_namever, cancellable, error))
                 return FALSE;
@@ -1927,9 +1939,11 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
         {
           // Don't copy xattrs for devicetree; Fedora derives label them modules_t which is
           // wrong for when they're installed, we want the default boot_t.
+          GLnxFileCopyFlags copy_flags = GLNX_FILE_COPY_NOXATTRS;
+          if (sysroot->boot_is_vfat)
+            copy_flags |= GLNX_FILE_COPY_NOCHOWN;
           if (!copy_dir_recurse (kernel_layout->boot_dfd, bootcsum_dfd,
-                                 kernel_layout->devicetree_srcpath, GLNX_FILE_COPY_NOXATTRS,
-                                 cancellable, error))
+                                 kernel_layout->devicetree_srcpath, copy_flags, cancellable, error))
             return FALSE;
         }
     }
@@ -1941,7 +1955,7 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
         return FALSE;
       if (errno == ENOENT)
         {
-          if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd,
+          if (!install_into_boot (sysroot, sepolicy, kernel_layout->boot_dfd,
                                   kernel_layout->kernel_hmac_srcpath, bootcsum_dfd,
                                   kernel_layout->kernel_hmac_namever, cancellable, error))
             return FALSE;
@@ -1956,7 +1970,7 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
 
       if (errno == ENOENT)
         {
-          if (!install_into_boot (repo, sepolicy, kernel_layout->boot_dfd,
+          if (!install_into_boot (sysroot, sepolicy, kernel_layout->boot_dfd,
                                   kernel_layout->aboot_srcpath, bootcsum_dfd,
                                   kernel_layout->aboot_namever, cancellable, error))
             return FALSE;
@@ -1997,8 +2011,8 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
         {
           g_autofree char *srcpath
               = g_strdup_printf (_OSTREE_SYSROOT_RUNSTATE_STAGED_INITRDS_DIR "/%s", checksum);
-          if (!install_into_boot (repo, sepolicy, AT_FDCWD, srcpath, sysroot->boot_fd, rel_destpath,
-                                  cancellable, error))
+          if (!install_into_boot (sysroot, sepolicy, AT_FDCWD, srcpath, sysroot->boot_fd,
+                                  rel_destpath, cancellable, error))
             return FALSE;
         }
 
@@ -2177,6 +2191,39 @@ install_deployment_kernel (OstreeSysroot *sysroot, int new_bootversion,
   return TRUE;
 }
 
+/* Read the semantics declared by boot/loader/entries.srel, as described in
+ * https://uapi-group.org/specifications/specs/boot_loader_specification/#standard-conformance-marker-file
+ * If the file does not exist, no assumptions are made and *out_semantics is NULL.
+ */
+static gboolean
+read_entries_srel (OstreeSysroot *sysroot, char **out_semantics, GCancellable *cancellable,
+                   GError **error)
+{
+  *out_semantics = NULL;
+
+  const char *live_loader_dir;
+  if (!_ostree_sysroot_get_live_loader_dir (sysroot, &live_loader_dir, error))
+    return FALSE;
+  g_autofree char *path = g_strdup_printf ("%s/entries.srel", live_loader_dir);
+  glnx_autofd int fd = -1;
+  if (!ot_openat_ignore_enoent (sysroot->boot_fd, path, &fd, error))
+    return FALSE;
+  if (fd == -1)
+    {
+      g_debug ("Didn't find loader/entries.srel");
+      return TRUE;
+    }
+
+  g_autofree char *semantics = glnx_fd_readall_utf8 (fd, NULL, cancellable, error);
+  if (semantics == NULL)
+    return glnx_prefix_error (error, "Reading loader/entries.srel");
+
+  g_strchomp (semantics);
+  g_debug ("loader/entries.srel declares %s semantics", semantics);
+  *out_semantics = g_steal_pointer (&semantics);
+  return TRUE;
+}
+
 /* We generate the symlink on disk, then potentially do a syncfs() to ensure
  * that it (and everything else we wrote) has hit disk. Only after that do we
  * rename it into place.
@@ -2192,11 +2239,10 @@ prepare_new_bootloader_link (OstreeSysroot *sysroot, int current_bootversion, in
   if (!_ostree_sysroot_ensure_boot_fd (sysroot, error))
     return FALSE;
 
-  /* This allows us to support both /boot on a seperate filesystem to / as well
+  /* This allows us to support both /boot on a separate filesystem to / as well
    * as on the same filesystem. */
-  if (TEMP_FAILURE_RETRY (symlinkat (".", sysroot->boot_fd, "boot")) < 0)
-    if (errno != EEXIST)
-      return glnx_throw_errno_prefix (error, "symlinkat");
+  if (create_bootself_link (sysroot) < 0 && errno != EEXIST)
+    return glnx_throw_errno_prefix (error, "Creating bootself link");
 
   g_autofree char *new_target = g_strdup_printf ("loader.%d", new_bootversion);
 
@@ -2208,12 +2254,240 @@ prepare_new_bootloader_link (OstreeSysroot *sysroot, int current_bootversion, in
   return TRUE;
 }
 
-/* Update the /boot/loader symlink to point to /boot/loader.$new_bootversion */
+/* Recursively copy the directories, regular files and symbolic links in
+ * src_dfd into dest_dfd, along with their attributes as per @copy_flags.
+ */
 static gboolean
-swap_bootloader (OstreeSysroot *sysroot, OstreeBootloader *bootloader, int current_bootversion,
-                 int new_bootversion, GCancellable *cancellable, GError **error)
+copy_loader_dir_contents (int src_dfd, int dest_dfd, GLnxFileCopyFlags copy_flags,
+                          GCancellable *cancellable, GError **error)
+{
+  g_auto (GLnxDirFdIterator) dfd_iter = {
+    0,
+  };
+  if (!glnx_dirfd_iterator_init_at (src_dfd, ".", TRUE, &dfd_iter, error))
+    return FALSE;
+
+  while (TRUE)
+    {
+      struct dirent *dent;
+      if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
+        return FALSE;
+      if (dent == NULL)
+        break;
+
+      struct stat stbuf;
+      if (!glnx_fstatat (dfd_iter.fd, dent->d_name, &stbuf, AT_SYMLINK_NOFOLLOW, error))
+        return FALSE;
+
+      if (S_ISDIR (stbuf.st_mode))
+        {
+          if (!copy_dir_recurse (dfd_iter.fd, dest_dfd, dent->d_name, copy_flags, cancellable,
+                                 error))
+            return FALSE;
+        }
+      else if (S_ISREG (stbuf.st_mode) || S_ISLNK (stbuf.st_mode))
+        {
+          if (!glnx_file_copy_at (dfd_iter.fd, dent->d_name, &stbuf, dest_dfd, dent->d_name,
+                                  GLNX_FILE_COPY_OVERWRITE | copy_flags, cancellable, error))
+            return glnx_prefix_error (error, "Copying %s", dent->d_name);
+        }
+      else
+        ot_journal_print (LOG_INFO, "Ignoring non-regular/non-symlink file in boot/loader: %s",
+                          dent->d_name);
+    }
+
+  return TRUE;
+}
+
+/* In directory mode, set up boot/loader.tmp to receive the new bootloader
+ * configuration. It starts as a copy of the live boot/loader directory (if
+ * any) so that content owned by other tools (e.g. systemd-boot's loader.conf
+ * and random-seed, or BLS entries of other operating systems) is preserved
+ * across the swap, minus ostree's own BLS entries, which are regenerated by
+ * install_deployment_kernel().
+ *
+ * Once everything has been written, loader.tmp is synced to disk and swapped
+ * into place by swap_bootloader().
+ */
+static gboolean
+prepare_new_loader_dir (OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
+{
+  GLNX_AUTO_PREFIX_ERROR ("Preparing boot/loader.tmp", error);
+
+  /* This allows us to support both /boot on a separate filesystem to / as well
+   * as on the same filesystem. VFAT does not support symbolic links, so
+   * sysroot.bootprefix, whose /boot/... paths rely on this link, can't work.
+   */
+  if (sysroot->boot_is_vfat)
+    {
+      if (ostree_sysroot_repo (sysroot)->enable_bootprefix)
+        return glnx_throw (error, "sysroot.bootprefix is not supported with a VFAT /boot");
+    }
+  else if (create_bootself_link (sysroot) < 0 && errno != EEXIST)
+    return glnx_throw_errno_prefix (error, "Creating bootself link");
+
+  /* Discard anything left over from an interrupted deployment. That includes
+   * loader.old, unless it holds the live configuration.
+   */
+  const char *live_loader_dir;
+  if (!_ostree_sysroot_get_live_loader_dir (sysroot, &live_loader_dir, error))
+    return FALSE;
+  if (!glnx_shutil_rm_rf_at (sysroot->boot_fd, "loader.tmp", cancellable, error))
+    return FALSE;
+  if (!g_str_equal (live_loader_dir, "loader.old")
+      && !glnx_shutil_rm_rf_at (sysroot->boot_fd, "loader.old", cancellable, error))
+    return FALSE;
+
+  /* Keep it private while populating it; its final attributes are set below */
+  if (!glnx_ensure_dir (sysroot->boot_fd, "loader.tmp", 0700, error))
+    return FALSE;
+  glnx_autofd int new_loader_dfd = -1;
+  if (!glnx_opendirat (sysroot->boot_fd, "loader.tmp", TRUE, &new_loader_dfd, error))
+    return FALSE;
+
+  /* Ownership and xattrs (e.g. SELinux labels) cannot be set on VFAT */
+  GLnxFileCopyFlags copy_flags = sysroot_flags_to_copy_flags (0, sysroot->debug_flags);
+  if (sysroot->boot_is_vfat)
+    copy_flags |= GLNX_FILE_COPY_NOXATTRS | GLNX_FILE_COPY_NOCHOWN;
+
+  glnx_autofd int loader_dfd = glnx_opendirat_with_errno (sysroot->boot_fd, live_loader_dir, FALSE);
+  if (loader_dfd < 0)
+    {
+      if (errno != ENOENT)
+        return glnx_throw_errno_prefix (error, "Opening boot/%s", live_loader_dir);
+      /* Nothing to copy on the first deployment */
+      if (fchmod (new_loader_dfd, 0755) < 0)
+        return glnx_throw_errno_prefix (error, "fchmod");
+    }
+  else
+    {
+      if (!copy_loader_dir_contents (loader_dfd, new_loader_dfd, copy_flags, cancellable, error))
+        return FALSE;
+      if (!dirfd_copy_attributes_and_xattrs (sysroot->boot_fd, live_loader_dir, loader_dfd,
+                                             new_loader_dfd, copy_flags, cancellable, error))
+        return glnx_prefix_error (error, "Copying attributes of boot/%s", live_loader_dir);
+    }
+
+  /* Old ostree entries are removed from the copy below, so it must not be
+   * shared with the live directory, e.g. through a symbolic link.
+   */
+  struct stat stbuf;
+  if (!glnx_fstatat_allow_noent (new_loader_dfd, "entries", &stbuf, AT_SYMLINK_NOFOLLOW, error))
+    return FALSE;
+  if (errno == ENOENT)
+    {
+      if (!glnx_ensure_dir (new_loader_dfd, "entries", 0755, error))
+        return FALSE;
+    }
+  else if (!S_ISDIR (stbuf.st_mode))
+    return glnx_throw (error, "boot/%s/entries is not a directory", live_loader_dir);
+  {
+    g_auto (GLnxDirFdIterator) dfd_iter = {
+      0,
+    };
+    if (!glnx_dirfd_iterator_init_at (new_loader_dfd, "entries", FALSE, &dfd_iter, error))
+      return FALSE;
+    while (TRUE)
+      {
+        struct dirent *dent;
+        if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
+          return FALSE;
+        if (dent == NULL)
+          break;
+        if (g_str_has_prefix (dent->d_name, "ostree-") && g_str_has_suffix (dent->d_name, ".conf"))
+          {
+            if (!glnx_unlinkat (dfd_iter.fd, dent->d_name, 0, error))
+              return FALSE;
+          }
+      }
+  }
+
+  return TRUE;
+}
+
+/* In directory mode, swap loader.tmp (the freshly-built directory, which has
+ * already been synced to disk) with the live loader directory. Afterwards, the
+ * previous configuration is in loader.tmp or loader.old.
+ */
+static gboolean
+exchange_loader_dirs (OstreeSysroot *sysroot, gboolean *out_atomic, GError **error)
+{
+  *out_atomic = TRUE;
+#ifndef ENABLE_WRPSEUDO_COMPAT
+  if (!(sysroot->debug_flags & OSTREE_SYSROOT_DEBUG_TEST_NO_RENAME_EXCHANGE))
+    {
+      if (renameat2 (sysroot->boot_fd, "loader.tmp", sysroot->boot_fd, "loader", RENAME_EXCHANGE)
+          == 0)
+        return TRUE;
+      if (!G_IN_SET (errno, ENOSYS, EINVAL))
+        return glnx_throw_errno_prefix (error, "Exchanging loader.tmp and loader");
+    }
+#endif
+
+  /* RENAME_EXCHANGE is not supported, e.g. by VFAT before Linux 6.0. Fall
+   * back to two renames. If interrupted in between, there is no loader, and
+   * loader.old is used as the live configuration until the next deployment;
+   * see _ostree_sysroot_get_live_loader_dir().
+   */
+  *out_atomic = FALSE;
+  if (!glnx_renameat (sysroot->boot_fd, "loader", sysroot->boot_fd, "loader.old", error))
+    return FALSE;
+  /* Writeback need not persist the renames in order (VFAT has no journal):
+   * make sure that loader.old is on disk before publishing the new loader, so
+   * that an interruption leaves a state that restore_loader_dir() handles.
+   */
+  gboolean renamed = FALSE;
+  if (TEMP_FAILURE_RETRY (syncfs (sysroot->boot_fd)) != 0)
+    glnx_throw_errno_prefix (error, "syncfs(boot)");
+  else
+    renamed = glnx_renameat (sysroot->boot_fd, "loader.tmp", sysroot->boot_fd, "loader", error);
+  if (!renamed)
+    {
+      /* Put the previous configuration back */
+      if (renameat (sysroot->boot_fd, "loader.old", sysroot->boot_fd, "loader") < 0)
+        ot_journal_print (LOG_ERR,
+                          "Failed to restore boot/loader: %s; the previous configuration is "
+                          "in boot/loader.old",
+                          g_strerror (errno));
+      return FALSE;
+    }
+  return TRUE;
+}
+
+/* In directory mode, a swap that could not be done atomically and was
+ * interrupted leaves no loader, and the previous configuration in loader.old
+ * (see exchange_loader_dirs()). Bootloaders only look at loader, so move it
+ * back into place.
+ */
+static gboolean
+restore_loader_dir (OstreeSysroot *sysroot, GError **error)
+{
+  const char *live_loader_dir;
+  if (!_ostree_sysroot_get_live_loader_dir (sysroot, &live_loader_dir, error))
+    return FALSE;
+  if (!g_str_equal (live_loader_dir, "loader.old"))
+    return TRUE;
+
+  ot_journal_print (LOG_INFO, "Restoring boot/loader from boot/loader.old");
+  if (!glnx_renameat (sysroot->boot_fd, "loader.old", sysroot->boot_fd, "loader", error))
+    return FALSE;
+  if (TEMP_FAILURE_RETRY (syncfs (sysroot->boot_fd)) != 0)
+    return glnx_throw_errno_prefix (error, "syncfs(boot)");
+  return TRUE;
+}
+
+/* Make the new bootloader configuration live: in symlink mode, update the
+ * /boot/loader symlink to point to /boot/loader.$new_bootversion; in directory
+ * mode, swap /boot/loader.tmp with /boot/loader.
+ */
+static gboolean
+swap_bootloader (OstreeSysroot *sysroot, OstreeBootloader *bootloader, gboolean loader_is_dir,
+                 int current_bootversion, int new_bootversion, gboolean *out_atomic,
+                 GCancellable *cancellable, GError **error)
 {
   GLNX_AUTO_PREFIX_ERROR ("Final bootloader swap", error);
+
+  *out_atomic = TRUE;
 
   g_assert ((current_bootversion == 0 && new_bootversion == 1)
             || (current_bootversion == 1 && new_bootversion == 0));
@@ -2221,15 +2495,37 @@ swap_bootloader (OstreeSysroot *sysroot, OstreeBootloader *bootloader, int curre
   if (!_ostree_sysroot_ensure_boot_fd (sysroot, error))
     return FALSE;
   g_assert_cmpint (sysroot->boot_fd, !=, -1);
-  // We use symlinks here.
-  g_assert (!sysroot->boot_is_vfat);
 
-  /* The symlink was already written, and we used syncfs() to ensure
-   * its data is in place.  Renaming now should give us atomic semantics;
-   * see https://bugzilla.gnome.org/show_bug.cgi?id=755595
-   */
-  if (!glnx_renameat (sysroot->boot_fd, "loader.tmp", sysroot->boot_fd, "loader", error))
-    return FALSE;
+  if (!loader_is_dir)
+    {
+      // We use symlinks here.
+      g_assert (!sysroot->boot_is_vfat);
+
+      /* The symlink was already written, and we used syncfs() to ensure
+       * its data is in place.  Renaming now should give us atomic semantics;
+       * see https://bugzilla.gnome.org/show_bug.cgi?id=755595
+       */
+      if (!glnx_renameat (sysroot->boot_fd, "loader.tmp", sysroot->boot_fd, "loader", error))
+        return FALSE;
+    }
+  else
+    {
+      struct stat stbuf;
+      if (!glnx_fstatat_allow_noent (sysroot->boot_fd, "loader", &stbuf, AT_SYMLINK_NOFOLLOW,
+                                     error))
+        return FALSE;
+      if (errno == ENOENT)
+        {
+          /* There is no live directory to exchange with: this is the first
+           * deployment, or the previous configuration is in loader.old (see
+           * below), which is removed afterwards.
+           */
+          if (!glnx_renameat (sysroot->boot_fd, "loader.tmp", sysroot->boot_fd, "loader", error))
+            return FALSE;
+        }
+      else if (!exchange_loader_dirs (sysroot, out_atomic, error))
+        return FALSE;
+    }
 
   /* As grub doesn't support replaying XFS journal,
    * we must fsfreeze/thaw again here:
@@ -2247,6 +2543,24 @@ swap_bootloader (OstreeSysroot *sysroot, OstreeBootloader *bootloader, int curre
   guint64 end_msec = g_get_monotonic_time () / 1000;
   ot_journal_print (LOG_INFO, "Completed freeze/thaw cycle for boot in %" G_GUINT64_FORMAT " ms",
                     end_msec - start_msec);
+
+  /* In directory mode, loader.tmp or loader.old now holds the previous
+   * configuration (unless this was the first deployment). Now that the new
+   * state is safely on disk, remove it. The new configuration is live already,
+   * and the next deployment removes any leftovers, so this is best-effort.
+   */
+  if (loader_is_dir)
+    {
+      const char *old_loader_dirs[] = { "loader.tmp", "loader.old" };
+      for (guint i = 0; i < G_N_ELEMENTS (old_loader_dirs); i++)
+        {
+          g_autoptr (GError) local_error = NULL;
+          if (!glnx_shutil_rm_rf_at (sysroot->boot_fd, old_loader_dirs[i], cancellable,
+                                     &local_error))
+            ot_journal_print (LOG_WARNING, "Failed to remove boot/%s: %s", old_loader_dirs[i],
+                              local_error->message);
+        }
+    }
 
   /* TODO: In the future also execute this automatically via a systemd unit
    * if we detect it's necessary.
@@ -2401,18 +2715,54 @@ ostree_sysroot_write_deployments (OstreeSysroot *self, GPtrArray *new_deployment
 static gboolean
 write_deployments_bootswap (OstreeSysroot *self, GPtrArray *new_deployments,
                             OstreeSysrootWriteDeploymentsOpts *opts, OstreeBootloader *bootloader,
-                            char **out_subbootdir, GCancellable *cancellable, GError **error)
+                            char **out_subbootdir, gboolean *out_swap_atomic,
+                            GCancellable *cancellable, GError **error)
 {
   const int new_bootversion = self->bootversion ? 0 : 1;
 
   if (!_ostree_sysroot_ensure_boot_fd (self, error))
     return FALSE;
 
-  g_autofree char *new_loader_entries_dir = g_strdup_printf ("loader.%d/entries", new_bootversion);
-  if (!glnx_shutil_rm_rf_at (self->boot_fd, new_loader_entries_dir, cancellable, error))
+  /* Determine up front whether boot/loader is the traditional symbolic link,
+   * or a plain directory (e.g. for systemd-boot on a VFAT ESP); see
+   * _ostree_sysroot_query_loader_is_dir(). In symlink mode, the new
+   * configuration is staged in boot/loader.$new_bootversion and the symlink is
+   * then atomically replaced. In directory mode, it is staged in
+   * boot/loader.tmp, which is then swapped with boot/loader.
+   */
+  gboolean loader_is_dir;
+  if (!_ostree_sysroot_query_loader_is_dir (self, &loader_is_dir, error))
     return FALSE;
-  if (!glnx_shutil_mkdir_p_at (self->boot_fd, new_loader_entries_dir, 0755, cancellable, error))
+
+  g_autofree char *entries_semantics = NULL;
+  if (!read_entries_srel (self, &entries_semantics, cancellable, error))
     return FALSE;
+  if (entries_semantics != NULL)
+    {
+      /* Other semantics are not ours to write entries for */
+      if (!g_str_equal (entries_semantics, "type1"))
+        return glnx_throw (error, "boot/loader/entries.srel declares unsupported semantics: %s",
+                           entries_semantics);
+      if (!loader_is_dir)
+        return glnx_throw (error, "boot/loader/entries.srel declares type1 semantics, but "
+                                  "boot/loader is a symbolic link");
+    }
+
+  g_autofree char *new_loader_entries_dir = NULL;
+  if (loader_is_dir)
+    {
+      if (!prepare_new_loader_dir (self, cancellable, error))
+        return FALSE;
+      new_loader_entries_dir = g_strdup ("loader.tmp/entries");
+    }
+  else
+    {
+      new_loader_entries_dir = g_strdup_printf ("loader.%d/entries", new_bootversion);
+      if (!glnx_shutil_rm_rf_at (self->boot_fd, new_loader_entries_dir, cancellable, error))
+        return FALSE;
+      if (!glnx_shutil_mkdir_p_at (self->boot_fd, new_loader_entries_dir, 0755, cancellable, error))
+        return FALSE;
+    }
 
   /* Only show the osname in bootloader titles if there are multiple
    * osname's among the new deployments.  Check for that here. */
@@ -2431,8 +2781,8 @@ write_deployments_bootswap (OstreeSysroot *self, GPtrArray *new_deployments,
   for (guint i = 0; i < new_deployments->len; i++)
     {
       OstreeDeployment *deployment = new_deployments->pdata[i];
-      if (!install_deployment_kernel (self, new_bootversion, deployment, new_deployments->len,
-                                      show_osname, cancellable, error))
+      if (!install_deployment_kernel (self, new_bootversion, new_loader_entries_dir, deployment,
+                                      new_deployments->len, show_osname, cancellable, error))
         return FALSE;
     }
 
@@ -2453,13 +2803,18 @@ write_deployments_bootswap (OstreeSysroot *self, GPtrArray *new_deployments,
         return glnx_prefix_error (error, "Bootloader write config");
     }
 
-  if (!prepare_new_bootloader_link (self, self->bootversion, new_bootversion, cancellable, error))
-    return FALSE;
+  if (!loader_is_dir)
+    {
+      if (!prepare_new_bootloader_link (self, self->bootversion, new_bootversion, cancellable,
+                                        error))
+        return FALSE;
+    }
 
   if (!full_system_sync (self, cancellable, error))
     return FALSE;
 
-  if (!swap_bootloader (self, bootloader, self->bootversion, new_bootversion, cancellable, error))
+  if (!swap_bootloader (self, bootloader, loader_is_dir, self->bootversion, new_bootversion,
+                        out_swap_atomic, cancellable, error))
     return FALSE;
 
   if (out_subbootdir)
@@ -2834,6 +3189,11 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot *self, GPtrArray *n
     return FALSE;
   if (!_ostree_sysroot_ensure_boot_fd (self, error))
     return FALSE;
+  /* Before e.g. detecting the bootloader, or deciding whether a new
+   * bootversion is needed at all.
+   */
+  if (!restore_loader_dir (self, error))
+    return FALSE;
 
   const bool skip_early_prune = (self->opt_flags & OSTREE_SYSROOT_GLOBAL_OPT_NO_EARLY_PRUNE) > 0;
   if (!skip_early_prune && !opts->disable_auto_early_prune
@@ -3007,11 +3367,14 @@ ostree_sysroot_write_deployments_with_options (OstreeSysroot *self, GPtrArray *n
       if (!_ostree_sysroot_query_bootloader (self, &bootloader, cancellable, error))
         return FALSE;
 
-      bootloader_is_atomic = bootloader != NULL && _ostree_bootloader_is_atomic (bootloader);
-
+      gboolean swap_atomic;
       if (!write_deployments_bootswap (self, new_deployments, opts, bootloader, &new_subbootdir,
-                                       cancellable, error))
+                                       &swap_atomic, cancellable, error))
         return FALSE;
+
+      /* In directory mode, the swap itself may not have been atomic */
+      bootloader_is_atomic
+          = bootloader != NULL && _ostree_bootloader_is_atomic (bootloader) && swap_atomic;
     }
 
   {
@@ -4340,9 +4703,15 @@ ostree_sysroot_deployment_set_kargs_in_place (OstreeSysroot *self, OstreeDeploym
       g_autofree char *bootconf_filename
           = bootloader_entry_filename (self, self->deployments->len, deployment);
 
-      g_autofree char *bootconfdir = g_strdup_printf ("loader.%d/entries", self->bootversion);
+      /* In directory mode boot/loader is always the live directory, so entries live at
+       * loader/entries, once an interrupted swap has been recovered from.  In symlink
+       * mode, loader -> loader.N, so loader/entries is still the right path (the
+       * symlink dereferences to loader.N/entries).
+       */
+      if (!restore_loader_dir (self, error))
+        return FALSE;
       glnx_autofd int bootconf_dfd = -1;
-      if (!glnx_opendirat (self->boot_fd, bootconfdir, TRUE, &bootconf_dfd, error))
+      if (!glnx_opendirat (self->boot_fd, "loader/entries", TRUE, &bootconf_dfd, error))
         return FALSE;
 
       if (!ostree_bootconfig_parser_write_at (new_bootconfig, bootconf_dfd, bootconf_filename,

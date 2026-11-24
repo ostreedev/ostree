@@ -111,7 +111,16 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader *bootloader, int boot
 {
   OstreeBootloaderSyslinux *self = OSTREE_BOOTLOADER_SYSLINUX (bootloader);
 
-  g_autofree char *new_config_path = g_strdup_printf ("boot/loader.%d/syslinux.cfg", bootversion);
+  /* Both the /boot/... paths below, and syslinux finding the configuration
+   * through syslinux/syslinux.cfg, rely on symbolic links.
+   */
+  if (self->sysroot->boot_is_vfat)
+    return glnx_throw (error, "syslinux: not supported with a VFAT /boot");
+
+  g_autofree char *new_loader_dir = NULL;
+  if (!_ostree_sysroot_get_new_loader_dir (self->sysroot, bootversion, &new_loader_dir, error))
+    return FALSE;
+  g_autofree char *new_config_path = g_strdup_printf ("boot/%s/syslinux.cfg", new_loader_dir);
 
   /* This should follow the symbolic link to the current bootversion. */
   g_autofree char *config_contents = glnx_file_get_contents_utf8_at (

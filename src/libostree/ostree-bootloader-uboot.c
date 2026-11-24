@@ -161,6 +161,12 @@ _ostree_bootloader_uboot_write_config (OstreeBootloader *bootloader, int bootver
 {
   OstreeBootloaderUboot *self = OSTREE_BOOTLOADER_UBOOT (bootloader);
 
+  /* Both the /boot/... paths, and U-Boot finding the configuration through
+   * uEnv.txt, rely on symbolic links.
+   */
+  if (self->sysroot->boot_is_vfat)
+    return glnx_throw (error, "U-Boot: not supported with a VFAT /boot");
+
   /* This should follow the symbolic link to the current bootversion. */
   g_autofree char *config_contents = glnx_file_get_contents_utf8_at (
       self->sysroot->sysroot_fd, uboot_config_path, NULL, cancellable, error);
@@ -171,7 +177,10 @@ _ostree_bootloader_uboot_write_config (OstreeBootloader *bootloader, int bootver
   if (!create_config_from_boot_loader_entries (self, bootversion, new_lines, cancellable, error))
     return FALSE;
 
-  g_autofree char *new_config_path = g_strdup_printf ("boot/loader.%d/uEnv.txt", bootversion);
+  g_autofree char *new_loader_dir = NULL;
+  if (!_ostree_sysroot_get_new_loader_dir (self->sysroot, bootversion, &new_loader_dir, error))
+    return FALSE;
+  g_autofree char *new_config_path = g_strdup_printf ("boot/%s/uEnv.txt", new_loader_dir);
   g_autofree char *new_config_contents = _ostree_sysroot_join_lines (new_lines);
   if (!glnx_file_replace_contents_at (self->sysroot->sysroot_fd, new_config_path,
                                       (guint8 *)new_config_contents, strlen (new_config_contents),

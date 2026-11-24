@@ -63,6 +63,23 @@ export rev
 # This initial deployment gets kicked off with some kernel arguments.  We also set the initial
 # timestamp of the deploy directory to the epoch as a regression test.
 touch -d @0 sysroot/ostree/deploy
+
+# Check the layout of the boot/loader.$1 directory that was just switched to.
+# In directory mode, boot/loader itself is always the live configuration.
+assert_new_loader_dir() {
+    if [ "${folders_instead_symlinks_in_boot:-0}" == "1" ]; then
+        assert_boot_loader_is_dir
+        assert_not_has_dir sysroot/boot/loader.$1
+    else
+        assert_has_dir sysroot/boot/loader.$1
+    fi
+}
+
+if [ "${folders_instead_symlinks_in_boot:-0}" == "1" ]; then
+    # Have loader as a directory (simulate ESP-based deployments)
+    setup_os_boot_loader_dir
+fi
+
 ${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmain/x86_64-runtime
 new_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
 assert_not_streq "${orig_mtime}" "${new_mtime}"
@@ -105,7 +122,7 @@ echo "ok nice error for deploy with no stateroot"
 
 # Test layout of bootloader config and refs
 assert_not_has_dir sysroot/boot/loader.0
-assert_has_dir sysroot/boot/loader.1
+assert_new_loader_dir 1
 assert_has_dir sysroot/ostree/boot.1.1
 assert_has_file sysroot/boot/loader/entries/ostree-1.conf
 assert_file_has_content sysroot/boot/loader/entries/ostree-1.conf 'options.* root=LABEL=MOO'
@@ -127,8 +144,8 @@ orig_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
 ${CMD_PREFIX} ostree admin deploy --stateroot=testos testos:testos/buildmain/x86_64-runtime
 new_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
 assert_not_streq "${orig_mtime}" "${new_mtime}"
-# Need a new bootversion, sine we now have two deployments
-assert_has_dir sysroot/boot/loader.0
+# Need a new bootversion, since we now have two deployments
+assert_new_loader_dir 0
 assert_not_has_dir sysroot/boot/loader.1
 assert_has_dir sysroot/ostree/boot.0.1
 assert_not_has_dir sysroot/ostree/boot.0.0
@@ -146,8 +163,8 @@ echo "ok second deploy"
 
 ${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmain/x86_64-runtime
 # Keep the same bootversion
-assert_has_dir sysroot/boot/loader.0
 assert_not_has_dir sysroot/boot/loader.1
+assert_new_loader_dir 0
 # But swap subbootversion
 assert_has_dir sysroot/ostree/boot.0.0
 assert_not_has_dir sysroot/ostree/boot.0.1
@@ -161,7 +178,7 @@ ${CMD_PREFIX} ostree admin os-init otheros
 
 ${CMD_PREFIX} ostree admin deploy --os=otheros testos/buildmain/x86_64-runtime
 assert_not_has_dir sysroot/boot/loader.0
-assert_has_dir sysroot/boot/loader.1
+assert_new_loader_dir 1
 assert_has_file sysroot/boot/loader/entries/ostree-2.conf
 assert_has_file sysroot/boot/loader/entries/ostree-3.conf
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.1/etc/os-release 'NAME=TestOS'
@@ -173,8 +190,8 @@ validate_bootloader
 echo "ok independent deploy"
 
 ${CMD_PREFIX} ostree admin deploy --retain --os=testos testos:testos/buildmain/x86_64-runtime
-assert_has_dir sysroot/boot/loader.0
 assert_not_has_dir sysroot/boot/loader.1
+assert_new_loader_dir 0
 assert_has_file sysroot/boot/loader/entries/ostree-4.conf
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.2/etc/os-release 'NAME=TestOS'
 assert_has_file sysroot/boot/loader/entries/ostree-2.conf
@@ -191,7 +208,7 @@ rm sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/aconfigfile
 ln -s /ENOENT sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/a-new-broken-symlink
 ${CMD_PREFIX} ostree admin deploy --retain --os=testos testos:testos/buildmain/x86_64-runtime
 assert_not_has_dir sysroot/boot/loader.0
-assert_has_dir sysroot/boot/loader.1
+assert_new_loader_dir 1
 link=sysroot/ostree/deploy/testos/deploy/${rev}.4/etc/a-new-broken-symlink
 if ! test -L ${link}; then
     ls -al ${link}
@@ -221,8 +238,8 @@ assert_has_file sysroot/boot/loader/entries/ostree-1.conf
 assert_not_has_file sysroot/boot/loader/entries/ostree-2.conf
 assert_not_has_file sysroot/boot/loader/entries/ostree-3.conf
 ${CMD_PREFIX} ostree admin deploy --not-as-default --os=otheros testos:testos/buildmain/x86_64-runtime
-assert_has_dir sysroot/boot/loader.0
 assert_not_has_dir sysroot/boot/loader.1
+assert_new_loader_dir 0
 assert_has_file sysroot/boot/loader/entries/ostree-2.conf
 assert_has_file sysroot/boot/loader/entries/ostree-1.conf
 ${CMD_PREFIX} ostree admin status
@@ -232,7 +249,7 @@ echo "ok deploy --not-as-default"
 
 ${CMD_PREFIX} ostree admin deploy --retain-rollback --os=otheros testos:testos/buildmain/x86_64-runtime
 assert_not_has_dir sysroot/boot/loader.0
-assert_has_dir sysroot/boot/loader.1
+assert_new_loader_dir 1
 assert_has_file sysroot/boot/loader/entries/ostree-3.conf
 assert_has_file sysroot/boot/loader/entries/ostree-2.conf
 assert_has_file sysroot/boot/loader/entries/ostree-1.conf
