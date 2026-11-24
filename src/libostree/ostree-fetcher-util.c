@@ -27,6 +27,7 @@
 #include <systemd/sd-journal.h>
 #endif
 
+#include "ostree-fetcher-backoff.h"
 #include "ostree-fetcher-util.h"
 #include "otutil.h"
 
@@ -131,16 +132,26 @@ _ostree_fetcher_mirrored_request_to_membuf (OstreeFetcher *fetcher, GPtrArray *m
 {
   g_autoptr (GError) local_error = NULL;
   guint n_retries_remaining = n_network_retries;
+  guint n_retries_done = 0;
 
-  do
+  while (TRUE)
     {
       g_clear_error (&local_error);
       if (_ostree_fetcher_mirrored_request_to_membuf_once (
               fetcher, mirrorlist, filename, flags, if_none_match, if_modified_since, out_contents,
               out_not_modified, out_etag, out_last_modified, max_size, cancellable, &local_error))
         return TRUE;
+
+      if (!_ostree_fetcher_should_retry_request (local_error, n_retries_remaining))
+        break;
+      n_retries_remaining--;
+
+      /* A cancel during the wait is not handled here: the next attempt reports
+       * it as G_IO_ERROR_CANCELLED, which is more accurate than the transient
+       * error we would otherwise propagate. */
+      _ostree_fetcher_retry_backoff_wait (n_retries_done, cancellable);
+      n_retries_done++;
     }
-  while (_ostree_fetcher_should_retry_request (local_error, n_retries_remaining--));
 
   g_assert (local_error != NULL);
   g_propagate_error (error, g_steal_pointer (&local_error));
