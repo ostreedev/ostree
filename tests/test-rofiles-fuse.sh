@@ -26,7 +26,7 @@ skip_without_user_xattrs
 
 setup_test_repository "bare"
 
-echo "1..13"
+echo "1..14"
 
 cd ${test_tmpdir}
 mkdir mnt
@@ -118,6 +118,21 @@ setfattr -n user.foo -v bar mnt/anewfile-for-fuse
 getfattr -d -m . mnt/anewfile-for-fuse > out.txt
 assert_file_has_content_literal out.txt 'user.foo="bar"'
 echo "ok new xattrs"
+
+# Setting an xattr on a symlink itself (setfattr -h) must not reach the
+# hardlinked file it points to.  user.* xattrs are refused on symlinks by
+# the kernel, so this needs root for trusted.*.
+if test "$(id -u)" = 0; then
+    ln -s firstfile mnt/firstfile-xattr-link
+    setfattr -h -n trusted.foo -v bar mnt/firstfile-xattr-link || true
+    if getfattr -n trusted.foo checkout-test2/firstfile 2>/dev/null; then
+        assert_not_reached "set xattr on linked file via symlink"
+    fi
+    rm mnt/firstfile-xattr-link
+    echo "ok no xattr via symlink"
+else
+    echo "ok no xattr via symlink # SKIP requires root"
+fi
 
 rm mnt/baz/cow
 assert_not_has_file checkout-test2/baz/cow
