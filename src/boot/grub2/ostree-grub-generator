@@ -73,18 +73,23 @@ populate_menu()
     fi
     for config in $(ls -v -r $entries_path/*.conf); do
         read_config ${config}
-        menu="${menu}menuentry '${title}' {\n"
-        menu="${menu}\t linux ${boot_prefix}${linux} ${options}\n"
-        if [ -n "${initrd}" ] ; then
-            menu="${menu}\t initrd ${boot_prefix}${initrd}\n"
-        fi
-        if [ -n "${devicetree}" ] ; then
-            menu="${menu}\t devicetree ${boot_prefix}${devicetree}\n"
-        fi
-        menu="${menu}}\n\n"
+        # GRUB, like the shell, can't have a single quote inside a
+        # single-quoted string, so end the string around each one.
+        title=$(printf '%s' "${title}" | sed "s/'/'\\\\''/g")
+        # The entry fields are printf arguments rather than part of the
+        # format, so a % or backslash in them is written out as is.
+        {
+            printf "menuentry '%s' {\n" "${title}"
+            printf '\t linux %s%s %s\n' "${boot_prefix}" "${linux}" "${options}"
+            if [ -n "${initrd}" ] ; then
+                printf '\t initrd %s%s\n' "${boot_prefix}" "${initrd}"
+            fi
+            if [ -n "${devicetree}" ] ; then
+                printf '\t devicetree %s%s\n' "${boot_prefix}" "${devicetree}"
+            fi
+            printf '}\n\n'
+        } >> ${new_grub2_cfg}
     done
-    # The printf command seems to be more reliable across shells for special character (\n, \t) evaluation
-    printf "$menu" >> ${new_grub2_cfg}
 }
 
 populate_warning()
